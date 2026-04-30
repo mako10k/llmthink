@@ -1,11 +1,11 @@
 {
   "engine_version": "0.1.0",
   "document_id": "contradiction-pending",
-  "generated_at": "2026-04-30T12:00:00Z",
+  "generated_at": "<generated>",
   "summary": {
     "fatal_count": 0,
     "error_count": 1,
-    "warning_count": 2,
+    "warning_count": 1,
     "info_count": 1,
     "hint_count": 1
   },
@@ -22,8 +22,8 @@
         }
       ],
       "message": "decision D2 に根拠参照がない。",
-      "rationale": "DecisionAudit framework は decision_without_reference を禁止する。",
-      "suggestion": "based_on に premise または evidence を追加する。"
+      "rationale": "decision は based_on に premise または evidence を持つことが推奨される。",
+      "suggestion": "based_on を追加する。"
     },
     {
       "issue_id": "ISSUE-002",
@@ -41,25 +41,11 @@
           "step_id": "S4"
         }
       ],
-      "message": "D1 と D2 は cost 観点で相互に緊張している。",
-      "rationale": "一方は A社採用を示し、もう一方は B社優位を示している。",
-      "suggestion": "比較観点を追加するか、どちらかの判断を pending 化する。"
+      "message": "D1 と D2 は同一問題上で緊張関係にある可能性がある。",
+      "rationale": "複数の decision が共存しているため、観点と整合性の再確認が必要である。"
     },
     {
       "issue_id": "ISSUE-003",
-      "category": "mece_assessment",
-      "severity": "warning",
-      "target_refs": [
-        {
-          "ref_id": "P1",
-          "role": "problem"
-        }
-      ],
-      "message": "比較軸が cost のみで、運用負荷の網羅性が不足している可能性がある。",
-      "rationale": "pending PD1 により重要観点が未完了であることが示されている。"
-    },
-    {
-      "issue_id": "ISSUE-004",
       "category": "semantic_hint",
       "severity": "info",
       "target_refs": [
@@ -69,10 +55,10 @@
           "step_id": "S5"
         }
       ],
-      "message": "pending が存在するため、最終判断の確定度表示を下げるべきである。"
+      "message": "pending が存在するため、判断の確定度は下げて表示するべきである。"
     },
     {
-      "issue_id": "ISSUE-005",
+      "issue_id": "ISSUE-004",
       "category": "semantic_hint",
       "severity": "hint",
       "target_refs": [
@@ -87,29 +73,12 @@
           "step_id": "S4"
         }
       ],
-      "message": "D1 と D2 は意味的に近接しているが、結論方向が異なる。",
+      "message": "D1 と D2 は意味的に近接している可能性がある。",
       "metadata": {
-        "semantic_distance": 0.18,
-        "similarity": 0.82
+        "similarity": 0.75,
+        "semantic_distance": 0.25
       }
     }
   ],
-  "query_results": [
-    {
-      "query_id": "Q1",
-      "severity": "hint",
-      "items": [
-        {
-          "ref_id": "D1",
-          "score": 0.93,
-          "explanation": "P1 に直接紐づく主要 decision。"
-        },
-        {
-          "ref_id": "D2",
-          "score": 0.87,
-          "explanation": "P1 と同じ cost 観点に属する関連 decision。"
-        }
-      ]
-    }
-  ]
+  "query_results": []
 }

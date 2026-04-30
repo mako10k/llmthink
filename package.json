@@ -1,0 +1,17 @@
+{
+  "name": "llmthink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "audit": "tsx src/cli.ts",
+    "verify-examples": "tsx src/verify-examples.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}

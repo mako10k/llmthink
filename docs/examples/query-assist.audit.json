@@ -1,0 +1,26 @@
+{
+  "engine_version": "0.1.0",
+  "document_id": "query-assist",
+  "generated_at": "<generated>",
+  "summary": {
+    "fatal_count": 0,
+    "error_count": 0,
+    "warning_count": 0,
+    "info_count": 0,
+    "hint_count": 0
+  },
+  "results": [],
+  "query_results": [
+    {
+      "query_id": "Q1",
+      "severity": "hint",
+      "items": [
+        {
+          "ref_id": "D1",
+          "score": 1,
+          "explanation": "related_decisions(P1) に関連する decision 候補。"
+        }
+      ]
+    }
+  ]
+}

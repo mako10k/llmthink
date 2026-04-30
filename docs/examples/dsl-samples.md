@@ -23,4 +23,5 @@ framework 契約の骨格定義。
 
 - まず個別 .dsl ファイルを読む
 - 次に [audit-output-sample.json](audit-output-sample.json) を参照して、どの監査結果が返るかを見る
+- query を含む例は [query-assist.audit.json](query-assist.audit.json) を参照する
 - requirements と照合する場合は [../specs/requirements.md](../specs/requirements.md) を参照する

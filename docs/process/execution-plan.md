@@ -11,10 +11,10 @@
 ## 2. 現在地
 
 - 要求仕様は存在する
-- ADR-0001 と ADR-0002 は確定済み
+- ADR-0001 から ADR-0003 までは確定済み
 - 監査結果スキーマは存在する
 - DSL サンプルは存在する
-- TypeScript 実装は未着手
+- TypeScript の最小実装は開始済み
 
 ---
 
@@ -58,15 +58,22 @@
 - [x] ADR-0002 を追加
 - [x] 監査結果スキーマを追加
 - [x] DSL サンプルを追加
-- [ ] ADR-0003 を追加
-- [ ] DSL 構文仕様を追加
-- [ ] 監査ルール仕様を追加
-- [ ] TypeScript プロジェクトを作成
-- [ ] AST と診断型を実装
-- [ ] parser の最小実装
-- [ ] semantic analyzer の最小実装
-- [ ] audit engine の最小実装
-- [ ] examples ベースの検証を追加
+- [x] ADR-0003 を追加
+- [x] DSL 構文仕様を追加
+- [x] 監査ルール仕様を追加
+- [x] TypeScript プロジェクトを作成
+- [x] AST と診断型を実装
+- [x] parser の最小実装
+- [x] semantic analyzer の最小実装
+- [x] audit engine の最小実装
+- [x] examples ベースの検証を追加
+
+直近更新:
+
+- package.json、tsconfig、src 配下の最小実装を追加した
+- contradiction-pending.dsl に対して監査 CLI が動作することを確認した
+- query-assist.dsl に対して query_result が返ることを確認した
+- verify-examples により代表サンプルの期待結果比較を追加した
 
 ---
 

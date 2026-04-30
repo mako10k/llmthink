@@ -25,3 +25,11 @@
 - 重要な設計判断は docs/adr に ADR として記録する
 - 要求仕様の変更は ADR と整合させる
 - 監査出力の契約変更は schemas を更新する
+
+## 開発コマンド
+
+- npm install
+- npm run typecheck
+- npm run build
+- npm run audit -- docs/examples/contradiction-pending.dsl
+- npm run verify-examples
