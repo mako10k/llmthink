@@ -41,6 +41,8 @@ reflect は新しい thought を増やす機能ではない。既存 thought に
 - reflect への返信スレッド
 - reflect 単位の監査
 
+ただし thought search の補助対象として reflect を含めることは許容する。既定値は opt-in とし、明示指定時のみ search candidate に含める。
+
 ## 3. データモデル
 
 thought 配下に reflections.json を追加する。
@@ -188,6 +190,7 @@ thought show reflections は時系列昇順で次を表示する。
 - related thought を作るべき場面と reflect で足りる場面が分離できているか
 - CLI / MCP / VS Code 拡張で同じ mental model を維持できているか
 - history と summary だけでも recent context が追えるか
+- search の既定値が draft/final の精度を落とさず、必要時だけ reflect を混ぜられるか
 
 ## 9. リリース判断
 

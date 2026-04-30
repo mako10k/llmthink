@@ -94,11 +94,14 @@ function summarizeThought(thoughtId: string) {
 async function handleThoughtSearch(
   query: string | undefined,
   limit: number | undefined,
+  includeReflections: boolean,
 ) {
   if (!query) {
     throw new Error("query is required when action=search");
   }
-  const results = (await searchThoughtRecords(query)).slice(0, limit ?? 5);
+  const results = (
+    await searchThoughtRecords(query, undefined, { includeReflections })
+  ).slice(0, limit ?? 5);
   return { content: [textContent(formatThoughtSearchResults(results))] };
 }
 
@@ -215,13 +218,14 @@ async function handleThoughtAction(
   kind: ThoughtReflectionKind,
   query: string | undefined,
   limit: number | undefined,
+  includeReflections: boolean,
   view: "summary" | "draft" | "final" | "audit" | "reflections" | undefined,
 ) {
   if (action === "list") {
     return { content: [textContent(formatThoughtList(listThoughts()))] };
   }
   if (action === "search") {
-    return handleThoughtSearch(query, limit);
+    return handleThoughtSearch(query, limit, includeReflections);
   }
 
   const resolvedThoughtId = requireThoughtId(thoughtId);
@@ -304,6 +308,7 @@ server.tool(
     kind: REFLECTION_KIND_SCHEMA.default("note"),
     query: z.string().optional(),
     limit: z.number().int().positive().max(20).optional(),
+    includeReflections: z.boolean().default(false),
     view: z
       .enum(["summary", "draft", "final", "audit", "reflections"])
       .optional(),
@@ -317,6 +322,7 @@ server.tool(
     kind,
     query,
     limit,
+    includeReflections,
     view,
   }) => {
     return handleThoughtAction(
@@ -328,6 +334,7 @@ server.tool(
       kind,
       query,
       limit,
+      includeReflections,
       view,
     );
   },

@@ -112,6 +112,28 @@ async function promptSearchQuery(): Promise<string | undefined> {
   });
 }
 
+async function promptIncludeReflections(): Promise<boolean> {
+  const selected = await vscode.window.showQuickPick(
+    [
+      {
+        label: "No",
+        description: "draft/final のみを検索する",
+        value: false,
+      },
+      {
+        label: "Yes",
+        description: "reflect も検索対象に含める",
+        value: true,
+      },
+    ],
+    {
+      placeHolder: "reflect を検索対象に含めますか?",
+      ignoreFocusOut: true,
+    },
+  );
+  return selected?.value ?? false;
+}
+
 async function promptReflectionKind(): Promise<
   ThoughtReflectionKind | undefined
 > {
@@ -233,10 +255,13 @@ async function searchThoughtsInOutput(
   if (!query) {
     return;
   }
-  const results = await searchThoughtRecords(query);
+  const includeReflections = await promptIncludeReflections();
+  const results = await searchThoughtRecords(query, undefined, {
+    includeReflections,
+  });
   showTextInOutput(
     outputChannel,
-    `LLMThink Thought Search: ${query}`,
+    `LLMThink Thought Search: ${query} (include reflections: ${includeReflections ? "yes" : "no"})`,
     formatThoughtSearchResults(results),
   );
 }

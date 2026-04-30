@@ -66,15 +66,28 @@ export interface ThoughtSearchResult {
   id: string;
   status: ThoughtStatus;
   score: number;
-  source: "draft" | "final" | "draft+final";
+  source: ThoughtSearchSource;
   excerpt: string;
   explanation?: string;
+}
+
+export type ThoughtSearchSource =
+  | "draft"
+  | "final"
+  | "reflection"
+  | "draft+final"
+  | "draft+reflection"
+  | "final+reflection"
+  | "draft+final+reflection";
+
+export interface ThoughtSearchOptions extends EmbeddingRequestOptions {
+  includeReflections?: boolean;
 }
 
 interface ThoughtSearchCandidate {
   id: string;
   status: ThoughtStatus;
-  source: "draft" | "final";
+  source: "draft" | "final" | "reflection";
   text: string;
 }
 
@@ -431,6 +444,7 @@ function scoreText(text: string, query: string): number {
 }
 
 function collectThoughtSearchCandidates(
+  options?: ThoughtSearchOptions,
   baseDir?: string,
 ): ThoughtSearchCandidate[] {
   return listThoughts(baseDir).flatMap((record) => {
@@ -452,6 +466,16 @@ function collectThoughtSearchCandidates(
         text: snapshot.draftText,
       });
     }
+    if (options?.includeReflections) {
+      for (const reflection of snapshot.reflections) {
+        candidates.push({
+          id: record.id,
+          status: record.status,
+          source: "reflection",
+          text: reflection.text,
+        });
+      }
+    }
     return candidates;
   });
 }
@@ -459,9 +483,10 @@ function collectThoughtSearchCandidates(
 function lexicalSearchThoughts(
   query: string,
   baseDir?: string,
+  options?: ThoughtSearchOptions,
 ): ThoughtSearchResult[] {
   return collapseSearchResults(
-    collectThoughtSearchCandidates(baseDir)
+    collectThoughtSearchCandidates(options, baseDir)
       .map((candidate) => ({
         id: candidate.id,
         status: candidate.status,
@@ -478,10 +503,12 @@ function mergeSourceKinds(
   left: ThoughtSearchResult["source"],
   right: ThoughtSearchResult["source"],
 ): ThoughtSearchResult["source"] {
-  if (left === right) {
-    return left;
-  }
-  return "draft+final";
+  return [...new Set([...left.split("+"), ...right.split("+")])]
+    .sort((first, second) => {
+      const order = ["draft", "final", "reflection"];
+      return order.indexOf(first) - order.indexOf(second);
+    })
+    .join("+") as ThoughtSearchResult["source"];
 }
 
 function collapseSearchResults(
@@ -514,9 +541,9 @@ function collapseSearchResults(
 export async function searchThoughtRecords(
   query: string,
   baseDir?: string,
-  options?: EmbeddingRequestOptions,
+  options?: ThoughtSearchOptions,
 ): Promise<ThoughtSearchResult[]> {
-  const candidates = collectThoughtSearchCandidates(baseDir);
+  const candidates = collectThoughtSearchCandidates(options, baseDir);
   if (!query.trim() || candidates.length === 0) {
     return [];
   }
@@ -527,7 +554,7 @@ export async function searchThoughtRecords(
       options,
     );
     if (!result) {
-      return lexicalSearchThoughts(query, baseDir);
+      return lexicalSearchThoughts(query, baseDir, options);
     }
 
     const queryEmbedding = result.embeddings[0] ?? [];
@@ -552,6 +579,6 @@ export async function searchThoughtRecords(
         .filter((candidate) => candidate.score > 0),
     );
   } catch {
-    return lexicalSearchThoughts(query, baseDir);
+    return lexicalSearchThoughts(query, baseDir, options);
   }
 }

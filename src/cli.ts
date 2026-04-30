@@ -33,6 +33,7 @@ interface CliOptions {
   thoughtId?: string;
   fromThoughtId?: string;
   kind?: string;
+  includeReflections: boolean;
   limit?: number;
   view?: string;
   positionals: string[];
@@ -58,6 +59,9 @@ const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
   },
   "--kind": (options, remainingArgs) => {
     options.kind = remainingArgs.shift();
+  },
+  "--with-reflections": (options) => {
+    options.includeReflections = true;
   },
   "--limit": (options, remainingArgs) => {
     const rawValue = remainingArgs.shift();
@@ -109,6 +113,7 @@ function parseArgs(argv: string[]): CliOptions {
     command,
     subcommand,
     pretty: false,
+    includeReflections: false,
     positionals: [],
   };
   while (args.length > 0) {
@@ -145,7 +150,7 @@ function printUsage(): void {
       '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
       "  llmthink thought show --id <thought-id> [summary|draft|final|audit|reflections]",
       "  llmthink thought history --id <thought-id>",
-      "  llmthink thought search <query> [--limit 5]",
+      "  llmthink thought search <query> [--limit 5] [--with-reflections]",
       "  llmthink thought list",
     ].join("\n") + "\n",
   );
@@ -159,8 +164,14 @@ function printThoughtHistory(id: string): void {
   process.stdout.write(formatThoughtHistory(loadThought(id).history));
 }
 
-async function printThoughtSearch(query: string, limit = 5): Promise<void> {
-  const results = (await searchThoughtRecords(query)).slice(0, limit);
+async function printThoughtSearch(
+  query: string,
+  limit = 5,
+  includeReflections = false,
+): Promise<void> {
+  const results = (
+    await searchThoughtRecords(query, undefined, { includeReflections })
+  ).slice(0, limit);
   process.stdout.write(formatThoughtSearchResults(results));
 }
 
@@ -335,7 +346,11 @@ async function handleThoughtSearch(options: CliOptions): Promise<void> {
   if (!query) {
     throw new Error("thought search requires a query string.");
   }
-  await printThoughtSearch(query, options.limit ?? 5);
+  await printThoughtSearch(
+    query,
+    options.limit ?? 5,
+    options.includeReflections,
+  );
 }
 
 function handleThoughtList(): void {
