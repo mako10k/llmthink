@@ -8,6 +8,11 @@
 
 - LLMThink: Audit Active Document
 - LLMThink: Show Last Audit Report
+- LLMThink: Save Thought Draft
+- LLMThink: Audit Thought
+- LLMThink: Finalize Thought
+- LLMThink: Show Thought History
+- LLMThink: Search Thoughts
 
 ## 提供ツール
 
@@ -16,6 +21,11 @@
 - 入力:
 	- dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する。help dsl を渡すと文法ガイダンスを返す
 	- documentId: 監査レポートに使う任意の文書 ID
+
+## Thought lifecycle
+
+- command palette から draft 保存、thought 監査、finalize、history 表示、search を扱える
+- search は persisted thought に対して semantic search を試み、利用可能なら provider/model を結果に表示する
 
 ## ローカル開発
 

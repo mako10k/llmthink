@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { auditFile, auditText } from "./analyzer/audit.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText } from "./presentation/report.js";
+import { formatThoughtHistory, formatThoughtList, formatThoughtSearchResults, formatThoughtSummary } from "./presentation/thought.js";
 import {
 	finalizeThought,
 	listThoughts,
@@ -99,48 +100,22 @@ function printUsage(): void {
 
 function printThoughtSummary(id: string): void {
 	const snapshot = loadThought(id);
-	const lines = [
-		`thought: ${snapshot.record.id}`,
-		`status: ${snapshot.record.status}`,
-		`created_at: ${snapshot.record.created_at}`,
-		`updated_at: ${snapshot.record.updated_at}`,
-		`draft: ${snapshot.record.current_draft_path ?? "-"}`,
-		`final: ${snapshot.record.final_path ?? "-"}`,
-		`latest_audit: ${snapshot.record.latest_audit_path ?? "-"}`,
-		`history_events: ${snapshot.history.length}`,
-	];
-	process.stdout.write(`${lines.join("\n")}\n`);
+	process.stdout.write(formatThoughtSummary(snapshot));
 }
 
 function printThoughtHistory(id: string): void {
 	const snapshot = loadThought(id);
-	const lines = snapshot.history.map((event) => `- ${event.at} [${event.kind}] ${event.summary}${event.path ? ` (${event.path})` : ""}`);
-	process.stdout.write(`${lines.join("\n")}\n`);
+	process.stdout.write(formatThoughtHistory(snapshot.history));
 }
 
-function printThoughtSearch(query: string, limit = 5): void {
-	const results = searchThoughts(query).slice(0, limit);
-	if (results.length === 0) {
-		process.stdout.write("No thoughts matched.\n");
-		return;
-	}
-	for (const result of results) {
-		process.stdout.write(`- ${result.id} [${result.source}/${result.status}] score=${result.score} ${result.excerpt}\n`);
-	}
-	process.stdout.write(
-		"\nNext action: llmthink thought draft --id <new-thought-id> --from <matched-thought-id>\n",
-	);
+async function printThoughtSearch(query: string, limit = 5): Promise<void> {
+	const results = (await searchThoughts(query)).slice(0, limit);
+	process.stdout.write(formatThoughtSearchResults(results));
 }
 
 function printThoughtList(): void {
 	const thoughts = listThoughts();
-	if (thoughts.length === 0) {
-		process.stdout.write("No persisted thoughts.\n");
-		return;
-	}
-	for (const thought of thoughts) {
-		process.stdout.write(`- ${thought.id} [${thought.status}] updated_at=${thought.updated_at}\n`);
-	}
+	process.stdout.write(formatThoughtList(thoughts));
 }
 
 function readTextFromSource(options: CliOptions): string | undefined {
@@ -251,7 +226,7 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
 		if (!query) {
 			throw new Error("thought search requires a query string.");
 		}
-		printThoughtSearch(query, options.limit ?? 5);
+		await printThoughtSearch(query, options.limit ?? 5);
 		return;
 	}
 

@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -58,6 +58,26 @@
       {
         "command": "llmthink.showLastAuditReport",
         "title": "LLMThink: Show Last Audit Report"
+      },
+      {
+        "command": "llmthink.saveThoughtDraft",
+        "title": "LLMThink: Save Thought Draft"
+      },
+      {
+        "command": "llmthink.auditThought",
+        "title": "LLMThink: Audit Thought"
+      },
+      {
+        "command": "llmthink.finalizeThought",
+        "title": "LLMThink: Finalize Thought"
+      },
+      {
+        "command": "llmthink.showThoughtHistory",
+        "title": "LLMThink: Show Thought History"
+      },
+      {
+        "command": "llmthink.searchThoughts",
+        "title": "LLMThink: Search Thoughts"
       }
     ]
   },

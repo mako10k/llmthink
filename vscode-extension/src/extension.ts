@@ -1,6 +1,20 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { auditText, formatAuditReportHtml, formatAuditReportText, getDslSyntaxGuidanceText, isDslHelpRequest } from "llmthink";
+import {
+  auditText,
+  finalizeThought,
+  formatAuditReportHtml,
+  formatAuditReportText,
+  formatThoughtHistory,
+  formatThoughtSearchResults,
+  formatThoughtSummary,
+  getDslSyntaxGuidanceText,
+  isDslHelpRequest,
+  loadThought,
+  persistAuditReport,
+  saveThoughtDraft,
+  searchThoughts,
+} from "llmthink";
 import type { AuditReport } from "llmthink";
 
 const AUDIT_TOOL_NAME = "llmthink-audit-dsl";
@@ -49,6 +63,101 @@ function renderToolResult(report: AuditReport): vscode.LanguageModelToolResult {
     new vscode.LanguageModelTextPart(formatAuditReportText(report)),
     vscode.LanguageModelDataPart.json(report),
   ]);
+}
+
+async function promptThoughtId(defaultValue?: string): Promise<string | undefined> {
+  return vscode.window.showInputBox({
+    prompt: "thought-id を入力してください",
+    value: defaultValue,
+    ignoreFocusOut: true,
+  });
+}
+
+async function promptSearchQuery(): Promise<string | undefined> {
+  return vscode.window.showInputBox({
+    prompt: "検索クエリを入力してください",
+    ignoreFocusOut: true,
+  });
+}
+
+function showTextInOutput(outputChannel: vscode.OutputChannel, title: string, text: string): void {
+  outputChannel.clear();
+  outputChannel.appendLine(title);
+  outputChannel.appendLine("");
+  outputChannel.append(text);
+  outputChannel.show(true);
+}
+
+async function saveActiveDocumentAsDraft(outputChannel: vscode.OutputChannel): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    void vscode.window.showWarningMessage("保存対象のアクティブエディタがありません。");
+    return;
+  }
+  const thoughtId = await promptThoughtId(toDocumentId(editor.document));
+  if (!thoughtId) {
+    return;
+  }
+  saveThoughtDraft(thoughtId, editor.document.getText());
+  showTextInOutput(outputChannel, `LLMThink Thought Draft: ${thoughtId}`, formatThoughtSummary(loadThought(thoughtId)));
+  void vscode.window.showInformationMessage(`LLMThink draft 保存完了: ${thoughtId}`);
+}
+
+async function auditThoughtFromActiveDocument(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    void vscode.window.showWarningMessage("監査対象のアクティブエディタがありません。");
+    return;
+  }
+  const thoughtId = await promptThoughtId(toDocumentId(editor.document));
+  if (!thoughtId) {
+    return;
+  }
+  const text = editor.document.getText();
+  saveThoughtDraft(thoughtId, text);
+  const report = await runAudit(text, thoughtId);
+  persistAuditReport(thoughtId, report);
+
+  outputChannel.clear();
+  outputChannel.appendLine(formatAuditReportText(report));
+  outputChannel.appendLine(JSON.stringify(report, null, 2));
+  outputChannel.show(true);
+  showReportPanel(context, report);
+  void vscode.window.showInformationMessage(`LLMThink thought 監査完了: ${thoughtId}`);
+}
+
+async function finalizeThoughtFromActiveDocument(outputChannel: vscode.OutputChannel): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    void vscode.window.showWarningMessage("finalize 対象のアクティブエディタがありません。");
+    return;
+  }
+  const thoughtId = await promptThoughtId(toDocumentId(editor.document));
+  if (!thoughtId) {
+    return;
+  }
+  saveThoughtDraft(thoughtId, editor.document.getText());
+  finalizeThought(thoughtId, editor.document.getText());
+  showTextInOutput(outputChannel, `LLMThink Thought Finalized: ${thoughtId}`, formatThoughtSummary(loadThought(thoughtId)));
+  void vscode.window.showInformationMessage(`LLMThink final 保存完了: ${thoughtId}`);
+}
+
+async function showThoughtHistoryInOutput(outputChannel: vscode.OutputChannel): Promise<void> {
+  const thoughtId = await promptThoughtId();
+  if (!thoughtId) {
+    return;
+  }
+  const snapshot = loadThought(thoughtId);
+  showTextInOutput(outputChannel, `LLMThink Thought History: ${thoughtId}`, formatThoughtHistory(snapshot.history));
+}
+
+async function searchThoughtsInOutput(outputChannel: vscode.OutputChannel): Promise<void> {
+  const query = await promptSearchQuery();
+  if (!query) {
+    return;
+  }
+  const results = await searchThoughts(query);
+  showTextInOutput(outputChannel, `LLMThink Thought Search: ${query}`, formatThoughtSearchResults(results));
 }
 
 async function runAudit(text: string, documentId: string): Promise<AuditReport> {
@@ -128,6 +237,21 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       showReportPanel(context, lastReport);
       outputChannel.show(true);
+    }),
+    vscode.commands.registerCommand("llmthink.saveThoughtDraft", async () => {
+      await saveActiveDocumentAsDraft(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.auditThought", async () => {
+      await auditThoughtFromActiveDocument(context, outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.finalizeThought", async () => {
+      await finalizeThoughtFromActiveDocument(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.showThoughtHistory", async () => {
+      await showThoughtHistoryInOutput(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.searchThoughts", async () => {
+      await searchThoughtsInOutput(outputChannel);
     }),
   );
 }

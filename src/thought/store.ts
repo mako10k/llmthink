@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { join, resolve } from "node:path";
 
 import type { AuditReport } from "../model/diagnostics.js";
+import { cosineSimilarity, embedTexts, type EmbeddingRequestOptions } from "../semantic/embeddings.js";
 
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtEventKind = "draft_saved" | "audit_recorded" | "finalized";
@@ -37,6 +38,14 @@ export interface ThoughtSearchResult {
   score: number;
   source: "draft" | "final";
   excerpt: string;
+  explanation?: string;
+}
+
+interface ThoughtSearchCandidate {
+  id: string;
+  status: ThoughtStatus;
+  source: "draft" | "final";
+  text: string;
 }
 
 interface ThoughtPaths {
@@ -252,36 +261,69 @@ function scoreText(text: string, query: string): number {
   return Number(Math.min(1, 0.3 + occurrences * 0.2).toFixed(4));
 }
 
-export function searchThoughts(query: string, baseDir?: string): ThoughtSearchResult[] {
-  return listThoughts(baseDir)
-    .flatMap((record) => {
-      const snapshot = loadThought(record.id, baseDir);
-      const candidates: ThoughtSearchResult[] = [];
-      if (snapshot.finalText) {
-        const score = scoreText(snapshot.finalText, query);
-        if (score > 0) {
-          candidates.push({
-            id: record.id,
-            status: record.status,
-            score,
-            source: "final",
-            excerpt: excerpt(snapshot.finalText, query),
-          });
-        }
-      }
-      if (snapshot.draftText) {
-        const score = scoreText(snapshot.draftText, query);
-        if (score > 0) {
-          candidates.push({
-            id: record.id,
-            status: record.status,
-            score,
-            source: "draft",
-            excerpt: excerpt(snapshot.draftText, query),
-          });
-        }
-      }
-      return candidates;
-    })
+function collectThoughtSearchCandidates(baseDir?: string): ThoughtSearchCandidate[] {
+  return listThoughts(baseDir).flatMap((record) => {
+    const snapshot = loadThought(record.id, baseDir);
+    const candidates: ThoughtSearchCandidate[] = [];
+    if (snapshot.finalText) {
+      candidates.push({
+        id: record.id,
+        status: record.status,
+        source: "final",
+        text: snapshot.finalText,
+      });
+    }
+    if (snapshot.draftText) {
+      candidates.push({
+        id: record.id,
+        status: record.status,
+        source: "draft",
+        text: snapshot.draftText,
+      });
+    }
+    return candidates;
+  });
+}
+
+function lexicalSearchThoughts(query: string, baseDir?: string): ThoughtSearchResult[] {
+  return collectThoughtSearchCandidates(baseDir)
+    .map((candidate) => ({
+      id: candidate.id,
+      status: candidate.status,
+      score: scoreText(candidate.text, query),
+      source: candidate.source,
+      excerpt: excerpt(candidate.text, query),
+      explanation: "lexical fallback",
+    }))
+    .filter((candidate) => candidate.score > 0)
     .sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
+}
+
+export async function searchThoughts(query: string, baseDir?: string, options?: EmbeddingRequestOptions): Promise<ThoughtSearchResult[]> {
+  const candidates = collectThoughtSearchCandidates(baseDir);
+  if (!query.trim() || candidates.length === 0) {
+    return [];
+  }
+
+  try {
+    const result = await embedTexts([query, ...candidates.map((candidate) => candidate.text)], options);
+    if (!result) {
+      return lexicalSearchThoughts(query, baseDir);
+    }
+
+    const queryEmbedding = result.embeddings[0] ?? [];
+    return candidates
+      .map((candidate, index) => ({
+        id: candidate.id,
+        status: candidate.status,
+        score: Number(Math.max(0, cosineSimilarity(queryEmbedding, result.embeddings[index + 1] ?? [])).toFixed(4)),
+        source: candidate.source,
+        excerpt: excerpt(candidate.text, query),
+        explanation: `${result.provider}/${result.model}`,
+      }))
+      .filter((candidate) => candidate.score > 0)
+      .sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
+  } catch {
+    return lexicalSearchThoughts(query, baseDir);
+  }
 }
