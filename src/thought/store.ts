@@ -5,13 +5,14 @@ import type { AuditReport } from "../model/diagnostics.js";
 import { cosineSimilarity, embedTexts, type EmbeddingRequestOptions } from "../semantic/embeddings.js";
 
 export type ThoughtStatus = "draft" | "finalized";
-export type ThoughtEventKind = "draft_saved" | "audit_recorded" | "finalized";
+export type ThoughtEventKind = "draft_saved" | "audit_recorded" | "finalized" | "related_created";
 
 export interface ThoughtRecord {
   id: string;
   created_at: string;
   updated_at: string;
   status: ThoughtStatus;
+  derived_from?: string;
   current_draft_path?: string;
   final_path?: string;
   latest_audit_path?: string;
@@ -36,7 +37,7 @@ export interface ThoughtSearchResult {
   id: string;
   status: ThoughtStatus;
   score: number;
-  source: "draft" | "final";
+  source: "draft" | "final" | "draft+final";
   excerpt: string;
   explanation?: string;
 }
@@ -154,6 +155,33 @@ export function saveThoughtDraft(id: string, text: string, baseDir?: string): Th
     at: updated.updated_at,
     kind: "draft_saved",
     summary: "draft を保存した。",
+    path: updated.current_draft_path,
+  }, baseDir);
+  return updated;
+}
+
+export function createRelatedThought(id: string, fromThoughtId: string, baseDir?: string): ThoughtRecord {
+  const source = loadThought(fromThoughtId, baseDir);
+  const text = source.finalText ?? source.draftText;
+  if (!text) {
+    throw new Error(`Thought ${fromThoughtId} does not have a draft or final text yet.`);
+  }
+
+  const paths = ensureThoughtDir(id, baseDir);
+  const existing = ensureThoughtRecord(id, baseDir);
+  writeFileSync(paths.draftPath, text, "utf8");
+  const updatedAt = nowIso();
+  const updated: ThoughtRecord = {
+    ...existing,
+    updated_at: updatedAt,
+    derived_from: fromThoughtId,
+    current_draft_path: relativeToRoot(paths.draftPath, baseDir),
+  };
+  writeThoughtRecord(updated, baseDir);
+  appendThoughtEvent(id, {
+    at: updatedAt,
+    kind: "related_created",
+    summary: `related thought を ${fromThoughtId} から作成した。`,
     path: updated.current_draft_path,
   }, baseDir);
   return updated;
@@ -286,7 +314,8 @@ function collectThoughtSearchCandidates(baseDir?: string): ThoughtSearchCandidat
 }
 
 function lexicalSearchThoughts(query: string, baseDir?: string): ThoughtSearchResult[] {
-  return collectThoughtSearchCandidates(baseDir)
+  return collapseSearchResults(
+    collectThoughtSearchCandidates(baseDir)
     .map((candidate) => ({
       id: candidate.id,
       status: candidate.status,
@@ -296,7 +325,36 @@ function lexicalSearchThoughts(query: string, baseDir?: string): ThoughtSearchRe
       explanation: "lexical fallback",
     }))
     .filter((candidate) => candidate.score > 0)
-    .sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
+  );
+}
+
+function mergeSourceKinds(left: ThoughtSearchResult["source"], right: ThoughtSearchResult["source"]): ThoughtSearchResult["source"] {
+  if (left === right) {
+    return left;
+  }
+  return "draft+final";
+}
+
+function collapseSearchResults(results: ThoughtSearchResult[]): ThoughtSearchResult[] {
+  const merged = new Map<string, ThoughtSearchResult>();
+  for (const result of results) {
+    const existing = merged.get(result.id);
+    if (!existing) {
+      merged.set(result.id, result);
+      continue;
+    }
+
+    const keepCurrent = result.score > existing.score;
+    const preferred = keepCurrent ? result : existing;
+    const alternate = keepCurrent ? existing : result;
+    merged.set(result.id, {
+      ...preferred,
+      source: mergeSourceKinds(preferred.source, alternate.source),
+      explanation: preferred.explanation,
+    });
+  }
+
+  return [...merged.values()].sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
 }
 
 export async function searchThoughts(query: string, baseDir?: string, options?: EmbeddingRequestOptions): Promise<ThoughtSearchResult[]> {
@@ -312,7 +370,7 @@ export async function searchThoughts(query: string, baseDir?: string, options?: 
     }
 
     const queryEmbedding = result.embeddings[0] ?? [];
-    return candidates
+    return collapseSearchResults(candidates
       .map((candidate, index) => ({
         id: candidate.id,
         status: candidate.status,
@@ -321,8 +379,7 @@ export async function searchThoughts(query: string, baseDir?: string, options?: 
         excerpt: excerpt(candidate.text, query),
         explanation: `${result.provider}/${result.model}`,
       }))
-      .filter((candidate) => candidate.score > 0)
-      .sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
+      .filter((candidate) => candidate.score > 0));
   } catch {
     return lexicalSearchThoughts(query, baseDir);
   }

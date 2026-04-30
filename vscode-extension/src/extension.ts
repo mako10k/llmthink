@@ -2,6 +2,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import {
   auditText,
+  createRelatedThought,
   finalizeThought,
   formatAuditReportHtml,
   formatAuditReportText,
@@ -160,6 +161,23 @@ async function searchThoughtsInOutput(outputChannel: vscode.OutputChannel): Prom
   showTextInOutput(outputChannel, `LLMThink Thought Search: ${query}`, formatThoughtSearchResults(results));
 }
 
+async function createRelatedThoughtFromPrompt(outputChannel: vscode.OutputChannel): Promise<void> {
+  const sourceThoughtId = await vscode.window.showInputBox({
+    prompt: "元になる thought-id を入力してください",
+    ignoreFocusOut: true,
+  });
+  if (!sourceThoughtId) {
+    return;
+  }
+  const newThoughtId = await promptThoughtId(`${sourceThoughtId}-related`);
+  if (!newThoughtId) {
+    return;
+  }
+  createRelatedThought(newThoughtId, sourceThoughtId);
+  showTextInOutput(outputChannel, `LLMThink Related Thought: ${newThoughtId}`, formatThoughtSummary(loadThought(newThoughtId)));
+  void vscode.window.showInformationMessage(`LLMThink related thought 作成完了: ${newThoughtId}`);
+}
+
 async function runAudit(text: string, documentId: string): Promise<AuditReport> {
   const report = await auditText(text, documentId);
   lastReport = report;
@@ -252,6 +270,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("llmthink.searchThoughts", async () => {
       await searchThoughtsInOutput(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.createRelatedThought", async () => {
+      await createRelatedThoughtFromPrompt(outputChannel);
     }),
   );
 }

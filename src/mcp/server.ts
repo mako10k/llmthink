@@ -6,7 +6,7 @@ import { auditFile, auditText } from "../analyzer/audit.js";
 import { getDslSyntaxGuidanceText, isDslHelpRequest } from "../dsl/guidance.js";
 import { formatAuditReportText } from "../presentation/report.js";
 import { formatThoughtHistory, formatThoughtList, formatThoughtSearchResults, formatThoughtSummary } from "../presentation/thought.js";
-import { finalizeThought, listThoughts, loadThought, persistAuditReport, saveThoughtDraft, searchThoughts } from "../thought/store.js";
+import { createRelatedThought, finalizeThought, listThoughts, loadThought, persistAuditReport, saveThoughtDraft, searchThoughts } from "../thought/store.js";
 
 const server = new McpServer({
   name: "llmthink",
@@ -73,9 +73,9 @@ server.tool(
 
 server.tool(
   "thought_manage",
-  "Manage persisted thought lifecycle. Use action draft|audit|finalize|show|history|list.",
+  "Manage persisted thought lifecycle. Use action draft|relate|audit|finalize|show|history|list.",
   {
-    action: z.enum(["draft", "audit", "finalize", "show", "history", "list"]),
+    action: z.enum(["draft", "relate", "audit", "finalize", "show", "history", "list"]),
     thoughtId: z.string().optional(),
     text: z.string().optional(),
     fromThoughtId: z.string().optional(),
@@ -100,6 +100,16 @@ server.tool(
 
     if (action === "draft") {
       saveThoughtDraft(thoughtId, sourceText ?? "");
+      return {
+        content: [{ type: "text", text: formatThoughtSummary(loadThought(thoughtId)) }],
+      };
+    }
+
+    if (action === "relate") {
+      if (!fromThoughtId) {
+        throw new Error("fromThoughtId is required when action=relate");
+      }
+      createRelatedThought(thoughtId, fromThoughtId);
       return {
         content: [{ type: "text", text: formatThoughtSummary(loadThought(thoughtId)) }],
       };

@@ -4,6 +4,7 @@ export { parseDocument, ParseError } from "./parser/parser.js";
 export { formatAuditReportHtml, formatAuditReportText } from "./presentation/report.js";
 export { formatThoughtHistory, formatThoughtList, formatThoughtSearchResults, formatThoughtSummary } from "./presentation/thought.js";
 export {
+	createRelatedThought,
 	ensureThoughtRecord,
 	finalizeThought,
 	listThoughts,

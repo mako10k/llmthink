@@ -6,6 +6,7 @@ import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText } from "./presentation/report.js";
 import { formatThoughtHistory, formatThoughtList, formatThoughtSearchResults, formatThoughtSummary } from "./presentation/thought.js";
 import {
+	createRelatedThought,
 	finalizeThought,
 	listThoughts,
 	loadThought,
@@ -88,6 +89,7 @@ function printUsage(): void {
 			"  llmthink audit --text \"...dsl...\" [--id document-id] [--pretty]",
 			"  llmthink audit --help dsl",
 			"  llmthink thought draft --id <thought-id> [<file> | --text \"...dsl...\"] [--from source-thought-id]",
+			"  llmthink thought relate --id <thought-id> --from source-thought-id",
 			"  llmthink thought audit --id <thought-id> [<file> | --text \"...dsl...\"] [--pretty]",
 			"  llmthink thought finalize --id <thought-id> [<file> | --text \"...dsl...\"]",
 			"  llmthink thought show --id <thought-id> [summary|draft|final|audit]",
@@ -161,7 +163,7 @@ async function handleAuditCommand(options: CliOptions): Promise<void> {
 
 async function handleThoughtCommand(options: CliOptions): Promise<void> {
 	const thoughtId = options.thoughtId;
-	if (["draft", "audit", "finalize", "show", "history"].includes(options.subcommand ?? "") && !thoughtId) {
+	if (["draft", "relate", "audit", "finalize", "show", "history"].includes(options.subcommand ?? "") && !thoughtId) {
 		throw new Error("--id <thought-id> is required for this thought command.");
 	}
 
@@ -171,6 +173,15 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
 			throw new Error("draft requires <file>, --text, or --from <thought-id>.");
 		}
 		saveThoughtDraft(thoughtId!, text);
+		printThoughtSummary(thoughtId!);
+		return;
+	}
+
+	if (options.subcommand === "relate") {
+		if (!options.fromThoughtId) {
+			throw new Error("relate requires --from <source-thought-id>.");
+		}
+		createRelatedThought(thoughtId!, options.fromThoughtId);
 		printThoughtSummary(thoughtId!);
 		return;
 	}

@@ -4,6 +4,7 @@ export function formatThoughtSummary(snapshot: ThoughtSnapshot): string {
   return [
     `thought: ${snapshot.record.id}`,
     `status: ${snapshot.record.status}`,
+    `derived_from: ${snapshot.record.derived_from ?? "-"}`,
     `created_at: ${snapshot.record.created_at}`,
     `updated_at: ${snapshot.record.updated_at}`,
     `draft: ${snapshot.record.current_draft_path ?? "-"}`,
