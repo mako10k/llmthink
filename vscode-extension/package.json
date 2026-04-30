@@ -27,6 +27,29 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languageModelTools": [
+      {
+        "name": "llmthink.auditDsl",
+        "toolReferenceName": "llmthink-audit",
+        "displayName": "LLMThink DSL Auditor",
+        "modelDescription": "Audit a thought-structure DSL document and return contradictions, contract violations, MECE assessments, semantic hints, and query results. Use this tool when the user provides DSL text or asks to evaluate a .dsl document.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dslText": {
+              "type": "string",
+              "description": "Full DSL text to audit. If omitted, the tool audits the active editor document."
+            },
+            "documentId": {
+              "type": "string",
+              "description": "Optional logical document identifier to use in the audit report."
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
     "commands": [
       {
         "command": "llmthink.auditActiveDocument",
