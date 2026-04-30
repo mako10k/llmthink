@@ -1,9 +1,11 @@
 # ADR-0003: MECE を真理判定ではなく記述規律として扱う
 
 ## Status
+
 accepted
 
 ## Date
+
 2026-04-30
 
 ## Context

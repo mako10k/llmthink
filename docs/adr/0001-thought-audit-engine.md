@@ -1,9 +1,11 @@
 # ADR-0001: エンジンを思考監査エンジンとして定義する
 
 ## Status
+
 accepted
 
 ## Date
+
 2026-04-30
 
 ## Context

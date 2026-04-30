@@ -4,7 +4,7 @@ export interface EmbeddingRequestOptions {
   provider?: EmbeddingProviderName;
 }
 
-export interface EmbeddingResult {
+interface EmbeddingResult {
   embeddings: number[][];
   provider: Exclude<EmbeddingProviderName, "none">;
   model: string;
@@ -36,12 +36,16 @@ class OllamaEmbeddingProvider implements EmbeddingProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama embed request failed with status ${response.status}`);
+      throw new Error(
+        `Ollama embed request failed with status ${response.status}`,
+      );
     }
 
     const payload = (await response.json()) as { embeddings?: number[][] };
     if (!payload.embeddings || payload.embeddings.length !== texts.length) {
-      throw new Error("Ollama embed response did not contain the expected embeddings array");
+      throw new Error(
+        "Ollama embed response did not contain the expected embeddings array",
+      );
     }
 
     return {
@@ -76,13 +80,23 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI embeddings request failed with status ${response.status}`);
+      throw new Error(
+        `OpenAI embeddings request failed with status ${response.status}`,
+      );
     }
 
-    const payload = (await response.json()) as { data?: Array<{ embedding?: number[] }> };
+    const payload = (await response.json()) as {
+      data?: Array<{ embedding?: number[] }>;
+    };
     const embeddings = payload.data?.map((item) => item.embedding ?? []);
-    if (!embeddings || embeddings.length !== texts.length || embeddings.some((embedding) => embedding.length === 0)) {
-      throw new Error("OpenAI embeddings response did not contain the expected embeddings array");
+    if (
+      !embeddings ||
+      embeddings.length !== texts.length ||
+      embeddings.some((embedding) => embedding.length === 0)
+    ) {
+      throw new Error(
+        "OpenAI embeddings response did not contain the expected embeddings array",
+      );
     }
 
     return {
@@ -102,20 +116,35 @@ function trimTrailingSlash(value: string): string {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
-function resolveProvider(options?: EmbeddingRequestOptions): EmbeddingProviderName {
-  return options?.provider ?? ((process.env.LLMTHINK_EMBEDDING_PROVIDER as EmbeddingProviderName | undefined) ?? "ollama");
+function resolveProvider(
+  options?: EmbeddingRequestOptions,
+): EmbeddingProviderName {
+  return (
+    options?.provider ??
+    (process.env.LLMTHINK_EMBEDDING_PROVIDER as
+      | EmbeddingProviderName
+      | undefined) ??
+    "ollama"
+  );
 }
 
-function createProvider(options?: EmbeddingRequestOptions): EmbeddingProvider | undefined {
+function createProvider(
+  options?: EmbeddingRequestOptions,
+): EmbeddingProvider | undefined {
   const provider = resolveProvider(options);
   if (provider === "none") {
     return undefined;
   }
 
-  const timeoutMs = parseTimeout(process.env.LLMTHINK_EMBEDDING_TIMEOUT_MS, 3000);
+  const timeoutMs = parseTimeout(
+    process.env.LLMTHINK_EMBEDDING_TIMEOUT_MS,
+    3000,
+  );
   if (provider === "ollama") {
     return new OllamaEmbeddingProvider(
-      trimTrailingSlash(process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434"),
+      trimTrailingSlash(
+        process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434",
+      ),
       process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text",
       timeoutMs,
     );
@@ -123,18 +152,25 @@ function createProvider(options?: EmbeddingRequestOptions): EmbeddingProvider | 
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is required when LLMTHINK_EMBEDDING_PROVIDER=openai");
+    throw new Error(
+      "OPENAI_API_KEY is required when LLMTHINK_EMBEDDING_PROVIDER=openai",
+    );
   }
 
   return new OpenAIEmbeddingProvider(
-    trimTrailingSlash(process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"),
+    trimTrailingSlash(
+      process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+    ),
     apiKey,
     process.env.OPENAI_EMBED_MODEL ?? "text-embedding-3-small",
     timeoutMs,
   );
 }
 
-export async function embedTexts(texts: string[], options?: EmbeddingRequestOptions): Promise<EmbeddingResult | undefined> {
+export async function embedTexts(
+  texts: string[],
+  options?: EmbeddingRequestOptions,
+): Promise<EmbeddingResult | undefined> {
   if (texts.length === 0) {
     return undefined;
   }

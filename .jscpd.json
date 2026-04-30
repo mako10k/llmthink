@@ -1,0 +1,15 @@
+{
+  "threshold": 0,
+  "minTokens": 80,
+  "ignore": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/.llmthink/**",
+    "**/.tmp/**",
+    "**/*.json",
+    "**/*.audit.json",
+    "**/*.vsix"
+  ],
+  "reporters": ["consoleFull"],
+  "format": ["typescript", "javascript", "markdown"]
+}

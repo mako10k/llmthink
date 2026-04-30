@@ -29,8 +29,73 @@ function currentIndent(line: string): number {
   return line.match(/^\s*/)?.[0].length ?? 0;
 }
 
+function parseIdentifierAfterKeyword(
+  header: string,
+  keyword: string,
+): string | undefined {
+  const prefix = `${keyword} `;
+  if (!header.startsWith(prefix) || !header.endsWith(":")) {
+    return undefined;
+  }
+  const identifier = header.slice(prefix.length, -1).trim();
+  return /^[A-Za-z][A-Za-z0-9_-]*$/.test(identifier) ? identifier : undefined;
+}
+
+function parsePartitionMemberLine(line: string): PartitionMember | undefined {
+  const separatorIndex = line.indexOf(":=");
+  if (separatorIndex <= 0) {
+    return undefined;
+  }
+  const name = line.slice(0, separatorIndex).trim();
+  const predicate = line.slice(separatorIndex + 2).trim();
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(name) || !predicate) {
+    return undefined;
+  }
+  return { name, predicate };
+}
+
+function parseDecisionHeader(
+  header: string,
+): { id: string; basedOn: string[] } | undefined {
+  if (!header.startsWith("decision ") || !header.endsWith(":")) {
+    return undefined;
+  }
+  const body = header.slice("decision ".length, -1).trim();
+  const basedOnMarker = " based_on ";
+  const basedOnIndex = body.indexOf(basedOnMarker);
+  const id = basedOnIndex === -1 ? body : body.slice(0, basedOnIndex).trim();
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) {
+    return undefined;
+  }
+  if (basedOnIndex === -1) {
+    return { id, basedOn: [] };
+  }
+  const basedOnText = body.slice(basedOnIndex + basedOnMarker.length).trim();
+  const basedOn = basedOnText
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return { id, basedOn };
+}
+
+function parseFrameworkRuleLine(line: string): FrameworkRule | undefined {
+  const separatorIndex = line.indexOf(" ");
+  if (separatorIndex <= 0) {
+    return undefined;
+  }
+  const kind = line.slice(0, separatorIndex).trim();
+  const value = line.slice(separatorIndex + 1).trim();
+  if (!value || !["requires", "forbids", "warns"].includes(kind)) {
+    return undefined;
+  }
+  return { kind: kind as FrameworkRule["kind"], value };
+}
+
 export class ParseError extends Error {
-  constructor(message: string, readonly line: number) {
+  constructor(
+    message: string,
+    readonly line: number,
+  ) {
     super(`${message} at line ${line}`);
   }
 }
@@ -94,7 +159,10 @@ export function parseDocument(input: string): DocumentAst {
   return document;
 }
 
-function parseFramework(lines: string[], startIndex: number): [FrameworkDecl, number] {
+function parseFramework(
+  lines: string[],
+  startIndex: number,
+): [FrameworkDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
   const match = /^framework\s+([A-Za-z][A-Za-z0-9_-]*)(:)?$/.exec(header);
   if (!match) {
@@ -113,12 +181,13 @@ function parseFramework(lines: string[], startIndex: number): [FrameworkDecl, nu
       if (currentIndent(raw) < 2) {
         break;
       }
-      const trimmed = raw.trim();
-      const ruleMatch = /^(requires|forbids|warns)\s+(.+)$/.exec(trimmed);
-      if (!ruleMatch) {
+      const parsedRule = parseFrameworkRuleLine(raw.trim());
+      if (!parsedRule) {
         throw new ParseError("Invalid framework rule", index + 1);
       }
-      rules.push({ kind: ruleMatch[1] as FrameworkRule["kind"], value: ruleMatch[2], span: span(index + 1) } as FrameworkRule & { span: SourceSpan });
+      rules.push({ ...parsedRule, span: span(index + 1) } as FrameworkRule & {
+        span: SourceSpan;
+      });
       index += 1;
     }
   }
@@ -133,7 +202,10 @@ function parseFramework(lines: string[], startIndex: number): [FrameworkDecl, nu
   ];
 }
 
-function parseDomain(lines: string[], startIndex: number): [DomainDecl, number] {
+function parseDomain(
+  lines: string[],
+  startIndex: number,
+): [DomainDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
   const match = /^domain\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
@@ -145,12 +217,19 @@ function parseDomain(lines: string[], startIndex: number): [DomainDecl, number] 
     throw new ParseError("Domain description is required", startIndex + 2);
   }
   return [
-    { name: match[1], description: descriptionMatch[1], span: span(startIndex + 1) },
+    {
+      name: match[1],
+      description: descriptionMatch[1],
+      span: span(startIndex + 1),
+    },
     startIndex + 2,
   ];
 }
 
-function parseProblem(lines: string[], startIndex: number): [ProblemDecl, number] {
+function parseProblem(
+  lines: string[],
+  startIndex: number,
+): [ProblemDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
   const match = /^problem\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
@@ -181,15 +260,31 @@ function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
   ];
 }
 
-function parseStatement(lines: string[], lineIndex: number, line: string): StepStatement & { nextIndex: number } {
+function parseStatement(
+  lines: string[],
+  lineIndex: number,
+  line: string,
+): StepStatement & { nextIndex: number } {
   if (line.startsWith("premise ")) {
-    return parseTextStatement("premise", lines, lineIndex) as PremiseStatement & { nextIndex: number };
+    return parseTextStatement(
+      "premise",
+      lines,
+      lineIndex,
+    ) as PremiseStatement & { nextIndex: number };
   }
   if (line.startsWith("evidence ")) {
-    return parseTextStatement("evidence", lines, lineIndex) as EvidenceStatement & { nextIndex: number };
+    return parseTextStatement(
+      "evidence",
+      lines,
+      lineIndex,
+    ) as EvidenceStatement & { nextIndex: number };
   }
   if (line.startsWith("pending ")) {
-    return parseTextStatement("pending", lines, lineIndex) as PendingStatement & { nextIndex: number };
+    return parseTextStatement(
+      "pending",
+      lines,
+      lineIndex,
+    ) as PendingStatement & { nextIndex: number };
   }
   if (line.startsWith("viewpoint ")) {
     return parseViewpoint(lines, lineIndex);
@@ -207,10 +302,12 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
   role: T,
   lines: string[],
   startIndex: number,
-): ({ role: T; id: string; text: string; span: SourceSpan } & { nextIndex: number }) {
+): { role: T; id: string; text: string; span: SourceSpan } & {
+  nextIndex: number;
+} {
   const header = lines[startIndex]?.trim() ?? "";
-  const match = new RegExp(`^${role}\\s+([A-Za-z][A-Za-z0-9_-]*):$`).exec(header);
-  if (!match) {
+  const id = parseIdentifierAfterKeyword(header, role);
+  if (!id) {
     throw new ParseError(`Invalid ${role} declaration`, startIndex + 1);
   }
   const textLine = lines[startIndex + 1]?.trim() ?? "";
@@ -219,14 +316,17 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
   }
   return {
     role,
-    id: match[1],
+    id,
     text: stripQuotes(textLine),
     span: span(startIndex + 1),
     nextIndex: startIndex + 2,
   };
 }
 
-function parseViewpoint(lines: string[], startIndex: number): ViewpointStatement & { nextIndex: number } {
+function parseViewpoint(
+  lines: string[],
+  startIndex: number,
+): ViewpointStatement & { nextIndex: number } {
   const header = lines[startIndex]?.trim() ?? "";
   const match = /^viewpoint\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
@@ -237,12 +337,24 @@ function parseViewpoint(lines: string[], startIndex: number): ViewpointStatement
   if (!axisMatch) {
     throw new ParseError("Viewpoint axis is required", startIndex + 2);
   }
-  return { role: "viewpoint", id: match[1], axis: axisMatch[1], span: span(startIndex + 1), nextIndex: startIndex + 2 };
+  return {
+    role: "viewpoint",
+    id: match[1],
+    axis: axisMatch[1],
+    span: span(startIndex + 1),
+    nextIndex: startIndex + 2,
+  };
 }
 
-function parsePartition(lines: string[], startIndex: number): PartitionStatement & { nextIndex: number } {
+function parsePartition(
+  lines: string[],
+  startIndex: number,
+): PartitionStatement & { nextIndex: number } {
   const header = lines[startIndex]?.trim() ?? "";
-  const match = /^partition\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+axis\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
+  const match =
+    /^partition\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+axis\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(
+      header,
+    );
   if (!match) {
     throw new ParseError("Invalid partition declaration", startIndex + 1);
   }
@@ -257,11 +369,11 @@ function parsePartition(lines: string[], startIndex: number): PartitionStatement
     if (currentIndent(raw) < 4) {
       break;
     }
-    const memberMatch = /^([A-Za-z][A-Za-z0-9_-]*)\s*:=\s*(.+)$/.exec(raw.trim());
-    if (!memberMatch) {
+    const member = parsePartitionMemberLine(raw.trim());
+    if (!member) {
       throw new ParseError("Invalid partition member", index + 1);
     }
-    members.push({ name: memberMatch[1], predicate: memberMatch[2] });
+    members.push(member);
     index += 1;
   }
   return {
@@ -275,21 +387,23 @@ function parsePartition(lines: string[], startIndex: number): PartitionStatement
   };
 }
 
-function parseDecision(lines: string[], startIndex: number): DecisionStatement & { nextIndex: number } {
+function parseDecision(
+  lines: string[],
+  startIndex: number,
+): DecisionStatement & { nextIndex: number } {
   const header = lines[startIndex]?.trim() ?? "";
-  const match = /^decision\s+([A-Za-z][A-Za-z0-9_-]*)(?:\s+based_on\s+(.+?))?:$/.exec(header);
-  if (!match) {
+  const parsedHeader = parseDecisionHeader(header);
+  if (!parsedHeader) {
     throw new ParseError("Invalid decision declaration", startIndex + 1);
   }
   const textLine = lines[startIndex + 1]?.trim() ?? "";
   if (!textLine.startsWith('"')) {
     throw new ParseError("Decision text is required", startIndex + 2);
   }
-  const basedOn = match[2] ? match[2].split(",").map((value) => value.trim()).filter(Boolean) : [];
   return {
     role: "decision",
-    id: match[1],
-    basedOn,
+    id: parsedHeader.id,
+    basedOn: parsedHeader.basedOn,
     text: stripQuotes(textLine),
     span: span(startIndex + 1),
     nextIndex: startIndex + 2,

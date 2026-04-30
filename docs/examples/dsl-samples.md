@@ -5,19 +5,19 @@
 ## 一覧
 
 1. [decision-minimal.dsl](decision-minimal.dsl)
-問題定義、前提、根拠、判断の最短接続。
+   問題定義、前提、根拠、判断の最短接続。
 
 2. [partition-mece.dsl](partition-mece.dsl)
-MECE 分解と Others の補集合記述。
+   MECE 分解と Others の補集合記述。
 
 3. [contradiction-pending.dsl](contradiction-pending.dsl)
-矛盾候補、契約違反、pending の混在例。
+   矛盾候補、契約違反、pending の混在例。
 
 4. [query-assist.dsl](query-assist.dsl)
-補助的 query を含む監査例。
+   補助的 query を含む監査例。
 
 5. [framework-contract.dsl](framework-contract.dsl)
-framework 契約の骨格定義。
+   framework 契約の骨格定義。
 
 ## 使い方
 

@@ -1,0 +1,10 @@
+{
+  "entry": ["vscode-extension/src/extension.ts", "vscode-extension/build.mjs"],
+  "project": [
+    "src/**/*.ts",
+    "vscode-extension/src/**/*.ts",
+    "*.js",
+    "vscode-extension/*.mjs"
+  ],
+  "ignoreDependencies": ["esbuild", "vscode"]
+}

@@ -1,0 +1,9 @@
+dist
+vscode-extension/dist
+node_modules
+.llmthink
+.tmp
+package-lock.json
+vscode-extension/package-lock.json
+llmthink.vsix
+vscode-extension/llmthink.vsix

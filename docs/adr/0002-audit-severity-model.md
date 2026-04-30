@@ -1,9 +1,11 @@
 # ADR-0002: 監査重大度モデルを fatal error warning info hint に固定する
 
 ## Status
+
 accepted
 
 ## Date
+
 2026-04-30
 
 ## Context

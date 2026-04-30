@@ -1,11 +1,25 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 
 import type { AuditReport } from "../model/diagnostics.js";
-import { cosineSimilarity, embedTexts, type EmbeddingRequestOptions } from "../semantic/embeddings.js";
+import {
+  cosineSimilarity,
+  embedTexts,
+  type EmbeddingRequestOptions,
+} from "../semantic/embeddings.js";
 
 export type ThoughtStatus = "draft" | "finalized";
-export type ThoughtEventKind = "draft_saved" | "audit_recorded" | "finalized" | "related_created";
+export type ThoughtEventKind =
+  | "draft_saved"
+  | "audit_recorded"
+  | "finalized"
+  | "related_created";
 
 export interface ThoughtRecord {
   id: string;
@@ -106,12 +120,20 @@ function readTextIfExists(filePath: string): string | undefined {
 
 function relativeToRoot(absolutePath: string, baseDir?: string): string {
   const root = resolve(baseDir ?? process.cwd());
-  return absolutePath.startsWith(root) ? absolutePath.slice(root.length + 1) : absolutePath;
+  return absolutePath.startsWith(root)
+    ? absolutePath.slice(root.length + 1)
+    : absolutePath;
 }
 
-export function ensureThoughtRecord(id: string, baseDir?: string): ThoughtRecord {
+export function ensureThoughtRecord(
+  id: string,
+  baseDir?: string,
+): ThoughtRecord {
   const paths = ensureThoughtDir(id, baseDir);
-  const existing = readJsonFile<ThoughtRecord | undefined>(paths.recordPath, undefined);
+  const existing = readJsonFile<ThoughtRecord | undefined>(
+    paths.recordPath,
+    undefined,
+  );
   if (existing) {
     return existing;
   }
@@ -133,14 +155,22 @@ function writeThoughtRecord(record: ThoughtRecord, baseDir?: string): void {
   writeJsonFile(paths.recordPath, record);
 }
 
-function appendThoughtEvent(id: string, event: ThoughtEvent, baseDir?: string): void {
+function appendThoughtEvent(
+  id: string,
+  event: ThoughtEvent,
+  baseDir?: string,
+): void {
   const paths = ensureThoughtDir(id, baseDir);
   const history = readJsonFile<ThoughtEvent[]>(paths.historyPath, []);
   history.push(event);
   writeJsonFile(paths.historyPath, history);
 }
 
-export function draftThought(id: string, text: string, baseDir?: string): ThoughtRecord {
+export function draftThought(
+  id: string,
+  text: string,
+  baseDir?: string,
+): ThoughtRecord {
   const paths = ensureThoughtDir(id, baseDir);
   const record = ensureThoughtRecord(id, baseDir);
   writeFileSync(paths.draftPath, text, "utf8");
@@ -151,20 +181,30 @@ export function draftThought(id: string, text: string, baseDir?: string): Though
     current_draft_path: relativeToRoot(paths.draftPath, baseDir),
   };
   writeThoughtRecord(updated, baseDir);
-  appendThoughtEvent(id, {
-    at: updated.updated_at,
-    kind: "draft_saved",
-    summary: "draft を保存した。",
-    path: updated.current_draft_path,
-  }, baseDir);
+  appendThoughtEvent(
+    id,
+    {
+      at: updated.updated_at,
+      kind: "draft_saved",
+      summary: "draft を保存した。",
+      path: updated.current_draft_path,
+    },
+    baseDir,
+  );
   return updated;
 }
 
-export function relateThought(id: string, fromThoughtId: string, baseDir?: string): ThoughtRecord {
+export function relateThought(
+  id: string,
+  fromThoughtId: string,
+  baseDir?: string,
+): ThoughtRecord {
   const source = loadThought(fromThoughtId, baseDir);
   const text = source.finalText ?? source.draftText;
   if (!text) {
-    throw new Error(`Thought ${fromThoughtId} does not have a draft or final text yet.`);
+    throw new Error(
+      `Thought ${fromThoughtId} does not have a draft or final text yet.`,
+    );
   }
 
   const paths = ensureThoughtDir(id, baseDir);
@@ -178,16 +218,24 @@ export function relateThought(id: string, fromThoughtId: string, baseDir?: strin
     current_draft_path: relativeToRoot(paths.draftPath, baseDir),
   };
   writeThoughtRecord(updated, baseDir);
-  appendThoughtEvent(id, {
-    at: updatedAt,
-    kind: "related_created",
-    summary: `related thought を ${fromThoughtId} から作成した。`,
-    path: updated.current_draft_path,
-  }, baseDir);
+  appendThoughtEvent(
+    id,
+    {
+      at: updatedAt,
+      kind: "related_created",
+      summary: `related thought を ${fromThoughtId} から作成した。`,
+      path: updated.current_draft_path,
+    },
+    baseDir,
+  );
   return updated;
 }
 
-export function finalizeThought(id: string, text: string, baseDir?: string): ThoughtRecord {
+export function finalizeThought(
+  id: string,
+  text: string,
+  baseDir?: string,
+): ThoughtRecord {
   const paths = ensureThoughtDir(id, baseDir);
   const record = ensureThoughtRecord(id, baseDir);
   writeFileSync(paths.finalPath, text, "utf8");
@@ -199,16 +247,24 @@ export function finalizeThought(id: string, text: string, baseDir?: string): Tho
     final_path: relativeToRoot(paths.finalPath, baseDir),
   };
   writeThoughtRecord(updated, baseDir);
-  appendThoughtEvent(id, {
-    at: updatedAt,
-    kind: "finalized",
-    summary: "final を保存した。",
-    path: updated.final_path,
-  }, baseDir);
+  appendThoughtEvent(
+    id,
+    {
+      at: updatedAt,
+      kind: "finalized",
+      summary: "final を保存した。",
+      path: updated.final_path,
+    },
+    baseDir,
+  );
   return updated;
 }
 
-export function recordThoughtAudit(id: string, report: AuditReport, baseDir?: string): ThoughtRecord {
+export function recordThoughtAudit(
+  id: string,
+  report: AuditReport,
+  baseDir?: string,
+): ThoughtRecord {
   const paths = ensureThoughtDir(id, baseDir);
   const record = ensureThoughtRecord(id, baseDir);
   const fileName = `${report.generated_at.replaceAll(":", "-")}.json`;
@@ -221,12 +277,16 @@ export function recordThoughtAudit(id: string, report: AuditReport, baseDir?: st
     latest_audit_path: relativeToRoot(auditPath, baseDir),
   };
   writeThoughtRecord(updated, baseDir);
-  appendThoughtEvent(id, {
-    at: updatedAt,
-    kind: "audit_recorded",
-    summary: `audit を保存した。fatal=${report.summary.fatal_count} error=${report.summary.error_count} warning=${report.summary.warning_count}`,
-    path: updated.latest_audit_path,
-  }, baseDir);
+  appendThoughtEvent(
+    id,
+    {
+      at: updatedAt,
+      kind: "audit_recorded",
+      summary: `audit を保存した。fatal=${report.summary.fatal_count} error=${report.summary.error_count} warning=${report.summary.warning_count}`,
+      path: updated.latest_audit_path,
+    },
+    baseDir,
+  );
   return updated;
 }
 
@@ -235,10 +295,16 @@ export function loadThought(id: string, baseDir?: string): ThoughtSnapshot {
   if (!existsSync(paths.recordPath)) {
     throw new Error(`Thought ${id} was not found.`);
   }
-  const record = readJsonFile<ThoughtRecord>(paths.recordPath, ensureThoughtRecord(id, baseDir));
+  const record = readJsonFile<ThoughtRecord>(
+    paths.recordPath,
+    ensureThoughtRecord(id, baseDir),
+  );
   const history = readJsonFile<ThoughtEvent[]>(paths.historyPath, []);
   const latestAudit = record.latest_audit_path
-    ? readJsonFile<AuditReport | undefined>(resolve(baseDir ?? process.cwd(), record.latest_audit_path), undefined)
+    ? readJsonFile<AuditReport | undefined>(
+        resolve(baseDir ?? process.cwd(), record.latest_audit_path),
+        undefined,
+      )
     : undefined;
   return {
     record,
@@ -256,12 +322,14 @@ export function listThoughts(baseDir?: string): ThoughtRecord[] {
   }
   return readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => readJsonFile<ThoughtRecord>(join(root, entry.name, "thought.json"), {
-      id: entry.name,
-      created_at: nowIso(),
-      updated_at: nowIso(),
-      status: "draft",
-    }))
+    .map((entry) =>
+      readJsonFile<ThoughtRecord>(join(root, entry.name, "thought.json"), {
+        id: entry.name,
+        created_at: nowIso(),
+        updated_at: nowIso(),
+        status: "draft",
+      }),
+    )
     .sort((left, right) => right.updated_at.localeCompare(left.updated_at));
 }
 
@@ -289,7 +357,9 @@ function scoreText(text: string, query: string): number {
   return Number(Math.min(1, 0.3 + occurrences * 0.2).toFixed(4));
 }
 
-function collectThoughtSearchCandidates(baseDir?: string): ThoughtSearchCandidate[] {
+function collectThoughtSearchCandidates(
+  baseDir?: string,
+): ThoughtSearchCandidate[] {
   return listThoughts(baseDir).flatMap((record) => {
     const snapshot = loadThought(record.id, baseDir);
     const candidates: ThoughtSearchCandidate[] = [];
@@ -313,29 +383,37 @@ function collectThoughtSearchCandidates(baseDir?: string): ThoughtSearchCandidat
   });
 }
 
-function lexicalSearchThoughts(query: string, baseDir?: string): ThoughtSearchResult[] {
+function lexicalSearchThoughts(
+  query: string,
+  baseDir?: string,
+): ThoughtSearchResult[] {
   return collapseSearchResults(
     collectThoughtSearchCandidates(baseDir)
-    .map((candidate) => ({
-      id: candidate.id,
-      status: candidate.status,
-      score: scoreText(candidate.text, query),
-      source: candidate.source,
-      excerpt: excerpt(candidate.text, query),
-      explanation: "lexical fallback",
-    }))
-    .filter((candidate) => candidate.score > 0)
+      .map((candidate) => ({
+        id: candidate.id,
+        status: candidate.status,
+        score: scoreText(candidate.text, query),
+        source: candidate.source,
+        excerpt: excerpt(candidate.text, query),
+        explanation: "lexical fallback",
+      }))
+      .filter((candidate) => candidate.score > 0),
   );
 }
 
-function mergeSourceKinds(left: ThoughtSearchResult["source"], right: ThoughtSearchResult["source"]): ThoughtSearchResult["source"] {
+function mergeSourceKinds(
+  left: ThoughtSearchResult["source"],
+  right: ThoughtSearchResult["source"],
+): ThoughtSearchResult["source"] {
   if (left === right) {
     return left;
   }
   return "draft+final";
 }
 
-function collapseSearchResults(results: ThoughtSearchResult[]): ThoughtSearchResult[] {
+function collapseSearchResults(
+  results: ThoughtSearchResult[],
+): ThoughtSearchResult[] {
   const merged = new Map<string, ThoughtSearchResult>();
   for (const result of results) {
     const existing = merged.get(result.id);
@@ -354,32 +432,52 @@ function collapseSearchResults(results: ThoughtSearchResult[]): ThoughtSearchRes
     });
   }
 
-  return [...merged.values()].sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
+  return [...merged.values()].sort(
+    (left, right) =>
+      right.score - left.score || right.id.localeCompare(left.id),
+  );
 }
 
-export async function searchThoughtRecords(query: string, baseDir?: string, options?: EmbeddingRequestOptions): Promise<ThoughtSearchResult[]> {
+export async function searchThoughtRecords(
+  query: string,
+  baseDir?: string,
+  options?: EmbeddingRequestOptions,
+): Promise<ThoughtSearchResult[]> {
   const candidates = collectThoughtSearchCandidates(baseDir);
   if (!query.trim() || candidates.length === 0) {
     return [];
   }
 
   try {
-    const result = await embedTexts([query, ...candidates.map((candidate) => candidate.text)], options);
+    const result = await embedTexts(
+      [query, ...candidates.map((candidate) => candidate.text)],
+      options,
+    );
     if (!result) {
       return lexicalSearchThoughts(query, baseDir);
     }
 
     const queryEmbedding = result.embeddings[0] ?? [];
-    return collapseSearchResults(candidates
-      .map((candidate, index) => ({
-        id: candidate.id,
-        status: candidate.status,
-        score: Number(Math.max(0, cosineSimilarity(queryEmbedding, result.embeddings[index + 1] ?? [])).toFixed(4)),
-        source: candidate.source,
-        excerpt: excerpt(candidate.text, query),
-        explanation: `${result.provider}/${result.model}`,
-      }))
-      .filter((candidate) => candidate.score > 0));
+    return collapseSearchResults(
+      candidates
+        .map((candidate, index) => ({
+          id: candidate.id,
+          status: candidate.status,
+          score: Number(
+            Math.max(
+              0,
+              cosineSimilarity(
+                queryEmbedding,
+                result.embeddings[index + 1] ?? [],
+              ),
+            ).toFixed(4),
+          ),
+          source: candidate.source,
+          excerpt: excerpt(candidate.text, query),
+          explanation: `${result.provider}/${result.model}`,
+        }))
+        .filter((candidate) => candidate.score > 0),
+    );
   } catch {
     return lexicalSearchThoughts(query, baseDir);
   }

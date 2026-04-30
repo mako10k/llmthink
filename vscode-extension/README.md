@@ -21,9 +21,9 @@
 - ツール名: llmthink-dsl
 - 参照名: #llmthink-dsl
 - 入力:
-	- action: audit または help
-	- dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する
-	- documentId: 監査レポートに使う任意の文書 ID
+  - action: audit または help
+  - dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する
+  - documentId: 監査レポートに使う任意の文書 ID
 
 ## Thought lifecycle
 

@@ -5,12 +5,7 @@
   "description": "思考監査エンジンの出力契約",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "engine_version",
-    "document_id",
-    "summary",
-    "results"
-  ],
+  "required": ["engine_version", "document_id", "summary", "results"],
   "properties": {
     "engine_version": {
       "type": "string",
@@ -85,20 +80,12 @@
     },
     "severity": {
       "type": "string",
-      "enum": [
-        "fatal",
-        "error",
-        "warning",
-        "info",
-        "hint"
-      ]
+      "enum": ["fatal", "error", "warning", "info", "hint"]
     },
     "reference": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "ref_id"
-      ],
+      "required": ["ref_id"],
       "properties": {
         "ref_id": {
           "type": "string",
@@ -159,11 +146,7 @@
     "queryResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "query_id",
-        "severity",
-        "items"
-      ],
+      "required": ["query_id", "severity", "items"],
       "properties": {
         "query_id": {
           "type": "string",
@@ -177,9 +160,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "ref_id"
-            ],
+            "required": ["ref_id"],
             "properties": {
               "ref_id": {
                 "type": "string",

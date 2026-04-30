@@ -6,29 +6,44 @@ function issueLine(issue: AuditIssue): string {
 }
 
 function appendIssueDetails(lines: string[], issue: AuditIssue): void {
-  if (issue.rationale) {
-    lines.push(`  rationale: ${issue.rationale}`);
-  }
-  if (issue.suggestion) {
-    lines.push(`  suggestion: ${issue.suggestion}`);
-  }
-  const expectedSyntax = typeof issue.metadata?.expected_syntax === "string" ? issue.metadata.expected_syntax : undefined;
+  appendOptionalLine(lines, "rationale", issue.rationale);
+  appendOptionalLine(lines, "suggestion", issue.suggestion);
+  const expectedSyntax =
+    typeof issue.metadata?.expected_syntax === "string"
+      ? issue.metadata.expected_syntax
+      : undefined;
   if (expectedSyntax) {
     lines.push("  expected_syntax:");
     for (const line of expectedSyntax.split("\n")) {
       lines.push(`    ${line}`);
     }
   }
-  const syntaxHelp = typeof issue.metadata?.syntax_help === "string" ? issue.metadata.syntax_help : undefined;
+  const syntaxHelp =
+    typeof issue.metadata?.syntax_help === "string"
+      ? issue.metadata.syntax_help
+      : undefined;
   if (syntaxHelp) {
     lines.push(`  syntax_help: ${syntaxHelp}`);
   }
-  const syntaxGuidance = typeof issue.metadata?.syntax_guidance === "string" ? issue.metadata.syntax_guidance : undefined;
+  const syntaxGuidance =
+    typeof issue.metadata?.syntax_guidance === "string"
+      ? issue.metadata.syntax_guidance
+      : undefined;
   if (syntaxGuidance) {
     lines.push("  syntax_guidance:");
     for (const line of syntaxGuidance.split("\n")) {
       lines.push(`    ${line}`);
     }
+  }
+}
+
+function appendOptionalLine(
+  lines: string[],
+  label: string,
+  value: string | undefined,
+): void {
+  if (value) {
+    lines.push(`  ${label}: ${value}`);
   }
 }
 
@@ -55,8 +70,10 @@ export function formatAuditReportText(report: AuditReport): string {
     for (const queryResult of report.query_results) {
       lines.push(`- ${queryResult.query_id} [${queryResult.severity}]`);
       for (const item of queryResult.items) {
-        const scoreText = item.score !== undefined ? ` score=${item.score}` : "";
-        lines.push(`  - ${item.ref_id}${scoreText}${item.explanation ? ` ${item.explanation}` : ""}`);
+        const scoreText =
+          item.score !== undefined ? ` score=${item.score}` : "";
+        const explanation = item.explanation ? ` ${item.explanation}` : "";
+        lines.push(`  - ${item.ref_id}${scoreText}${explanation}`);
       }
     }
   }
@@ -76,22 +93,41 @@ function escapeHtml(value: string): string {
 function issueDetailsHtml(issue: AuditIssue): string {
   const parts: string[] = [];
   if (issue.rationale) {
-    parts.push(`<p><strong>rationale</strong>: ${escapeHtml(issue.rationale)}</p>`);
+    parts.push(
+      `<p><strong>rationale</strong>: ${escapeHtml(issue.rationale)}</p>`,
+    );
   }
   if (issue.suggestion) {
-    parts.push(`<p><strong>suggestion</strong>: ${escapeHtml(issue.suggestion)}</p>`);
+    parts.push(
+      `<p><strong>suggestion</strong>: ${escapeHtml(issue.suggestion)}</p>`,
+    );
   }
-  const expectedSyntax = typeof issue.metadata?.expected_syntax === "string" ? issue.metadata.expected_syntax : undefined;
+  const expectedSyntax =
+    typeof issue.metadata?.expected_syntax === "string"
+      ? issue.metadata.expected_syntax
+      : undefined;
   if (expectedSyntax) {
-    parts.push(`<p><strong>expected syntax</strong></p><pre><code>${escapeHtml(expectedSyntax)}</code></pre>`);
+    parts.push(
+      `<p><strong>expected syntax</strong></p><pre><code>${escapeHtml(expectedSyntax)}</code></pre>`,
+    );
   }
-  const syntaxHelp = typeof issue.metadata?.syntax_help === "string" ? issue.metadata.syntax_help : undefined;
+  const syntaxHelp =
+    typeof issue.metadata?.syntax_help === "string"
+      ? issue.metadata.syntax_help
+      : undefined;
   if (syntaxHelp) {
-    parts.push(`<p><strong>syntax help</strong>: <code>${escapeHtml(syntaxHelp)}</code></p>`);
+    parts.push(
+      `<p><strong>syntax help</strong>: <code>${escapeHtml(syntaxHelp)}</code></p>`,
+    );
   }
-  const syntaxGuidance = typeof issue.metadata?.syntax_guidance === "string" ? issue.metadata.syntax_guidance : undefined;
+  const syntaxGuidance =
+    typeof issue.metadata?.syntax_guidance === "string"
+      ? issue.metadata.syntax_guidance
+      : undefined;
   if (syntaxGuidance) {
-    parts.push(`<p><strong>syntax guidance</strong></p><pre><code>${escapeHtml(syntaxGuidance)}</code></pre>`);
+    parts.push(
+      `<p><strong>syntax guidance</strong></p><pre><code>${escapeHtml(syntaxGuidance)}</code></pre>`,
+    );
   }
   return parts.join("");
 }
@@ -113,7 +149,11 @@ export function formatAuditReportHtml(report: AuditReport): string {
     .map(
       (queryResult) => `
         <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${queryResult.items
-          .map((item) => `${escapeHtml(item.ref_id)}${item.score !== undefined ? ` (${item.score})` : ""}`)
+          .map((item) => {
+            const scoreText =
+              item.score !== undefined ? ` (${item.score})` : "";
+            return `${escapeHtml(item.ref_id)}${scoreText}`;
+          })
           .join(", ")}</li>`,
     )
     .join("");

@@ -1,9 +1,11 @@
 # ADR-0004: CLI MCP VSIX を共通監査 API に統一する
 
 ## Status
+
 accepted
 
 ## Date
+
 2026-04-30
 
 ## Context
