@@ -44,6 +44,68 @@
 - npm run typecheck:extension
 - npm run build:extension
 
+## Thought CLI
+
+Stateless な単発監査は `audit`、永続化された思考ライフサイクルは `thought` に寄せる。
+
+- `llmthink audit ...`: 単発の DSL 監査
+- `llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]`: draft の作成・更新
+- `llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]`: current draft を監査し、監査結果を保存
+- `llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]`: 最終結果を保存
+- `llmthink thought show --id <thought-id> [summary|draft|final|audit]`: 現在状態の確認
+- `llmthink thought history --id <thought-id>`: 変更履歴の確認
+- `llmthink thought search <query> [--limit 5]`: 保存済み thought の検索
+- `llmthink thought list`: 保存済み thought 一覧
+
+### CLI 設計方針
+
+- 対称性: `draft -> audit -> finalize` を同じ `thought` 配下の動詞で揃える
+- 網羅性: 作成、修正、監査、保存、参照、履歴、検索を一通り CLI で閉じる
+- 一貫性: すべて `--id <thought-id>` を保存単位にする
+- 単純性: 新しいツールは増やさず、既存 `audit` と `thought` の 2 系統に分ける
+
+### 永続化レイアウト
+
+runtime data は `.llmthink/` 配下に保存する。
+
+```text
+.llmthink/
+	thoughts/
+		<thought-id>/
+			thought.json
+			history.json
+			draft.dsl
+			final.dsl
+			audits/
+				<timestamp>.json
+```
+
+- `thought.json`: 現在状態、latest audit、draft/final の参照
+- `history.json`: draft 保存、監査保存、finalize の履歴
+- `draft.dsl`: 現在の思考ドラフト
+- `final.dsl`: 最終保存された思考
+- `audits/*.json`: 各監査レポートのスナップショット
+
+### シナリオ
+
+思考ドラフト -> 思考監査 -> 問題があれば修正 -> 再監査 -> 最終保存:
+
+```bash
+llmthink thought draft --id review-001 docs/examples/query-assist.dsl
+llmthink thought audit --id review-001 --pretty
+llmthink thought draft --id review-001 --text "...fixed dsl..."
+llmthink thought audit --id review-001 --pretty
+llmthink thought finalize --id review-001
+```
+
+思考検索 -> 関連思考作成:
+
+```bash
+llmthink thought search ADR
+llmthink thought draft --id review-002 --from review-001
+llmthink thought audit --id review-002 --pretty
+```
+
 ## 埋め込み設定
 
 - 既定の埋め込みプロバイダは Ollama
