@@ -46,8 +46,9 @@ const DSL_SYNTAX_GUIDANCE = [
   "  - query expression is currently free-form text; related_decisions(P1) is the canonical pattern",
   "",
   "Help:",
-  "  - CLI: llmthink audit --help dsl",
-  "  - MCP/VSIX tool: pass text or dslText as 'help dsl'",
+  "  - CLI: llmthink dsl help",
+  "  - MCP tool: call dsl with action=help",
+  "  - VSIX tool: set action=help or dslText to 'dsl help'",
 ].join("\n");
 
 interface ParseErrorHelp {
@@ -212,7 +213,7 @@ function parseErrorHelp(error: ParseError): ParseErrorHelp {
 
 export function isDslHelpRequest(input: string): boolean {
   const normalized = input.trim().toLowerCase();
-  return normalized === "help dsl" || normalized === "--help dsl";
+  return normalized === "dsl help";
 }
 
 export function getDslSyntaxGuidanceText(): string {
@@ -227,7 +228,7 @@ export function createDslGuidanceReport(documentId = "dsl-help"): AuditReport {
     target_refs: [{ ref_id: documentId }],
     message: "LLMThink DSL の文法ガイダンス。",
     rationale: "DSL を新規生成する前に top-level block、indent、quoted text の位置を確認するための案内。",
-    suggestion: "CLI では 'llmthink audit --help dsl'、MCP/VSIX では text または dslText に 'help dsl' を渡す。",
+    suggestion: "CLI では 'llmthink dsl help'、MCP では dsl action=help、VSIX tool では action=help を使う。",
     metadata: {
       syntax_guidance: DSL_SYNTAX_GUIDANCE,
     },
@@ -258,11 +259,11 @@ export function createParseErrorReport(error: ParseError, documentId: string): A
     target_refs: [{ ref_id: documentId }],
     message: error.message,
     rationale: help.rationale,
-    suggestion: "CLI では 'llmthink audit --help dsl'、MCP/VSIX では text または dslText に 'help dsl' を渡して全体文法を確認する。",
+    suggestion: "CLI では 'llmthink dsl help'、MCP では dsl action=help、VSIX tool では action=help を使って全体文法を確認する。",
     metadata: {
       line: error.line,
       expected_syntax: help.expectedSyntax,
-      syntax_help: "llmthink audit --help dsl / text='help dsl' / dslText='help dsl'",
+      syntax_help: "llmthink dsl help / MCP dsl action=help / VSIX tool action=help",
       syntax_overview: DSL_SYNTAX_GUIDANCE,
     },
   };

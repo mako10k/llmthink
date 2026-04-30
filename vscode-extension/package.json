@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -29,17 +29,25 @@
   "contributes": {
     "languageModelTools": [
       {
-        "name": "llmthink-audit-dsl",
-        "toolReferenceName": "llmthink-audit",
-        "displayName": "LLMThink DSL Auditor",
-        "modelDescription": "Audit a thought-structure DSL document and return contradictions, contract violations, MECE assessments, semantic hints, and query results. For grammar help, pass dslText as 'help dsl'.",
+        "name": "llmthink-dsl",
+        "toolReferenceName": "llmthink-dsl",
+        "displayName": "LLMThink DSL",
+        "modelDescription": "LLMThink DSL operations. Use action=audit to audit DSL text and action=help for syntax guidance.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
           "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "audit",
+                "help"
+              ],
+              "description": "DSL operation to run."
+            },
             "dslText": {
               "type": "string",
-              "description": "Full DSL text to audit. If omitted, the tool audits the active editor document. Pass 'help dsl' for syntax guidance."
+              "description": "Full DSL text to audit. If omitted, the tool audits the active editor document."
             },
             "documentId": {
               "type": "string",
@@ -52,36 +60,40 @@
     ],
     "commands": [
       {
-        "command": "llmthink.auditActiveDocument",
-        "title": "LLMThink: Audit Active Document"
+        "command": "llmthink.dslAudit",
+        "title": "LLMThink: DSL Audit"
       },
       {
-        "command": "llmthink.showLastAuditReport",
-        "title": "LLMThink: Show Last Audit Report"
+        "command": "llmthink.dslReportShow",
+        "title": "LLMThink: DSL Report Show"
       },
       {
-        "command": "llmthink.saveThoughtDraft",
-        "title": "LLMThink: Save Thought Draft"
+        "command": "llmthink.thoughtDraft",
+        "title": "LLMThink: Thought Draft"
       },
       {
-        "command": "llmthink.auditThought",
-        "title": "LLMThink: Audit Thought"
+        "command": "llmthink.thoughtRelate",
+        "title": "LLMThink: Thought Relate"
       },
       {
-        "command": "llmthink.finalizeThought",
-        "title": "LLMThink: Finalize Thought"
+        "command": "llmthink.thoughtAudit",
+        "title": "LLMThink: Thought Audit"
       },
       {
-        "command": "llmthink.showThoughtHistory",
-        "title": "LLMThink: Show Thought History"
+        "command": "llmthink.thoughtFinalize",
+        "title": "LLMThink: Thought Finalize"
       },
       {
-        "command": "llmthink.searchThoughts",
-        "title": "LLMThink: Search Thoughts"
+        "command": "llmthink.thoughtHistory",
+        "title": "LLMThink: Thought History"
       },
       {
-        "command": "llmthink.createRelatedThought",
-        "title": "LLMThink: Create Related Thought"
+        "command": "llmthink.thoughtSearch",
+        "title": "LLMThink: Thought Search"
+      },
+      {
+        "command": "llmthink.thoughtList",
+        "title": "LLMThink: Thought List"
       }
     ]
   },

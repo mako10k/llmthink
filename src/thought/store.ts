@@ -140,7 +140,7 @@ function appendThoughtEvent(id: string, event: ThoughtEvent, baseDir?: string): 
   writeJsonFile(paths.historyPath, history);
 }
 
-export function saveThoughtDraft(id: string, text: string, baseDir?: string): ThoughtRecord {
+export function draftThought(id: string, text: string, baseDir?: string): ThoughtRecord {
   const paths = ensureThoughtDir(id, baseDir);
   const record = ensureThoughtRecord(id, baseDir);
   writeFileSync(paths.draftPath, text, "utf8");
@@ -160,7 +160,7 @@ export function saveThoughtDraft(id: string, text: string, baseDir?: string): Th
   return updated;
 }
 
-export function createRelatedThought(id: string, fromThoughtId: string, baseDir?: string): ThoughtRecord {
+export function relateThought(id: string, fromThoughtId: string, baseDir?: string): ThoughtRecord {
   const source = loadThought(fromThoughtId, baseDir);
   const text = source.finalText ?? source.draftText;
   if (!text) {
@@ -208,7 +208,7 @@ export function finalizeThought(id: string, text: string, baseDir?: string): Tho
   return updated;
 }
 
-export function persistAuditReport(id: string, report: AuditReport, baseDir?: string): ThoughtRecord {
+export function recordThoughtAudit(id: string, report: AuditReport, baseDir?: string): ThoughtRecord {
   const paths = ensureThoughtDir(id, baseDir);
   const record = ensureThoughtRecord(id, baseDir);
   const fileName = `${report.generated_at.replaceAll(":", "-")}.json`;
@@ -357,7 +357,7 @@ function collapseSearchResults(results: ThoughtSearchResult[]): ThoughtSearchRes
   return [...merged.values()].sort((left, right) => right.score - left.score || right.id.localeCompare(left.id));
 }
 
-export async function searchThoughts(query: string, baseDir?: string, options?: EmbeddingRequestOptions): Promise<ThoughtSearchResult[]> {
+export async function searchThoughtRecords(query: string, baseDir?: string, options?: EmbeddingRequestOptions): Promise<ThoughtSearchResult[]> {
   const candidates = collectThoughtSearchCandidates(baseDir);
   if (!query.trim() || candidates.length === 0) {
     return [];

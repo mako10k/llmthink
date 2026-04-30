@@ -6,25 +6,28 @@
 
 ## 提供コマンド
 
-- LLMThink: Audit Active Document
-- LLMThink: Show Last Audit Report
-- LLMThink: Save Thought Draft
-- LLMThink: Audit Thought
-- LLMThink: Finalize Thought
-- LLMThink: Show Thought History
-- LLMThink: Search Thoughts
+- LLMThink: DSL Audit
+- LLMThink: DSL Report Show
+- LLMThink: Thought Draft
+- LLMThink: Thought Relate
+- LLMThink: Thought Audit
+- LLMThink: Thought Finalize
+- LLMThink: Thought History
+- LLMThink: Thought Search
+- LLMThink: Thought List
 
 ## 提供ツール
 
-- ツール名: llmthink-audit-dsl
-- 参照名: #llmthink-audit
+- ツール名: llmthink-dsl
+- 参照名: #llmthink-dsl
 - 入力:
-	- dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する。help dsl を渡すと文法ガイダンスを返す
+	- action: audit または help
+	- dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する
 	- documentId: 監査レポートに使う任意の文書 ID
 
 ## Thought lifecycle
 
-- command palette から draft 保存、thought 監査、finalize、history 表示、search を扱える
+- command palette から thought の draft、relate、audit、finalize、history、search、list を扱える
 - search は persisted thought に対して semantic search を試み、利用可能なら provider/model を結果に表示する
 
 ## ローカル開発

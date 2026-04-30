@@ -1,6 +1,6 @@
 {
   "name": "llmthink",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -32,11 +32,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "audit": "tsx src/cli.ts",
+    "cli": "tsx src/cli.ts",
     "verify-examples": "tsx src/verify-examples.ts",
     "mcp": "tsx src/mcp/server.ts",
     "typecheck:extension": "npm --prefix vscode-extension run typecheck",
-    "build:extension": "npm --prefix vscode-extension run build"
+    "build:extension": "npm --prefix vscode-extension run build",
+    "package:vsix": "npm --prefix vscode-extension run package:vsix"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",

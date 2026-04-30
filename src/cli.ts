@@ -1,18 +1,18 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { auditFile, auditText } from "./analyzer/audit.js";
+import { auditDslFile, auditDslText } from "./analyzer/audit.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText } from "./presentation/report.js";
 import { formatThoughtHistory, formatThoughtList, formatThoughtSearchResults, formatThoughtSummary } from "./presentation/thought.js";
 import {
-	createRelatedThought,
+	relateThought,
 	finalizeThought,
 	listThoughts,
 	loadThought,
-	persistAuditReport,
-	saveThoughtDraft,
-	searchThoughts,
+	recordThoughtAudit,
+	draftThought,
+	searchThoughtRecords,
 } from "./thought/store.js";
 
 interface CliOptions {
@@ -22,7 +22,6 @@ interface CliOptions {
 	documentId?: string;
 	thoughtId?: string;
 	fromThoughtId?: string;
-	helpTopic?: string;
 	limit?: number;
 	view?: string;
 	positionals: string[];
@@ -31,12 +30,8 @@ interface CliOptions {
 
 function parseArgs(argv: string[]): CliOptions {
 	const args = [...argv];
-	let command = args.shift();
-	if (command && command !== "audit" && command !== "thought") {
-		args.unshift(command);
-		command = "audit";
-	}
-	const subcommand = command === "thought" ? args.shift() : undefined;
+	const command = args.shift();
+	const subcommand = args[0]?.startsWith("--") ? undefined : args.shift();
 
 	const options: CliOptions = { command, subcommand, pretty: false, positionals: [] };
 	while (args.length > 0) {
@@ -66,14 +61,7 @@ function parseArgs(argv: string[]): CliOptions {
 			options.limit = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 			continue;
 		}
-		if (arg === "--help") {
-			options.helpTopic = args[0]?.startsWith("--") ? "general" : (args.shift() ?? "general");
-			continue;
-		}
 		options.positionals.push(arg);
-	}
-	if (command !== "thought" && !subcommand && options.positionals.length > 0) {
-		options.documentId ??= undefined;
 	}
 	if (command === "thought" && subcommand === "show" && options.positionals.length > 0) {
 		options.view = options.positionals[0];
@@ -85,9 +73,9 @@ function printUsage(): void {
 	process.stdout.write(
 		[
 			"Usage:",
-			"  llmthink audit <file> [--pretty]",
-			"  llmthink audit --text \"...dsl...\" [--id document-id] [--pretty]",
-			"  llmthink audit --help dsl",
+			"  llmthink dsl audit <file> [--pretty]",
+			"  llmthink dsl audit --text \"...dsl...\" [--id document-id] [--pretty]",
+			"  llmthink dsl help",
 			"  llmthink thought draft --id <thought-id> [<file> | --text \"...dsl...\"] [--from source-thought-id]",
 			"  llmthink thought relate --id <thought-id> --from source-thought-id",
 			"  llmthink thought audit --id <thought-id> [<file> | --text \"...dsl...\"] [--pretty]",
@@ -101,23 +89,20 @@ function printUsage(): void {
 }
 
 function printThoughtSummary(id: string): void {
-	const snapshot = loadThought(id);
-	process.stdout.write(formatThoughtSummary(snapshot));
+	process.stdout.write(formatThoughtSummary(loadThought(id)));
 }
 
 function printThoughtHistory(id: string): void {
-	const snapshot = loadThought(id);
-	process.stdout.write(formatThoughtHistory(snapshot.history));
+	process.stdout.write(formatThoughtHistory(loadThought(id).history));
 }
 
 async function printThoughtSearch(query: string, limit = 5): Promise<void> {
-	const results = (await searchThoughts(query)).slice(0, limit);
+	const results = (await searchThoughtRecords(query)).slice(0, limit);
 	process.stdout.write(formatThoughtSearchResults(results));
 }
 
 function printThoughtList(): void {
-	const thoughts = listThoughts();
-	process.stdout.write(formatThoughtList(thoughts));
+	process.stdout.write(formatThoughtList(listThoughts()));
 }
 
 function readTextFromSource(options: CliOptions): string | undefined {
@@ -143,7 +128,17 @@ function readCurrentThoughtDraft(id: string): string {
 	return text;
 }
 
-async function handleAuditCommand(options: CliOptions): Promise<void> {
+async function handleDslCommand(options: CliOptions): Promise<void> {
+	if (options.subcommand === "help") {
+		process.stdout.write(getDslSyntaxGuidanceText());
+		return;
+	}
+
+	if (options.subcommand !== "audit") {
+		printUsage();
+		process.exit(1);
+	}
+
 	const filePath = options.positionals[0];
 	if (!filePath && !options.text) {
 		printUsage();
@@ -151,8 +146,8 @@ async function handleAuditCommand(options: CliOptions): Promise<void> {
 	}
 
 	const report = options.text
-		? await auditText(options.text, options.documentId ?? "stdin")
-		: await auditFile(resolve(process.cwd(), filePath ?? "docs/examples/contradiction-pending.dsl"));
+		? await auditDslText(options.text, options.documentId ?? "stdin")
+		: await auditDslFile(resolve(process.cwd(), filePath));
 
 	if (options.pretty) {
 		process.stdout.write(formatAuditReportText(report));
@@ -172,7 +167,7 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
 		if (!text) {
 			throw new Error("draft requires <file>, --text, or --from <thought-id>.");
 		}
-		saveThoughtDraft(thoughtId!, text);
+		draftThought(thoughtId!, text);
 		printThoughtSummary(thoughtId!);
 		return;
 	}
@@ -181,7 +176,7 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
 		if (!options.fromThoughtId) {
 			throw new Error("relate requires --from <source-thought-id>.");
 		}
-		createRelatedThought(thoughtId!, options.fromThoughtId);
+		relateThought(thoughtId!, options.fromThoughtId);
 		printThoughtSummary(thoughtId!);
 		return;
 	}
@@ -189,10 +184,10 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
 	if (options.subcommand === "audit") {
 		const text = readTextFromSource(options) ?? readCurrentThoughtDraft(thoughtId!);
 		if (options.text || options.positionals.length > 0 || options.fromThoughtId) {
-			saveThoughtDraft(thoughtId!, text);
+			draftThought(thoughtId!, text);
 		}
-		const report = await auditText(text, thoughtId!);
-		persistAuditReport(thoughtId!, report);
+		const report = await auditDslText(text, thoughtId!);
+		recordThoughtAudit(thoughtId!, report);
 		if (options.pretty) {
 			process.stdout.write(formatAuditReportText(report));
 		} else {
@@ -253,13 +248,8 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
 async function main(): Promise<void> {
 	const options = parseArgs(process.argv.slice(2));
 
-	if (options.helpTopic === "dsl") {
-		process.stdout.write(getDslSyntaxGuidanceText());
-		return;
-	}
-
-	if (!options.command || options.command === "audit") {
-		await handleAuditCommand(options);
+	if (options.command === "dsl") {
+		await handleDslCommand(options);
 		return;
 	}
 

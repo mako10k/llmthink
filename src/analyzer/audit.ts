@@ -315,7 +315,7 @@ function auditPartition(issues: AuditIssue[], partition: PartitionStatement, doc
   }
 }
 
-export async function auditText(input: string, documentId = "document", options?: AuditOptions): Promise<AuditReport> {
+export async function auditDslText(input: string, documentId = "document", options?: AuditOptions): Promise<AuditReport> {
   if (isDslHelpRequest(input)) {
     return createDslGuidanceReport(documentId);
   }
@@ -331,8 +331,8 @@ export async function auditText(input: string, documentId = "document", options?
   }
 }
 
-export async function auditFile(filePath: string, options?: AuditOptions): Promise<AuditReport> {
+export async function auditDslFile(filePath: string, options?: AuditOptions): Promise<AuditReport> {
   const input = readFileSync(filePath, "utf8");
   const documentId = basename(filePath).replace(/\.dsl$/, "");
-  return auditText(input, documentId, options);
+  return auditDslText(input, documentId, options);
 }

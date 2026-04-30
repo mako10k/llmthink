@@ -34,6 +34,6 @@ export function formatThoughtSearchResults(results: ThoughtSearchResult[]): stri
   }
   const lines = results.map((result) => `- ${result.id} [${result.source}/${result.status}] score=${result.score}${result.explanation ? ` ${result.explanation}` : ""} ${result.excerpt}`);
   lines.push("");
-  lines.push("Next action: llmthink thought draft --id <new-thought-id> --from <matched-thought-id>");
+  lines.push("Next action: llmthink thought relate --id <new-thought-id> --from <matched-thought-id>");
   return `${lines.join("\n")}\n`;
 }

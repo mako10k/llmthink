@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { auditFile } from "./analyzer/audit.js";
+import { auditDslFile } from "./analyzer/audit.js";
 import type { AuditReport } from "./model/diagnostics.js";
 
 interface ExampleCase {
@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   let failed = false;
 
   for (const exampleCase of exampleCases) {
-    const actual = normalize(await auditFile(resolve(process.cwd(), exampleCase.input), { embeddings: { provider: "none" } }));
+    const actual = normalize(await auditDslFile(resolve(process.cwd(), exampleCase.input), { embeddings: { provider: "none" } }));
     const expected = JSON.parse(readFileSync(resolve(process.cwd(), exampleCase.expected), "utf8")) as AuditReport;
     const actualJson = JSON.stringify(actual, null, 2);
     const expectedJson = JSON.stringify(expected, null, 2);
