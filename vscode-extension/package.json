@@ -5,9 +5,11 @@
   "version": "0.1.0",
   "publisher": "mako10k",
   "private": true,
+  "license": "UNLICENSED",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "vscode": "^1.99.0"

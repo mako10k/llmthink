@@ -42,3 +42,7 @@
 - npm run mcp
 - npm run typecheck:extension
 - npm run build:extension
+
+## ライセンス
+
+- 本リポジトリは UNLICENSED 扱いであり、利用・再配布・改変には権利者の事前許可が必要
