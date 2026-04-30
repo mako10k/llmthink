@@ -1,0 +1,44 @@
+{
+  "name": "llmthink-vscode-extension",
+  "displayName": "LLMThink",
+  "description": "Thought-audit tools for the LLMThink DSL.",
+  "version": "0.1.0",
+  "publisher": "mako10k",
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "llmthink.auditActiveDocument",
+        "title": "LLMThink: Audit Active Document"
+      },
+      {
+        "command": "llmthink.showLastAuditReport",
+        "title": "LLMThink: Show Last Audit Report"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "npm --prefix .. run build && node ./build.mjs",
+    "typecheck": "npm --prefix .. run typecheck && tsc -p tsconfig.json --noEmit",
+    "package:vsix": "npx @vscode/vsce package --allow-missing-repository --out llmthink.vsix"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.2",
+    "@types/node": "^22.15.21",
+    "@types/vscode": "^1.99.0",
+    "esbuild": "^0.25.11",
+    "llmthink": "file:..",
+    "typescript": "^5.8.3"
+  }
+}

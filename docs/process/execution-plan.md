@@ -74,10 +74,10 @@
 - [x] semantic analyzer の最小実装
 - [x] audit engine の最小実装
 - [x] examples ベースの検証を追加
-- [ ] UI 設計を追加
-- [ ] CLI UI を整理
-- [ ] MCP stdio サーバを追加
-- [ ] VSIX 拡張を追加
+- [x] UI 設計を追加
+- [x] CLI UI を整理
+- [x] MCP stdio サーバを追加
+- [x] VSIX 拡張を追加
 
 直近更新:
 
@@ -86,6 +86,7 @@
 - query-assist.dsl に対して query_result が返ることを確認した
 - verify-examples により代表サンプルの期待結果比較を追加した
 - 次は CLI、MCP、VSIX の 3 入口を共通 API で揃える
+- CLI pretty 出力、MCP stdio サーバ、VSIX 拡張の最小実装を追加した
 
 ---
 

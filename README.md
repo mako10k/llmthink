@@ -9,6 +9,8 @@
 - docs/adr: Architecture Decision Record
 - docs/examples: DSL サンプル
 - schemas: 監査結果などの機械可読スキーマ
+- src: 共通監査コア、CLI、MCP 実装
+- vscode-extension: VSIX 拡張パッケージ
 
 ## 主要ドキュメント
 
@@ -16,6 +18,9 @@
 - docs/process/adr-rules.md
 - docs/adr/0001-thought-audit-engine.md
 - docs/adr/0002-audit-severity-model.md
+- docs/adr/0003-mece-as-structural-discipline.md
+- docs/adr/0004-unified-interface-architecture.md
+- docs/specs/ui-architecture.md
 - docs/examples/dsl-samples.md
 - docs/examples/audit-output-sample.json
 - schemas/audit-result.schema.json
@@ -32,4 +37,8 @@
 - npm run typecheck
 - npm run build
 - npm run audit -- docs/examples/contradiction-pending.dsl
+- npm run audit -- docs/examples/contradiction-pending.dsl --pretty
 - npm run verify-examples
+- npm run mcp
+- npm run typecheck:extension
+- npm run build:extension
