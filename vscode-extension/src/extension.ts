@@ -51,8 +51,8 @@ function renderToolResult(report: AuditReport): vscode.LanguageModelToolResult {
   ]);
 }
 
-function runAudit(text: string, documentId: string): AuditReport {
-  const report = auditText(text, documentId);
+async function runAudit(text: string, documentId: string): Promise<AuditReport> {
+  const report = await auditText(text, documentId);
   lastReport = report;
   return report;
 }
@@ -64,7 +64,7 @@ class AuditDslTool implements vscode.LanguageModelTool<AuditToolInput> {
   ): Promise<vscode.LanguageModelToolResult> {
     const providedText = options.input.dslText?.trim();
     if (providedText) {
-      const report = runAudit(providedText, options.input.documentId?.trim() || "tool-input");
+      const report = await runAudit(providedText, options.input.documentId?.trim() || "tool-input");
       return renderToolResult(report);
     }
 
@@ -75,7 +75,7 @@ class AuditDslTool implements vscode.LanguageModelTool<AuditToolInput> {
       ]);
     }
 
-    const report = runAudit(editor.document.getText(), options.input.documentId?.trim() || toDocumentId(editor.document));
+    const report = await runAudit(editor.document.getText(), options.input.documentId?.trim() || toDocumentId(editor.document));
     return renderToolResult(report);
   }
 
@@ -106,7 +106,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       const document = editor.document;
-      const report = runAudit(document.getText(), toDocumentId(document));
+      const report = await runAudit(document.getText(), toDocumentId(document));
 
       outputChannel.clear();
       outputChannel.appendLine(formatAuditReportText(report));

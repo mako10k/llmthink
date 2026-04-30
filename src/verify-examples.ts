@@ -27,22 +27,26 @@ function normalize(report: AuditReport): AuditReport {
   };
 }
 
-let failed = false;
+async function main(): Promise<void> {
+  let failed = false;
 
-for (const exampleCase of exampleCases) {
-  const actual = normalize(auditFile(resolve(process.cwd(), exampleCase.input)));
-  const expected = JSON.parse(readFileSync(resolve(process.cwd(), exampleCase.expected), "utf8")) as AuditReport;
-  const actualJson = JSON.stringify(actual, null, 2);
-  const expectedJson = JSON.stringify(expected, null, 2);
-  if (actualJson !== expectedJson) {
-    failed = true;
-    process.stderr.write(`Mismatch: ${exampleCase.input}\n`);
-    process.stderr.write(`Expected: ${exampleCase.expected}\n`);
-  } else {
-    process.stdout.write(`OK: ${exampleCase.input}\n`);
+  for (const exampleCase of exampleCases) {
+    const actual = normalize(await auditFile(resolve(process.cwd(), exampleCase.input), { embeddings: { provider: "none" } }));
+    const expected = JSON.parse(readFileSync(resolve(process.cwd(), exampleCase.expected), "utf8")) as AuditReport;
+    const actualJson = JSON.stringify(actual, null, 2);
+    const expectedJson = JSON.stringify(expected, null, 2);
+    if (actualJson !== expectedJson) {
+      failed = true;
+      process.stderr.write(`Mismatch: ${exampleCase.input}\n`);
+      process.stderr.write(`Expected: ${exampleCase.expected}\n`);
+    } else {
+      process.stdout.write(`OK: ${exampleCase.input}\n`);
+    }
+  }
+
+  if (failed) {
+    process.exitCode = 1;
   }
 }
 
-if (failed) {
-  process.exitCode = 1;
-}
+await main();

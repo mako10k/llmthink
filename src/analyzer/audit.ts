@@ -4,8 +4,13 @@ import { basename } from "node:path";
 import type { DecisionStatement, DocumentAst, PartitionStatement, StepStatement } from "../model/ast.js";
 import type { AuditIssue, AuditReference, AuditReport, AuditSeverity, QueryResult } from "../model/diagnostics.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
+import { cosineSimilarity, embedTexts, type EmbeddingRequestOptions } from "../semantic/embeddings.js";
 
 const ENGINE_VERSION = "0.1.0";
+
+export interface AuditOptions {
+  embeddings?: EmbeddingRequestOptions;
+}
 
 function issueId(index: number): string {
   return `ISSUE-${String(index).padStart(3, "0")}`;
@@ -67,7 +72,7 @@ function findPending(document: DocumentAst): Array<{ stepId: string; statement: 
   return document.steps.filter((step) => step.statement.role === "pending").map((step) => ({ stepId: step.id, statement: step.statement }));
 }
 
-function auditDocument(document: DocumentAst, documentId: string): AuditReport {
+async function auditDocument(document: DocumentAst, documentId: string, options?: AuditOptions): Promise<AuditReport> {
   const issues: AuditIssue[] = [];
   const ids = collectDeclaredIds(document);
 
@@ -148,26 +153,37 @@ function auditDocument(document: DocumentAst, documentId: string): AuditReport {
     });
   }
 
+  const semanticContext = await createSemanticContext(decisions, document.queries.map((query) => query.expression), options);
+
   if (decisions.length >= 2) {
+    const semanticSimilarity = semanticContext
+      ? cosineSimilarity(semanticContext.decisionEmbeddings[0] ?? [], semanticContext.decisionEmbeddings[1] ?? [])
+      : 0.75;
     createIssue(issues, {
       category: "semantic_hint",
       severity: "hint",
       target_refs: decisions.slice(0, 2).map((decision) => statementReference(decision.statement, decision.stepId)),
       message: `${decisions[0]?.statement.id} と ${decisions[1]?.statement.id} は意味的に近接している可能性がある。`,
       metadata: {
-        similarity: 0.75,
-        semantic_distance: 0.25,
+        similarity: roundScore(semanticSimilarity),
+        semantic_distance: roundScore(1 - semanticSimilarity),
+        ...(semanticContext
+          ? {
+              embedding_provider: semanticContext.provider,
+              embedding_model: semanticContext.model,
+            }
+          : {}),
       },
     });
   }
 
-  const queryResults: QueryResult[] = document.queries.map((query) => ({
+  const queryResults: QueryResult[] = document.queries.map((query, queryIndex) => ({
     query_id: query.id,
     severity: "hint",
-    items: decisions.map((decision, index) => ({
-      ref_id: decision.statement.id,
-      score: Math.max(0.5, 1 - index * 0.1),
-      explanation: `${query.expression} に関連する decision 候補。`,
+    items: rankDecisionsForQuery(query.expression, queryIndex, decisions, semanticContext).map((item) => ({
+      ref_id: item.ref_id,
+      score: item.score,
+      explanation: item.explanation,
     })),
   }));
 
@@ -179,6 +195,73 @@ function auditDocument(document: DocumentAst, documentId: string): AuditReport {
     results: issues,
     query_results: queryResults,
   };
+}
+
+interface SemanticContext {
+  decisionEmbeddings: number[][];
+  queryEmbeddings: number[][];
+  provider: string;
+  model: string;
+}
+
+async function createSemanticContext(
+  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
+  queries: string[],
+  options?: AuditOptions,
+): Promise<SemanticContext | undefined> {
+  if (decisions.length === 0) {
+    return undefined;
+  }
+
+  try {
+    const result = await embedTexts(
+      [...decisions.map((decision) => decision.statement.text), ...queries],
+      options?.embeddings,
+    );
+    if (!result) {
+      return undefined;
+    }
+
+    return {
+      decisionEmbeddings: result.embeddings.slice(0, decisions.length),
+      queryEmbeddings: result.embeddings.slice(decisions.length),
+      provider: result.provider,
+      model: result.model,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function roundScore(value: number): number {
+  const normalized = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+  return Number(normalized.toFixed(4));
+}
+
+function rankDecisionsForQuery(
+  queryExpression: string,
+  queryIndex: number,
+  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
+  semanticContext: SemanticContext | undefined,
+): Array<{ ref_id: string; score: number; explanation: string }> {
+  if (!semanticContext || !semanticContext.queryEmbeddings[queryIndex]) {
+    return decisions.map((decision, index) => ({
+      ref_id: decision.statement.id,
+      score: Math.max(0.5, 1 - index * 0.1),
+      explanation: `${queryExpression} に関連する decision 候補。`,
+    }));
+  }
+
+  return decisions
+    .map((decision, index) => {
+      const similarity = cosineSimilarity(semanticContext.queryEmbeddings[queryIndex] ?? [], semanticContext.decisionEmbeddings[index] ?? []);
+      return {
+        ref_id: decision.statement.id,
+        score: roundScore(similarity),
+        explanation: `${queryExpression} に関連する decision 候補。 (${semanticContext.provider}/${semanticContext.model})`,
+      };
+    })
+    .sort((left, right) => right.score - left.score);
 }
 
 function auditPartition(issues: AuditIssue[], partition: PartitionStatement, document: DocumentAst): void {
@@ -212,16 +295,16 @@ function auditPartition(issues: AuditIssue[], partition: PartitionStatement, doc
   }
 }
 
-export function auditText(input: string, documentId = "document"): AuditReport {
+export async function auditText(input: string, documentId = "document", options?: AuditOptions): Promise<AuditReport> {
   const document = parseDocument(input);
-  return auditDocument(document, documentId);
+  return auditDocument(document, documentId, options);
 }
 
-export function auditFile(filePath: string): AuditReport {
+export async function auditFile(filePath: string, options?: AuditOptions): Promise<AuditReport> {
   const input = readFileSync(filePath, "utf8");
   const documentId = basename(filePath).replace(/\.dsl$/, "");
   try {
-    return auditText(input, documentId);
+    return await auditText(input, documentId, options);
   } catch (error) {
     if (error instanceof ParseError) {
       const issue: AuditIssue = {

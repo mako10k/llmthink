@@ -43,6 +43,27 @@
 - npm run typecheck:extension
 - npm run build:extension
 
+## 埋め込み設定
+
+- 既定の埋め込みプロバイダは Ollama
+- 埋め込み取得に失敗した場合、semantic_hint と query_result の順位付けはヒューリスティックへフォールバックする
+
+利用可能な環境変数:
+
+- LLMTHINK_EMBEDDING_PROVIDER: `ollama` | `openai` | `none`
+- LLMTHINK_EMBEDDING_TIMEOUT_MS: 埋め込み API のタイムアウトミリ秒。既定は `3000`
+- OLLAMA_BASE_URL: Ollama API のベース URL。既定は `http://127.0.0.1:11434`
+- OLLAMA_EMBED_MODEL: Ollama の埋め込みモデル名。既定は `nomic-embed-text`
+- OPENAI_BASE_URL: OpenAI 互換 embeddings API のベース URL。既定は `https://api.openai.com/v1`
+- OPENAI_API_KEY: OpenAI 互換 embeddings API の認証キー
+- OPENAI_EMBED_MODEL: OpenAI 互換 embeddings API のモデル名。既定は `text-embedding-3-small`
+
+例:
+
+- `OLLAMA_EMBED_MODEL=nomic-embed-text npm run audit -- docs/examples/query-assist.dsl --pretty`
+- `LLMTHINK_EMBEDDING_PROVIDER=openai OPENAI_API_KEY=... npm run audit -- docs/examples/query-assist.dsl --pretty`
+- `LLMTHINK_EMBEDDING_PROVIDER=none npm run verify-examples`
+
 ## ライセンス
 
 - 本リポジトリは UNLICENSED 扱いであり、利用・再配布・改変には権利者の事前許可が必要

@@ -50,19 +50,23 @@ function printUsage(): void {
 	);
 }
 
-const options = parseArgs(process.argv.slice(2));
+async function main(): Promise<void> {
+	const options = parseArgs(process.argv.slice(2));
 
-if (!options.filePath && !options.text) {
-	printUsage();
-	process.exit(1);
+	if (!options.filePath && !options.text) {
+		printUsage();
+		process.exit(1);
+	}
+
+	const report = options.text
+		? await auditText(options.text, options.documentId ?? "stdin")
+		: await auditFile(resolve(process.cwd(), options.filePath ?? "docs/examples/contradiction-pending.dsl"));
+
+	if (options.pretty) {
+		process.stdout.write(formatAuditReportText(report));
+	} else {
+		process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+	}
 }
 
-const report = options.text
-	? auditText(options.text, options.documentId ?? "stdin")
-	: auditFile(resolve(process.cwd(), options.filePath ?? "docs/examples/contradiction-pending.dsl"));
-
-if (options.pretty) {
-	process.stdout.write(formatAuditReportText(report));
-} else {
-	process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-}
+await main();

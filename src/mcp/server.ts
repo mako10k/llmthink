@@ -18,7 +18,7 @@ server.tool(
     documentId: z.string().optional(),
   },
   async ({ text, documentId }) => {
-    const report = auditText(text, documentId ?? "mcp-text");
+    const report = await auditText(text, documentId ?? "mcp-text");
     return {
       content: [
         {
@@ -41,7 +41,7 @@ server.tool(
     filePath: z.string().min(1),
   },
   async ({ filePath }) => {
-    const report = auditFile(filePath);
+    const report = await auditFile(filePath);
     return {
       content: [
         {
