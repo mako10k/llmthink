@@ -72,6 +72,21 @@ function findPending(document: DocumentAst): Array<{ stepId: string; statement: 
   return document.steps.filter((step) => step.statement.role === "pending").map((step) => ({ stepId: step.id, statement: step.statement }));
 }
 
+function buildQuerySemanticText(document: DocumentAst, queryExpression: string): string {
+  const relatedDecisionMatch = /^related_decisions\(([A-Za-z][A-Za-z0-9_-]*)\)$/.exec(queryExpression.trim());
+  if (!relatedDecisionMatch) {
+    return queryExpression;
+  }
+
+  const problemId = relatedDecisionMatch[1];
+  const problem = document.problems.find((candidate) => candidate.name === problemId);
+  if (!problem) {
+    return queryExpression;
+  }
+
+  return `${queryExpression}\nproblem: ${problem.text}`;
+}
+
 async function auditDocument(document: DocumentAst, documentId: string, options?: AuditOptions): Promise<AuditReport> {
   const issues: AuditIssue[] = [];
   const ids = collectDeclaredIds(document);
@@ -153,7 +168,11 @@ async function auditDocument(document: DocumentAst, documentId: string, options?
     });
   }
 
-  const semanticContext = await createSemanticContext(decisions, document.queries.map((query) => query.expression), options);
+  const semanticContext = await createSemanticContext(
+    decisions,
+    document.queries.map((query) => buildQuerySemanticText(document, query.expression)),
+    options,
+  );
 
   if (decisions.length >= 2) {
     const semanticSimilarity = semanticContext

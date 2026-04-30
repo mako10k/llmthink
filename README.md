@@ -48,6 +48,27 @@
 - 既定の埋め込みプロバイダは Ollama
 - 埋め込み取得に失敗した場合、semantic_hint と query_result の順位付けはヒューリスティックへフォールバックする
 
+### Windows + WSL で Ollama を使う場合
+
+- Windows 側に Ollama をインストールする
+- Windows 側で `ollama serve` もしくは `ollama app.exe` を起動する
+- WSL から `curl http://127.0.0.1:11434/api/version` が通ることを確認する
+- 埋め込みモデルが未取得なら `ollama pull nomic-embed-text` を実行する
+
+WSL が mirrored networking の場合は、Windows ユーザーの `.wslconfig` に次を入れて WSL を再起動する
+
+```ini
+[wsl2]
+networkingMode=mirrored
+hostAddressLoopback=true
+```
+
+確認コマンド:
+
+- `curl http://127.0.0.1:11434/api/version`
+- `curl http://127.0.0.1:11434/api/tags`
+- `npm run audit -- docs/examples/query-assist.dsl --pretty`
+
 利用可能な環境変数:
 
 - LLMTHINK_EMBEDDING_PROVIDER: `ollama` | `openai` | `none`
@@ -63,6 +84,11 @@
 - `OLLAMA_EMBED_MODEL=nomic-embed-text npm run audit -- docs/examples/query-assist.dsl --pretty`
 - `LLMTHINK_EMBEDDING_PROVIDER=openai OPENAI_API_KEY=... npm run audit -- docs/examples/query-assist.dsl --pretty`
 - `LLMTHINK_EMBEDDING_PROVIDER=none npm run verify-examples`
+
+## Query 埋め込みの扱い
+
+- `related_decisions(P1)` のような query は、式そのものに加えて参照先 problem の本文も埋め込み対象に含める
+- これにより、`related_decisions(...)` という固定文字列ではなく、問題文脈に近い decision が上位に来やすくなる
 
 ## ライセンス
 
