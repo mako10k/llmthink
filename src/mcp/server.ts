@@ -28,7 +28,7 @@ import {
 
 const server = new McpServer({
   name: "llmthink",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 function textContent(text: string) {

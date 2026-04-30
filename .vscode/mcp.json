@@ -1,0 +1,14 @@
+{
+	"servers": {
+		"llmthink": {
+			"command": "node",
+			"cwd": "${workspaceFolder}",
+			"args": [
+				"dist/mcp/server.js"
+			],
+			"env": {},
+			"type": "stdio"
+		}
+	},
+	"inputs": []
+}
