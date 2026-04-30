@@ -4,6 +4,9 @@
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 
+開発運用ルールは repo の `.github/copilot-instructions.md` を正とする。
+利用者としては、必要に応じて `#llmthink-dsl` で `action=audit` や `action=help` を使って DSL を確認できる。
+
 ## 提供コマンド
 
 - LLMThink: DSL Audit

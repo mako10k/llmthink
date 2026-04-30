@@ -122,6 +122,8 @@ llmthink thought audit --id review-002 --pretty
 - `dsl` は `action=audit|help`、`thought` は `action=draft|relate|audit|finalize|show|history|search|list` を扱う
 - VSIX は `llmthink.dsl*` と `llmthink.thought*` の command id に統一する
 - language model tool は `llmthink-dsl` に統一し、DSL 監査と文法ガイダンスに集中させる
+- Copilot 向けの開発運用ルールは `.github/copilot-instructions.md` を正とする
+- 利用者としては、必要に応じて `#llmthink-dsl` で `action=audit` や `action=help` を使って DSL を確認できる
 
 ## 埋め込み設定
 
