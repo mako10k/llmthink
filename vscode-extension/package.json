@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -29,7 +29,7 @@
   "contributes": {
     "languageModelTools": [
       {
-        "name": "llmthink.auditDsl",
+        "name": "llmthink-audit-dsl",
         "toolReferenceName": "llmthink-audit",
         "displayName": "LLMThink DSL Auditor",
         "modelDescription": "Audit a thought-structure DSL document and return contradictions, contract violations, MECE assessments, semantic hints, and query results. Use this tool when the user provides DSL text or asks to evaluate a .dsl document.",

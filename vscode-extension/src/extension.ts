@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { auditText, formatAuditReportHtml, formatAuditReportText } from "llmthink";
 import type { AuditReport } from "llmthink";
 
-const AUDIT_TOOL_NAME = "llmthink.auditDsl";
+const AUDIT_TOOL_NAME = "llmthink-audit-dsl";
 
 interface AuditToolInput {
   dslText?: string;
