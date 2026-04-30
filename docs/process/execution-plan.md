@@ -48,6 +48,13 @@
 - 期待する監査結果を比較できるようにする
 - 代表ケースで回帰確認できるようにする
 
+### Phase 5: UI 提供
+
+- CLI を実用的な操作系として整理する
+- MCP サーバを stdio で提供する
+- VSIX 拡張を実装する
+- 3 つの入口を共通監査 API へ接続する
+
 ---
 
 ## 4. 進捗
@@ -67,6 +74,10 @@
 - [x] semantic analyzer の最小実装
 - [x] audit engine の最小実装
 - [x] examples ベースの検証を追加
+- [ ] UI 設計を追加
+- [ ] CLI UI を整理
+- [ ] MCP stdio サーバを追加
+- [ ] VSIX 拡張を追加
 
 直近更新:
 
@@ -74,6 +85,7 @@
 - contradiction-pending.dsl に対して監査 CLI が動作することを確認した
 - query-assist.dsl に対して query_result が返ることを確認した
 - verify-examples により代表サンプルの期待結果比較を追加した
+- 次は CLI、MCP、VSIX の 3 入口を共通 API で揃える
 
 ---
 
