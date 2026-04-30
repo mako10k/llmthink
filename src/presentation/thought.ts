@@ -1,5 +1,6 @@
 import type {
   ThoughtEvent,
+  ThoughtReflection,
   ThoughtRecord,
   ThoughtSearchResult,
   ThoughtSnapshot,
@@ -16,6 +17,8 @@ export function formatThoughtSummary(snapshot: ThoughtSnapshot): string {
       `draft: ${snapshot.record.current_draft_path ?? "-"}`,
       `final: ${snapshot.record.final_path ?? "-"}`,
       `latest_audit: ${snapshot.record.latest_audit_path ?? "-"}`,
+      `reflection_count: ${snapshot.reflections.length}`,
+      `latest_reflection_kind: ${snapshot.reflections.at(-1)?.kind ?? "-"}`,
       `history_events: ${snapshot.history.length}`,
     ].join("\n") + "\n"
   );
@@ -44,6 +47,22 @@ export function formatThoughtList(records: ThoughtRecord[]): string {
       .map(
         (thought) =>
           `- ${thought.id} [${thought.status}] updated_at=${thought.updated_at}`,
+      )
+      .join("\n") + "\n"
+  );
+}
+
+export function formatThoughtReflections(
+  reflections: ThoughtReflection[],
+): string {
+  if (reflections.length === 0) {
+    return "No reflections yet.\n";
+  }
+  return (
+    reflections
+      .map(
+        (reflection) =>
+          `- ${reflection.at} [${reflection.kind}] ${reflection.text}`,
       )
       .join("\n") + "\n"
   );

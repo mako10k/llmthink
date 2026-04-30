@@ -2,12 +2,14 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import {
   auditDslText,
+  addThoughtReflection,
   draftThought,
   finalizeThought,
   formatAuditReportHtml,
   formatAuditReportText,
   formatThoughtHistory,
   formatThoughtList,
+  formatThoughtReflections,
   formatThoughtSearchResults,
   formatThoughtSummary,
   getDslSyntaxGuidanceText,
@@ -17,6 +19,7 @@ import {
   recordThoughtAudit,
   relateThought,
   searchThoughtRecords,
+  type ThoughtReflectionKind,
 } from "llmthink";
 import type { AuditReport } from "llmthink";
 
@@ -27,6 +30,22 @@ interface DslToolInput {
   dslText?: string;
   documentId?: string;
 }
+
+const REFLECTION_KIND_ITEMS: Array<{
+  label: string;
+  description: string;
+  value: ThoughtReflectionKind;
+}> = [
+  { label: "note", description: "補足メモ", value: "note" },
+  { label: "concern", description: "懸念点", value: "concern" },
+  { label: "decision", description: "小さな判断", value: "decision" },
+  { label: "follow_up", description: "後続アクション", value: "follow_up" },
+  {
+    label: "audit_response",
+    description: "監査結果への応答",
+    value: "audit_response",
+  },
+];
 
 let lastReport: AuditReport | undefined;
 let lastPanel: vscode.WebviewPanel | undefined;
@@ -91,6 +110,16 @@ async function promptSearchQuery(): Promise<string | undefined> {
     prompt: "検索クエリを入力してください",
     ignoreFocusOut: true,
   });
+}
+
+async function promptReflectionKind(): Promise<
+  ThoughtReflectionKind | undefined
+> {
+  const selected = await vscode.window.showQuickPick(REFLECTION_KIND_ITEMS, {
+    placeHolder: "reflect kind を選択してください",
+    ignoreFocusOut: true,
+  });
+  return selected?.value;
 }
 
 function showTextInOutput(
@@ -247,6 +276,50 @@ async function createRelatedThoughtFromPrompt(
   );
 }
 
+async function addThoughtReflectionFromPrompt(
+  outputChannel: vscode.OutputChannel,
+): Promise<void> {
+  const thoughtId = await promptThoughtId();
+  if (!thoughtId) {
+    return;
+  }
+  const kind = await promptReflectionKind();
+  if (!kind) {
+    return;
+  }
+  const text = await vscode.window.showInputBox({
+    prompt: "reflect 内容を入力してください",
+    ignoreFocusOut: true,
+  });
+  if (!text) {
+    return;
+  }
+  addThoughtReflection(thoughtId, text, kind);
+  showTextInOutput(
+    outputChannel,
+    `LLMThink Thought Reflect: ${thoughtId}`,
+    formatThoughtSummary(loadThought(thoughtId)),
+  );
+  vscode.window.showInformationMessage(
+    `LLMThink reflect 保存完了: ${thoughtId}`,
+  );
+}
+
+async function showThoughtReflectionsInOutput(
+  outputChannel: vscode.OutputChannel,
+): Promise<void> {
+  const thoughtId = await promptThoughtId();
+  if (!thoughtId) {
+    return;
+  }
+  const snapshot = loadThought(thoughtId);
+  showTextInOutput(
+    outputChannel,
+    `LLMThink Thought Reflections: ${thoughtId}`,
+    formatThoughtReflections(snapshot.reflections),
+  );
+}
+
 async function runAudit(
   text: string,
   documentId: string,
@@ -355,6 +428,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("llmthink.thoughtFinalize", async () => {
       await finalizeThoughtFromActiveDocument(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.thoughtReflect", async () => {
+      await addThoughtReflectionFromPrompt(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.thoughtReflections", async () => {
+      await showThoughtReflectionsInOutput(outputChannel);
     }),
     vscode.commands.registerCommand("llmthink.thoughtHistory", async () => {
       await showThoughtHistoryInOutput(outputChannel);

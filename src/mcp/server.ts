@@ -10,10 +10,12 @@ import { formatAuditReportText } from "../presentation/report.js";
 import {
   formatThoughtHistory,
   formatThoughtList,
+  formatThoughtReflections,
   formatThoughtSearchResults,
   formatThoughtSummary,
 } from "../presentation/thought.js";
 import {
+  addThoughtReflection,
   relateThought,
   finalizeThought,
   listThoughts,
@@ -21,6 +23,7 @@ import {
   recordThoughtAudit,
   draftThought,
   searchThoughtRecords,
+  type ThoughtReflectionKind,
 } from "../thought/store.js";
 
 const server = new McpServer({
@@ -54,7 +57,7 @@ function getStoredThoughtText(thoughtId: string): string | undefined {
 
 function showThoughtView(
   thoughtId: string,
-  view?: "summary" | "draft" | "final" | "audit",
+  view?: "summary" | "draft" | "final" | "audit" | "reflections",
 ) {
   const snapshot = loadThought(thoughtId);
   if (view === "draft") {
@@ -72,6 +75,11 @@ function showThoughtView(
             : "No audit yet.\n",
         ),
       ],
+    };
+  }
+  if (view === "reflections") {
+    return {
+      content: [textContent(formatThoughtReflections(snapshot.reflections))],
     };
   }
   return { content: [textContent(formatThoughtSummary(snapshot))] };
@@ -169,12 +177,33 @@ function handleThoughtHistoryAction(thoughtId: string) {
   };
 }
 
+const REFLECTION_KIND_SCHEMA = z.enum([
+  "note",
+  "concern",
+  "decision",
+  "follow_up",
+  "audit_response",
+]);
+
+function handleThoughtReflectAction(
+  thoughtId: string,
+  text: string | undefined,
+  kind: ThoughtReflectionKind,
+) {
+  if (!text) {
+    throw new Error("text is required when action=reflect");
+  }
+  addThoughtReflection(thoughtId, text, kind);
+  return summarizeThought(thoughtId);
+}
+
 async function handleThoughtAction(
   action:
     | "draft"
     | "relate"
     | "audit"
     | "finalize"
+    | "reflect"
     | "show"
     | "history"
     | "search"
@@ -182,9 +211,11 @@ async function handleThoughtAction(
   thoughtId: string | undefined,
   dslText: string | undefined,
   fromThoughtId: string | undefined,
+  text: string | undefined,
+  kind: ThoughtReflectionKind,
   query: string | undefined,
   limit: number | undefined,
-  view: "summary" | "draft" | "final" | "audit" | undefined,
+  view: "summary" | "draft" | "final" | "audit" | "reflections" | undefined,
 ) {
   if (action === "list") {
     return { content: [textContent(formatThoughtList(listThoughts()))] };
@@ -208,6 +239,8 @@ async function handleThoughtAction(
       return handleThoughtAuditAction(resolvedThoughtId, sourceText);
     case "finalize":
       return handleThoughtFinalizeAction(resolvedThoughtId, sourceText);
+    case "reflect":
+      return handleThoughtReflectAction(resolvedThoughtId, text, kind);
     case "history":
       return handleThoughtHistoryAction(resolvedThoughtId);
     case "show":
@@ -251,13 +284,14 @@ server.tool(
 
 server.tool(
   "thought",
-  "LLMThink thought lifecycle operations. Use action=draft|relate|audit|finalize|show|history|search|list.",
+  "LLMThink thought lifecycle operations. Use action=draft|relate|audit|finalize|reflect|show|history|search|list.",
   {
     action: z.enum([
       "draft",
       "relate",
       "audit",
       "finalize",
+      "reflect",
       "show",
       "history",
       "search",
@@ -266,16 +300,32 @@ server.tool(
     thoughtId: z.string().optional(),
     dslText: z.string().optional(),
     fromThoughtId: z.string().optional(),
+    text: z.string().optional(),
+    kind: REFLECTION_KIND_SCHEMA.default("note"),
     query: z.string().optional(),
     limit: z.number().int().positive().max(20).optional(),
-    view: z.enum(["summary", "draft", "final", "audit"]).optional(),
+    view: z
+      .enum(["summary", "draft", "final", "audit", "reflections"])
+      .optional(),
   },
-  async ({ action, thoughtId, dslText, fromThoughtId, query, limit, view }) => {
+  async ({
+    action,
+    thoughtId,
+    dslText,
+    fromThoughtId,
+    text,
+    kind,
+    query,
+    limit,
+    view,
+  }) => {
     return handleThoughtAction(
       action,
       thoughtId,
       dslText,
       fromThoughtId,
+      text,
+      kind,
       query,
       limit,
       view,

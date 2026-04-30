@@ -15,11 +15,25 @@ import {
 } from "../semantic/embeddings.js";
 
 export type ThoughtStatus = "draft" | "finalized";
+export type ThoughtReflectionKind =
+  | "note"
+  | "concern"
+  | "decision"
+  | "follow_up"
+  | "audit_response";
 export type ThoughtEventKind =
   | "draft_saved"
   | "audit_recorded"
   | "finalized"
-  | "related_created";
+  | "related_created"
+  | "reflect_recorded";
+
+export interface ThoughtReflection {
+  id: string;
+  at: string;
+  kind: ThoughtReflectionKind;
+  text: string;
+}
 
 export interface ThoughtRecord {
   id: string;
@@ -45,6 +59,7 @@ export interface ThoughtSnapshot {
   finalText?: string;
   latestAudit?: AuditReport;
   history: ThoughtEvent[];
+  reflections: ThoughtReflection[];
 }
 
 export interface ThoughtSearchResult {
@@ -70,6 +85,7 @@ interface ThoughtPaths {
   auditsDir: string;
   recordPath: string;
   historyPath: string;
+  reflectionsPath: string;
   draftPath: string;
   finalPath: string;
 }
@@ -89,6 +105,7 @@ function thoughtPaths(id: string, baseDir?: string): ThoughtPaths {
     auditsDir: join(thoughtDir, "audits"),
     recordPath: join(thoughtDir, "thought.json"),
     historyPath: join(thoughtDir, "history.json"),
+    reflectionsPath: join(thoughtDir, "reflections.json"),
     draftPath: join(thoughtDir, "draft.dsl"),
     finalPath: join(thoughtDir, "final.dsl"),
   };
@@ -164,6 +181,27 @@ function appendThoughtEvent(
   const history = readJsonFile<ThoughtEvent[]>(paths.historyPath, []);
   history.push(event);
   writeJsonFile(paths.historyPath, history);
+}
+
+function readThoughtReflections(
+  id: string,
+  baseDir?: string,
+): ThoughtReflection[] {
+  const paths = ensureThoughtDir(id, baseDir);
+  return readJsonFile<ThoughtReflection[]>(paths.reflectionsPath, []);
+}
+
+function writeThoughtReflections(
+  id: string,
+  reflections: ThoughtReflection[],
+  baseDir?: string,
+): void {
+  const paths = ensureThoughtDir(id, baseDir);
+  writeJsonFile(paths.reflectionsPath, reflections);
+}
+
+function createReflectionId(reflectedAt: string): string {
+  return `reflection-${reflectedAt.replaceAll(":", "-")}`;
 }
 
 export function draftThought(
@@ -260,6 +298,40 @@ export function finalizeThought(
   return updated;
 }
 
+export function addThoughtReflection(
+  id: string,
+  text: string,
+  kind: ThoughtReflectionKind = "note",
+  baseDir?: string,
+): ThoughtRecord {
+  const record = ensureThoughtRecord(id, baseDir);
+  const reflectedAt = nowIso();
+  const reflections = readThoughtReflections(id, baseDir);
+  reflections.push({
+    id: createReflectionId(reflectedAt),
+    at: reflectedAt,
+    kind,
+    text,
+  });
+  writeThoughtReflections(id, reflections, baseDir);
+
+  const updated: ThoughtRecord = {
+    ...record,
+    updated_at: reflectedAt,
+  };
+  writeThoughtRecord(updated, baseDir);
+  appendThoughtEvent(
+    id,
+    {
+      at: reflectedAt,
+      kind: "reflect_recorded",
+      summary: `reflect を追加した。kind=${kind}`,
+    },
+    baseDir,
+  );
+  return updated;
+}
+
 export function recordThoughtAudit(
   id: string,
   report: AuditReport,
@@ -312,6 +384,7 @@ export function loadThought(id: string, baseDir?: string): ThoughtSnapshot {
     finalText: readTextIfExists(paths.finalPath),
     latestAudit,
     history,
+    reflections: readThoughtReflections(id, baseDir),
   };
 }
 

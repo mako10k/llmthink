@@ -9,10 +9,12 @@ import { formatAuditReportText } from "./presentation/report.js";
 import {
   formatThoughtHistory,
   formatThoughtList,
+  formatThoughtReflections,
   formatThoughtSearchResults,
   formatThoughtSummary,
 } from "./presentation/thought.js";
 import {
+  addThoughtReflection,
   relateThought,
   finalizeThought,
   listThoughts,
@@ -20,6 +22,7 @@ import {
   recordThoughtAudit,
   draftThought,
   searchThoughtRecords,
+  type ThoughtReflectionKind,
 } from "./thought/store.js";
 
 interface CliOptions {
@@ -29,6 +32,7 @@ interface CliOptions {
   documentId?: string;
   thoughtId?: string;
   fromThoughtId?: string;
+  kind?: string;
   limit?: number;
   view?: string;
   positionals: string[];
@@ -52,6 +56,9 @@ const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
   "--from": (options, remainingArgs) => {
     options.fromThoughtId = remainingArgs.shift();
   },
+  "--kind": (options, remainingArgs) => {
+    options.kind = remainingArgs.shift();
+  },
   "--limit": (options, remainingArgs) => {
     const rawValue = remainingArgs.shift();
     const parsed = Number(rawValue);
@@ -60,8 +67,36 @@ const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
 };
 
 function isThoughtIdRequired(subcommand?: string): boolean {
-  return ["draft", "relate", "audit", "finalize", "show", "history"].includes(
-    subcommand ?? "",
+  return [
+    "draft",
+    "relate",
+    "audit",
+    "finalize",
+    "show",
+    "history",
+    "reflect",
+  ].includes(subcommand ?? "");
+}
+
+const REFLECTION_KINDS = [
+  "note",
+  "concern",
+  "decision",
+  "follow_up",
+  "audit_response",
+] satisfies ThoughtReflectionKind[];
+
+function resolveReflectionKind(
+  kind: string | undefined,
+): ThoughtReflectionKind {
+  if (!kind) {
+    return "note";
+  }
+  if (REFLECTION_KINDS.includes(kind as ThoughtReflectionKind)) {
+    return kind as ThoughtReflectionKind;
+  }
+  throw new Error(
+    `Invalid --kind value: ${kind}. Use one of ${REFLECTION_KINDS.join(", ")}.`,
   );
 }
 
@@ -107,7 +142,8 @@ function printUsage(): void {
       "  llmthink thought relate --id <thought-id> --from source-thought-id",
       '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]',
       '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
-      "  llmthink thought show --id <thought-id> [summary|draft|final|audit]",
+      '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
+      "  llmthink thought show --id <thought-id> [summary|draft|final|audit|reflections]",
       "  llmthink thought history --id <thought-id>",
       "  llmthink thought search <query> [--limit 5]",
       "  llmthink thought list",
@@ -201,6 +237,8 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
       return handleThoughtAudit(thoughtId!, options);
     case "finalize":
       return handleThoughtFinalize(thoughtId!, options);
+    case "reflect":
+      return handleThoughtReflect(thoughtId!, options);
     case "show":
       return handleThoughtShow(thoughtId!, options);
     case "history":
@@ -257,6 +295,15 @@ function handleThoughtFinalize(thoughtId: string, options: CliOptions): void {
   printThoughtSummary(thoughtId);
 }
 
+function handleThoughtReflect(thoughtId: string, options: CliOptions): void {
+  const text = options.text ?? options.positionals.join(" ");
+  if (!text) {
+    throw new Error("reflect requires --text or trailing text.");
+  }
+  addThoughtReflection(thoughtId, text, resolveReflectionKind(options.kind));
+  printThoughtSummary(thoughtId);
+}
+
 function handleThoughtShow(thoughtId: string, options: CliOptions): void {
   const snapshot = loadThought(thoughtId);
   const view = options.view ?? "summary";
@@ -269,6 +316,8 @@ function handleThoughtShow(thoughtId: string, options: CliOptions): void {
     viewText = snapshot.latestAudit
       ? formatAuditReportText(snapshot.latestAudit)
       : "No audit yet.\n";
+  } else if (view === "reflections") {
+    viewText = formatThoughtReflections(snapshot.reflections);
   }
   if (viewText !== undefined) {
     process.stdout.write(viewText);
