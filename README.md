@@ -15,7 +15,9 @@
 - docs/specs/requirements.md
 - docs/process/adr-rules.md
 - docs/adr/0001-thought-audit-engine.md
+- docs/adr/0002-audit-severity-model.md
 - docs/examples/dsl-samples.md
+- docs/examples/audit-output-sample.json
 - schemas/audit-result.schema.json
 
 ## 運用方針

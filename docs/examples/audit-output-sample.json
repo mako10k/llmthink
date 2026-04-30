@@ -1,0 +1,115 @@
+{
+  "engine_version": "0.1.0",
+  "document_id": "contradiction-pending",
+  "generated_at": "2026-04-30T12:00:00Z",
+  "summary": {
+    "fatal_count": 0,
+    "error_count": 1,
+    "warning_count": 2,
+    "info_count": 1,
+    "hint_count": 1
+  },
+  "results": [
+    {
+      "issue_id": "ISSUE-001",
+      "category": "contract_violation",
+      "severity": "error",
+      "target_refs": [
+        {
+          "ref_id": "D2",
+          "role": "decision",
+          "step_id": "S4"
+        }
+      ],
+      "message": "decision D2 に根拠参照がない。",
+      "rationale": "DecisionAudit framework は decision_without_reference を禁止する。",
+      "suggestion": "based_on に premise または evidence を追加する。"
+    },
+    {
+      "issue_id": "ISSUE-002",
+      "category": "contradiction_candidate",
+      "severity": "warning",
+      "target_refs": [
+        {
+          "ref_id": "D1",
+          "role": "decision",
+          "step_id": "S3"
+        },
+        {
+          "ref_id": "D2",
+          "role": "decision",
+          "step_id": "S4"
+        }
+      ],
+      "message": "D1 と D2 は cost 観点で相互に緊張している。",
+      "rationale": "一方は A社採用を示し、もう一方は B社優位を示している。",
+      "suggestion": "比較観点を追加するか、どちらかの判断を pending 化する。"
+    },
+    {
+      "issue_id": "ISSUE-003",
+      "category": "mece_assessment",
+      "severity": "warning",
+      "target_refs": [
+        {
+          "ref_id": "P1",
+          "role": "problem"
+        }
+      ],
+      "message": "比較軸が cost のみで、運用負荷の網羅性が不足している可能性がある。",
+      "rationale": "pending PD1 により重要観点が未完了であることが示されている。"
+    },
+    {
+      "issue_id": "ISSUE-004",
+      "category": "semantic_hint",
+      "severity": "info",
+      "target_refs": [
+        {
+          "ref_id": "PD1",
+          "role": "pending",
+          "step_id": "S5"
+        }
+      ],
+      "message": "pending が存在するため、最終判断の確定度表示を下げるべきである。"
+    },
+    {
+      "issue_id": "ISSUE-005",
+      "category": "semantic_hint",
+      "severity": "hint",
+      "target_refs": [
+        {
+          "ref_id": "D1",
+          "role": "decision",
+          "step_id": "S3"
+        },
+        {
+          "ref_id": "D2",
+          "role": "decision",
+          "step_id": "S4"
+        }
+      ],
+      "message": "D1 と D2 は意味的に近接しているが、結論方向が異なる。",
+      "metadata": {
+        "semantic_distance": 0.18,
+        "similarity": 0.82
+      }
+    }
+  ],
+  "query_results": [
+    {
+      "query_id": "Q1",
+      "severity": "hint",
+      "items": [
+        {
+          "ref_id": "D1",
+          "score": 0.93,
+          "explanation": "P1 に直接紐づく主要 decision。"
+        },
+        {
+          "ref_id": "D2",
+          "score": 0.87,
+          "explanation": "P1 と同じ cost 観点に属する関連 decision。"
+        }
+      ]
+    }
+  ]
+}
