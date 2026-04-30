@@ -14,7 +14,7 @@
 - ツール名: llmthink-audit-dsl
 - 参照名: #llmthink-audit
 - 入力:
-	- dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する
+	- dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する。help dsl を渡すと文法ガイダンスを返す
 	- documentId: 監査レポートに使う任意の文書 ID
 
 ## ローカル開発

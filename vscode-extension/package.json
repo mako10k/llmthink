@@ -32,14 +32,14 @@
         "name": "llmthink-audit-dsl",
         "toolReferenceName": "llmthink-audit",
         "displayName": "LLMThink DSL Auditor",
-        "modelDescription": "Audit a thought-structure DSL document and return contradictions, contract violations, MECE assessments, semantic hints, and query results. Use this tool when the user provides DSL text or asks to evaluate a .dsl document.",
+        "modelDescription": "Audit a thought-structure DSL document and return contradictions, contract violations, MECE assessments, semantic hints, and query results. For grammar help, pass dslText as 'help dsl'.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
           "properties": {
             "dslText": {
               "type": "string",
-              "description": "Full DSL text to audit. If omitted, the tool audits the active editor document."
+              "description": "Full DSL text to audit. If omitted, the tool audits the active editor document. Pass 'help dsl' for syntax guidance."
             },
             "documentId": {
               "type": "string",
@@ -63,7 +63,7 @@
   },
   "scripts": {
     "build": "npm --prefix .. run build && node ./build.mjs",
-    "typecheck": "npm --prefix .. run typecheck && tsc -p tsconfig.json --noEmit",
+    "typecheck": "npm --prefix .. run build && tsc -p tsconfig.json --noEmit",
     "package:vsix": "npx @vscode/vsce package --out llmthink.vsix"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { auditText, formatAuditReportHtml, formatAuditReportText } from "llmthink";
+import { auditText, formatAuditReportHtml, formatAuditReportText, getDslSyntaxGuidanceText, isDslHelpRequest } from "llmthink";
 import type { AuditReport } from "llmthink";
 
 const AUDIT_TOOL_NAME = "llmthink-audit-dsl";
@@ -64,6 +64,11 @@ class AuditDslTool implements vscode.LanguageModelTool<AuditToolInput> {
   ): Promise<vscode.LanguageModelToolResult> {
     const providedText = options.input.dslText?.trim();
     if (providedText) {
+      if (isDslHelpRequest(providedText)) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart(getDslSyntaxGuidanceText()),
+        ]);
+      }
       const report = await runAudit(providedText, options.input.documentId?.trim() || "tool-input");
       return renderToolResult(report);
     }

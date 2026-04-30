@@ -1,12 +1,14 @@
 import { resolve } from "node:path";
 
 import { auditFile, auditText } from "./analyzer/audit.js";
+import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText } from "./presentation/report.js";
 
 interface CliOptions {
 	filePath?: string;
 	text?: string;
 	documentId?: string;
+	helpTopic?: string;
 	pretty: boolean;
 }
 
@@ -32,6 +34,10 @@ function parseArgs(argv: string[]): CliOptions {
 			options.documentId = args.shift() ?? "document";
 			continue;
 		}
+		if (arg === "--help") {
+			options.helpTopic = args[0]?.startsWith("--") ? "general" : (args.shift() ?? "general");
+			continue;
+		}
 		if (!options.filePath) {
 			options.filePath = arg;
 			continue;
@@ -46,12 +52,18 @@ function printUsage(): void {
 			"Usage:",
 			"  llmthink audit <file> [--pretty]",
 			"  llmthink audit --text \"...dsl...\" [--id document-id] [--pretty]",
+			"  llmthink audit --help dsl",
 		].join("\n") + "\n",
 	);
 }
 
 async function main(): Promise<void> {
 	const options = parseArgs(process.argv.slice(2));
+
+	if (options.helpTopic === "dsl") {
+		process.stdout.write(getDslSyntaxGuidanceText());
+		return;
+	}
 
 	if (!options.filePath && !options.text) {
 		printUsage();

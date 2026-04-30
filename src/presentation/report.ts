@@ -5,6 +5,33 @@ function issueLine(issue: AuditIssue): string {
   return `- [${issue.severity}] ${issue.category}: ${issue.message} (${refs})`;
 }
 
+function appendIssueDetails(lines: string[], issue: AuditIssue): void {
+  if (issue.rationale) {
+    lines.push(`  rationale: ${issue.rationale}`);
+  }
+  if (issue.suggestion) {
+    lines.push(`  suggestion: ${issue.suggestion}`);
+  }
+  const expectedSyntax = typeof issue.metadata?.expected_syntax === "string" ? issue.metadata.expected_syntax : undefined;
+  if (expectedSyntax) {
+    lines.push("  expected_syntax:");
+    for (const line of expectedSyntax.split("\n")) {
+      lines.push(`    ${line}`);
+    }
+  }
+  const syntaxHelp = typeof issue.metadata?.syntax_help === "string" ? issue.metadata.syntax_help : undefined;
+  if (syntaxHelp) {
+    lines.push(`  syntax_help: ${syntaxHelp}`);
+  }
+  const syntaxGuidance = typeof issue.metadata?.syntax_guidance === "string" ? issue.metadata.syntax_guidance : undefined;
+  if (syntaxGuidance) {
+    lines.push("  syntax_guidance:");
+    for (const line of syntaxGuidance.split("\n")) {
+      lines.push(`    ${line}`);
+    }
+  }
+}
+
 export function formatAuditReportText(report: AuditReport): string {
   const lines: string[] = [];
   lines.push(`document: ${report.document_id}`);
@@ -18,6 +45,7 @@ export function formatAuditReportText(report: AuditReport): string {
     lines.push("issues:");
     for (const issue of report.results) {
       lines.push(issueLine(issue));
+      appendIssueDetails(lines, issue);
     }
   }
 
@@ -45,6 +73,29 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function issueDetailsHtml(issue: AuditIssue): string {
+  const parts: string[] = [];
+  if (issue.rationale) {
+    parts.push(`<p><strong>rationale</strong>: ${escapeHtml(issue.rationale)}</p>`);
+  }
+  if (issue.suggestion) {
+    parts.push(`<p><strong>suggestion</strong>: ${escapeHtml(issue.suggestion)}</p>`);
+  }
+  const expectedSyntax = typeof issue.metadata?.expected_syntax === "string" ? issue.metadata.expected_syntax : undefined;
+  if (expectedSyntax) {
+    parts.push(`<p><strong>expected syntax</strong></p><pre><code>${escapeHtml(expectedSyntax)}</code></pre>`);
+  }
+  const syntaxHelp = typeof issue.metadata?.syntax_help === "string" ? issue.metadata.syntax_help : undefined;
+  if (syntaxHelp) {
+    parts.push(`<p><strong>syntax help</strong>: <code>${escapeHtml(syntaxHelp)}</code></p>`);
+  }
+  const syntaxGuidance = typeof issue.metadata?.syntax_guidance === "string" ? issue.metadata.syntax_guidance : undefined;
+  if (syntaxGuidance) {
+    parts.push(`<p><strong>syntax guidance</strong></p><pre><code>${escapeHtml(syntaxGuidance)}</code></pre>`);
+  }
+  return parts.join("");
+}
+
 export function formatAuditReportHtml(report: AuditReport): string {
   const issueRows = report.results
     .map(
@@ -53,7 +104,7 @@ export function formatAuditReportHtml(report: AuditReport): string {
           <td>${escapeHtml(issue.severity)}</td>
           <td>${escapeHtml(issue.category)}</td>
           <td>${escapeHtml(issue.target_refs.map((ref) => ref.ref_id).join(", "))}</td>
-          <td>${escapeHtml(issue.message)}</td>
+          <td>${escapeHtml(issue.message)}${issueDetailsHtml(issue)}</td>
         </tr>`,
     )
     .join("");
@@ -131,6 +182,12 @@ export function formatAuditReportHtml(report: AuditReport): string {
       }
       code {
         font-family: "IBM Plex Mono", "Cascadia Code", monospace;
+      }
+      pre {
+        overflow-x: auto;
+        padding: 12px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.08);
       }
       ul { margin: 0; padding-left: 20px; }
     </style>

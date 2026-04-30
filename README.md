@@ -38,6 +38,7 @@
 - npm run build
 - npm run audit -- docs/examples/contradiction-pending.dsl
 - npm run audit -- docs/examples/contradiction-pending.dsl --pretty
+- npm run audit -- --help dsl
 - npm run verify-examples
 - npm run mcp
 - npm run typecheck:extension
@@ -89,6 +90,12 @@ hostAddressLoopback=true
 
 - `related_decisions(P1)` のような query は、式そのものに加えて参照先 problem の本文も埋め込み対象に含める
 - これにより、`related_decisions(...)` という固定文字列ではなく、問題文脈に近い decision が上位に来やすくなる
+
+## DSL ヘルプ
+
+- CLI では `llmthink audit --help dsl` で全体文法を表示する
+- MCP/VSIX では既存の `text` または `dslText` に `help dsl` を渡す
+- 文法エラー時は、関連する理由、期待される構文、その場で呼べる help 導線を fatal report に含める
 
 ## ライセンス
 

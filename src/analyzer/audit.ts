@@ -3,6 +3,7 @@ import { basename } from "node:path";
 
 import type { DecisionStatement, DocumentAst, PartitionStatement, StepStatement } from "../model/ast.js";
 import type { AuditIssue, AuditReference, AuditReport, AuditSeverity, QueryResult } from "../model/diagnostics.js";
+import { createDslGuidanceReport, createParseErrorReport, isDslHelpRequest } from "../dsl/guidance.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 import { cosineSimilarity, embedTexts, type EmbeddingRequestOptions } from "../semantic/embeddings.js";
 
@@ -315,33 +316,23 @@ function auditPartition(issues: AuditIssue[], partition: PartitionStatement, doc
 }
 
 export async function auditText(input: string, documentId = "document", options?: AuditOptions): Promise<AuditReport> {
-  const document = parseDocument(input);
-  return auditDocument(document, documentId, options);
+  if (isDslHelpRequest(input)) {
+    return createDslGuidanceReport(documentId);
+  }
+
+  try {
+    const document = parseDocument(input);
+    return auditDocument(document, documentId, options);
+  } catch (error) {
+    if (error instanceof ParseError) {
+      return createParseErrorReport(error, documentId);
+    }
+    throw error;
+  }
 }
 
 export async function auditFile(filePath: string, options?: AuditOptions): Promise<AuditReport> {
   const input = readFileSync(filePath, "utf8");
   const documentId = basename(filePath).replace(/\.dsl$/, "");
-  try {
-    return await auditText(input, documentId, options);
-  } catch (error) {
-    if (error instanceof ParseError) {
-      const issue: AuditIssue = {
-        issue_id: "ISSUE-001",
-        category: "contract_violation",
-        severity: "fatal",
-        target_refs: [{ ref_id: documentId }],
-        message: error.message,
-      };
-      return {
-        engine_version: ENGINE_VERSION,
-        document_id: documentId,
-        generated_at: new Date().toISOString(),
-        summary: summarize([issue]),
-        results: [issue],
-        query_results: [],
-      };
-    }
-    throw error;
-  }
+  return auditText(input, documentId, options);
 }

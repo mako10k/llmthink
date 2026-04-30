@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 import { auditFile, auditText } from "../analyzer/audit.js";
+import { getDslSyntaxGuidanceText, isDslHelpRequest } from "../dsl/guidance.js";
 import { formatAuditReportText } from "../presentation/report.js";
 
 const server = new McpServer({
@@ -12,12 +13,23 @@ const server = new McpServer({
 
 server.tool(
   "audit_text",
-  "Audit DSL text and return a thought-audit report.",
+  "Audit DSL text and return a thought-audit report. For grammar help, pass text as 'help dsl'.",
   {
     text: z.string().min(1),
     documentId: z.string().optional(),
   },
   async ({ text, documentId }) => {
+    if (isDslHelpRequest(text)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: getDslSyntaxGuidanceText(),
+          },
+        ],
+      };
+    }
+
     const report = await auditText(text, documentId ?? "mcp-text");
     return {
       content: [
