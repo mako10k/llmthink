@@ -140,7 +140,19 @@ PendingDecl     = "pending" Identifier ":" Newline Indent StringLine Dedent ;
 
 ```ebnf
 QueryDecl       = "query" Identifier ":" Newline Indent QueryExprLine Dedent ;
-QueryExprLine   = Identifier "(" [ Identifier { "," Identifier } ] ")" Newline ;
+QueryExprLine   = DSLQLExpr Newline ;
+
+DSLQLExpr       = PipeExpr ;
+PipeExpr        = UnaryExpr { "|" UnaryExpr } ;
+UnaryExpr       = PrimaryExpr | FunctionCall | ObjectLiteral | ArrayCollect ;
+PrimaryExpr     = "." PathTail? | Literal ;
+PathTail        = { "." Identifier ["?"] | "[]" } ;
+FunctionCall    = Identifier "(" [ ArgList ] ")" | Identifier ;
+ArgList         = DSLQLExpr { "," DSLQLExpr } ;
+ObjectLiteral   = "{" ObjectField { "," ObjectField } "}" ;
+ObjectField     = Identifier ":" DSLQLExpr ;
+ArrayCollect    = "[" DSLQLExpr "]" ;
+Literal         = String | Number | Boolean | "null" ;
 ```
 
 ---
@@ -167,6 +179,5 @@ QueryExprLine   = Identifier "(" [ Identifier { "," Identifier } ] ")" Newline ;
 ## 8. 既知の未確定事項
 
 - 文字列の複数行対応
-- query 式の拡張構文
 - predicate 式のネスト優先順位
 - comments の正式導入

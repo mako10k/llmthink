@@ -21,6 +21,7 @@
 - docs/adr/0003-mece-as-structural-discipline.md
 - docs/adr/0004-unified-interface-architecture.md
 - docs/specs/ui-architecture.md
+- docs/specs/dslql.md
 - docs/examples/dsl-samples.md
 - docs/examples/audit-output-sample.json
 - schemas/audit-result.schema.json
