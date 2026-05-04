@@ -258,7 +258,7 @@ function parseDomain(
     {
       name: match[1],
       description: descriptionMatch[1],
-      span: span(startIndex + 1),
+      span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },
     startIndex + 2,
   ];
@@ -290,7 +290,11 @@ function parseProblem(
     );
   }
   return [
-    { name: match[1], text: stripQuotes(textLine), span: span(startIndex + 1) },
+    {
+      name: match[1],
+      text: stripQuotes(textLine),
+      span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+    },
     startIndex + 2,
   ];
 }
@@ -311,7 +315,11 @@ function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
   const statementLine = lines[startIndex + 1]?.trim() ?? "";
   const statement = parseStatement(lines, startIndex + 1, statementLine);
   return [
-    { id: match[1], statement, span: span(startIndex + 1) },
+    {
+      id: match[1],
+      statement,
+      span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+    },
     statement.nextIndex,
   ];
 }
@@ -391,7 +399,7 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
     role,
     id,
     text: stripQuotes(textLine),
-    span: span(startIndex + 1),
+    span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex: startIndex + 2,
   };
 }
@@ -426,7 +434,7 @@ function parseViewpoint(
     role: "viewpoint",
     id: match[1],
     axis: axisMatch[1],
-    span: span(startIndex + 1),
+    span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex: startIndex + 2,
   };
 }
@@ -478,7 +486,7 @@ function parsePartition(
     domainName: match[2],
     axis: match[3],
     members,
-    span: span(startIndex + 1),
+    span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex: index,
   };
 }
@@ -513,7 +521,7 @@ function parseDecision(
     id: parsedHeader.id,
     basedOn: parsedHeader.basedOn,
     text: stripQuotes(textLine),
-    span: span(startIndex + 1),
+    span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex: startIndex + 2,
   };
 }
@@ -541,7 +549,11 @@ function parseQuery(lines: string[], startIndex: number): [QueryDecl, number] {
     );
   }
   return [
-    { id: match[1], expression: expressionLine, span: span(startIndex + 1) },
+    {
+      id: match[1],
+      expression: expressionLine,
+      span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+    },
     startIndex + 2,
   ];
 }
