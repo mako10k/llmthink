@@ -10,6 +10,8 @@ export interface DslqlRuntime {
   functions?: Record<string, (input: DslqlValue[], args: DslqlValue[], runtime: DslqlRuntime) => DslqlValue[]>;
 }
 
+type DslqlObject = { [key: string]: DslqlValue | undefined };
+
 type ComparisonOperator = "==" | "!=" | ">" | ">=" | "<" | "<=";
 type BinaryOperator = ComparisonOperator | "and" | "or";
 
@@ -87,6 +89,11 @@ export class DslqlParseError extends Error {
   ) {
     super(message);
   }
+}
+
+interface EvaluationContext {
+  runtime: DslqlRuntime;
+  inputStream: DslqlValue[];
 }
 
 class Parser {
@@ -408,8 +415,12 @@ function asArray(value: DslqlValue | undefined): DslqlValue[] {
   return value === undefined ? [] : [value];
 }
 
-function isObject(value: DslqlValue | undefined): value is { [key: string]: DslqlValue | undefined } {
+function isObject(value: DslqlValue | undefined): value is DslqlObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isScalar(value: DslqlValue | undefined): value is DslqlLiteral {
+  return value === null || ["boolean", "number", "string"].includes(typeof value);
 }
 
 function truthy(value: DslqlValue | undefined): boolean {
@@ -438,6 +449,48 @@ function compareValues(left: DslqlValue | undefined, right: DslqlValue | undefin
 
 function firstValue(values: DslqlValue[]): DslqlValue | undefined {
   return values[0];
+}
+
+function comparableValue(value: DslqlValue | undefined): string | number {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return JSON.stringify(value);
+}
+
+function stableStringify(value: DslqlValue | undefined): string {
+  if (isScalar(value)) {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (isObject(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+      .join(",")}}`;
+  }
+  return "null";
+}
+
+function evaluateStageArgument(
+  argument: DslqlExpression | undefined,
+  context: EvaluationContext,
+): DslqlValue | undefined {
+  if (!argument) {
+    return undefined;
+  }
+  return firstValue(evaluateExpression(argument, context.runtime.root, context));
 }
 
 function evaluatePath(expression: PathExpression, current: DslqlValue): DslqlValue[] {
@@ -474,9 +527,11 @@ function evaluatePath(expression: PathExpression, current: DslqlValue): DslqlVal
 function evaluateFunction(
   expression: CallExpression,
   current: DslqlValue,
-  runtime: DslqlRuntime,
+  context: EvaluationContext,
 ): DslqlValue[] {
-  const args = expression.args.map((arg) => firstValue(evaluateExpression(arg, current, runtime)) ?? null);
+  const args = expression.args.map(
+    (arg) => firstValue(evaluateExpression(arg, current, context)) ?? null,
+  );
   switch (expression.name) {
     case "len": {
       const value = args[0];
@@ -486,16 +541,95 @@ function evaluateFunction(
       return [0];
     }
     default: {
-      const fn = runtime.functions?.[expression.name];
-      return fn ? fn([current], args, runtime) : [];
+      const fn = context.runtime.functions?.[expression.name];
+      return fn ? fn([current], args, context.runtime) : [];
     }
   }
+}
+
+function evaluatePipeStage(
+  stage: DslqlExpression,
+  stream: DslqlValue[],
+  context: EvaluationContext,
+): DslqlValue[] {
+  if (stage.type === "call") {
+    switch (stage.name) {
+      case "select": {
+        const condition = stage.args[0];
+        if (!condition) {
+          return [];
+        }
+        return stream.filter((value) =>
+          truthy(firstValue(evaluateExpression(condition, value, context))),
+        );
+      }
+      case "map": {
+        const mapper = stage.args[0];
+        if (!mapper) {
+          return stream;
+        }
+        return stream.flatMap((value) => evaluateExpression(mapper, value, context));
+      }
+      case "sort_by": {
+        const sorter = stage.args[0];
+        if (!sorter) {
+          return [...stream];
+        }
+        return [...stream].sort((left, right) => {
+          const leftValue = comparableValue(
+            firstValue(evaluateExpression(sorter, left, context)),
+          );
+          const rightValue = comparableValue(
+            firstValue(evaluateExpression(sorter, right, context)),
+          );
+          if (leftValue < rightValue) {
+            return -1;
+          }
+          if (leftValue > rightValue) {
+            return 1;
+          }
+          return 0;
+        });
+      }
+      case "limit": {
+        const value = evaluateStageArgument(stage.args[0], context);
+        return stream.slice(0, Math.max(0, Number(value ?? 0)));
+      }
+      case "unique_by": {
+        const selector = stage.args[0];
+        if (!selector) {
+          return [...new Map(stream.map((value) => [stableStringify(value), value])).values()];
+        }
+        const seen = new Set<string>();
+        const unique: DslqlValue[] = [];
+        for (const value of stream) {
+          const key = stableStringify(
+            firstValue(evaluateExpression(selector, value, context)),
+          );
+          if (seen.has(key)) {
+            continue;
+          }
+          seen.add(key);
+          unique.push(value);
+        }
+        return unique;
+      }
+      default:
+        break;
+    }
+  }
+
+  if (stage.type === "collect") {
+    return [stream.flatMap((value) => evaluateExpression(stage.expression, value, context))];
+  }
+
+  return stream.flatMap((value) => evaluateExpression(stage, value, context));
 }
 
 function evaluateExpression(
   expression: DslqlExpression,
   current: DslqlValue,
-  runtime: DslqlRuntime,
+  context: EvaluationContext,
 ): DslqlValue[] {
   switch (expression.type) {
     case "literal":
@@ -503,45 +637,39 @@ function evaluateExpression(
     case "path":
       return expression.segments.length === 0 ? [current] : evaluatePath(expression, current);
     case "call":
-      return evaluateFunction(expression, current, runtime);
-    case "object":
-      return [Object.fromEntries(expression.fields.map((field) => [field.key, firstValue(evaluateExpression(field.value, current, runtime)) ?? null]))];
+      return evaluateFunction(expression, current, context);
+    case "object": {
+      const object: DslqlObject = Object.fromEntries(
+        expression.fields.map((field) => [
+          field.key,
+          firstValue(evaluateExpression(field.value, current, context)) ?? null,
+        ]),
+      );
+      return [object];
+    }
     case "collect":
-      return [evaluateExpression(expression.expression, current, runtime)];
+      return [evaluateExpression(expression.expression, current, context)];
     case "unary":
-      return [!truthy(firstValue(evaluateExpression(expression.operand, current, runtime)))];
+      return [!truthy(firstValue(evaluateExpression(expression.operand, current, context)))];
     case "binary": {
       if (expression.operator === "and") {
-        const left = firstValue(evaluateExpression(expression.left, current, runtime));
-        return [truthy(left) && truthy(firstValue(evaluateExpression(expression.right, current, runtime)))];
+        const left = firstValue(evaluateExpression(expression.left, current, context));
+        return [truthy(left) && truthy(firstValue(evaluateExpression(expression.right, current, context)))];
       }
       if (expression.operator === "or") {
-        const left = firstValue(evaluateExpression(expression.left, current, runtime));
-        return [truthy(left) || truthy(firstValue(evaluateExpression(expression.right, current, runtime)))];
+        const left = firstValue(evaluateExpression(expression.left, current, context));
+        return [truthy(left) || truthy(firstValue(evaluateExpression(expression.right, current, context)))];
       }
       return [compareValues(
-        firstValue(evaluateExpression(expression.left, current, runtime)),
-        firstValue(evaluateExpression(expression.right, current, runtime)),
+        firstValue(evaluateExpression(expression.left, current, context)),
+        firstValue(evaluateExpression(expression.right, current, context)),
         expression.operator,
       )];
     }
     case "pipe": {
-      let stream: DslqlValue[] = [current];
+      let stream = context.inputStream.length > 0 ? [...context.inputStream] : [current];
       for (const stage of expression.stages) {
-        if (stage.type === "call" && stage.name === "select") {
-          const condition = stage.args[0];
-          if (!condition) {
-            stream = [];
-            continue;
-          }
-          stream = stream.filter((value) => truthy(firstValue(evaluateExpression(condition, value, runtime))));
-          continue;
-        }
-        const next: DslqlValue[] = [];
-        for (const value of stream) {
-          next.push(...evaluateExpression(stage, value, runtime));
-        }
-        stream = next;
+        stream = evaluatePipeStage(stage, stream, { ...context, inputStream: stream });
       }
       return stream;
     }
@@ -604,5 +732,8 @@ export function collectDslqlReferenceIds(input: string): string[] {
 
 export function evaluateDslqlExpression(input: string, runtime: DslqlRuntime): DslqlValue[] {
   const expression = parseDslqlExpression(input);
-  return evaluateExpression(expression, runtime.root, runtime);
+  return evaluateExpression(expression, runtime.root, {
+    runtime,
+    inputStream: [runtime.root],
+  });
 }
