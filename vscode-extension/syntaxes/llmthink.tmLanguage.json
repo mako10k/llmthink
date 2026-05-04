@@ -1,0 +1,75 @@
+{
+  "scopeName": "source.llmthink",
+  "name": "LLMThink DSL",
+  "patterns": [
+    { "include": "#keywords" },
+    { "include": "#declHeaders" },
+    { "include": "#operators" },
+    { "include": "#strings" }
+  ],
+  "repository": {
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.llmthink",
+          "match": "\\b(framework|domain|description|problem|step|premise|viewpoint|axis|partition|on|evidence|decision|based_on|pending|query|requires|forbids|warns)\\b"
+        }
+      ]
+    },
+    "declHeaders": {
+      "patterns": [
+        {
+          "name": "entity.name.type.framework.llmthink",
+          "match": "(?<=\\bframework\\s)[A-Za-z][A-Za-z0-9_-]*"
+        },
+        {
+          "name": "entity.name.type.domain.llmthink",
+          "match": "(?<=\\bdomain\\s)[A-Za-z][A-Za-z0-9_-]*(?=:)"
+        },
+        {
+          "name": "entity.name.type.problem.llmthink",
+          "match": "(?<=\\bproblem\\s)[A-Za-z][A-Za-z0-9_-]*(?=:)"
+        },
+        {
+          "name": "entity.name.function.step.llmthink",
+          "match": "(?<=\\bstep\\s)[A-Za-z][A-Za-z0-9_-]*(?=:)"
+        },
+        {
+          "name": "entity.name.function.statement.llmthink",
+          "match": "(?<=\\b(premise|viewpoint|partition|evidence|decision|pending)\\s)[A-Za-z][A-Za-z0-9_-]*"
+        },
+        {
+          "name": "entity.name.function.query.llmthink",
+          "match": "(?<=\\bquery\\s)[A-Za-z][A-Za-z0-9_-]*(?=:)"
+        },
+        {
+          "name": "variable.parameter.partition.llmthink",
+          "match": "^\\s*[A-Za-z][A-Za-z0-9_-]*(?=\\s*:=)"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.llmthink",
+          "match": ":="
+        },
+        {
+          "name": "punctuation.separator.delimiter.llmthink",
+          "match": ":|,"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.llmthink",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.llmthink",
+          "match": "\\\\."
+        }
+      ]
+    }
+  }
+}

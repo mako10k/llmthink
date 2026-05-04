@@ -16,6 +16,8 @@
   },
   "files": [
     "dist",
+    "syntaxes",
+    "language-configuration.json",
     "README.md",
     "LICENSE"
   ],
@@ -25,8 +27,32 @@
   "categories": [
     "Other"
   ],
+  "activationEvents": [
+    "onLanguage:llmthink",
+    "onCommand:llmthink.lsp.restart"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "llmthink",
+        "aliases": [
+          "LLMThink DSL",
+          "llmthink"
+        ],
+        "extensions": [
+          ".dsl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "llmthink",
+        "scopeName": "source.llmthink",
+        "path": "./syntaxes/llmthink.tmLanguage.json"
+      }
+    ],
     "languageModelTools": [
       {
         "name": "llmthink-dsl",
@@ -102,8 +128,22 @@
       {
         "command": "llmthink.thoughtList",
         "title": "LLMThink: Thought List"
+      },
+      {
+        "command": "llmthink.lsp.restart",
+        "title": "LLMThink: Restart Language Server"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "LLMThink",
+      "properties": {
+        "llmthink.languageServer.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス。未指定時は workspace の build/llmthink-lsp.js、次に PATH 上の llmthink-lsp を使います。"
+        }
+      }
+    }
   },
   "scripts": {
     "build": "npm --prefix .. run build && node ./build.mjs",
@@ -116,6 +156,7 @@
     "@types/vscode": "^1.99.0",
     "esbuild": "^0.25.11",
     "llmthink": "file:..",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vscode-languageclient": "^9.0.1"
   }
 }

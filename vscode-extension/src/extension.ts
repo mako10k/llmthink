@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { restartLspClient, startLspClient, stopLspClient } from "./lsp";
 import {
   auditDslText,
   addThoughtReflection,
@@ -409,6 +410,14 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
 
+  void startLspClient(context, outputChannel).catch((error: unknown) => {
+    outputChannel.appendLine(`Failed to start LLMThink language server: ${String(error)}`);
+    outputChannel.show(true);
+    void vscode.window.showWarningMessage(
+      "LLMThink language server を開始できませんでした。build/llmthink-lsp.js または PATH 上の llmthink-lsp を確認してください。",
+    );
+  });
+
   context.subscriptions.push(
     outputChannel,
     vscode.lm.registerTool(DSL_TOOL_NAME, new DslTool()),
@@ -469,9 +478,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llmthink.thoughtList", async () => {
       await listThoughtsInOutput(outputChannel);
     }),
+    vscode.commands.registerCommand("llmthink.lsp.restart", async () => {
+      await restartLspClient(context, outputChannel);
+      vscode.window.showInformationMessage(
+        "LLMThink language server を再起動しました。",
+      );
+    }),
   );
 }
 
-export function deactivate(): void {
-  // no-op
+export async function deactivate(): Promise<void> {
+  await stopLspClient();
 }

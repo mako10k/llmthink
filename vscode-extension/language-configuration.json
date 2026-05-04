@@ -1,0 +1,23 @@
+{
+  "brackets": [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"]
+  ],
+  "autoClosingPairs": [
+    { "open": "(", "close": ")" },
+    { "open": "[", "close": "]" },
+    { "open": "{", "close": "}" },
+    { "open": "\"", "close": "\"", "notIn": ["string"] }
+  ],
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*(framework\\s+[A-Za-z][A-Za-z0-9_-]*:|domain\\s+[A-Za-z][A-Za-z0-9_-]*:|problem\\s+[A-Za-z][A-Za-z0-9_-]*:|step\\s+[A-Za-z][A-Za-z0-9_-]*:|query\\s+[A-Za-z][A-Za-z0-9_-]*:|premise\\s+[A-Za-z][A-Za-z0-9_-]*:|viewpoint\\s+[A-Za-z][A-Za-z0-9_-]*:|partition\\s+[A-Za-z][A-Za-z0-9_-]*\\s+on\\s+[A-Za-z][A-Za-z0-9_-]*\\s+axis\\s+[A-Za-z][A-Za-z0-9_-]*:|evidence\\s+[A-Za-z][A-Za-z0-9_-]*:|decision\\s+[A-Za-z][A-Za-z0-9_-]*(\\s+based_on\\s+.+)?:|pending\\s+[A-Za-z][A-Za-z0-9_-]*:)$",
+    "decreaseIndentPattern": "^\\s*$"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*(framework\\s+[A-Za-z][A-Za-z0-9_-]*:|domain\\s+[A-Za-z][A-Za-z0-9_-]*:|problem\\s+[A-Za-z][A-Za-z0-9_-]*:|step\\s+[A-Za-z][A-Za-z0-9_-]*:|query\\s+[A-Za-z][A-Za-z0-9_-]*:|premise\\s+[A-Za-z][A-Za-z0-9_-]*:|viewpoint\\s+[A-Za-z][A-Za-z0-9_-]*:|partition\\s+[A-Za-z][A-Za-z0-9_-]*\\s+on\\s+[A-Za-z][A-Za-z0-9_-]*\\s+axis\\s+[A-Za-z][A-Za-z0-9_-]*:|evidence\\s+[A-Za-z][A-Za-z0-9_-]*:|decision\\s+[A-Za-z][A-Za-z0-9_-]*(\\s+based_on\\s+.+)?:|pending\\s+[A-Za-z][A-Za-z0-9_-]*:)$",
+      "action": { "indentAction": "indent" }
+    }
+  ]
+}
