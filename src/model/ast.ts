@@ -14,6 +14,7 @@ export interface SourceSpan {
 export interface FrameworkRule {
   kind: "requires" | "forbids" | "warns";
   value: string;
+  span: SourceSpan;
 }
 
 export interface FrameworkDecl {

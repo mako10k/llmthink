@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import {
+  CodeAction,
+  CodeActionKind,
   CompletionItemKind,
   DocumentHighlight,
   DocumentHighlightKind,
@@ -16,27 +18,30 @@ import {
   TextDocumentSyncKind,
   createConnection,
 } from "vscode-languageserver/node.js";
+import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   DocumentSymbol,
   Position,
   Range,
   TextEdit,
+  WorkspaceEdit,
 } from "vscode-languageserver-types";
 import { auditDslText } from "../analyzer/audit.js";
 import { formatDslText } from "../dsl/format.js";
+import type { AuditIssue } from "../model/diagnostics.js";
+import type { DocumentAst, SourceSpan, StepDecl } from "../model/ast.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
-import type {
-  DocumentAst,
-  SourceSpan,
-  StepDecl,
-} from "../model/ast.js";
-import { TextDocuments } from "vscode-languageserver";
+
+interface IndexedLocation {
+  name: string;
+  range: Range;
+}
 
 interface SymbolIndex {
   definitions: Map<string, Location>;
   references: Map<string, Location[]>;
-  semanticLocations: Array<{ name: string; range: Range }>;
+  semanticLocations: IndexedLocation[];
 }
 
 const connection = createConnection(ProposedFeatures.all);
@@ -63,6 +68,11 @@ const KEYWORD_DOCS: Record<string, string> = {
   warns: "framework が注意喚起する要素を表します。",
 };
 
+const QUERY_FUNCTION_DOCS: Record<string, string> = {
+  related_decisions:
+    "problem を引数に取り、関連する decision 候補を返す query 関数です。",
+};
+
 function toRange(span: SourceSpan, endColumn?: number): Range {
   return {
     start: { line: span.line - 1, character: span.column - 1 },
@@ -71,11 +81,8 @@ function toRange(span: SourceSpan, endColumn?: number): Range {
 }
 
 function fullDocumentRange(document: TextDocument): Range {
-  const lastLine = document.lineCount - 1;
-  const lastLineText = document.getText({
-    start: Position.create(lastLine, 0),
-    end: Position.create(lastLine + 1, 0),
-  });
+  const lastLine = Math.max(document.lineCount - 1, 0);
+  const lastLineText = lineTextAt(document, lastLine);
   return {
     start: Position.create(0, 0),
     end: Position.create(lastLine, lastLineText.length),
@@ -111,6 +118,26 @@ function identifierRangeOnLine(
   );
 }
 
+function tokenizeRuleValue(value: string): string[] {
+  return value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token && token !== "and" && token !== "or");
+}
+
+function extractQueryArguments(expression: string): string[] {
+  const openParen = expression.indexOf("(");
+  const closeParen = expression.lastIndexOf(")");
+  if (openParen === -1 || closeParen === -1 || closeParen <= openParen) {
+    return [];
+  }
+  return expression
+    .slice(openParen + 1, closeParen)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function createSymbolIndex(): SymbolIndex {
   return {
     definitions: new Map<string, Location>(),
@@ -119,11 +146,7 @@ function createSymbolIndex(): SymbolIndex {
   };
 }
 
-function addSemanticLocation(
-  index: SymbolIndex,
-  name: string,
-  range: Range,
-): void {
+function addSemanticLocation(index: SymbolIndex, name: string, range: Range): void {
   index.semanticLocations.push({ name, range });
 }
 
@@ -146,12 +169,12 @@ function addReference(
   name: string,
   range: Range | undefined,
 ): void {
-  if (!range) {
+  if (!range || !index.definitions.has(name)) {
     return;
   }
-  const locations = index.references.get(name) ?? [];
-  locations.push(Location.create(uri, range));
-  index.references.set(name, locations);
+  const references = index.references.get(name) ?? [];
+  references.push(Location.create(uri, range));
+  index.references.set(name, references);
   addSemanticLocation(index, name, range);
 }
 
@@ -170,77 +193,24 @@ function addDefinitionAtSpan(
   );
 }
 
-function addDecisionReferences(
+function addReferencesFromLine(
   index: SymbolIndex,
   document: TextDocument,
-  step: StepDecl,
+  line: number,
+  identifiers: string[],
 ): void {
-  if (step.statement.role !== "decision") {
-    return;
-  }
-
-  const line = step.statement.span.line - 1;
   const text = lineTextAt(document, line);
   let cursor = 0;
-  for (const reference of step.statement.basedOn) {
-    const range = identifierRangeOnLine(text, line, reference, cursor);
-    addReference(index, document.uri, reference, range);
+  for (const identifier of identifiers) {
+    const range = identifierRangeOnLine(text, line, identifier, cursor);
+    addReference(index, document.uri, identifier, range);
     if (range) {
       cursor = range.end.character;
     }
   }
 }
 
-function addPartitionReferences(
-  index: SymbolIndex,
-  document: TextDocument,
-  step: StepDecl,
-): void {
-  if (step.statement.role !== "partition") {
-    return;
-  }
-
-  const line = step.statement.span.line - 1;
-  const text = lineTextAt(document, line);
-  addReference(
-    index,
-    document.uri,
-    step.statement.domainName,
-    identifierRangeOnLine(text, line, step.statement.domainName),
-  );
-}
-
-function addQueryReferences(
-  index: SymbolIndex,
-  document: TextDocument,
-  ast: DocumentAst,
-): void {
-  for (const query of ast.queries) {
-    const line = query.span.line;
-    const text = lineTextAt(document, line).trim();
-    const openParen = text.indexOf("(");
-    const closeParen = text.lastIndexOf(")");
-    if (openParen === -1 || closeParen === -1 || closeParen <= openParen) {
-      continue;
-    }
-    const argsText = text.slice(openParen + 1, closeParen);
-    const argsOffset = text.indexOf(argsText, openParen + 1);
-    let cursor = argsOffset;
-    for (const match of argsText.matchAll(/[A-Za-z][A-Za-z0-9_-]*/g)) {
-      const identifier = match[0];
-      const range = identifierRangeOnLine(text, line, identifier, cursor);
-      addReference(index, document.uri, identifier, range);
-      if (range) {
-        cursor = range.end.character;
-      }
-    }
-  }
-}
-
-function buildSymbolIndex(
-  document: TextDocument,
-  ast: DocumentAst,
-): SymbolIndex {
+function buildSymbolIndex(document: TextDocument, ast: DocumentAst): SymbolIndex {
   const index = createSymbolIndex();
 
   if (ast.framework) {
@@ -255,13 +225,56 @@ function buildSymbolIndex(
   for (const step of ast.steps) {
     addDefinitionAtSpan(index, document, step.id, step.span);
     addDefinitionAtSpan(index, document, step.statement.id, step.statement.span);
-    addDecisionReferences(index, document, step);
-    addPartitionReferences(index, document, step);
   }
   for (const query of ast.queries) {
     addDefinitionAtSpan(index, document, query.id, query.span);
   }
-  addQueryReferences(index, document, ast);
+
+  if (ast.framework) {
+    for (const rule of ast.framework.rules) {
+      addReferencesFromLine(
+        index,
+        document,
+        rule.span.line - 1,
+        tokenizeRuleValue(rule.value),
+      );
+    }
+  }
+
+  for (const step of ast.steps) {
+    if (step.statement.role === "decision") {
+      addReferencesFromLine(
+        index,
+        document,
+        step.statement.span.line - 1,
+        step.statement.basedOn,
+      );
+      continue;
+    }
+
+    if (step.statement.role === "partition") {
+      addReferencesFromLine(
+        index,
+        document,
+        step.statement.span.line - 1,
+        [step.statement.domainName, step.statement.axis],
+      );
+      continue;
+    }
+
+    if (step.statement.role === "viewpoint") {
+      addReferencesFromLine(
+        index,
+        document,
+        step.statement.span.line,
+        [step.statement.axis],
+      );
+    }
+  }
+
+  for (const query of ast.queries) {
+    addReferencesFromLine(index, document, query.span.line, extractQueryArguments(lineTextAt(document, query.span.line).trim()));
+  }
 
   return index;
 }
@@ -285,23 +298,17 @@ function positionInRange(position: Position, range: Range): boolean {
   return true;
 }
 
-function symbolAtPosition(
-  index: SymbolIndex,
-  position: Position,
-): string | undefined {
+function symbolAtPosition(index: SymbolIndex, position: Position): string | undefined {
   return index.semanticLocations.find(({ range }) => positionInRange(position, range))
     ?.name;
 }
 
-function parseIndexedDocument(document: TextDocument):
-  | { ast: DocumentAst; index: SymbolIndex }
-  | undefined {
+function parseIndexedDocument(
+  document: TextDocument,
+): { ast: DocumentAst; index: SymbolIndex } | undefined {
   try {
     const ast = parseDocument(document.getText());
-    return {
-      ast,
-      index: buildSymbolIndex(document, ast),
-    };
+    return { ast, index: buildSymbolIndex(document, ast) };
   } catch {
     return undefined;
   }
@@ -325,7 +332,6 @@ function severityToDiagnostic(
 
 function buildReferenceRanges(document: DocumentAst): Map<string, Range> {
   const ranges = new Map<string, Range>();
-
   const add = (key: string, span: SourceSpan, label: string) => {
     ranges.set(key, toRange(span, span.column - 1 + label.length));
   };
@@ -351,12 +357,11 @@ function buildReferenceRanges(document: DocumentAst): Map<string, Range> {
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-  const source = textDocument.getText();
   const diagnostics = [];
 
   try {
-    const ast = parseDocument(source);
-    const report = await auditDslText(source, textDocument.uri, {
+    const ast = parseDocument(textDocument.getText());
+    const report = await auditDslText(textDocument.getText(), textDocument.uri, {
       embeddings: { provider: "none" },
     });
     const referenceRanges = buildReferenceRanges(ast);
@@ -364,10 +369,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
       const line = Number(issue.metadata?.line);
       const parseRange =
         Number.isFinite(line) && line > 0
-          ? {
-              start: Position.create(line - 1, 0),
-              end: Position.create(line - 1, Number.MAX_SAFE_INTEGER),
-            }
+          ? Range.create(
+              Position.create(line - 1, 0),
+              Position.create(line - 1, lineTextAt(textDocument, line - 1).length),
+            )
           : undefined;
       diagnostics.push({
         range:
@@ -385,10 +390,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   } catch (error) {
     if (error instanceof ParseError) {
       diagnostics.push({
-        range: {
-          start: Position.create(error.line - 1, 0),
-          end: Position.create(error.line - 1, Number.MAX_SAFE_INTEGER),
-        },
+        range: Range.create(
+          Position.create(error.line - 1, 0),
+          Position.create(error.line - 1, lineTextAt(textDocument, error.line - 1).length),
+        ),
         severity: DiagnosticSeverity.Error,
         source: "llmthink",
         message: error.message,
@@ -402,10 +407,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 }
 
 function symbolRange(span: SourceSpan, name: string): Range {
-  return {
-    start: Position.create(span.line - 1, 0),
-    end: Position.create(span.line - 1, name.length + 20),
-  };
+  return Range.create(
+    Position.create(span.line - 1, 0),
+    Position.create(span.line - 1, name.length + 20),
+  );
 }
 
 function makeSymbol(
@@ -415,13 +420,7 @@ function makeSymbol(
   detail?: string,
 ): DocumentSymbol {
   const range = symbolRange(span, name);
-  return {
-    name,
-    detail,
-    kind,
-    range,
-    selectionRange: range,
-  };
+  return { name, detail, kind, range, selectionRange: range };
 }
 
 function stepBodySymbol(step: StepDecl): DocumentSymbol {
@@ -440,12 +439,7 @@ function stepBodySymbol(step: StepDecl): DocumentSymbol {
         return SymbolKind.Interface;
     }
   })();
-  return makeSymbol(
-    step.statement.id,
-    kind,
-    step.statement.span,
-    step.statement.role,
-  );
+  return makeSymbol(step.statement.id, kind, step.statement.span, step.statement.role);
 }
 
 function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
@@ -459,19 +453,19 @@ function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
       "framework",
     );
     framework.children = document.framework.rules.map((rule) =>
-      makeSymbol(`${rule.kind} ${rule.value}`, SymbolKind.Property, document.framework!.span),
+      makeSymbol(`${rule.kind} ${rule.value}`, SymbolKind.Property, rule.span),
     );
     symbols.push(framework);
   }
 
   symbols.push(
     ...document.domains.map((domain) =>
-      makeSymbol(domain.name, SymbolKind.Namespace, domain.span),
+      makeSymbol(domain.name, SymbolKind.Namespace, domain.span, "domain"),
     ),
   );
   symbols.push(
     ...document.problems.map((problem) =>
-      makeSymbol(problem.name, SymbolKind.Object, problem.span),
+      makeSymbol(problem.name, SymbolKind.Object, problem.span, "problem"),
     ),
   );
   symbols.push(
@@ -482,18 +476,18 @@ function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
   );
   symbols.push(
     ...document.queries.map((query) =>
-      makeSymbol(query.id, SymbolKind.Function, query.span),
+      makeSymbol(query.id, SymbolKind.Function, query.span, "query"),
     ),
   );
 
   return symbols;
 }
 
-function getWordAtPosition(document: TextDocument, position: Position): string | undefined {
-  const lineText = document.getText({
-    start: Position.create(position.line, 0),
-    end: Position.create(position.line, Number.MAX_SAFE_INTEGER),
-  });
+function getWordAtPosition(
+  document: TextDocument,
+  position: Position,
+): string | undefined {
+  const lineText = lineTextAt(document, position.line);
   const matches = [...lineText.matchAll(/[A-Za-z][A-Za-z0-9_-]*/g)];
   return matches.find((match) => {
     const start = match.index ?? 0;
@@ -507,7 +501,7 @@ function buildHover(document: TextDocument, position: Position): Hover | null {
   if (!word) {
     return null;
   }
-  const description = KEYWORD_DOCS[word];
+  const description = KEYWORD_DOCS[word] ?? QUERY_FUNCTION_DOCS[word];
   if (!description) {
     return null;
   }
@@ -519,10 +513,187 @@ function buildHover(document: TextDocument, position: Position): Hover | null {
   };
 }
 
-connection.onInitialize((params: InitializeParams): InitializeResult => {
-  hasConfigurationCapability = Boolean(
-    params.capabilities.workspace?.configuration,
+function buildRenameEdit(document: TextDocument, name: string, newName: string): WorkspaceEdit {
+  const parsed = parseIndexedDocument(document);
+  const edits: TextEdit[] = [];
+  if (!parsed) {
+    return { changes: { [document.uri]: edits } };
+  }
+
+  const definition = parsed.index.definitions.get(name);
+  if (definition) {
+    edits.push(TextEdit.replace(definition.range, newName));
+  }
+  for (const reference of parsed.index.references.get(name) ?? []) {
+    edits.push(TextEdit.replace(reference.range, newName));
+  }
+
+  return {
+    changes: {
+      [document.uri]: edits,
+    },
+  };
+}
+
+function nextStepId(ast: DocumentAst): string {
+  const maxStep = ast.steps.reduce((currentMax, step) => {
+    const match = /^S(\d+)$/.exec(step.id);
+    if (!match) {
+      return currentMax;
+    }
+    return Math.max(currentMax, Number(match[1]));
+  }, 0);
+  return `S${maxStep + 1}`;
+}
+
+function inferStatementBlock(identifier: string): string {
+  if (identifier.startsWith("PR")) {
+    return `premise ${identifier}:\n    \"TODO: add premise\"`;
+  }
+  if (identifier.startsWith("EV")) {
+    return `evidence ${identifier}:\n    \"TODO: add evidence\"`;
+  }
+  if (identifier.startsWith("PD")) {
+    return `pending ${identifier}:\n    \"TODO: add pending item\"`;
+  }
+  if (identifier.startsWith("D")) {
+    return `decision ${identifier} based_on TODO:\n    \"TODO: add decision\"`;
+  }
+  return `evidence ${identifier}:\n    \"TODO: define ${identifier}\"`;
+}
+
+function formatDocumentAction(document: TextDocument): CodeAction | undefined {
+  const formatted = formatDslText(document.getText());
+  if (formatted === document.getText()) {
+    return undefined;
+  }
+  return {
+    title: "Format document",
+    kind: CodeActionKind.Source,
+    edit: {
+      changes: {
+        [document.uri]: [TextEdit.replace(fullDocumentRange(document), formatted)],
+      },
+    },
+  };
+}
+
+function missingBasedOnAction(
+  document: TextDocument,
+  ast: DocumentAst,
+  issue: AuditIssue,
+): CodeAction | undefined {
+  if (!issue.message.includes("根拠参照がない")) {
+    return undefined;
+  }
+
+  const candidateIds = ast.steps
+    .filter(
+      (step) =>
+        step.statement.role === "premise" || step.statement.role === "evidence",
+    )
+    .map((step) => step.statement.id)
+    .slice(0, 2);
+  if (candidateIds.length === 0) {
+    return undefined;
+  }
+
+  const line = issue.target_refs[0]?.step_id
+    ? ast.steps.find((step) => step.id === issue.target_refs[0]?.step_id)?.statement.span.line
+    : undefined;
+  if (!line) {
+    return undefined;
+  }
+  const lineIndex = line - 1;
+  const originalLine = lineTextAt(document, lineIndex);
+  const updatedLine = originalLine.replace(
+    /:\s*$/,
+    ` based_on ${candidateIds.join(", ")}:`,
   );
+  if (updatedLine === originalLine) {
+    return undefined;
+  }
+
+  return {
+    title: `Add based_on ${candidateIds.join(", ")}`,
+    kind: CodeActionKind.QuickFix,
+    diagnostics: [
+      {
+        range: Range.create(Position.create(lineIndex, 0), Position.create(lineIndex, originalLine.length)),
+        message: issue.message,
+      },
+    ],
+    edit: {
+      changes: {
+        [document.uri]: [
+          TextEdit.replace(
+            Range.create(
+              Position.create(lineIndex, 0),
+              Position.create(lineIndex, originalLine.length),
+            ),
+            updatedLine,
+          ),
+        ],
+      },
+    },
+  };
+}
+
+function missingReferenceAction(
+  document: TextDocument,
+  ast: DocumentAst,
+  issue: AuditIssue,
+): CodeAction | undefined {
+  const match = issue.message.match(/参照\s+([A-Za-z][A-Za-z0-9_-]*)\s+を解決できない/);
+  if (!match) {
+    return undefined;
+  }
+
+  const identifier = match[1];
+  const stepBlock = `\n\nstep ${nextStepId(ast)}:\n  ${inferStatementBlock(identifier)}\n`;
+  const endLine = Math.max(document.lineCount - 1, 0);
+  const endCharacter = lineTextAt(document, endLine).length;
+
+  return {
+    title: `Create missing definition for ${identifier}`,
+    kind: CodeActionKind.QuickFix,
+    edit: {
+      changes: {
+        [document.uri]: [
+          TextEdit.insert(Position.create(endLine, endCharacter), stepBlock),
+        ],
+      },
+    },
+  };
+}
+
+function buildCodeActions(
+  document: TextDocument,
+  ast: DocumentAst,
+  issues: AuditIssue[],
+): CodeAction[] {
+  const actions: CodeAction[] = [];
+  const formatAction = formatDocumentAction(document);
+  if (formatAction) {
+    actions.push(formatAction);
+  }
+
+  for (const issue of issues) {
+    const basedOnAction = missingBasedOnAction(document, ast, issue);
+    if (basedOnAction) {
+      actions.push(basedOnAction);
+    }
+    const referenceAction = missingReferenceAction(document, ast, issue);
+    if (referenceAction) {
+      actions.push(referenceAction);
+    }
+  }
+
+  return actions;
+}
+
+connection.onInitialize((params: InitializeParams): InitializeResult => {
+  hasConfigurationCapability = Boolean(params.capabilities.workspace?.configuration);
 
   return {
     capabilities: {
@@ -531,11 +702,11 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       documentSymbolProvider: true,
       definitionProvider: true,
       referencesProvider: true,
+      renameProvider: { prepareProvider: true },
       documentHighlightProvider: true,
+      codeActionProvider: true,
       hoverProvider: true,
-      completionProvider: {
-        resolveProvider: false,
-      },
+      completionProvider: { resolveProvider: false },
     },
   };
 });
@@ -563,10 +734,7 @@ connection.onDocumentFormatting((params): TextEdit[] => {
   if (!document) {
     return [];
   }
-
-  return [
-    TextEdit.replace(fullDocumentRange(document), formatDslText(document.getText())),
-  ];
+  return [TextEdit.replace(fullDocumentRange(document), formatDslText(document.getText()))];
 });
 
 connection.onDocumentSymbol((params) => {
@@ -575,10 +743,7 @@ connection.onDocumentSymbol((params) => {
     return [];
   }
   const parsed = parseIndexedDocument(document);
-  if (!parsed) {
-    return [];
-  }
-  return buildDocumentSymbols(parsed.ast);
+  return parsed ? buildDocumentSymbols(parsed.ast) : [];
 });
 
 connection.onDefinition((params) => {
@@ -590,12 +755,8 @@ connection.onDefinition((params) => {
   if (!parsed) {
     return null;
   }
-
   const name = symbolAtPosition(parsed.index, params.position);
-  if (!name) {
-    return null;
-  }
-  return parsed.index.definitions.get(name) ?? null;
+  return name ? parsed.index.definitions.get(name) ?? null : null;
 });
 
 connection.onReferences((params) => {
@@ -607,17 +768,48 @@ connection.onReferences((params) => {
   if (!parsed) {
     return [];
   }
-
   const name = symbolAtPosition(parsed.index, params.position);
   if (!name) {
     return [];
   }
-
   const references = parsed.index.references.get(name) ?? [];
   const definition = parsed.index.definitions.get(name);
   return params.context.includeDeclaration && definition
     ? [definition, ...references]
     : references;
+});
+
+connection.onPrepareRename((params) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return null;
+  }
+  const parsed = parseIndexedDocument(document);
+  if (!parsed) {
+    return null;
+  }
+  const name = symbolAtPosition(parsed.index, params.position);
+  if (!name) {
+    return null;
+  }
+  const definition = parsed.index.definitions.get(name);
+  return definition ? definition.range : null;
+});
+
+connection.onRenameRequest((params) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return null;
+  }
+  const parsed = parseIndexedDocument(document);
+  if (!parsed) {
+    return null;
+  }
+  const name = symbolAtPosition(parsed.index, params.position);
+  if (!name) {
+    return null;
+  }
+  return buildRenameEdit(document, name, params.newName);
 });
 
 connection.onDocumentHighlight((params): DocumentHighlight[] => {
@@ -629,12 +821,10 @@ connection.onDocumentHighlight((params): DocumentHighlight[] => {
   if (!parsed) {
     return [];
   }
-
   const name = symbolAtPosition(parsed.index, params.position);
   if (!name) {
     return [];
   }
-
   const definition = parsed.index.definitions.get(name);
   const references = parsed.index.references.get(name) ?? [];
   const highlights: DocumentHighlight[] = references.map((reference) => ({
@@ -650,20 +840,39 @@ connection.onDocumentHighlight((params): DocumentHighlight[] => {
   return highlights;
 });
 
-connection.onHover((params) => {
+connection.onCodeAction(async (params) => {
   const document = documents.get(params.textDocument.uri);
   if (!document) {
-    return null;
+    return [];
   }
-  return buildHover(document, params.position);
+  try {
+    const ast = parseDocument(document.getText());
+    const report = await auditDslText(document.getText(), document.uri, {
+      embeddings: { provider: "none" },
+    });
+    return buildCodeActions(document, ast, report.results);
+  } catch {
+    return [];
+  }
+});
+
+connection.onHover((params) => {
+  const document = documents.get(params.textDocument.uri);
+  return document ? buildHover(document, params.position) : null;
 });
 
 connection.onCompletion(() => {
-  return Object.entries(KEYWORD_DOCS).map(([label, documentation]) => ({
+  const keywordItems = Object.entries(KEYWORD_DOCS).map(([label, documentation]) => ({
     label,
     kind: CompletionItemKind.Keyword,
     documentation,
   }));
+  const queryItems = Object.entries(QUERY_FUNCTION_DOCS).map(([label, documentation]) => ({
+    label,
+    kind: CompletionItemKind.Function,
+    documentation,
+  }));
+  return [...keywordItems, ...queryItems];
 });
 
 documents.listen(connection);

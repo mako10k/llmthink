@@ -88,7 +88,7 @@ function parseFrameworkRuleLine(line: string): FrameworkRule | undefined {
   if (!value || !["requires", "forbids", "warns"].includes(kind)) {
     return undefined;
   }
-  return { kind: kind as FrameworkRule["kind"], value };
+  return { kind: kind as FrameworkRule["kind"], value, span: span(0) };
 }
 
 export class ParseError extends Error {
@@ -185,9 +185,7 @@ function parseFramework(
       if (!parsedRule) {
         throw new ParseError("Invalid framework rule", index + 1);
       }
-      rules.push({ ...parsedRule, span: span(index + 1) } as FrameworkRule & {
-        span: SourceSpan;
-      });
+      rules.push({ ...parsedRule, span: span(index + 1) });
       index += 1;
     }
   }
@@ -195,7 +193,7 @@ function parseFramework(
   return [
     {
       name: match[1],
-      rules: rules.map(({ kind, value }) => ({ kind, value })),
+      rules,
       span: span(startIndex + 1),
     },
     index,
