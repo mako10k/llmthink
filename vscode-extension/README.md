@@ -7,6 +7,14 @@
 開発運用ルールは repo の `.github/copilot-instructions.md` を正とする。
 利用者としては、必要に応じて `#llmthink-dsl` で `action=audit` や `action=help` を使って DSL を確認できる。
 
+DSLQL 導入後は、query 行に対して LSP の completion と hover が入り、VSIX 側でも DSLQL snippets と syntax highlight が使える。
+
+## DSLQL 編集支援
+
+- query 行では `.problems[]`、`.steps[]`、`select(...)`、`map(...)`、`sort_by(...)`、`limit(...)`、`unique_by(...)` などの補完が出る
+- `query by problem`、`audit warnings` などの snippet を使って基本 query をすぐ挿入できる
+- DSLQL の pipe、比較演算子、関数名、`true` / `false` / `null` を syntax highlight する
+
 ## 提供コマンド
 
 - LLMThink: DSL Audit

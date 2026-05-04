@@ -17,6 +17,7 @@
   "files": [
     "dist",
     "syntaxes",
+    "snippets",
     "language-configuration.json",
     "README.md",
     "LICENSE"
@@ -26,10 +27,6 @@
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onLanguage:llmthink",
-    "onCommand:llmthink.lsp.restart"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -51,6 +48,12 @@
         "language": "llmthink",
         "scopeName": "source.llmthink",
         "path": "./syntaxes/llmthink.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "llmthink",
+        "path": "./snippets/dslql.code-snippets"
       }
     ],
     "languageModelTools": [

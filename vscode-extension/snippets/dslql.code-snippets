@@ -1,0 +1,26 @@
+{
+  "DSLQL Query By Problem": {
+    "scope": "llmthink",
+    "prefix": "dslql-problem",
+    "body": [
+      ".problems[] | select(.id == \"${1:P1}\") | related_decisions | map({id: .id, text: .text})"
+    ],
+    "description": "problem を起点に related_decisions を引く DSLQL query"
+  },
+  "DSLQL Audit Warnings": {
+    "scope": "llmthink",
+    "prefix": "dslql-audit",
+    "body": [
+      ".audit | audit_findings(\"${1:warning}\") | [.] | {count: len(.), findings: .}"
+    ],
+    "description": "audit findings を集約する DSLQL query"
+  },
+  "DSLQL Decision Filter": {
+    "scope": "llmthink",
+    "prefix": "dslql-decisions",
+    "body": [
+      ".steps[] | select(.role == \"decision\") | sort_by(.${1:id}) | unique_by(.id) | limit(${2:10})"
+    ],
+    "description": "decision stream を絞り込み整形する DSLQL query"
+  }
+}

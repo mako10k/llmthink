@@ -4,6 +4,8 @@
   "patterns": [
     { "include": "#keywords" },
     { "include": "#declHeaders" },
+    { "include": "#dslqlFunctions" },
+    { "include": "#dslqlConstants" },
     { "include": "#operators" },
     { "include": "#strings" }
   ],
@@ -55,8 +57,40 @@
           "match": ":="
         },
         {
+          "name": "keyword.operator.logical.dslql.llmthink",
+          "match": "\\b(and|or|not)\\b"
+        },
+        {
+          "name": "keyword.operator.comparison.dslql.llmthink",
+          "match": "==|!=|>=|<=|>|<"
+        },
+        {
+          "name": "keyword.operator.pipe.dslql.llmthink",
+          "match": "\\|"
+        },
+        {
+          "name": "meta.path-access.dslql.llmthink",
+          "match": "\\.[A-Za-z_][A-Za-z0-9_-]*\\??|\\[\\]"
+        },
+        {
           "name": "punctuation.separator.delimiter.llmthink",
           "match": ":|,"
+        }
+      ]
+    },
+    "dslqlFunctions": {
+      "patterns": [
+        {
+          "name": "support.function.dslql.llmthink",
+          "match": "\\b(select|map|sort_by|limit|unique_by|related_decisions|audit_findings|based_on_refs|upstream|downstream|len|score|kind|has_open_pending)\\b(?=\\s*(\\(|\\||$))"
+        }
+      ]
+    },
+    "dslqlConstants": {
+      "patterns": [
+        {
+          "name": "constant.language.dslql.llmthink",
+          "match": "\\b(true|false|null)\\b"
         }
       ]
     },

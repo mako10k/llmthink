@@ -17,6 +17,7 @@ import {
   SymbolKind,
   TextDocumentSyncKind,
   createConnection,
+  InsertTextFormat,
 } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -43,6 +44,14 @@ interface SymbolIndex {
   definitions: Map<string, Location>;
   references: Map<string, Location[]>;
   semanticLocations: IndexedLocation[];
+}
+
+interface DslqlCompletionSpec {
+  label: string;
+  detail: string;
+  documentation: string;
+  insertText?: string;
+  kind?: CompletionItemKind;
 }
 
 const connection = createConnection(ProposedFeatures.all);
@@ -74,7 +83,142 @@ const QUERY_FUNCTION_DOCS: Record<string, string> = {
     "problem を引数に取り、関連する decision 候補を返す query 関数です。",
   select: "DSLQL の filter 関数です。条件が真の要素だけを通します。",
   len: "DSLQL の長さ関数です。配列や文字列の長さを返します。",
+  map: "DSLQL の map 関数です。各要素に式を適用して新しい stream を作ります。",
+  sort_by: "DSLQL の sort_by 関数です。指定式の評価結果で stream を並び替えます。",
+  limit: "DSLQL の limit 関数です。stream の先頭 N 件を返します。",
+  unique_by: "DSLQL の unique_by 関数です。指定式の評価結果で重複排除します。",
+  audit_findings:
+    "監査結果から finding stream を取り出す DSLQL 関数です。severity を省略できます。",
+  based_on_refs:
+    "decision から based_on 参照先の statement stream を引く DSLQL 関数です。",
+  upstream: "statement の上流参照を辿る DSLQL 関数です。",
+  downstream: "statement の下流参照を辿る DSLQL 関数です。",
+  score: "search result の ranking score を返す DSLQL 関数です。",
+  kind: "値の正規化後 kind 名を返す DSLQL 関数です。",
+  has_open_pending:
+    "pending を含むかどうかを返す DSLQL 関数です。thought search の絞り込みに使います。",
 };
+
+const DSLQL_IDENTIFIER_DOCS: Record<string, string> = {
+  document: "thought runtime 全体の document view です。domains、problems、steps、queries を持ちます。",
+  framework: "framework 宣言の root です。",
+  domains: "domain 一覧の root stream です。",
+  problems: "problem 一覧の root stream です。",
+  steps: "step statement 一覧の root stream です。",
+  queries: "query 一覧の root stream です。",
+  audit: "latest audit result の root です。",
+  thought: "thought metadata の root です。",
+  search: "thought search result の root stream です。",
+  id: "識別子 field です。problem、statement、query などで使われます。",
+  role: "statement role field です。decision、evidence、pending などを表します。",
+  text: "本文 text field です。problem や statement の説明に使われます。",
+  based_on: "decision の参照 ID 一覧 field です。",
+  step_id: "statement が属する step の識別子 field です。",
+  score: "search result や query projection で使う score field です。",
+  source_kind: "draft、final、audit のような source 種別 field です。",
+};
+
+const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
+  {
+    label: ".problems[]",
+    detail: "DSLQL root",
+    documentation: "problem 一覧を stream として展開します。",
+    insertText: ".problems[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".steps[]",
+    detail: "DSLQL root",
+    documentation: "step statement 一覧を stream として展開します。",
+    insertText: ".steps[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".queries[]",
+    detail: "DSLQL root",
+    documentation: "query 一覧を stream として展開します。",
+    insertText: ".queries[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".audit",
+    detail: "DSLQL root",
+    documentation: "latest audit result にアクセスします。",
+    insertText: ".audit",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: "select(...)",
+    detail: "DSLQL filter",
+    documentation: QUERY_FUNCTION_DOCS.select,
+    insertText: 'select(${1:.role == "decision"})',
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "map(...)",
+    detail: "DSLQL transform",
+    documentation: QUERY_FUNCTION_DOCS.map,
+    insertText: "map(${1:{id: .id, text: .text}})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "sort_by(...)",
+    detail: "DSLQL transform",
+    documentation: QUERY_FUNCTION_DOCS.sort_by,
+    insertText: "sort_by(${1:.id})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "unique_by(...)",
+    detail: "DSLQL transform",
+    documentation: QUERY_FUNCTION_DOCS.unique_by,
+    insertText: "unique_by(${1:.id})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "limit(...)",
+    detail: "DSLQL transform",
+    documentation: QUERY_FUNCTION_DOCS.limit,
+    insertText: "limit(${1:10})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "related_decisions",
+    detail: "DSLQL relation",
+    documentation: QUERY_FUNCTION_DOCS.related_decisions,
+    insertText: "related_decisions",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "audit_findings(...)",
+    detail: "DSLQL relation",
+    documentation: QUERY_FUNCTION_DOCS.audit_findings,
+    insertText: 'audit_findings(${1:"warning"})',
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "len(...)",
+    detail: "DSLQL helper",
+    documentation: QUERY_FUNCTION_DOCS.len,
+    insertText: "len(${1:.})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "query by problem",
+    detail: "DSLQL snippet",
+    documentation: "problem を起点に related_decisions を引く基本パターンです。",
+    insertText:
+      '.problems[] | select(.id == "${1:P1}") | related_decisions | ${2:map({id: .id, text: .text})}',
+    kind: CompletionItemKind.Snippet,
+  },
+  {
+    label: "audit warnings",
+    detail: "DSLQL snippet",
+    documentation: "warning 以上の audit finding を束ねる基本パターンです。",
+    insertText: '.audit | audit_findings("${1:warning}") | [.] | {count: len(.), findings: .}',
+    kind: CompletionItemKind.Snippet,
+  },
+];
 
 function toRange(span: SourceSpan, endColumn?: number): Range {
   return {
@@ -533,12 +677,36 @@ function getWordAtPosition(
   })?.[0];
 }
 
+function queryAtPosition(
+  document: TextDocument,
+  position: Position,
+): DocumentAst["queries"][number] | undefined {
+  try {
+    const ast = parseDocument(document.getText());
+    return ast.queries.find(
+      (query) =>
+        query.expressionSpan.line - 1 === position.line &&
+        position.character >= query.expressionSpan.column - 1,
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function isDslqlQueryPosition(
+  document: TextDocument,
+  position: Position,
+): boolean {
+  return Boolean(queryAtPosition(document, position));
+}
+
 function buildHover(document: TextDocument, position: Position): Hover | null {
   const word = getWordAtPosition(document, position);
   if (!word) {
     return null;
   }
-  const description = KEYWORD_DOCS[word] ?? QUERY_FUNCTION_DOCS[word];
+  const description =
+    KEYWORD_DOCS[word] ?? QUERY_FUNCTION_DOCS[word] ?? DSLQL_IDENTIFIER_DOCS[word];
   if (!description) {
     return null;
   }
@@ -548,6 +716,17 @@ function buildHover(document: TextDocument, position: Position): Hover | null {
       value: `**${word}**\n\n${description}`,
     },
   };
+}
+
+function buildDslqlCompletionItems() {
+  return DSLQL_COMPLETIONS.map((item) => ({
+    label: item.label,
+    kind: item.kind ?? CompletionItemKind.Function,
+    detail: item.detail,
+    documentation: item.documentation,
+    insertText: item.insertText ?? item.label,
+    insertTextFormat: InsertTextFormat.Snippet,
+  }));
 }
 
 function buildRenameEdit(document: TextDocument, name: string, newName: string): WorkspaceEdit {
@@ -743,7 +922,10 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       documentHighlightProvider: true,
       codeActionProvider: true,
       hoverProvider: true,
-      completionProvider: { resolveProvider: false },
+      completionProvider: {
+        resolveProvider: false,
+        triggerCharacters: [".", "|", "(", "["],
+      },
     },
   };
 });
@@ -898,7 +1080,8 @@ connection.onHover((params) => {
   return document ? buildHover(document, params.position) : null;
 });
 
-connection.onCompletion(() => {
+connection.onCompletion((params) => {
+  const document = documents.get(params.textDocument.uri);
   const keywordItems = Object.entries(KEYWORD_DOCS).map(([label, documentation]) => ({
     label,
     kind: CompletionItemKind.Keyword,
@@ -909,6 +1092,9 @@ connection.onCompletion(() => {
     kind: CompletionItemKind.Function,
     documentation,
   }));
+  if (document && isDslqlQueryPosition(document, params.position)) {
+    return [...buildDslqlCompletionItems(), ...queryItems];
+  }
   return [...keywordItems, ...queryItems];
 });
 
