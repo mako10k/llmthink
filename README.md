@@ -48,12 +48,13 @@
 
 CLI は resource-first に `dsl` と `thought` の 2 系統へ寄せる。
 
-- `llmthink dsl audit ...`: 単発の DSL 監査
+- `llmthink dsl audit ...`: 自動登録込みの DSL 監査。thought-id を返す
 - `llmthink dsl help`: DSL 全体文法の表示
 - `llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]`: draft の作成・更新
 - `llmthink thought relate --id <thought-id> --from source-thought-id`: 既存 thought から関連 thought を作成
 - `llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]`: current draft を監査し、監査結果を保存
 - `llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]`: 最終結果を保存
+- `llmthink thought delete --id <thought-id>`: 保存済み thought を削除
 - `llmthink thought show --id <thought-id> [summary|draft|final|audit]`: 現在状態の確認
 - `llmthink thought history --id <thought-id>`: 変更履歴の確認
 - `llmthink thought search <query> [--limit 5]`: 保存済み thought の検索
@@ -90,23 +91,24 @@ runtime data は `.llmthink/` 配下に保存する。
 ```
 
 - `thought.json`: 現在状態、latest audit、draft/final の参照
-- `history.json`: draft 保存、監査保存、finalize の履歴
+- `history.json`: draft 保存、監査保存、finalize などの履歴
 - `draft.dsl`: 現在の思考ドラフト
 - `final.dsl`: 最終保存された思考
 - `audits/*.json`: 各監査レポートのスナップショット
 
 ### シナリオ
 
-思考ドラフト -> 思考監査 -> 問題があれば修正 -> 再監査 -> 最終保存:
+自動登録付き監査 -> 修正 -> 再監査 -> 最終保存:
 
 ```bash
 llmthink dsl audit docs/examples/query-assist.dsl --pretty
-llmthink thought draft --id review-001 docs/examples/query-assist.dsl
-llmthink thought audit --id review-001 --pretty
 llmthink thought draft --id review-001 --text "...fixed dsl..."
 llmthink thought audit --id review-001 --pretty
 llmthink thought finalize --id review-001
 ```
+
+- 初回の `dsl audit` は保存込みで `thought_id` を返す
+- 以後の修正、再監査、削除はその `thought_id` または `thought list` / `thought search` の結果を使う
 
 思考検索 -> 関連思考作成:
 
@@ -119,7 +121,8 @@ llmthink thought audit --id review-002 --pretty
 ## MCP / VSIX lifecycle
 
 - MCP は `dsl` と `thought` の 2 ツールに統一する
-- `dsl` は `action=audit|help`、`thought` は `action=draft|relate|audit|finalize|show|history|search|list` を扱う
+- `dsl` は `action=audit|help` を扱い、`audit` は保存込みで thought-id を返す
+- `thought` は `action=draft|relate|audit|finalize|reflect|delete|show|history|search|list` を扱う
 - VSIX は `llmthink.dsl*` と `llmthink.thought*` の command id に統一する
 - language model tool は `llmthink-dsl` に統一し、DSL 監査と文法ガイダンスに集中させる
 - Copilot 向けの開発運用ルールは `.github/copilot-instructions.md` を正とする

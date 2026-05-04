@@ -7,6 +7,7 @@ export {
   formatAuditReportText,
 } from "./presentation/report.js";
 export {
+  formatPersistedThoughtAudit,
   formatThoughtReflections,
   formatThoughtHistory,
   formatThoughtList,
@@ -15,6 +16,7 @@ export {
 } from "./presentation/thought.js";
 export {
   addThoughtReflection,
+  deleteThought,
   relateThought,
   ensureThoughtRecord,
   finalizeThought,
@@ -24,9 +26,16 @@ export {
   draftThought,
   searchThoughtRecords,
 } from "./thought/store.js";
+export {
+  auditAndPersistThought,
+  deriveThoughtIdFromDocumentId,
+  deriveThoughtIdFromFilePath,
+  normalizeThoughtId,
+} from "./thought/workflow.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
 export type {
   ThoughtReflection,
   ThoughtReflectionKind,
 } from "./thought/store.js";
+export type { PersistedThoughtAudit, ThoughtIdSource } from "./thought/workflow.js";

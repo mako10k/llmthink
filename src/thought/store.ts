@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
@@ -399,6 +400,15 @@ export function loadThought(id: string, baseDir?: string): ThoughtSnapshot {
     history,
     reflections: readThoughtReflections(id, baseDir),
   };
+}
+
+export function deleteThought(id: string, baseDir?: string): boolean {
+  const paths = thoughtPaths(id, baseDir);
+  if (!existsSync(paths.recordPath)) {
+    return false;
+  }
+  rmSync(paths.thoughtDir, { recursive: true, force: true });
+  return true;
 }
 
 export function listThoughts(baseDir?: string): ThoughtRecord[] {

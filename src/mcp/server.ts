@@ -4,10 +4,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { auditDslFile, auditDslText } from "../analyzer/audit.js";
 import { getDslSyntaxGuidanceText, isDslHelpRequest } from "../dsl/guidance.js";
 import { formatAuditReportText } from "../presentation/report.js";
 import {
+  formatPersistedThoughtAudit,
   formatThoughtHistory,
   formatThoughtList,
   formatThoughtReflections,
@@ -16,15 +16,16 @@ import {
 } from "../presentation/thought.js";
 import {
   addThoughtReflection,
+  deleteThought,
   relateThought,
   finalizeThought,
   listThoughts,
   loadThought,
-  recordThoughtAudit,
   draftThought,
   searchThoughtRecords,
   type ThoughtReflectionKind,
 } from "../thought/store.js";
+import { auditAndPersistThought } from "../thought/workflow.js";
 
 const server = new McpServer({
   name: "llmthink",
@@ -149,16 +150,26 @@ async function handleThoughtAuditAction(
   thoughtId: string,
   sourceText: string | undefined,
 ) {
-  const currentText = requireThoughtText(thoughtId, sourceText);
-  if (sourceText) {
-    draftThought(thoughtId, currentText);
-  }
-  const report = await auditDslText(currentText, thoughtId);
-  recordThoughtAudit(thoughtId, report);
+  const persisted = await auditAndPersistThought({
+    dslText: requireThoughtText(thoughtId, sourceText),
+    thoughtId,
+  });
   return {
     content: [
-      textContent(formatAuditReportText(report)),
-      textContent(JSON.stringify(report, null, 2)),
+      textContent(
+        `${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`,
+      ),
+      textContent(
+        JSON.stringify(
+          {
+            thought_id: persisted.thoughtId,
+            id_source: persisted.idSource,
+            report: persisted.report,
+          },
+          null,
+          2,
+        ),
+      ),
     ],
   };
 }
@@ -177,6 +188,15 @@ function handleThoughtHistoryAction(thoughtId: string) {
     content: [
       textContent(formatThoughtHistory(loadThought(thoughtId).history)),
     ],
+  };
+}
+
+function handleThoughtDeleteAction(thoughtId: string) {
+  if (!deleteThought(thoughtId)) {
+    throw new Error(`Thought ${thoughtId} was not found.`);
+  }
+  return {
+    content: [textContent(`Deleted thought: ${thoughtId}\n`)],
   };
 }
 
@@ -207,6 +227,7 @@ async function handleThoughtAction(
     | "audit"
     | "finalize"
     | "reflect"
+    | "delete"
     | "show"
     | "history"
     | "search"
@@ -245,6 +266,8 @@ async function handleThoughtAction(
       return handleThoughtFinalizeAction(resolvedThoughtId, sourceText);
     case "reflect":
       return handleThoughtReflectAction(resolvedThoughtId, text, kind);
+    case "delete":
+      return handleThoughtDeleteAction(resolvedThoughtId);
     case "history":
       return handleThoughtHistoryAction(resolvedThoughtId);
     case "show":
@@ -256,14 +279,15 @@ async function handleThoughtAction(
 
 server.tool(
   "dsl",
-  "LLMThink DSL operations. Use action=audit or action=help.",
+  "LLMThink DSL operations. Use action=audit to audit and auto-register DSL text, or action=help for syntax guidance.",
   {
     action: z.enum(["audit", "help"]),
     dslText: z.string().optional(),
     filePath: z.string().optional(),
     documentId: z.string().optional(),
+    thoughtId: z.string().optional(),
   },
-  async ({ action, dslText, filePath, documentId }) => {
+  async ({ action, dslText, filePath, documentId, thoughtId }) => {
     if (action === "help" || (dslText && isDslHelpRequest(dslText))) {
       return {
         content: [textContent(getDslSyntaxGuidanceText())],
@@ -274,13 +298,28 @@ server.tool(
       throw new Error("dslText or filePath is required when action=audit");
     }
 
-    const report = dslText
-      ? await auditDslText(dslText, documentId ?? "mcp-dsl")
-      : await auditDslFile(filePath!);
+    const persisted = await auditAndPersistThought({
+      dslText,
+      filePath,
+      documentId,
+      thoughtId,
+    });
     return {
       content: [
-        textContent(formatAuditReportText(report)),
-        textContent(JSON.stringify(report, null, 2)),
+        textContent(
+          `${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`,
+        ),
+        textContent(
+          JSON.stringify(
+            {
+              thought_id: persisted.thoughtId,
+              id_source: persisted.idSource,
+              report: persisted.report,
+            },
+            null,
+            2,
+          ),
+        ),
       ],
     };
   },
@@ -288,7 +327,7 @@ server.tool(
 
 server.tool(
   "thought",
-  "LLMThink thought lifecycle operations. Use action=draft|relate|audit|finalize|reflect|show|history|search|list.",
+  "LLMThink thought lifecycle operations. Use action=draft|relate|audit|finalize|reflect|delete|show|history|search|list.",
   {
     action: z.enum([
       "draft",
@@ -296,6 +335,7 @@ server.tool(
       "audit",
       "finalize",
       "reflect",
+      "delete",
       "show",
       "history",
       "search",

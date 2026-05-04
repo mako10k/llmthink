@@ -18,6 +18,7 @@
 - LLMThink: Thought History
 - LLMThink: Thought Search
 - LLMThink: Thought List
+- LLMThink: Thought Delete
 
 ## 提供ツール
 
@@ -27,11 +28,13 @@
   - action: audit または help
   - dslText: 監査対象の DSL 本文。省略時はアクティブエディタを監査する
   - documentId: 監査レポートに使う任意の文書 ID
+  - thoughtId: 再監査や再利用に使う任意の thought ID
 
 ## Thought lifecycle
 
-- command palette から thought の draft、relate、audit、finalize、history、search、list を扱える
+- command palette から thought の draft、relate、audit、finalize、reflect、history、search、list、delete を扱える
 - search は persisted thought に対して semantic search を試み、利用可能なら provider/model を結果に表示する
+- DSL Audit と #llmthink-dsl の action=audit は自動登録込みで thought-id を返す
 
 ## ローカル開発
 

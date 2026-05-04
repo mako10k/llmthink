@@ -3,10 +3,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { auditDslFile, auditDslText } from "./analyzer/audit.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText } from "./presentation/report.js";
 import {
+  formatPersistedThoughtAudit,
   formatThoughtHistory,
   formatThoughtList,
   formatThoughtReflections,
@@ -15,15 +15,16 @@ import {
 } from "./presentation/thought.js";
 import {
   addThoughtReflection,
+  deleteThought,
   relateThought,
   finalizeThought,
   listThoughts,
   loadThought,
-  recordThoughtAudit,
   draftThought,
   searchThoughtRecords,
   type ThoughtReflectionKind,
 } from "./thought/store.js";
+import { auditAndPersistThought } from "./thought/workflow.js";
 
 interface CliOptions {
   command?: string;
@@ -79,6 +80,7 @@ function isThoughtIdRequired(subcommand?: string): boolean {
     "show",
     "history",
     "reflect",
+    "delete",
   ].includes(subcommand ?? "");
 }
 
@@ -148,6 +150,7 @@ function printUsage(): void {
       '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]',
       '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
       '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
+      "  llmthink thought delete --id <thought-id>",
       "  llmthink thought show --id <thought-id> [summary|draft|final|audit|reflections]",
       "  llmthink thought history --id <thought-id>",
       "  llmthink thought search <query> [--limit 5] [--with-reflections]",
@@ -222,14 +225,28 @@ async function handleDslCommand(options: CliOptions): Promise<void> {
     process.exit(1);
   }
 
-  const report = options.text
-    ? await auditDslText(options.text, options.documentId ?? "stdin")
-    : await auditDslFile(resolve(process.cwd(), filePath));
+  const persisted = await auditAndPersistThought({
+    dslText: options.text,
+    filePath,
+    thoughtId: options.thoughtId,
+    documentId: options.documentId,
+  });
 
   if (options.pretty) {
-    process.stdout.write(formatAuditReportText(report));
+    process.stdout.write(formatPersistedThoughtAudit(persisted));
+    process.stdout.write(formatAuditReportText(persisted.report));
   } else {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          thought_id: persisted.thoughtId,
+          id_source: persisted.idSource,
+          report: persisted.report,
+        },
+        null,
+        2,
+      )}\n`,
+    );
   }
 }
 
@@ -250,6 +267,8 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
       return handleThoughtFinalize(thoughtId!, options);
     case "reflect":
       return handleThoughtReflect(thoughtId!, options);
+    case "delete":
+      return handleThoughtDelete(thoughtId!);
     case "show":
       return handleThoughtShow(thoughtId!, options);
     case "history":
@@ -285,18 +304,27 @@ async function handleThoughtAudit(
   thoughtId: string,
   options: CliOptions,
 ): Promise<void> {
-  const text =
-    readTextFromSource(options) ?? readCurrentThoughtDraft(thoughtId);
-  if (options.text || options.positionals.length > 0 || options.fromThoughtId) {
-    draftThought(thoughtId, text);
-  }
-  const report = await auditDslText(text, thoughtId);
-  recordThoughtAudit(thoughtId, report);
+  const text = readTextFromSource(options);
+  const persisted = await auditAndPersistThought({
+    dslText: text ?? readCurrentThoughtDraft(thoughtId),
+    thoughtId,
+  });
   if (options.pretty) {
-    process.stdout.write(formatAuditReportText(report));
+    process.stdout.write(formatPersistedThoughtAudit(persisted));
+    process.stdout.write(formatAuditReportText(persisted.report));
     return;
   }
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        thought_id: persisted.thoughtId,
+        id_source: persisted.idSource,
+        report: persisted.report,
+      },
+      null,
+      2,
+    )}\n`,
+  );
 }
 
 function handleThoughtFinalize(thoughtId: string, options: CliOptions): void {
@@ -313,6 +341,13 @@ function handleThoughtReflect(thoughtId: string, options: CliOptions): void {
   }
   addThoughtReflection(thoughtId, text, resolveReflectionKind(options.kind));
   printThoughtSummary(thoughtId);
+}
+
+function handleThoughtDelete(thoughtId: string): void {
+  if (!deleteThought(thoughtId)) {
+    throw new Error(`Thought ${thoughtId} was not found.`);
+  }
+  process.stdout.write(`Deleted thought: ${thoughtId}\n`);
 }
 
 function handleThoughtShow(thoughtId: string, options: CliOptions): void {

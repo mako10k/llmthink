@@ -5,6 +5,22 @@ import type {
   ThoughtSearchResult,
   ThoughtSnapshot,
 } from "../thought/store.js";
+import type { PersistedThoughtAudit } from "../thought/workflow.js";
+
+export function formatPersistedThoughtAudit(
+  persisted: PersistedThoughtAudit,
+): string {
+  return (
+    [
+      `thought_id: ${persisted.thoughtId}`,
+      `id_source: ${persisted.idSource}`,
+      `status: ${persisted.record.status}`,
+      `draft: ${persisted.record.current_draft_path ?? "-"}`,
+      `latest_audit: ${persisted.record.latest_audit_path ?? "-"}`,
+      `next: reuse this thought_id with thought show/history/reflect/delete or dsl audit --id`,
+    ].join("\n") + "\n"
+  );
+}
 
 export function formatThoughtSummary(snapshot: ThoughtSnapshot): string {
   return (

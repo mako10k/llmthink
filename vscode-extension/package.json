@@ -58,7 +58,7 @@
         "name": "llmthink-dsl",
         "toolReferenceName": "llmthink-dsl",
         "displayName": "LLMThink DSL",
-        "modelDescription": "LLMThink DSL operations. Use action=audit to audit DSL text and action=help for syntax guidance.",
+        "modelDescription": "LLMThink DSL operations. Use action=audit to audit and auto-register DSL text, or action=help for syntax guidance.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
@@ -78,6 +78,10 @@
             "documentId": {
               "type": "string",
               "description": "Optional logical document identifier to use in the audit report."
+            },
+            "thoughtId": {
+              "type": "string",
+              "description": "Optional thought identifier to reuse for re-audit or later lifecycle actions."
             }
           },
           "additionalProperties": false
@@ -128,6 +132,10 @@
       {
         "command": "llmthink.thoughtList",
         "title": "LLMThink: Thought List"
+      },
+      {
+        "command": "llmthink.thoughtDelete",
+        "title": "LLMThink: Thought Delete"
       },
       {
         "command": "llmthink.lsp.restart",

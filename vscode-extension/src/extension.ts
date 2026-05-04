@@ -2,12 +2,16 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { restartLspClient, startLspClient, stopLspClient } from "./lsp";
 import {
-  auditDslText,
   addThoughtReflection,
+  auditAndPersistThought,
+  deleteThought,
+  deriveThoughtIdFromDocumentId,
+  deriveThoughtIdFromFilePath,
   draftThought,
   finalizeThought,
   formatAuditReportHtml,
   formatAuditReportText,
+  formatPersistedThoughtAudit,
   formatThoughtHistory,
   formatThoughtList,
   formatThoughtReflections,
@@ -17,9 +21,9 @@ import {
   isDslHelpRequest,
   loadThought,
   listThoughts,
-  recordThoughtAudit,
   relateThought,
   searchThoughtRecords,
+  type PersistedThoughtAudit,
   type ThoughtReflectionKind,
 } from "llmthink";
 import type { AuditReport } from "llmthink";
@@ -30,6 +34,7 @@ interface DslToolInput {
   action?: "audit" | "help";
   dslText?: string;
   documentId?: string;
+  thoughtId?: string;
 }
 
 const REFLECTION_KIND_ITEMS: Array<{
@@ -89,10 +94,29 @@ function toDocumentId(document: vscode.TextDocument): string {
   return baseName.replace(/\.dsl$/i, "") || "active-document";
 }
 
-function renderToolResult(report: AuditReport): vscode.LanguageModelToolResult {
+function defaultThoughtIdForDocument(document: vscode.TextDocument): string {
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+  if (document.uri.scheme === "file" && document.fileName) {
+    return deriveThoughtIdFromFilePath(
+      document.fileName,
+      workspaceFolder?.uri.fsPath,
+    );
+  }
+  return deriveThoughtIdFromDocumentId(toDocumentId(document));
+}
+
+function renderToolResult(
+  persisted: PersistedThoughtAudit,
+): vscode.LanguageModelToolResult {
   return new vscode.LanguageModelToolResult([
-    new vscode.LanguageModelTextPart(formatAuditReportText(report)),
-    vscode.LanguageModelDataPart.json(report),
+    new vscode.LanguageModelTextPart(
+      `${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`,
+    ),
+    vscode.LanguageModelDataPart.json({
+      thought_id: persisted.thoughtId,
+      id_source: persisted.idSource,
+      report: persisted.report,
+    }),
   ]);
 }
 
@@ -191,22 +215,32 @@ async function auditThoughtFromActiveDocument(
     );
     return;
   }
-  const thoughtId = await promptThoughtId(toDocumentId(editor.document));
+  const thoughtId = await promptThoughtId(defaultThoughtIdForDocument(editor.document));
   if (!thoughtId) {
     return;
   }
-  const text = editor.document.getText();
-  draftThought(thoughtId, text);
-  const report = await runAudit(text, thoughtId);
-  recordThoughtAudit(thoughtId, report);
+  const persisted = await runRegisteredAudit(editor.document.getText(), {
+    thoughtId,
+  });
 
   outputChannel.clear();
-  outputChannel.appendLine(formatAuditReportText(report));
-  outputChannel.appendLine(JSON.stringify(report, null, 2));
+  outputChannel.append(formatPersistedThoughtAudit(persisted));
+  outputChannel.appendLine(formatAuditReportText(persisted.report));
+  outputChannel.appendLine(
+    JSON.stringify(
+      {
+        thought_id: persisted.thoughtId,
+        id_source: persisted.idSource,
+        report: persisted.report,
+      },
+      null,
+      2,
+    ),
+  );
   outputChannel.show(true);
-  showReportPanel(context, report);
+  showReportPanel(context, persisted.report);
   vscode.window.showInformationMessage(
-    `LLMThink thought 監査完了: ${thoughtId}`,
+    `LLMThink thought 監査完了: ${persisted.thoughtId}`,
   );
 }
 
@@ -220,7 +254,7 @@ async function finalizeThoughtFromActiveDocument(
     );
     return;
   }
-  const thoughtId = await promptThoughtId(toDocumentId(editor.document));
+  const thoughtId = await promptThoughtId(defaultThoughtIdForDocument(editor.document));
   if (!thoughtId) {
     return;
   }
@@ -346,13 +380,40 @@ async function showThoughtReflectionsInOutput(
   );
 }
 
-async function runAudit(
+async function deleteThoughtFromPrompt(
+  outputChannel: vscode.OutputChannel,
+): Promise<void> {
+  const thoughtId = await promptThoughtId();
+  if (!thoughtId) {
+    return;
+  }
+  const confirmed = await vscode.window.showWarningMessage(
+    `thought ${thoughtId} を削除します。取り消しできません。`,
+    { modal: true },
+    "Delete",
+  );
+  if (confirmed !== "Delete") {
+    return;
+  }
+  if (!deleteThought(thoughtId)) {
+    vscode.window.showWarningMessage(`thought が見つかりません: ${thoughtId}`);
+    return;
+  }
+  showTextInOutput(outputChannel, "LLMThink Thought Delete", `Deleted thought: ${thoughtId}\n`);
+  vscode.window.showInformationMessage(`LLMThink thought 削除完了: ${thoughtId}`);
+}
+
+async function runRegisteredAudit(
   text: string,
-  documentId: string,
-): Promise<AuditReport> {
-  const report = await auditDslText(text, documentId);
-  lastReport = report;
-  return report;
+  input: { thoughtId?: string; documentId?: string },
+) {
+  const persisted = await auditAndPersistThought({
+    dslText: text,
+    thoughtId: input.thoughtId,
+    documentId: input.documentId,
+  });
+  lastReport = persisted.report;
+  return persisted;
 }
 
 class DslTool implements vscode.LanguageModelTool<DslToolInput> {
@@ -372,11 +433,11 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
           new vscode.LanguageModelTextPart(getDslSyntaxGuidanceText()),
         ]);
       }
-      const report = await runAudit(
-        providedText,
-        options.input.documentId?.trim() || "tool-input",
-      );
-      return renderToolResult(report);
+      const persisted = await runRegisteredAudit(providedText, {
+        thoughtId: options.input.thoughtId?.trim(),
+        documentId: options.input.documentId?.trim(),
+      });
+      return renderToolResult(persisted);
     }
 
     const editor = vscode.window.activeTextEditor;
@@ -388,21 +449,25 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
       ]);
     }
 
-    const report = await runAudit(
-      editor.document.getText(),
-      options.input.documentId?.trim() || toDocumentId(editor.document),
-    );
-    return renderToolResult(report);
+    const persisted = await runRegisteredAudit(editor.document.getText(), {
+      thoughtId:
+        options.input.thoughtId?.trim() || defaultThoughtIdForDocument(editor.document),
+      documentId: options.input.documentId?.trim() || toDocumentId(editor.document),
+    });
+    return renderToolResult(persisted);
   }
 
   prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<DslToolInput>,
   ): vscode.PreparedToolInvocation {
     const documentId = options.input.documentId?.trim();
+    const thoughtId = options.input.thoughtId?.trim();
     return {
-      invocationMessage: documentId
-        ? `LLMThink で ${documentId} を監査しています`
-        : "LLMThink で DSL を監査しています",
+      invocationMessage: thoughtId
+        ? `LLMThink で ${thoughtId} を再監査して保存しています`
+        : documentId
+          ? `LLMThink で ${documentId} を監査して保存しています`
+          : "LLMThink で DSL を監査して保存しています",
     };
   }
 }
@@ -431,16 +496,30 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       const document = editor.document;
-      const report = await runAudit(document.getText(), toDocumentId(document));
+      const persisted = await runRegisteredAudit(document.getText(), {
+        thoughtId: defaultThoughtIdForDocument(document),
+        documentId: toDocumentId(document),
+      });
 
       outputChannel.clear();
-      outputChannel.appendLine(formatAuditReportText(report));
-      outputChannel.appendLine(JSON.stringify(report, null, 2));
+      outputChannel.append(formatPersistedThoughtAudit(persisted));
+      outputChannel.appendLine(formatAuditReportText(persisted.report));
+      outputChannel.appendLine(
+        JSON.stringify(
+          {
+            thought_id: persisted.thoughtId,
+            id_source: persisted.idSource,
+            report: persisted.report,
+          },
+          null,
+          2,
+        ),
+      );
       outputChannel.show(true);
 
-      showReportPanel(context, report);
+      showReportPanel(context, persisted.report);
       vscode.window.showInformationMessage(
-        `LLMThink 監査完了: ${report.document_id}`,
+        `LLMThink 監査完了: ${persisted.thoughtId}`,
       );
     }),
     vscode.commands.registerCommand("llmthink.dslReportShow", async () => {
@@ -477,6 +556,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("llmthink.thoughtList", async () => {
       await listThoughtsInOutput(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.thoughtDelete", async () => {
+      await deleteThoughtFromPrompt(outputChannel);
     }),
     vscode.commands.registerCommand("llmthink.lsp.restart", async () => {
       await restartLspClient(context, outputChannel);
