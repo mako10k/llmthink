@@ -2,12 +2,14 @@
 
 import {
   CompletionItemKind,
+  DocumentHighlight,
+  DocumentHighlightKind,
   DiagnosticSeverity,
   DidChangeConfigurationNotification,
-  DocumentFormattingRequest,
   Hover,
   InitializeParams,
   InitializeResult,
+  Location,
   MarkupKind,
   ProposedFeatures,
   SymbolKind,
@@ -26,13 +28,16 @@ import { formatDslText } from "../dsl/format.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 import type {
   DocumentAst,
-  FrameworkDecl,
-  ProblemDecl,
-  QueryDecl,
   SourceSpan,
   StepDecl,
 } from "../model/ast.js";
 import { TextDocuments } from "vscode-languageserver";
+
+interface SymbolIndex {
+  definitions: Map<string, Location>;
+  references: Map<string, Location[]>;
+  semanticLocations: Array<{ name: string; range: Range }>;
+}
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -67,10 +72,239 @@ function toRange(span: SourceSpan, endColumn?: number): Range {
 
 function fullDocumentRange(document: TextDocument): Range {
   const lastLine = document.lineCount - 1;
+  const lastLineText = document.getText({
+    start: Position.create(lastLine, 0),
+    end: Position.create(lastLine + 1, 0),
+  });
   return {
     start: Position.create(0, 0),
-    end: Position.create(lastLine, document.getText().length),
+    end: Position.create(lastLine, lastLineText.length),
   };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function lineTextAt(document: TextDocument, line: number): string {
+  return document.getText({
+    start: Position.create(line, 0),
+    end: Position.create(line + 1, 0),
+  });
+}
+
+function identifierRangeOnLine(
+  lineText: string,
+  line: number,
+  identifier: string,
+  startCharacter = 0,
+): Range | undefined {
+  const pattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "g");
+  pattern.lastIndex = startCharacter;
+  const match = pattern.exec(lineText);
+  if (!match || match.index === undefined) {
+    return undefined;
+  }
+  return Range.create(
+    Position.create(line, match.index),
+    Position.create(line, match.index + identifier.length),
+  );
+}
+
+function createSymbolIndex(): SymbolIndex {
+  return {
+    definitions: new Map<string, Location>(),
+    references: new Map<string, Location[]>(),
+    semanticLocations: [],
+  };
+}
+
+function addSemanticLocation(
+  index: SymbolIndex,
+  name: string,
+  range: Range,
+): void {
+  index.semanticLocations.push({ name, range });
+}
+
+function addDefinition(
+  index: SymbolIndex,
+  uri: string,
+  name: string,
+  range: Range | undefined,
+): void {
+  if (!range) {
+    return;
+  }
+  index.definitions.set(name, Location.create(uri, range));
+  addSemanticLocation(index, name, range);
+}
+
+function addReference(
+  index: SymbolIndex,
+  uri: string,
+  name: string,
+  range: Range | undefined,
+): void {
+  if (!range) {
+    return;
+  }
+  const locations = index.references.get(name) ?? [];
+  locations.push(Location.create(uri, range));
+  index.references.set(name, locations);
+  addSemanticLocation(index, name, range);
+}
+
+function addDefinitionAtSpan(
+  index: SymbolIndex,
+  document: TextDocument,
+  name: string,
+  span: SourceSpan,
+): void {
+  const line = span.line - 1;
+  addDefinition(
+    index,
+    document.uri,
+    name,
+    identifierRangeOnLine(lineTextAt(document, line), line, name),
+  );
+}
+
+function addDecisionReferences(
+  index: SymbolIndex,
+  document: TextDocument,
+  step: StepDecl,
+): void {
+  if (step.statement.role !== "decision") {
+    return;
+  }
+
+  const line = step.statement.span.line - 1;
+  const text = lineTextAt(document, line);
+  let cursor = 0;
+  for (const reference of step.statement.basedOn) {
+    const range = identifierRangeOnLine(text, line, reference, cursor);
+    addReference(index, document.uri, reference, range);
+    if (range) {
+      cursor = range.end.character;
+    }
+  }
+}
+
+function addPartitionReferences(
+  index: SymbolIndex,
+  document: TextDocument,
+  step: StepDecl,
+): void {
+  if (step.statement.role !== "partition") {
+    return;
+  }
+
+  const line = step.statement.span.line - 1;
+  const text = lineTextAt(document, line);
+  addReference(
+    index,
+    document.uri,
+    step.statement.domainName,
+    identifierRangeOnLine(text, line, step.statement.domainName),
+  );
+}
+
+function addQueryReferences(
+  index: SymbolIndex,
+  document: TextDocument,
+  ast: DocumentAst,
+): void {
+  for (const query of ast.queries) {
+    const line = query.span.line;
+    const text = lineTextAt(document, line).trim();
+    const openParen = text.indexOf("(");
+    const closeParen = text.lastIndexOf(")");
+    if (openParen === -1 || closeParen === -1 || closeParen <= openParen) {
+      continue;
+    }
+    const argsText = text.slice(openParen + 1, closeParen);
+    const argsOffset = text.indexOf(argsText, openParen + 1);
+    let cursor = argsOffset;
+    for (const match of argsText.matchAll(/[A-Za-z][A-Za-z0-9_-]*/g)) {
+      const identifier = match[0];
+      const range = identifierRangeOnLine(text, line, identifier, cursor);
+      addReference(index, document.uri, identifier, range);
+      if (range) {
+        cursor = range.end.character;
+      }
+    }
+  }
+}
+
+function buildSymbolIndex(
+  document: TextDocument,
+  ast: DocumentAst,
+): SymbolIndex {
+  const index = createSymbolIndex();
+
+  if (ast.framework) {
+    addDefinitionAtSpan(index, document, ast.framework.name, ast.framework.span);
+  }
+  for (const domain of ast.domains) {
+    addDefinitionAtSpan(index, document, domain.name, domain.span);
+  }
+  for (const problem of ast.problems) {
+    addDefinitionAtSpan(index, document, problem.name, problem.span);
+  }
+  for (const step of ast.steps) {
+    addDefinitionAtSpan(index, document, step.id, step.span);
+    addDefinitionAtSpan(index, document, step.statement.id, step.statement.span);
+    addDecisionReferences(index, document, step);
+    addPartitionReferences(index, document, step);
+  }
+  for (const query of ast.queries) {
+    addDefinitionAtSpan(index, document, query.id, query.span);
+  }
+  addQueryReferences(index, document, ast);
+
+  return index;
+}
+
+function positionInRange(position: Position, range: Range): boolean {
+  if (position.line < range.start.line || position.line > range.end.line) {
+    return false;
+  }
+  if (
+    position.line === range.start.line &&
+    position.character < range.start.character
+  ) {
+    return false;
+  }
+  if (
+    position.line === range.end.line &&
+    position.character > range.end.character
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function symbolAtPosition(
+  index: SymbolIndex,
+  position: Position,
+): string | undefined {
+  return index.semanticLocations.find(({ range }) => positionInRange(position, range))
+    ?.name;
+}
+
+function parseIndexedDocument(document: TextDocument):
+  | { ast: DocumentAst; index: SymbolIndex }
+  | undefined {
+  try {
+    const ast = parseDocument(document.getText());
+    return {
+      ast,
+      index: buildSymbolIndex(document, ast),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function severityToDiagnostic(
@@ -174,10 +408,16 @@ function symbolRange(span: SourceSpan, name: string): Range {
   };
 }
 
-function makeSymbol(name: string, kind: SymbolKind, span: SourceSpan): DocumentSymbol {
+function makeSymbol(
+  name: string,
+  kind: SymbolKind,
+  span: SourceSpan,
+  detail?: string,
+): DocumentSymbol {
   const range = symbolRange(span, name);
   return {
     name,
+    detail,
     kind,
     range,
     selectionRange: range,
@@ -200,7 +440,12 @@ function stepBodySymbol(step: StepDecl): DocumentSymbol {
         return SymbolKind.Interface;
     }
   })();
-  return makeSymbol(step.statement.id, kind, step.statement.span);
+  return makeSymbol(
+    step.statement.id,
+    kind,
+    step.statement.span,
+    step.statement.role,
+  );
 }
 
 function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
@@ -211,6 +456,7 @@ function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
       document.framework.name,
       SymbolKind.Module,
       document.framework.span,
+      "framework",
     );
     framework.children = document.framework.rules.map((rule) =>
       makeSymbol(`${rule.kind} ${rule.value}`, SymbolKind.Property, document.framework!.span),
@@ -230,7 +476,7 @@ function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
   );
   symbols.push(
     ...document.steps.map((step) => ({
-      ...makeSymbol(step.id, SymbolKind.Method, step.span),
+      ...makeSymbol(step.id, SymbolKind.Method, step.span, step.statement.role),
       children: [stepBodySymbol(step)],
     })),
   );
@@ -283,6 +529,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       documentFormattingProvider: true,
       documentSymbolProvider: true,
+      definitionProvider: true,
+      referencesProvider: true,
+      documentHighlightProvider: true,
       hoverProvider: true,
       completionProvider: {
         resolveProvider: false,
@@ -325,11 +574,80 @@ connection.onDocumentSymbol((params) => {
   if (!document) {
     return [];
   }
-  try {
-    return buildDocumentSymbols(parseDocument(document.getText()));
-  } catch {
+  const parsed = parseIndexedDocument(document);
+  if (!parsed) {
     return [];
   }
+  return buildDocumentSymbols(parsed.ast);
+});
+
+connection.onDefinition((params) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return null;
+  }
+  const parsed = parseIndexedDocument(document);
+  if (!parsed) {
+    return null;
+  }
+
+  const name = symbolAtPosition(parsed.index, params.position);
+  if (!name) {
+    return null;
+  }
+  return parsed.index.definitions.get(name) ?? null;
+});
+
+connection.onReferences((params) => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return [];
+  }
+  const parsed = parseIndexedDocument(document);
+  if (!parsed) {
+    return [];
+  }
+
+  const name = symbolAtPosition(parsed.index, params.position);
+  if (!name) {
+    return [];
+  }
+
+  const references = parsed.index.references.get(name) ?? [];
+  const definition = parsed.index.definitions.get(name);
+  return params.context.includeDeclaration && definition
+    ? [definition, ...references]
+    : references;
+});
+
+connection.onDocumentHighlight((params): DocumentHighlight[] => {
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return [];
+  }
+  const parsed = parseIndexedDocument(document);
+  if (!parsed) {
+    return [];
+  }
+
+  const name = symbolAtPosition(parsed.index, params.position);
+  if (!name) {
+    return [];
+  }
+
+  const definition = parsed.index.definitions.get(name);
+  const references = parsed.index.references.get(name) ?? [];
+  const highlights: DocumentHighlight[] = references.map((reference) => ({
+    range: reference.range,
+    kind: DocumentHighlightKind.Read,
+  }));
+  if (definition) {
+    highlights.unshift({
+      range: definition.range,
+      kind: DocumentHighlightKind.Write,
+    });
+  }
+  return highlights;
 });
 
 connection.onHover((params) => {
