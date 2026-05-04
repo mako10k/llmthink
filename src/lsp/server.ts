@@ -356,6 +356,47 @@ function buildReferenceRanges(document: DocumentAst): Map<string, Range> {
   return ranges;
 }
 
+function metadataRange(
+  textDocument: TextDocument,
+  issue: AuditIssue,
+): Range | undefined {
+  const line = Number(issue.metadata?.line);
+  const column = Number(issue.metadata?.column);
+  const endColumn = Number(issue.metadata?.end_column);
+  if (
+    Number.isFinite(line) &&
+    line > 0 &&
+    Number.isFinite(column) &&
+    column > 0
+  ) {
+    const lineText = lineTextAt(textDocument, line - 1);
+    const resolvedEndColumn =
+      Number.isFinite(endColumn) && endColumn > column
+        ? endColumn
+        : column + 1;
+    return Range.create(
+      Position.create(line - 1, Math.min(column - 1, lineText.length)),
+      Position.create(line - 1, Math.min(resolvedEndColumn - 1, lineText.length)),
+    );
+  }
+
+  const unresolvedRef = issue.metadata?.unresolved_ref;
+  if (
+    Number.isFinite(line) &&
+    line > 0 &&
+    typeof unresolvedRef === "string" &&
+    unresolvedRef.length > 0
+  ) {
+    return identifierRangeOnLine(
+      lineTextAt(textDocument, line - 1),
+      line - 1,
+      unresolvedRef,
+    );
+  }
+
+  return undefined;
+}
+
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   const diagnostics = [];
 
@@ -366,17 +407,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     });
     const referenceRanges = buildReferenceRanges(ast);
     for (const issue of report.results) {
-      const line = Number(issue.metadata?.line);
-      const parseRange =
-        Number.isFinite(line) && line > 0
-          ? Range.create(
-              Position.create(line - 1, 0),
-              Position.create(line - 1, lineTextAt(textDocument, line - 1).length),
-            )
-          : undefined;
+      const issueRange = metadataRange(textDocument, issue);
       diagnostics.push({
         range:
-          parseRange ??
+          issueRange ??
           referenceRanges.get(issue.target_refs[0]?.ref_id ?? "") ??
           Range.create(Position.create(0, 0), Position.create(0, 1)),
         severity: severityToDiagnostic(issue.severity),
@@ -391,8 +425,8 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     if (error instanceof ParseError) {
       diagnostics.push({
         range: Range.create(
-          Position.create(error.line - 1, 0),
-          Position.create(error.line - 1, lineTextAt(textDocument, error.line - 1).length),
+          Position.create(error.line - 1, Math.max(error.column - 1, 0)),
+          Position.create(error.line - 1, Math.max(error.endColumn - 1, error.column)),
         ),
         severity: DiagnosticSeverity.Error,
         source: "llmthink",

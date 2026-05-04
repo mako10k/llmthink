@@ -32,6 +32,41 @@ interface AuditOptions {
   embeddings?: EmbeddingRequestOptions;
 }
 
+function statementIdentifierColumn(statement: StepStatement): number {
+  const keywordLength = `${statement.role} `.length;
+  return statement.span.column + keywordLength;
+}
+
+function statementIdentifierEndColumn(statement: StepStatement): number {
+  return statementIdentifierColumn(statement) + statement.id.length;
+}
+
+function basedOnReferenceColumn(
+  statement: DecisionStatement,
+  ref: string,
+): number {
+  const basedOnPrefixLength =
+    statement.span.column +
+    `decision ${statement.id} based_on `.length;
+  const beforeRefLength = statement.basedOn
+    .slice(0, statement.basedOn.indexOf(ref))
+    .join(", ").length;
+  const separatorLength = statement.basedOn.indexOf(ref) > 0 ? 2 : 0;
+  return basedOnPrefixLength + beforeRefLength + separatorLength;
+}
+
+function frameworkRuleValueColumn(kind: string): number {
+  return 3 + kind.length + 1;
+}
+
+function overlappingBasedOnRefs(
+  left: DecisionStatement,
+  right: DecisionStatement,
+): string[] {
+  const rightRefs = new Set(right.basedOn);
+  return left.basedOn.filter((ref) => rightRefs.has(ref));
+}
+
 function issueId(index: number): string {
   return `ISSUE-${String(index).padStart(3, "0")}`;
 }
@@ -155,6 +190,11 @@ function auditFrameworkRequirements(
       target_refs: [{ ref_id: document.framework.name, role: "framework" }],
       message: `framework requirement ${rule.value} が満たされていない。`,
       rationale: "framework requires で指定された要素が文書内に存在しない。",
+      metadata: {
+        line: rule.span.line,
+        column: frameworkRuleValueColumn(rule.kind),
+        end_column: frameworkRuleValueColumn(rule.kind) + rule.value.length,
+      },
     });
   }
 }
@@ -177,6 +217,11 @@ function auditDecisionStep(
       rationale:
         "decision は based_on に premise または evidence を持つことが推奨される。",
       suggestion: "based_on を追加する。",
+      metadata: {
+        line: step.statement.span.line,
+        column: statementIdentifierColumn(step.statement),
+        end_column: statementIdentifierEndColumn(step.statement),
+      },
     });
   }
 
@@ -190,6 +235,12 @@ function auditDecisionStep(
       target_refs: [statementReference(step.statement, step.id)],
       message: `decision ${step.statement.id} の参照 ${ref} を解決できない。`,
       rationale: "based_on の参照先が文書内に存在しない。",
+      metadata: {
+        line: step.statement.span.line,
+        column: basedOnReferenceColumn(step.statement, ref),
+        end_column: basedOnReferenceColumn(step.statement, ref) + ref.length,
+        unresolved_ref: ref,
+      },
     });
   }
 }
@@ -215,19 +266,35 @@ function addContradictionCandidateIssues(
     return;
   }
 
-  const [first, ...rest] = decisions;
-  for (const candidate of rest) {
-    createIssue(issues, {
-      category: "contradiction_candidate",
-      severity: "warning",
-      target_refs: [
-        statementReference(first.statement, first.stepId),
-        statementReference(candidate.statement, candidate.stepId),
-      ],
-      message: `${first.statement.id} と ${candidate.statement.id} は同一問題上で緊張関係にある可能性がある。`,
-      rationale:
-        "複数の decision が共存しているため、観点と整合性の再確認が必要である。",
-    });
+  for (let index = 0; index < decisions.length - 1; index += 1) {
+    const current = decisions[index];
+    for (let candidateIndex = index + 1; candidateIndex < decisions.length; candidateIndex += 1) {
+      const candidate = decisions[candidateIndex];
+      const overlaps = overlappingBasedOnRefs(
+        current.statement,
+        candidate.statement,
+      );
+      if (overlaps.length === 0) {
+        continue;
+      }
+      createIssue(issues, {
+        category: "contradiction_candidate",
+        severity: "warning",
+        target_refs: [
+          statementReference(current.statement, current.stepId),
+          statementReference(candidate.statement, candidate.stepId),
+        ],
+        message: `${current.statement.id} と ${candidate.statement.id} は同一根拠 ${overlaps.join(", ")} を共有しており、緊張関係にある可能性がある。`,
+        rationale:
+          "複数の decision が同じ based_on 参照を共有しているため、観点と結論の整合性を再確認するべきである。",
+        metadata: {
+          shared_refs: overlaps,
+          line: current.statement.span.line,
+          column: statementIdentifierColumn(current.statement),
+          end_column: statementIdentifierEndColumn(current.statement),
+        },
+      });
+    }
   }
 }
 
@@ -246,6 +313,11 @@ function addPendingHintIssue(
     severity: "info",
     target_refs: [statementReference(pending.statement, pending.stepId)],
     message: "pending が存在するため、判断の確定度は下げて表示するべきである。",
+    metadata: {
+      line: pending.statement.span.line,
+      column: statementIdentifierColumn(pending.statement),
+      end_column: statementIdentifierEndColumn(pending.statement),
+    },
   });
 }
 
@@ -274,6 +346,11 @@ function addDecisionSemanticHint(
       ),
     message: `${decisions[0]?.statement.id} と ${decisions[1]?.statement.id} は意味的に近接している可能性がある。`,
     metadata: {
+      line: decisions[0]?.statement.span.line,
+      column: decisions[0] ? statementIdentifierColumn(decisions[0].statement) : 1,
+      end_column: decisions[0]
+        ? statementIdentifierEndColumn(decisions[0].statement)
+        : 1,
       similarity: roundScore(semanticSimilarity),
       semantic_distance: roundScore(1 - semanticSimilarity),
       ...(semanticContext
@@ -449,6 +526,14 @@ function auditPartition(
       target_refs: [{ ref_id: partition.id, role: "partition" }],
       message: `partition ${partition.id} の domain ${partition.domainName} を解決できない。`,
       rationale: "partition は既存 domain に対して定義される必要がある。",
+      metadata: {
+        line: partition.span.line,
+        column: partition.span.column + `partition ${partition.id} on `.length,
+        end_column:
+          partition.span.column +
+          `partition ${partition.id} on `.length +
+          partition.domainName.length,
+      },
     });
   }
   if (!partition.axis) {
@@ -457,6 +542,11 @@ function auditPartition(
       severity: "warning",
       target_refs: [{ ref_id: partition.id, role: "partition" }],
       message: `partition ${partition.id} に axis がない。`,
+      metadata: {
+        line: partition.span.line,
+        column: statementIdentifierColumn(partition),
+        end_column: statementIdentifierEndColumn(partition),
+      },
     });
   }
   const othersMember = partition.members.find(
@@ -469,6 +559,11 @@ function auditPartition(
       target_refs: [{ ref_id: partition.id, role: "partition" }],
       message: `partition ${partition.id} の Others が補集合として記述されていない。`,
       rationale: "Others は補集合として定義する前提である。",
+      metadata: {
+        line: partition.span.line,
+        column: statementIdentifierColumn(partition),
+        end_column: statementIdentifierEndColumn(partition),
+      },
     });
   }
 }

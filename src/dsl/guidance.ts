@@ -309,6 +309,8 @@ export function createParseErrorReport(
       "CLI では 'llmthink dsl help'、MCP では dsl action=help、VSIX tool では action=help を使って全体文法を確認する。",
     metadata: {
       line: error.line,
+      column: error.column,
+      end_column: error.endColumn,
       expected_syntax: help.expectedSyntax,
       syntax_help:
         "llmthink dsl help / MCP dsl action=help / VSIX tool action=help",

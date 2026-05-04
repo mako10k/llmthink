@@ -21,6 +21,16 @@ function span(line: number, column = 1): SourceSpan {
   return { line, column };
 }
 
+function firstNonWhitespaceColumn(line: string): number {
+  const indent = currentIndent(line);
+  return indent + 1;
+}
+
+function tokenColumn(line: string, token: string): number {
+  const index = line.indexOf(token);
+  return (index >= 0 ? index : currentIndent(line)) + 1;
+}
+
 function stripQuotes(value: string): string {
   return value.replace(/^"/, "").replace(/"$/, "");
 }
@@ -95,6 +105,8 @@ export class ParseError extends Error {
   constructor(
     message: string,
     readonly line: number,
+    readonly column = 1,
+    readonly endColumn = column,
   ) {
     super(`${message} at line ${line}`);
   }
@@ -153,7 +165,12 @@ export function parseDocument(input: string): DocumentAst {
       continue;
     }
 
-    throw new ParseError(`Unexpected top-level statement: ${line}`, index + 1);
+    throw new ParseError(
+      `Unexpected top-level statement: ${line}`,
+      index + 1,
+      firstNonWhitespaceColumn(rawLine),
+      rawLine.length + 1,
+    );
   }
 
   return document;
@@ -164,9 +181,15 @@ function parseFramework(
   startIndex: number,
 ): [FrameworkDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match = /^framework\s+([A-Za-z][A-Za-z0-9_-]*)(:)?$/.exec(header);
   if (!match) {
-    throw new ParseError("Invalid framework declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid framework declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
 
   const rules: FrameworkRule[] = [];
@@ -183,7 +206,12 @@ function parseFramework(
       }
       const parsedRule = parseFrameworkRuleLine(raw.trim());
       if (!parsedRule) {
-        throw new ParseError("Invalid framework rule", index + 1);
+        throw new ParseError(
+          "Invalid framework rule",
+          index + 1,
+          firstNonWhitespaceColumn(raw),
+          raw.length + 1,
+        );
       }
       rules.push({ ...parsedRule, span: span(index + 1) });
       index += 1;
@@ -205,14 +233,26 @@ function parseDomain(
   startIndex: number,
 ): [DomainDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match = /^domain\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
-    throw new ParseError("Invalid domain declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid domain declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
-  const descriptionLine = lines[startIndex + 1]?.trim() ?? "";
+  const rawDescriptionLine = lines[startIndex + 1] ?? "";
+  const descriptionLine = rawDescriptionLine.trim() ?? "";
   const descriptionMatch = /^description\s+"(.+)"$/.exec(descriptionLine);
   if (!descriptionMatch) {
-    throw new ParseError("Domain description is required", startIndex + 2);
+    throw new ParseError(
+      "Domain description is required",
+      startIndex + 2,
+      firstNonWhitespaceColumn(rawDescriptionLine),
+      rawDescriptionLine.length + 1,
+    );
   }
   return [
     {
@@ -229,13 +269,25 @@ function parseProblem(
   startIndex: number,
 ): [ProblemDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match = /^problem\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
-    throw new ParseError("Invalid problem declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid problem declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
-  const textLine = lines[startIndex + 1]?.trim() ?? "";
+  const rawTextLine = lines[startIndex + 1] ?? "";
+  const textLine = rawTextLine.trim() ?? "";
   if (!textLine.startsWith('"')) {
-    throw new ParseError("Problem text is required", startIndex + 2);
+    throw new ParseError(
+      "Problem text is required",
+      startIndex + 2,
+      firstNonWhitespaceColumn(rawTextLine),
+      rawTextLine.length + 1,
+    );
   }
   return [
     { name: match[1], text: stripQuotes(textLine), span: span(startIndex + 1) },
@@ -245,9 +297,15 @@ function parseProblem(
 
 function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match = /^step\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
-    throw new ParseError("Invalid step declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid step declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
 
   const statementLine = lines[startIndex + 1]?.trim() ?? "";
@@ -293,7 +351,12 @@ function parseStatement(
   if (line.startsWith("decision ")) {
     return parseDecision(lines, lineIndex);
   }
-  throw new ParseError("Unknown statement type", lineIndex + 1);
+  throw new ParseError(
+    "Unknown statement type",
+    lineIndex + 1,
+    firstNonWhitespaceColumn(lines[lineIndex] ?? ""),
+    (lines[lineIndex] ?? "").length + 1,
+  );
 }
 
 function parseTextStatement<T extends "premise" | "evidence" | "pending">(
@@ -304,13 +367,25 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
   nextIndex: number;
 } {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const id = parseIdentifierAfterKeyword(header, role);
   if (!id) {
-    throw new ParseError(`Invalid ${role} declaration`, startIndex + 1);
+    throw new ParseError(
+      `Invalid ${role} declaration`,
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
-  const textLine = lines[startIndex + 1]?.trim() ?? "";
+  const rawTextLine = lines[startIndex + 1] ?? "";
+  const textLine = rawTextLine.trim() ?? "";
   if (!textLine.startsWith('"')) {
-    throw new ParseError(`${role} text is required`, startIndex + 2);
+    throw new ParseError(
+      `${role} text is required`,
+      startIndex + 2,
+      firstNonWhitespaceColumn(rawTextLine),
+      rawTextLine.length + 1,
+    );
   }
   return {
     role,
@@ -326,14 +401,26 @@ function parseViewpoint(
   startIndex: number,
 ): ViewpointStatement & { nextIndex: number } {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match = /^viewpoint\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
-    throw new ParseError("Invalid viewpoint declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid viewpoint declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
-  const axisLine = lines[startIndex + 1]?.trim() ?? "";
+  const rawAxisLine = lines[startIndex + 1] ?? "";
+  const axisLine = rawAxisLine.trim() ?? "";
   const axisMatch = /^axis\s+([A-Za-z][A-Za-z0-9_-]*)$/.exec(axisLine);
   if (!axisMatch) {
-    throw new ParseError("Viewpoint axis is required", startIndex + 2);
+    throw new ParseError(
+      "Viewpoint axis is required",
+      startIndex + 2,
+      firstNonWhitespaceColumn(rawAxisLine),
+      rawAxisLine.length + 1,
+    );
   }
   return {
     role: "viewpoint",
@@ -349,12 +436,18 @@ function parsePartition(
   startIndex: number,
 ): PartitionStatement & { nextIndex: number } {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match =
     /^partition\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+axis\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(
       header,
     );
   if (!match) {
-    throw new ParseError("Invalid partition declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid partition declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
   const members: PartitionMember[] = [];
   let index = startIndex + 1;
@@ -369,7 +462,12 @@ function parsePartition(
     }
     const member = parsePartitionMemberLine(raw.trim());
     if (!member) {
-      throw new ParseError("Invalid partition member", index + 1);
+      throw new ParseError(
+        "Invalid partition member",
+        index + 1,
+        firstNonWhitespaceColumn(raw),
+        raw.length + 1,
+      );
     }
     members.push(member);
     index += 1;
@@ -390,13 +488,25 @@ function parseDecision(
   startIndex: number,
 ): DecisionStatement & { nextIndex: number } {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const parsedHeader = parseDecisionHeader(header);
   if (!parsedHeader) {
-    throw new ParseError("Invalid decision declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid decision declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
-  const textLine = lines[startIndex + 1]?.trim() ?? "";
+  const rawTextLine = lines[startIndex + 1] ?? "";
+  const textLine = rawTextLine.trim() ?? "";
   if (!textLine.startsWith('"')) {
-    throw new ParseError("Decision text is required", startIndex + 2);
+    throw new ParseError(
+      "Decision text is required",
+      startIndex + 2,
+      firstNonWhitespaceColumn(rawTextLine),
+      rawTextLine.length + 1,
+    );
   }
   return {
     role: "decision",
@@ -410,13 +520,25 @@ function parseDecision(
 
 function parseQuery(lines: string[], startIndex: number): [QueryDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
   const match = /^query\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
   if (!match) {
-    throw new ParseError("Invalid query declaration", startIndex + 1);
+    throw new ParseError(
+      "Invalid query declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
   }
-  const expressionLine = lines[startIndex + 1]?.trim() ?? "";
+  const rawExpressionLine = lines[startIndex + 1] ?? "";
+  const expressionLine = rawExpressionLine.trim() ?? "";
   if (!expressionLine) {
-    throw new ParseError("Query expression is required", startIndex + 2);
+    throw new ParseError(
+      "Query expression is required",
+      startIndex + 2,
+      firstNonWhitespaceColumn(rawExpressionLine),
+      rawExpressionLine.length + 1,
+    );
   }
   return [
     { id: match[1], expression: expressionLine, span: span(startIndex + 1) },
