@@ -650,7 +650,7 @@ step S7:
 		"運用負荷の比較は未完了"
 
 query Q1:
-	related_decisions(P1)
+	.problems[] | select(.id == "P1") | related_decisions
 ```
 
 ### 18.1 想定監査結果

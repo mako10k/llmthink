@@ -47,10 +47,10 @@ step S8:
     "第三段階では format document と audit diagnostics に接続した code action を提供する"
 
 query Q1:
-  related_decisions(P1)
+  .problems[] | select(.id == "P1") | related_decisions
 
 query Q2:
-  related_decisions(P2)
+  .problems[] | select(.id == "P2") | related_decisions
 
 query Q3:
-  related_decisions(P3)
+  .problems[] | select(.id == "P3") | related_decisions

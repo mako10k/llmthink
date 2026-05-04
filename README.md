@@ -173,8 +173,8 @@ hostAddressLoopback=true
 
 ## Query 埋め込みの扱い
 
-- `related_decisions(P1)` のような query は、式そのものに加えて参照先 problem の本文も埋め込み対象に含める
-- これにより、`related_decisions(...)` という固定文字列ではなく、問題文脈に近い decision が上位に来やすくなる
+- `.problems[] | select(.id == "P1") | related_decisions` のような query は、式そのものに加えて参照先 problem の本文も埋め込み対象に含める
+- これにより、固定的な query 関数名だけではなく、選択された problem 文脈に近い decision が上位に来やすくなる
 
 ## DSL ヘルプ
 

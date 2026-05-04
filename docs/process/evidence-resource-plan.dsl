@@ -47,10 +47,10 @@ step S8:
     "埋め込みは evidence 本文と resource メタデータを優先し、本文取得や媒体別埋め込みは別フェーズへ分離する"
 
 query Q1:
-  related_decisions(P1)
+  .problems[] | select(.id == "P1") | related_decisions
 
 query Q2:
-  related_decisions(P2)
+  .problems[] | select(.id == "P2") | related_decisions
 
 query Q3:
-  related_decisions(P3)
+  .problems[] | select(.id == "P3") | related_decisions

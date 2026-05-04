@@ -35,7 +35,7 @@ const DSL_SYNTAX_GUIDANCE = [
   "      Cheap := cost < 100",
   "      Others := not Cheap",
   "  query Q1:",
-  "    related_decisions(P1)",
+  '    .problems[] | select(.id == "P1") | related_decisions',
   "",
   "Rules:",
   "  - top-level keywords are framework, domain, problem, step, query",
@@ -43,7 +43,7 @@ const DSL_SYNTAX_GUIDANCE = [
   "  - step body starts on the next indented line",
   "  - premise/evidence/pending/decision text is a quoted string on the next indented line",
   "  - decision based_on is optional, but when present it is comma-separated",
-  "  - query expression is currently free-form text; related_decisions(P1) is the canonical pattern",
+  '  - query expression uses DSLQL; .problems[] | select(.id == "P1") | related_decisions is the canonical pattern',
   "",
   "Help:",
   "  - CLI: llmthink dsl help",
@@ -82,7 +82,7 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
         "  evidence EV1:",
         '    "..."',
         "query Q1:",
-        "  related_decisions(P1)",
+        '  .problems[] | select(.id == "P1") | related_decisions',
       ].join("\n"),
     },
   },
@@ -233,7 +233,10 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
       ]),
     help: {
       rationale: "query は 'query Id:' の次に expression を持つ。",
-      expectedSyntax: ["query Q1:", "  related_decisions(P1)"].join("\n"),
+      expectedSyntax: [
+        "query Q1:",
+        '  .problems[] | select(.id == "P1") | related_decisions',
+      ].join("\n"),
     },
   },
 ];

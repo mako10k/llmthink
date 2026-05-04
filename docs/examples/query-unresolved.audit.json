@@ -24,8 +24,8 @@
       "rationale": "query 引数の参照先が文書内に存在しない。",
       "metadata": {
         "line": 11,
-        "column": 21,
-        "end_column": 23,
+        "column": 32,
+        "end_column": 34,
         "unresolved_ref": "P2"
       }
     }

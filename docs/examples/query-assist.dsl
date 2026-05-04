@@ -15,4 +15,4 @@ step S2:
     "ADR を先に確定する"
 
 query Q1:
-  related_decisions(P1)
+  .problems[] | select(.id == "P1") | related_decisions

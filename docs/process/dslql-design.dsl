@@ -2,7 +2,7 @@ domain DSLQLDesign:
   description "jq 風の操作感を持つ DSLQL の設計方針を整理する"
 
 problem P1:
-  "llmthink の query を、既存の related_decisions(P1) より表現力の高い jq 風クエリ言語へどう拡張するか"
+  "llmthink の query を、最小関数呼び出しより表現力の高い jq 風クエリ言語へどう拡張するか"
 
 problem P2:
   "DSLQL をどの層へ導入すれば query の正規構文として成立するか"

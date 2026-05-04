@@ -8,4 +8,4 @@ problem P1:
   "既知の problem"
 
 query Q1:
-  related_decisions(P2)
+  .problems[] | select(.id == "P2") | related_decisions

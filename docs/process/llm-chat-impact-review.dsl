@@ -67,10 +67,10 @@ step S14:
     "改善の第三優先は履歴保守性の向上であり、肥大化した thought の保存戦略と閲覧戦略を分けて設計することである"
 
 query Q1:
-  related_decisions(P1)
+  .problems[] | select(.id == "P1") | related_decisions
 
 query Q2:
-  related_decisions(P2)
+  .problems[] | select(.id == "P2") | related_decisions
 
 query Q3:
-  related_decisions(P3)
+  .problems[] | select(.id == "P3") | related_decisions

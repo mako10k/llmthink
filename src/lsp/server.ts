@@ -29,6 +29,7 @@ import {
 } from "vscode-languageserver-types";
 import { auditDslText } from "../analyzer/audit.js";
 import { formatDslText } from "../dsl/format.js";
+import { collectDslqlReferenceIds } from "../dslql/query.js";
 import type { AuditIssue } from "../model/diagnostics.js";
 import type { DocumentAst, SourceSpan, StepDecl } from "../model/ast.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
@@ -71,6 +72,8 @@ const KEYWORD_DOCS: Record<string, string> = {
 const QUERY_FUNCTION_DOCS: Record<string, string> = {
   related_decisions:
     "problem を引数に取り、関連する decision 候補を返す query 関数です。",
+  select: "DSLQL の filter 関数です。条件が真の要素だけを通します。",
+  len: "DSLQL の長さ関数です。配列や文字列の長さを返します。",
 };
 
 function toRange(span: SourceSpan, endColumn?: number): Range {
@@ -126,16 +129,11 @@ function tokenizeRuleValue(value: string): string[] {
 }
 
 function extractQueryArguments(expression: string): string[] {
-  const openParen = expression.indexOf("(");
-  const closeParen = expression.lastIndexOf(")");
-  if (openParen === -1 || closeParen === -1 || closeParen <= openParen) {
+  try {
+    return collectDslqlReferenceIds(expression);
+  } catch {
     return [];
   }
-  return expression
-    .slice(openParen + 1, closeParen)
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
 }
 
 function createSymbolIndex(): SymbolIndex {

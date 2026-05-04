@@ -139,7 +139,7 @@ DSLQL の価値は単なる field access ではなく、思考構造の relation
 MVP では query 記述も DSLQL に統一する。
 
 - problem 単位の decision 探索は `.problems[] | select(.id == "P1") | related_decisions` と書く
-- `related_decisions("problem text")` のような曖昧入力は不許可とする
+- problem 指定は識別子文字列で明示し、`.problems[] | select(.id == "P1") | related_decisions` の形へ正規化する
 
 ---
 

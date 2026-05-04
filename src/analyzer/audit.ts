@@ -19,6 +19,14 @@ import {
   createParseErrorReport,
   isDslHelpRequest,
 } from "../dsl/guidance.js";
+import {
+  collectDslqlReferenceIds,
+  DslqlParseError,
+  evaluateDslqlExpression,
+  parseDslqlExpression,
+  type DslqlRuntime,
+  type DslqlValue,
+} from "../dslql/query.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 import {
   cosineSimilarity,
@@ -141,31 +149,6 @@ function findPending(
     .map((step) => ({ stepId: step.id, statement: step.statement }));
 }
 
-function extractRelatedDecisionProblemId(
-  queryExpression: string,
-): string | undefined {
-  const normalized = queryExpression.trim();
-  const prefix = "related_decisions(";
-  if (!normalized.startsWith(prefix) || !normalized.endsWith(")")) {
-    return undefined;
-  }
-  const problemId = normalized.slice(prefix.length, -1).trim();
-  return /^[A-Za-z][A-Za-z0-9_-]*$/.test(problemId) ? problemId : undefined;
-}
-
-function extractQueryArguments(queryExpression: string): string[] {
-  const openParen = queryExpression.indexOf("(");
-  const closeParen = queryExpression.lastIndexOf(")");
-  if (openParen === -1 || closeParen === -1 || closeParen <= openParen) {
-    return [];
-  }
-  return queryExpression
-    .slice(openParen + 1, closeParen)
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
 function tokenizeFrameworkRequirementClause(value: string): string[] {
   return value
     .split(/\s+and\s+/)
@@ -234,7 +217,28 @@ function auditQueryReferences(
   ids: Set<string>,
 ): void {
   for (const query of document.queries) {
-    for (const ref of extractQueryArguments(query.expression)) {
+    try {
+      parseDslqlExpression(query.expression);
+    } catch (error) {
+      if (error instanceof DslqlParseError) {
+        createIssue(issues, {
+          category: "contract_violation",
+          severity: "fatal",
+          target_refs: [{ ref_id: query.id, role: "query" }],
+          message: `query ${query.id} の DSLQL 構文が不正である。`,
+          rationale: error.message,
+          metadata: {
+            line: query.expressionSpan.line,
+            column: query.expressionSpan.column + error.column - 1,
+            end_column: query.expressionSpan.column + error.endColumn - 1,
+          },
+        });
+        continue;
+      }
+      throw error;
+    }
+
+    for (const ref of collectDslqlReferenceIds(query.expression)) {
       if (ids.has(ref)) {
         continue;
       }
@@ -426,6 +430,7 @@ function buildQueryResults(
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
   semanticContext: SemanticContext | undefined,
 ): QueryResult[] {
+  const runtime = createDslqlRuntime(document);
   return document.queries.map((query, queryIndex) => ({
     query_id: query.id,
     severity: "hint",
@@ -434,6 +439,7 @@ function buildQueryResults(
       queryIndex,
       decisions,
       semanticContext,
+      collectDecisionIdsFromQuery(query.expression, runtime),
     ).map((item) => ({
       ref_id: item.ref_id,
       score: item.score,
@@ -446,19 +452,16 @@ function buildQuerySemanticText(
   document: DocumentAst,
   queryExpression: string,
 ): string {
-  const problemId = extractRelatedDecisionProblemId(queryExpression);
-  if (!problemId) {
-    return queryExpression;
-  }
+  const problemTexts = collectDslqlReferenceIds(queryExpression)
+    .map((problemId) =>
+      document.problems.find((candidate) => candidate.name === problemId),
+    )
+    .filter((problem): problem is DocumentAst["problems"][number] => Boolean(problem))
+    .map((problem) => problem.text);
 
-  const problem = document.problems.find(
-    (candidate) => candidate.name === problemId,
-  );
-  if (!problem) {
-    return queryExpression;
-  }
-
-  return `${queryExpression}\nproblem: ${problem.text}`;
+  return problemTexts.length === 0
+    ? queryExpression
+    : `${queryExpression}\n${problemTexts.map((text) => `problem: ${text}`).join("\n")}`;
 }
 
 async function auditDocument(
@@ -546,20 +549,29 @@ function rankDecisionsForQuery(
   queryIndex: number,
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
   semanticContext: SemanticContext | undefined,
+  allowedDecisionIds?: Set<string>,
 ): Array<{ ref_id: string; score: number; explanation: string }> {
+  const candidateDecisions = decisions.filter(
+    (decision) =>
+      !allowedDecisionIds || allowedDecisionIds.has(decision.statement.id),
+  );
+
   if (!semanticContext || !semanticContext.queryEmbeddings[queryIndex]) {
-    return decisions.map((decision, index) => ({
+    return candidateDecisions.map((decision, index) => ({
       ref_id: decision.statement.id,
       score: Math.max(0.5, 1 - index * 0.1),
       explanation: `${queryExpression} に関連する decision 候補。`,
     }));
   }
 
-  return decisions
-    .map((decision, index) => {
+  return candidateDecisions
+    .map((decision) => {
+      const decisionIndex = decisions.findIndex(
+        (candidate) => candidate.statement.id === decision.statement.id,
+      );
       const similarity = cosineSimilarity(
         semanticContext.queryEmbeddings[queryIndex] ?? [],
-        semanticContext.decisionEmbeddings[index] ?? [],
+        semanticContext.decisionEmbeddings[decisionIndex] ?? [],
       );
       return {
         ref_id: decision.statement.id,
@@ -568,6 +580,88 @@ function rankDecisionsForQuery(
       };
     })
     .sort((left, right) => right.score - left.score);
+}
+
+function normalizeStepStatement(step: DocumentAst["steps"][number]): DslqlValue {
+  return {
+    step_id: step.id,
+    role: step.statement.role,
+    id: step.statement.id,
+    text: "text" in step.statement ? step.statement.text : null,
+    based_on: step.statement.role === "decision" ? step.statement.basedOn : [],
+    span: {
+      line: step.statement.span.line,
+      column: step.statement.span.column,
+    },
+    source_kind: "draft",
+  };
+}
+
+function createDslqlRuntime(document: DocumentAst): DslqlRuntime {
+  const decisionValues = document.steps
+    .filter((step) => step.statement.role === "decision")
+    .map(normalizeStepStatement);
+
+  return {
+    root: {
+      document: {
+        framework: document.framework ? { name: document.framework.name } : null,
+        domains: document.domains.map((domain) => ({
+          id: domain.name,
+          description: domain.description,
+        })),
+        problems: document.problems.map((problem) => ({
+          id: problem.name,
+          text: problem.text,
+        })),
+        steps: document.steps.map(normalizeStepStatement),
+        queries: document.queries.map((query) => ({
+          id: query.id,
+          expression: query.expression,
+        })),
+      },
+      framework: document.framework ? { name: document.framework.name } : null,
+      domains: document.domains.map((domain) => ({
+        id: domain.name,
+        description: domain.description,
+      })),
+      problems: document.problems.map((problem) => ({
+        id: problem.name,
+        text: problem.text,
+      })),
+      steps: document.steps.map(normalizeStepStatement),
+      queries: document.queries.map((query) => ({
+        id: query.id,
+        expression: query.expression,
+      })),
+      audit: null,
+      thought: null,
+      search: [],
+    },
+    functions: {
+      related_decisions: () => decisionValues,
+      audit_findings: () => [],
+    },
+  };
+}
+
+function collectDecisionIdsFromQuery(
+  queryExpression: string,
+  runtime: DslqlRuntime,
+): Set<string> | undefined {
+  try {
+    const values = evaluateDslqlExpression(queryExpression, runtime);
+    const ids = values
+      .filter(
+        (value): value is Record<string, DslqlValue | undefined> =>
+          typeof value === "object" && value !== null && !Array.isArray(value),
+      )
+      .filter((value) => value.role === "decision" && typeof value.id === "string")
+      .map((value) => String(value.id));
+    return new Set(ids);
+  } catch {
+    return undefined;
+  }
 }
 
 function auditPartition(

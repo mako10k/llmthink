@@ -43,10 +43,10 @@ step S7:
     "contradiction_candidate は hint に落とし、shared based_on を持つ組だけを対象にする"
 
 query Q1:
-  related_decisions(P1)
+  .problems[] | select(.id == "P1") | related_decisions
 
 query Q2:
-  related_decisions(P2)
+  .problems[] | select(.id == "P2") | related_decisions
 
 query Q3:
-  related_decisions(P3)
+  .problems[] | select(.id == "P3") | related_decisions
