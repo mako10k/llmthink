@@ -1,0 +1,33 @@
+{
+  "engine_version": "0.1.0",
+  "document_id": "framework-requires-and",
+  "generated_at": "<generated>",
+  "summary": {
+    "fatal_count": 0,
+    "error_count": 1,
+    "warning_count": 0,
+    "info_count": 0,
+    "hint_count": 0
+  },
+  "results": [
+    {
+      "issue_id": "ISSUE-001",
+      "category": "contract_violation",
+      "severity": "error",
+      "target_refs": [
+        {
+          "ref_id": "StrictRequirements",
+          "role": "framework"
+        }
+      ],
+      "message": "framework requirement problem and decision が満たされていない。",
+      "rationale": "framework requires で指定された要素が文書内に存在しない。",
+      "metadata": {
+        "line": 2,
+        "column": 12,
+        "end_column": 32
+      }
+    }
+  ],
+  "query_results": []
+}

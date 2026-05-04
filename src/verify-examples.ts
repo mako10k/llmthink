@@ -18,6 +18,14 @@ const exampleCases: ExampleCase[] = [
     input: "docs/examples/query-assist.dsl",
     expected: "docs/examples/query-assist.audit.json",
   },
+  {
+    input: "docs/examples/query-unresolved.dsl",
+    expected: "docs/examples/query-unresolved.audit.json",
+  },
+  {
+    input: "docs/examples/framework-requires-and.dsl",
+    expected: "docs/examples/framework-requires-and.audit.json",
+  },
 ];
 
 function normalize(report: AuditReport): AuditReport {

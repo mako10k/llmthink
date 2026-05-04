@@ -273,7 +273,12 @@ function buildSymbolIndex(document: TextDocument, ast: DocumentAst): SymbolIndex
   }
 
   for (const query of ast.queries) {
-    addReferencesFromLine(index, document, query.span.line, extractQueryArguments(lineTextAt(document, query.span.line).trim()));
+    addReferencesFromLine(
+      index,
+      document,
+      query.expressionSpan.line - 1,
+      extractQueryArguments(query.expression),
+    );
   }
 
   return index;

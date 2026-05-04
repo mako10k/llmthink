@@ -5,7 +5,7 @@
   "summary": {
     "fatal_count": 0,
     "error_count": 1,
-    "warning_count": 1,
+    "warning_count": 0,
     "info_count": 1,
     "hint_count": 1
   },
@@ -23,29 +23,15 @@
       ],
       "message": "decision D2 に根拠参照がない。",
       "rationale": "decision は based_on に premise または evidence を持つことが推奨される。",
-      "suggestion": "based_on を追加する。"
+      "suggestion": "based_on を追加する。",
+      "metadata": {
+        "line": 22,
+        "column": 12,
+        "end_column": 14
+      }
     },
     {
       "issue_id": "ISSUE-002",
-      "category": "contradiction_candidate",
-      "severity": "warning",
-      "target_refs": [
-        {
-          "ref_id": "D1",
-          "role": "decision",
-          "step_id": "S3"
-        },
-        {
-          "ref_id": "D2",
-          "role": "decision",
-          "step_id": "S4"
-        }
-      ],
-      "message": "D1 と D2 は同一問題上で緊張関係にある可能性がある。",
-      "rationale": "複数の decision が共存しているため、観点と整合性の再確認が必要である。"
-    },
-    {
-      "issue_id": "ISSUE-003",
       "category": "semantic_hint",
       "severity": "info",
       "target_refs": [
@@ -55,10 +41,15 @@
           "step_id": "S5"
         }
       ],
-      "message": "pending が存在するため、判断の確定度は下げて表示するべきである。"
+      "message": "pending が存在するため、判断の確定度は下げて表示するべきである。",
+      "metadata": {
+        "line": 26,
+        "column": 11,
+        "end_column": 14
+      }
     },
     {
-      "issue_id": "ISSUE-004",
+      "issue_id": "ISSUE-003",
       "category": "semantic_hint",
       "severity": "hint",
       "target_refs": [
@@ -75,6 +66,9 @@
       ],
       "message": "D1 と D2 は意味的に近接している可能性がある。",
       "metadata": {
+        "line": 18,
+        "column": 12,
+        "end_column": 14,
         "similarity": 0.75,
         "semantic_distance": 0.25
       }

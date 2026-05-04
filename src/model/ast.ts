@@ -103,6 +103,7 @@ export interface QueryDecl {
   id: string;
   expression: string;
   span: SourceSpan;
+  expressionSpan: SourceSpan;
 }
 
 export interface DocumentAst {

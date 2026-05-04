@@ -134,17 +134,21 @@
 
 対象:
 
-- 同一 problem に属する複数 decision
+- 複数 decision
 
 条件:
 
-- 判断文が同一論点に対して逆向きの結論を示唆する
+- 少なくとも一部の based_on 参照を共有する
 - ただし contradiction と断定できるだけの明示条件が不足している
 
 結果:
 
 - category = contradiction_candidate
-- severity = warning
+- severity = hint
+
+注記:
+
+- 現行 MVP では same problem と結論の逆向き判定までは行わず、shared based_on を持つ decision 組だけを弱いヒントとして返す
 
 ### R005 pending_reduces_confidence
 

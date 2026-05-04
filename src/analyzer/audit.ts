@@ -59,6 +59,11 @@ function frameworkRuleValueColumn(kind: string): number {
   return 3 + kind.length + 1;
 }
 
+function queryArgumentColumn(expression: string, queryColumn: number, ref: string): number {
+  const index = expression.indexOf(ref);
+  return queryColumn + (index >= 0 ? index : 0);
+}
+
 function overlappingBasedOnRefs(
   left: DecisionStatement,
   right: DecisionStatement,
@@ -148,11 +153,36 @@ function extractRelatedDecisionProblemId(
   return /^[A-Za-z][A-Za-z0-9_-]*$/.test(problemId) ? problemId : undefined;
 }
 
-function tokenizeFrameworkRequirement(value: string): string[] {
+function extractQueryArguments(queryExpression: string): string[] {
+  const openParen = queryExpression.indexOf("(");
+  const closeParen = queryExpression.lastIndexOf(")");
+  if (openParen === -1 || closeParen === -1 || closeParen <= openParen) {
+    return [];
+  }
+  return queryExpression
+    .slice(openParen + 1, closeParen)
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function tokenizeFrameworkRequirementClause(value: string): string[] {
   return value
-    .split(/\s+/)
+    .split(/\s+and\s+/)
     .map((token) => token.trim())
-    .filter((token) => token && token !== "and" && token !== "or");
+    .filter(Boolean);
+}
+
+function evaluateFrameworkRequirement(
+  value: string,
+  availableRoles: Set<string>,
+): boolean {
+  const clauses = value
+    .split(/\s+or\s+/)
+    .map((clause) => tokenizeFrameworkRequirementClause(clause));
+  return clauses.some(
+    (clause) => clause.length > 0 && clause.every((token) => availableRoles.has(token)),
+  );
 }
 
 function collectAvailableRoles(document: DocumentAst): Set<string> {
@@ -178,8 +208,7 @@ function auditFrameworkRequirements(
       continue;
     }
 
-    const requiredTokens = tokenizeFrameworkRequirement(rule.value);
-    const satisfied = requiredTokens.some((token) => availableRoles.has(token));
+    const satisfied = evaluateFrameworkRequirement(rule.value, availableRoles);
     if (satisfied) {
       continue;
     }
@@ -196,6 +225,35 @@ function auditFrameworkRequirements(
         end_column: frameworkRuleValueColumn(rule.kind) + rule.value.length,
       },
     });
+  }
+}
+
+function auditQueryReferences(
+  issues: AuditIssue[],
+  document: DocumentAst,
+  ids: Set<string>,
+): void {
+  for (const query of document.queries) {
+    for (const ref of extractQueryArguments(query.expression)) {
+      if (ids.has(ref)) {
+        continue;
+      }
+
+      const column = queryArgumentColumn(query.expression, query.expressionSpan.column, ref);
+      createIssue(issues, {
+        category: "contract_violation",
+        severity: "fatal",
+        target_refs: [{ ref_id: query.id, role: "query" }],
+        message: `query ${query.id} の参照 ${ref} を解決できない。`,
+        rationale: "query 引数の参照先が文書内に存在しない。",
+        metadata: {
+          line: query.expressionSpan.line,
+          column,
+          end_column: column + ref.length,
+          unresolved_ref: ref,
+        },
+      });
+    }
   }
 }
 
@@ -279,7 +337,7 @@ function addContradictionCandidateIssues(
       }
       createIssue(issues, {
         category: "contradiction_candidate",
-        severity: "warning",
+        severity: "hint",
         target_refs: [
           statementReference(current.statement, current.stepId),
           statementReference(candidate.statement, candidate.stepId),
@@ -415,6 +473,7 @@ async function auditDocument(
 
   auditFrameworkRequirements(issues, document);
   auditStepContracts(issues, document, ids);
+  auditQueryReferences(issues, document, ids);
   addContradictionCandidateIssues(issues, decisions);
   addPendingHintIssue(issues, pendingSteps, decisions);
 

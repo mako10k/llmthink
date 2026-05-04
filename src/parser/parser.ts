@@ -553,6 +553,10 @@ function parseQuery(lines: string[], startIndex: number): [QueryDecl, number] {
       id: match[1],
       expression: expressionLine,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+      expressionSpan: span(
+        startIndex + 2,
+        firstNonWhitespaceColumn(rawExpressionLine),
+      ),
     },
     startIndex + 2,
   ];

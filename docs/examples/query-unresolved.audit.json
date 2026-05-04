@@ -1,0 +1,40 @@
+{
+  "engine_version": "0.1.0",
+  "document_id": "query-unresolved",
+  "generated_at": "<generated>",
+  "summary": {
+    "fatal_count": 1,
+    "error_count": 0,
+    "warning_count": 0,
+    "info_count": 0,
+    "hint_count": 0
+  },
+  "results": [
+    {
+      "issue_id": "ISSUE-001",
+      "category": "contract_violation",
+      "severity": "fatal",
+      "target_refs": [
+        {
+          "ref_id": "Q1",
+          "role": "query"
+        }
+      ],
+      "message": "query Q1 の参照 P2 を解決できない。",
+      "rationale": "query 引数の参照先が文書内に存在しない。",
+      "metadata": {
+        "line": 11,
+        "column": 21,
+        "end_column": 23,
+        "unresolved_ref": "P2"
+      }
+    }
+  ],
+  "query_results": [
+    {
+      "query_id": "Q1",
+      "severity": "hint",
+      "items": []
+    }
+  ]
+}
