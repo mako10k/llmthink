@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",

@@ -8,7 +8,7 @@
 利用者としては、必要に応じて `#llmthink-dsl` で `action=audit` や `action=help` を使って DSL を確認できる。
 
 DSLQL 導入後は、query 行に対して LSP の completion と hover が入り、VSIX 側でも DSLQL snippets と syntax highlight が使える。
-また、DSL Preview コマンドでアクティブな DSL 文書を Markdown ベースの HTML プレビューとして横に表示できる。プレビューは custom editor として開くため、Markdown Preview に近い別エディタ種別として扱える。右上の editor title action が環境により見えない場合でも、`.dsl` 編集中は status bar に `LLMThink Preview` ボタンが出る。
+また、DSL Preview コマンドでアクティブな DSL 文書を Markdown ベースの HTML プレビューとして横に表示できる。プレビューは custom editor として開くため、Markdown Preview に近い別エディタ種別として扱える。右上の editor title action が環境により見えない場合でも、`.dsl` 編集中は status bar に `LLMThink Preview` ボタンが出る。プレビュー上部には step 関係を可視化する SVG グラフも表示される。
 
 ## DSLQL 編集支援
 
