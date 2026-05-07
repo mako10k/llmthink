@@ -420,6 +420,41 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
     nodes.some((node) => node.role === role),
   );
 
+  const outgoingBySource = new Map<string, Array<{ edge: DiagramEdge; index: number }>>();
+  const incomingByTarget = new Map<string, Array<{ edge: DiagramEdge; index: number }>>();
+  for (const [index, edge] of edges.entries()) {
+    const outgoing = outgoingBySource.get(edge.from) ?? [];
+    outgoing.push({ edge, index });
+    outgoingBySource.set(edge.from, outgoing);
+
+    const incoming = incomingByTarget.get(edge.to) ?? [];
+    incoming.push({ edge, index });
+    incomingByTarget.set(edge.to, incoming);
+  }
+
+  const sourceOffsets = new Map<number, number>();
+  const targetOffsets = new Map<number, number>();
+  const spreadOffsets = (count: number): number[] => {
+    const center = (count - 1) / 2;
+    return Array.from({ length: count }, (_, index) => (index - center) * 6);
+  };
+
+  for (const siblings of outgoingBySource.values()) {
+    const ordered = [...siblings].sort((left, right) => left.index - right.index);
+    const offsets = spreadOffsets(ordered.length);
+    ordered.forEach((item, index) => {
+      sourceOffsets.set(item.index, offsets[index] ?? 0);
+    });
+  }
+
+  for (const siblings of incomingByTarget.values()) {
+    const ordered = [...siblings].sort((left, right) => left.index - right.index);
+    const offsets = spreadOffsets(ordered.length);
+    ordered.forEach((item, index) => {
+      targetOffsets.set(item.index, offsets[index] ?? 0);
+    });
+  }
+
   const edgeMarkup = edges
     .map((edge, index) => {
       const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
@@ -442,31 +477,18 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
         return "";
       }
 
-      return `<path class="edge" d="${buildOrthogonalPath(points)}" />`;
-    })
-    .join("\n");
+      const spread = (sourceOffsets.get(index) ?? 0) + (targetOffsets.get(index) ?? 0);
+      const adjustedPoints = points.map((point, pointIndex) => {
+        if (spread === 0 || pointIndex === 0 || pointIndex === points.length - 1) {
+          return point;
+        }
+        return {
+          x: point.x + spread,
+          y: point.y,
+        };
+      });
 
-  const roleCenters = new Map<DiagramRole, number>();
-  for (const role of usedRoles) {
-    const roleNodes = nodes
-      .map((node) => ({ node, position: nodePositions.get(node.key) }))
-      .filter((entry): entry is { node: DiagramNode; position: DiagramPosition } =>
-        entry.node.role === role && entry.position !== undefined,
-      );
-    if (roleNodes.length === 0) {
-      continue;
-    }
-    const center = roleNodes.reduce(
-      (sum, entry) => sum + entry.position.x + entry.position.width / 2,
-      0,
-    ) / roleNodes.length;
-    roleCenters.set(role, center);
-  }
-
-  const laneLabelMarkup = usedRoles
-    .map((role) => {
-      const x = roleCenters.get(role) ?? 0;
-      return `<text class="lane-label" x="${x}" y="22" text-anchor="middle">${escapeHtml(DIAGRAM_ROLE_LABELS[role])}</text>`;
+      return `<path class="edge" d="${buildOrthogonalPath(adjustedPoints)}" />`;
     })
     .join("\n");
 
@@ -524,7 +546,6 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
               <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
             </marker>
           </defs>
-          <g class="lane-labels">${laneLabelMarkup}</g>
           <g class="edges">${edgeMarkup}</g>
           <g class="nodes">${nodeMarkup}</g>
         </svg>
@@ -814,12 +835,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string):
         width: 100%;
         min-width: 760px;
         height: auto;
-      }
-      .lane-label {
-        fill: color-mix(in srgb, var(--vscode-descriptionForeground) 92%, transparent);
-        font-size: 11px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
       }
       .diagram-legend {
         display: flex;
