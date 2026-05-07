@@ -118,7 +118,8 @@
       },
       {
         "command": "llmthink.dslPreview",
-        "title": "LLMThink: DSL Preview"
+        "title": "LLMThink: DSL Preview",
+        "icon": "$(open-preview)"
       },
       {
         "command": "llmthink.thoughtDraft",
