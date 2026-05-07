@@ -56,3 +56,62 @@ step S1:
     ].join("\n"),
   );
 });
+
+test("parseDocument collects annotations on problems and text statements", () => {
+  const document = parseDocument(`
+problem P1:
+  "Decide comment syntax"
+  annotation rationale:
+    "Separate annotations from free comments"
+
+step S1:
+  decision D1 based_on P1:
+    "Ship standalone comments first"
+    annotation caveat:
+      "Formatter intentionally drops free comments"
+    annotation todo:
+      "Preserve comment trivia later"
+`);
+
+  assert.deepEqual(document.problems[0]?.annotations.map((item) => item.kind), [
+    "rationale",
+  ]);
+  assert.deepEqual(
+    document.steps[0]?.statement.role === "decision"
+      ? document.steps[0].statement.annotations.map((item) => item.kind)
+      : [],
+    ["caveat", "todo"],
+  );
+});
+
+test("formatDslText preserves annotations in normalized output", () => {
+  const formatted = formatDslText(`
+problem P1:
+  "Decide comment syntax"
+  annotation explanation:
+    "Annotations remain first-class"
+
+step S1:
+  evidence EV1:
+    "Parser and formatter should agree"
+    annotation todo:
+      "Teach the LSP snippet next"
+`);
+
+  assert.equal(
+    formatted,
+    [
+      "problem P1:",
+      '  "Decide comment syntax"',
+      "  annotation explanation:",
+      '    "Annotations remain first-class"',
+      "",
+      "step S1:",
+      "  evidence EV1:",
+      '    "Parser and formatter should agree"',
+      "    annotation todo:",
+      '      "Teach the LSP snippet next"',
+      "",
+    ].join("\n"),
+  );
+});

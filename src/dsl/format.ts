@@ -1,4 +1,5 @@
 import type {
+  Annotation,
   DecisionStatement,
   DocumentAst,
   EvidenceStatement,
@@ -19,6 +20,13 @@ function indent(line: string): string {
   return `  ${line}`;
 }
 
+function formatAnnotations(annotations: Annotation[]): string[] {
+  return annotations.flatMap((annotation) => [
+    `annotation ${annotation.kind}:`,
+    indent(quote(annotation.text)),
+  ]);
+}
+
 function formatFramework(framework: FrameworkDecl): string {
   if (framework.rules.length === 0) {
     return `framework ${framework.name}`;
@@ -36,6 +44,7 @@ function formatQuotedStepBody(
   return [
     `${keyword} ${statement.id}:`,
     indent(quote(statement.text)),
+    ...formatAnnotations(statement.annotations).map(indent),
   ];
 }
 
@@ -47,6 +56,7 @@ function formatDecision(statement: DecisionStatement): string[] {
   return [
     `decision ${statement.id}${basedOn}:`,
     indent(quote(statement.text)),
+    ...formatAnnotations(statement.annotations).map(indent),
   ];
 }
 
@@ -102,7 +112,11 @@ export function formatDocument(document: DocumentAst): string {
 
   sections.push(
     ...document.problems.map((problem) =>
-      [`problem ${problem.name}:`, indent(quote(problem.text))].join("\n"),
+      [
+        `problem ${problem.name}:`,
+        indent(quote(problem.text)),
+        ...formatAnnotations(problem.annotations).map(indent),
+      ].join("\n"),
     ),
   );
 

@@ -1,4 +1,6 @@
 import {
+  type Annotation,
+  type AnnotationKind,
   type DecisionStatement,
   type DocumentAst,
   type DomainDecl,
@@ -80,6 +82,64 @@ function parsePartitionMemberLine(line: string): PartitionMember | undefined {
     return undefined;
   }
   return { name, predicate };
+}
+
+function parseAnnotationKind(header: string): AnnotationKind | undefined {
+  const match =
+    /^annotation\s+(explanation|rationale|caveat|todo):$/.exec(header);
+  return match?.[1] as AnnotationKind | undefined;
+}
+
+function parseAnnotations(
+  lines: string[],
+  startIndex: number,
+  expectedIndent: number,
+): { annotations: Annotation[]; nextIndex: number } {
+  const annotations: Annotation[] = [];
+  let index = startIndex;
+
+  while (index < lines.length) {
+    index = nextSignificantLineIndex(lines, index);
+    if (index >= lines.length) {
+      break;
+    }
+
+    const rawHeader = lines[index] ?? "";
+    const headerIndent = currentIndent(rawHeader);
+    if (headerIndent < expectedIndent) {
+      break;
+    }
+    if (headerIndent !== expectedIndent) {
+      break;
+    }
+
+    const kind = parseAnnotationKind(rawHeader.trim());
+    if (!kind) {
+      break;
+    }
+
+    const textIndex = nextSignificantLineIndex(lines, index + 1);
+    const rawTextLine = lines[textIndex] ?? "";
+    const textIndent = currentIndent(rawTextLine);
+    const textLine = rawTextLine.trim() ?? "";
+    if (!textLine.startsWith('"') || textIndent <= expectedIndent) {
+      throw new ParseError(
+        "Annotation text is required",
+        textIndex + 1,
+        firstNonWhitespaceColumn(rawTextLine),
+        rawTextLine.length + 1,
+      );
+    }
+
+    annotations.push({
+      kind,
+      text: stripQuotes(textLine),
+      span: span(index + 1, firstNonWhitespaceColumn(rawHeader)),
+    });
+    index = textIndex + 1;
+  }
+
+  return { annotations, nextIndex: index };
 }
 
 function parseDecisionHeader(
@@ -309,13 +369,19 @@ function parseProblem(
       rawTextLine.length + 1,
     );
   }
+  const { annotations, nextIndex } = parseAnnotations(
+    lines,
+    textIndex + 1,
+    currentIndent(rawTextLine),
+  );
   return [
     {
       name: match[1],
       text: stripQuotes(textLine),
+      annotations,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },
-    textIndex + 1,
+    nextIndex,
   ];
 }
 
@@ -392,7 +458,7 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
   role: T,
   lines: string[],
   startIndex: number,
-): { role: T; id: string; text: string; span: SourceSpan } & {
+): { role: T; id: string; text: string; annotations: Annotation[]; span: SourceSpan } & {
   nextIndex: number;
 } {
   const header = lines[startIndex]?.trim() ?? "";
@@ -417,12 +483,18 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
       rawTextLine.length + 1,
     );
   }
+  const { annotations, nextIndex } = parseAnnotations(
+    lines,
+    textIndex + 1,
+    currentIndent(rawTextLine),
+  );
   return {
     role,
     id,
     text: stripQuotes(textLine),
+    annotations,
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
-    nextIndex: textIndex + 1,
+    nextIndex,
   };
 }
 
@@ -540,13 +612,19 @@ function parseDecision(
       rawTextLine.length + 1,
     );
   }
+  const { annotations, nextIndex } = parseAnnotations(
+    lines,
+    textIndex + 1,
+    currentIndent(rawTextLine),
+  );
   return {
     role: "decision",
     id: parsedHeader.id,
     basedOn: parsedHeader.basedOn,
     text: stripQuotes(textLine),
+    annotations,
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
-    nextIndex: textIndex + 1,
+    nextIndex,
   };
 }
 

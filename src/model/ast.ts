@@ -11,6 +11,18 @@ export interface SourceSpan {
   column: number;
 }
 
+export type AnnotationKind =
+  | "explanation"
+  | "rationale"
+  | "caveat"
+  | "todo";
+
+export interface Annotation {
+  kind: AnnotationKind;
+  text: string;
+  span: SourceSpan;
+}
+
 export interface FrameworkRule {
   kind: "requires" | "forbids" | "warns";
   value: string;
@@ -32,6 +44,7 @@ export interface DomainDecl {
 export interface ProblemDecl {
   name: string;
   text: string;
+  annotations: Annotation[];
   span: SourceSpan;
 }
 
@@ -39,6 +52,7 @@ export interface PremiseStatement {
   role: "premise";
   id: string;
   text: string;
+  annotations: Annotation[];
   span: SourceSpan;
 }
 
@@ -67,6 +81,7 @@ export interface EvidenceStatement {
   role: "evidence";
   id: string;
   text: string;
+  annotations: Annotation[];
   span: SourceSpan;
 }
 
@@ -75,6 +90,7 @@ export interface DecisionStatement {
   id: string;
   basedOn: string[];
   text: string;
+  annotations: Annotation[];
   span: SourceSpan;
 }
 
@@ -82,6 +98,7 @@ export interface PendingStatement {
   role: "pending";
   id: string;
   text: string;
+  annotations: Annotation[];
   span: SourceSpan;
 }
 
