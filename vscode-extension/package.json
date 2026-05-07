@@ -27,10 +27,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onLanguage:llmthink",
-    "onCommand:llmthink.lsp.restart"
-  ],
   "main": "./dist/extension.js",
   "contributes": {
     "languages": [
@@ -83,8 +79,7 @@
               "type": "string",
               "description": "Optional thought identifier to reuse for re-audit or later lifecycle actions."
             }
-          },
-          "additionalProperties": false
+          }
         }
       }
     ],
@@ -158,13 +153,15 @@
     "typecheck": "npm --prefix .. run build && tsc -p tsconfig.json --noEmit",
     "package:vsix": "npx @vscode/vsce package --out llmthink.vsix"
   },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
   "devDependencies": {
     "@vscode/vsce": "^3.2.2",
     "@types/node": "^22.15.21",
     "@types/vscode": "^1.99.0",
     "esbuild": "^0.25.11",
     "llmthink": "file:..",
-    "typescript": "^5.8.3",
-    "vscode-languageclient": "^9.0.1"
+    "typescript": "^5.8.3"
   }
 }

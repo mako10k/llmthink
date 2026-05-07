@@ -7,7 +7,7 @@ await build({
   format: "cjs",
   platform: "node",
   target: "node20",
-  external: ["vscode"],
+  external: ["vscode", "vscode-languageclient", "vscode-languageclient/node"],
   sourcemap: false,
   logLevel: "info",
 });
