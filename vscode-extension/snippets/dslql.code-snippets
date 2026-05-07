@@ -22,5 +22,22 @@
       ".steps[] | select(.role == \"decision\") | sort_by(.${1:id}) | unique_by(.id) | limit(${2:10})"
     ],
     "description": "decision stream を絞り込み整形する DSLQL query"
+  },
+  "LLMThink Comment Line": {
+    "scope": "llmthink",
+    "prefix": "dsl-comment",
+    "body": [
+      "# ${1:note}"
+    ],
+    "description": "自由コメント行を挿入する"
+  },
+  "LLMThink Annotation Block": {
+    "scope": "llmthink",
+    "prefix": "dsl-annotation",
+    "body": [
+      "annotation ${1|explanation,rationale,caveat,todo|}:",
+      "  \"${2:annotation text}\""
+    ],
+    "description": "annotation ブロックを挿入する"
   }
 }

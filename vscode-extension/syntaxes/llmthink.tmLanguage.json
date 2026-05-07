@@ -2,6 +2,7 @@
   "scopeName": "source.llmthink",
   "name": "LLMThink DSL",
   "patterns": [
+    { "include": "#comments" },
     { "include": "#keywords" },
     { "include": "#declHeaders" },
     { "include": "#dslqlFunctions" },
@@ -10,11 +11,19 @@
     { "include": "#strings" }
   ],
   "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.llmthink",
+          "match": "^\\s*#.*$"
+        }
+      ]
+    },
     "keywords": {
       "patterns": [
         {
           "name": "keyword.control.llmthink",
-          "match": "\\b(framework|domain|description|problem|step|premise|viewpoint|axis|partition|on|evidence|decision|based_on|pending|query|requires|forbids|warns)\\b"
+          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|decision|based_on|pending|query|requires|forbids|warns)\\b"
         }
       ]
     },
@@ -39,6 +48,10 @@
         {
           "name": "entity.name.function.statement.llmthink",
           "match": "(?<=\\b(premise|viewpoint|partition|evidence|decision|pending)\\s)[A-Za-z][A-Za-z0-9_-]*"
+        },
+        {
+          "name": "storage.type.annotation.llmthink",
+          "match": "(?<=\\bannotation\\s)(explanation|rationale|caveat|todo)(?=:)"
         },
         {
           "name": "entity.name.function.query.llmthink",
