@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { resolvePreviewLocale, getPreviewStrings } from "./i18n";
 import { renderDslPreview } from "./preview";
 
 export const DSL_PREVIEW_VIEW_TYPE = "llmthink.preview";
@@ -30,6 +31,9 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
     webviewPanel: vscode.WebviewPanel,
     _token: vscode.CancellationToken,
   ): void {
+    const locale = resolvePreviewLocale(vscode.env.language);
+    const strings = getPreviewStrings(locale);
+
     webviewPanel.webview.options = {
       enableScripts: true,
     };
@@ -57,10 +61,11 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
 
     const update = async () => {
       const currentVersion = ++renderVersion;
-      webviewPanel.title = `LLMThink Preview: ${previewTitle(document)}`;
+      webviewPanel.title = strings.previewTitle(previewTitle(document));
       const html = await renderDslPreview(
         document.getText(),
         previewTitle(document),
+        locale,
       );
       if (currentVersion !== renderVersion || webviewPanel.visible === false) {
         return;

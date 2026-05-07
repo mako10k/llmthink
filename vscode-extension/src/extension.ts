@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { getPreviewStrings, resolvePreviewLocale } from "./i18n";
 import { restartLspClient, startLspClient, stopLspClient } from "./lsp";
 import { DSL_PREVIEW_VIEW_TYPE, DslPreviewEditorProvider } from "./preview-editor";
 import {
@@ -492,15 +493,16 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
   const subscriptions: vscode.Disposable[] = [outputChannel];
+  const previewStrings = getPreviewStrings(resolvePreviewLocale(vscode.env.language));
   const previewStatusItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     10,
   );
 
-  previewStatusItem.name = "LLMThink Preview";
+  previewStatusItem.name = previewStrings.previewName;
   previewStatusItem.command = "llmthink.dslPreview";
-  previewStatusItem.text = "$(open-preview) LLMThink Preview";
-  previewStatusItem.tooltip = "アクティブな DSL 文書をプレビューで開く";
+  previewStatusItem.text = `$(open-preview) ${previewStrings.previewButton}`;
+  previewStatusItem.tooltip = previewStrings.previewTooltip;
 
   const updatePreviewStatusItem = (editor: vscode.TextEditor | undefined) => {
     if (isDslEditor(editor)) {
@@ -592,7 +594,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         vscode.window.showWarningMessage(
-          "プレビュー対象のアクティブエディタがありません。",
+          previewStrings.previewMissingEditor,
         );
         return;
       }

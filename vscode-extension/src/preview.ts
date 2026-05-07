@@ -9,8 +9,11 @@ import {
   type StepDecl,
   type StepStatement,
 } from "llmthink";
-
-type DiagramRole = StepStatement["role"] | "external";
+import {
+  getPreviewStrings,
+  type DiagramRole,
+  type PreviewLocale,
+} from "./i18n";
 
 interface DiagramNode {
   key: string;
@@ -69,16 +72,6 @@ const DIAGRAM_ROLE_ORDER: DiagramRole[] = [
   "external",
 ];
 
-const DIAGRAM_ROLE_LABELS: Record<DiagramRole, string> = {
-  premise: "Premises",
-  evidence: "Evidence",
-  viewpoint: "Viewpoints",
-  partition: "Partitions",
-  decision: "Decisions",
-  pending: "Pending",
-  external: "Unresolved refs",
-};
-
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -96,13 +89,16 @@ function formatFrameworkRule(rule: FrameworkRule): string {
   return `${rule.kind} ${rule.value}`;
 }
 
-function formatProblem(problem: ProblemDecl): string[] {
+function formatProblem(
+  problem: ProblemDecl,
+  annotationLabel: string,
+): string[] {
   return [
     `### ${problem.name}`,
     "",
     problem.text,
     ...problem.annotations.map((annotation) =>
-      `- Annotation: ${formatAnnotationLabel(annotation)}`,
+      `- ${annotationLabel}: ${formatAnnotationLabel(annotation)}`,
     ),
     "",
   ];
@@ -125,7 +121,7 @@ function formatStatementSummary(statement: StepStatement): string {
   }
 }
 
-function formatStep(step: StepDecl): string[] {
+function formatStep(step: StepDecl, annotationLabel: string): string[] {
   const statement = step.statement;
   const header = `### ${step.id} · ${statement.role} ${statement.id}`;
   const lines = [header, "", formatStatementSummary(statement)];
@@ -142,7 +138,7 @@ function formatStep(step: StepDecl): string[] {
   ) {
     lines.push(
       ...statement.annotations.map((annotation) =>
-        `- Annotation: ${formatAnnotationLabel(annotation)}`,
+        `- ${annotationLabel}: ${formatAnnotationLabel(annotation)}`,
       ),
     );
   }
@@ -151,7 +147,7 @@ function formatStep(step: StepDecl): string[] {
   return lines;
 }
 
-function buildReferenceSection(document: DocumentAst): string[] {
+function buildReferenceSection(document: DocumentAst, title: string, emptyLabel: string): string[] {
   const edges = document.steps.flatMap((step) => {
     if (step.statement.role !== "decision" || step.statement.basedOn.length === 0) {
       return [];
@@ -160,10 +156,10 @@ function buildReferenceSection(document: DocumentAst): string[] {
   });
 
   if (edges.length === 0) {
-    return ["## References", "", "No explicit based_on edges.", ""];
+    return [`## ${title}`, "", emptyLabel, ""];
   }
 
-  return ["## References", "", ...edges, ""];
+  return [`## ${title}`, "", ...edges, ""];
 }
 
 function truncateSvgText(value: string, maxLength: number): string {
@@ -209,7 +205,7 @@ function buildDiagramData(document: DocumentAst): {
     nodes.push({
       key: source,
       title: truncateSvgText(source, 24),
-      subtitle: "Referenced but not declared",
+      subtitle: "__UNRESOLVED_REFERENCE__",
       role: "external",
     });
   }
@@ -411,19 +407,20 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
   };
 }
 
-async function buildSvgOverview(document: DocumentAst): Promise<string> {
+async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): Promise<string> {
   const { nodes, edges } = buildDiagramData(document);
+  const strings = getPreviewStrings(locale);
 
   if (nodes.length === 0) {
     return `
       <section class="diagram-card empty-state">
         <div class="section-header">
           <div>
-            <p class="section-kicker">SVG Graph</p>
-            <h2>Step Map</h2>
+            <p class="section-kicker">${escapeHtml(strings.diagramKicker)}</p>
+            <h2>${escapeHtml(strings.diagramTitle)}</h2>
           </div>
         </div>
-        <p>構造化された step がまだないため、SVG 図は表示されません。</p>
+        <p>${escapeHtml(strings.diagramEmpty)}</p>
       </section>
     `;
   }
@@ -464,7 +461,7 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
       return `
         <span class="legend-chip legend-${role}">
           <span class="legend-dot"></span>
-          ${escapeHtml(DIAGRAM_ROLE_LABELS[role])}
+          ${escapeHtml(strings.roleLabels[role])}
         </span>
       `;
     })
@@ -476,6 +473,9 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
       if (!layoutNode) {
         return "";
       }
+      const subtitle = node.subtitle === "__UNRESOLVED_REFERENCE__"
+        ? strings.unresolvedReference
+        : node.subtitle;
       const dataAttributes = node.line && node.column
         ? `data-line="${node.line}" data-column="${node.column}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
         : "";
@@ -483,7 +483,7 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
         <g class="node node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="18" ry="18" />
           <foreignObject x="16" y="14" width="${layoutNode.width - 32}" height="${layoutNode.height - 28}" class="node-copy-wrap">
-            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(node.subtitle)}</div>
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(subtitle)}</div>
           </foreignObject>
         </g>
       `;
@@ -494,11 +494,11 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
     <section class="diagram-card">
       <div class="section-header">
         <div>
-          <p class="section-kicker">SVG Graph</p>
-          <h2>Step Map</h2>
+          <p class="section-kicker">${escapeHtml(strings.diagramKicker)}</p>
+          <h2>${escapeHtml(strings.diagramTitle)}</h2>
           <div class="diagram-legend">${legendMarkup}</div>
         </div>
-        <p class="section-meta">${nodes.length} nodes / ${edges.length} edges</p>
+        <p class="section-meta">${escapeHtml(strings.nodesAndEdges(nodes.length, edges.length))}</p>
       </div>
       <div class="diagram-scroll">
         <svg class="diagram" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
@@ -515,18 +515,19 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
   `;
 }
 
-function buildPreviewMarkdown(document: DocumentAst, title: string): string {
+function buildPreviewMarkdown(document: DocumentAst, title: string, locale: PreviewLocale): string {
+  const strings = getPreviewStrings(locale);
   const lines: string[] = [`# ${title}`, ""];
 
   if (document.framework) {
-    lines.push("## Framework", "");
+    lines.push(`## ${strings.sections.framework}`, "");
     lines.push(`- ${document.framework.name}`);
     lines.push(...document.framework.rules.map((rule) => `- ${formatFrameworkRule(rule)}`));
     lines.push("");
   }
 
   if (document.domains.length > 0) {
-    lines.push("## Domains", "");
+    lines.push(`## ${strings.sections.domains}`, "");
     lines.push(
       ...document.domains.flatMap((domain) => [
         `### ${domain.name}`,
@@ -538,17 +539,21 @@ function buildPreviewMarkdown(document: DocumentAst, title: string): string {
   }
 
   if (document.problems.length > 0) {
-    lines.push("## Problems", "");
-    lines.push(...document.problems.flatMap(formatProblem));
+    lines.push(`## ${strings.sections.problems}`, "");
+    lines.push(
+      ...document.problems.flatMap((problem) => formatProblem(problem, strings.annotationLabel)),
+    );
   }
 
   if (document.steps.length > 0) {
-    lines.push("## Steps", "");
-    lines.push(...document.steps.flatMap(formatStep));
+    lines.push(`## ${strings.sections.steps}`, "");
+    lines.push(
+      ...document.steps.flatMap((step) => formatStep(step, strings.annotationLabel)),
+    );
   }
 
   if (document.queries.length > 0) {
-    lines.push("## Queries", "");
+    lines.push(`## ${strings.sections.queries}`, "");
     lines.push(
       ...document.queries.flatMap((query) => [
         `### ${query.id}`,
@@ -561,8 +566,49 @@ function buildPreviewMarkdown(document: DocumentAst, title: string): string {
     );
   }
 
-  lines.push(...buildReferenceSection(document));
+  lines.push(
+    ...buildReferenceSection(document, strings.sections.references, strings.noBasedOnEdges),
+  );
   return lines.join("\n");
+}
+
+function buildErrorHtml(error: ParseError | Error, title: string, locale: PreviewLocale): string {
+  const strings = getPreviewStrings(locale);
+  const message = error instanceof ParseError
+    ? `${error.message} (line ${error.line}, column ${error.column})`
+    : error.message;
+  return `<!DOCTYPE html>
+<html lang="${locale}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: var(--vscode-font-family);
+        color: var(--vscode-editor-foreground);
+        background: linear-gradient(180deg, var(--vscode-editor-background), color-mix(in srgb, var(--vscode-editor-background) 85%, var(--vscode-editorWarning-foreground) 15%));
+        margin: 0;
+        padding: 24px;
+      }
+      .card {
+        border: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-editorError-foreground));
+        border-radius: 12px;
+        padding: 20px;
+        background: color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%);
+      }
+      code {
+        font-family: var(--vscode-editor-font-family);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(strings.previewError)}</p>
+      <pre><code>${escapeHtml(message)}</code></pre>
+    </div>
+  </body>
+</html>`;
 }
 
 function markdownToHtml(markdown: string): string {
@@ -642,43 +688,6 @@ function markdownToHtml(markdown: string): string {
   return html.join("\n");
 }
 
-function buildErrorHtml(error: ParseError | Error, title: string): string {
-  const message = error instanceof ParseError
-    ? `${error.message} (line ${error.line}, column ${error.column})`
-    : error.message;
-  return `<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-      body {
-        font-family: var(--vscode-font-family);
-        color: var(--vscode-editor-foreground);
-        background: linear-gradient(180deg, var(--vscode-editor-background), color-mix(in srgb, var(--vscode-editor-background) 85%, var(--vscode-editorWarning-foreground) 15%));
-        margin: 0;
-        padding: 24px;
-      }
-      .card {
-        border: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-editorError-foreground));
-        border-radius: 12px;
-        padding: 20px;
-        background: color-mix(in srgb, var(--vscode-editor-background) 92%, white 8%);
-      }
-      code {
-        font-family: var(--vscode-editor-font-family);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>${escapeHtml(title)}</h1>
-      <p>DSL をプレビューできませんでした。</p>
-      <pre><code>${escapeHtml(message)}</code></pre>
-    </div>
-  </body>
-</html>`;
-}
 
 function buildPreviewScript(): string {
   return `
@@ -715,9 +724,10 @@ function buildPreviewScript(): string {
   `;
 }
 
-function buildPreviewHtml(markdown: string, title: string, svgOverview: string): string {
+function buildPreviewHtml(markdown: string, title: string, svgOverview: string, locale: PreviewLocale): string {
+  const strings = getPreviewStrings(locale);
   return `<!DOCTYPE html>
-<html lang="ja">
+<html lang="${locale}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -941,7 +951,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string):
   <body>
     <main class="layout">
       <section class="hero">
-        <div class="eyebrow">LLMThink Preview</div>
+        <div class="eyebrow">${escapeHtml(strings.previewName)}</div>
         <h1>${escapeHtml(title)}</h1>
       </section>
       ${svgOverview}
@@ -954,16 +964,27 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string):
 </html>`;
 }
 
-export async function renderDslPreview(text: string, title: string): Promise<string> {
+export async function renderDslPreview(
+  text: string,
+  title: string,
+  locale: PreviewLocale,
+): Promise<string> {
   try {
     const document = parseDocument(text);
-    const markdown = buildPreviewMarkdown(document, title);
-    const svgOverview = await buildSvgOverview(document);
-    return buildPreviewHtml(markdown, title, svgOverview);
+    const strings = getPreviewStrings(locale);
+    for (const node of document.steps) {
+      if (node.statement.role === "decision") {
+        continue;
+      }
+    }
+    const markdown = buildPreviewMarkdown(document, title, locale);
+    const svgOverview = await buildSvgOverview(document, locale);
+    const localizedMarkdown = markdown.replaceAll("__UNRESOLVED_REFERENCE__", strings.unresolvedReference);
+    return buildPreviewHtml(localizedMarkdown, title, svgOverview, locale);
   } catch (error) {
     if (error instanceof ParseError || error instanceof Error) {
-      return buildErrorHtml(error, title);
+      return buildErrorHtml(error, title, locale);
     }
-    return buildErrorHtml(new Error(String(error)), title);
+    return buildErrorHtml(new Error(String(error)), title, locale);
   }
 }
