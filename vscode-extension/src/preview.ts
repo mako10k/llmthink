@@ -17,6 +17,8 @@ interface DiagramNode {
   title: string;
   subtitle: string;
   role: DiagramRole;
+  line?: number;
+  column?: number;
 }
 
 interface DiagramEdge {
@@ -153,6 +155,8 @@ function buildDiagramData(document: DocumentAst): {
       title: truncateSvgText(step.statement.id, 24),
       subtitle: truncateSvgText(formatStatementSummary(step.statement), 56),
       role,
+      line: step.statement.span.line,
+      column: step.statement.span.column,
     });
 
     if (role === "decision") {
@@ -184,22 +188,71 @@ function buildDiagramData(document: DocumentAst): {
 }
 
 function wrapSvgText(value: string, maxLength: number, maxLines: number): string[] {
+  const tokens = Array.from(
+    value.matchAll(/[A-Za-z0-9_./:-]+|\s+|[^\s]/gu),
+    (match) => match[0],
+  );
   const lines: string[] = [];
-  let cursor = 0;
+  let current = "";
+  let currentWidth = 0;
 
-  while (cursor < value.length && lines.length < maxLines) {
-    const remainingLines = maxLines - lines.length;
-    const remainingText = value.length - cursor;
-    const sliceLength = remainingLines === 1
-      ? Math.min(maxLength, remainingText)
-      : Math.min(maxLength, Math.ceil(remainingText / remainingLines));
-    lines.push(value.slice(cursor, cursor + sliceLength));
-    cursor += sliceLength;
+  const tokenWidth = (token: string): number => {
+    let width = 0;
+    for (const char of token) {
+      if (/\s/u.test(char)) {
+        width += 0.45;
+      } else if (/[A-Za-z0-9_./:-]/u.test(char)) {
+        width += 0.72;
+      } else {
+        width += 1;
+      }
+    }
+    return width;
+  };
+
+  const pushLine = () => {
+    if (current.trim().length > 0) {
+      lines.push(current.trim());
+    }
+    current = "";
+    currentWidth = 0;
+  };
+
+  for (const token of tokens) {
+    const width = tokenWidth(token);
+    if (currentWidth + width <= maxLength || current.length === 0) {
+      current += token;
+      currentWidth += width;
+      continue;
+    }
+
+    pushLine();
+    if (lines.length === maxLines) {
+      break;
+    }
+
+    current = token.trimStart();
+    currentWidth = tokenWidth(current);
   }
 
-  if (cursor < value.length && lines.length > 0) {
+  if (lines.length < maxLines && current.trim().length > 0) {
+    pushLine();
+  }
+
+  if (lines.length === 0) {
+    return [truncateSvgText(value, Math.floor(maxLength))];
+  }
+
+  if (lines.length > maxLines) {
+    return [
+      ...lines.slice(0, maxLines - 1),
+      truncateSvgText(lines[maxLines - 1], Math.floor(maxLength)),
+    ];
+  }
+
+  if (lines.length === maxLines && lines.join("").length < value.trim().length) {
     const lastIndex = lines.length - 1;
-    lines[lastIndex] = truncateSvgText(lines[lastIndex] + value.slice(cursor), maxLength);
+    lines[lastIndex] = truncateSvgText(lines[lastIndex], Math.floor(maxLength));
   }
 
   return lines;
@@ -238,8 +291,13 @@ function buildSvgOverview(document: DocumentAst): string {
     `;
   }
 
-  const nodeWidth = 220;
-  const nodeHeight = 82;
+  const nodeWidth = 236;
+  const nodeHeight = 94;
+  const laneGap = 84;
+  const rowGap = 30;
+  const headerHeight = 18;
+  const marginX = 28;
+  const marginY = 16;
   const graph = new dagre.graphlib.Graph();
   const usedRoles = DIAGRAM_ROLE_ORDER.filter((role) =>
     nodes.some((node) => node.role === role),
@@ -247,11 +305,11 @@ function buildSvgOverview(document: DocumentAst): string {
 
   graph.setGraph({
     rankdir: "LR",
-    ranksep: 88,
-    nodesep: 36,
+    ranksep: 100,
+    nodesep: 48,
     edgesep: 22,
     marginx: 24,
-    marginy: 28,
+    marginy: 24,
     acyclicer: "greedy",
     ranker: "network-simplex",
   });
@@ -269,39 +327,66 @@ function buildSvgOverview(document: DocumentAst): string {
     graph.setEdge(edge.from, edge.to);
   }
 
-  for (let index = 1; index < usedRoles.length; index += 1) {
-    const previousRole = usedRoles[index - 1];
-    const role = usedRoles[index];
-    const previousNodes = nodes.filter((node) => node.role === previousRole);
-    const currentNodes = nodes.filter((node) => node.role === role);
-
-    if (previousNodes.length > 0 && currentNodes.length > 0) {
-      graph.setEdge(previousNodes[0].key, currentNodes[0].key, {
-        weight: 0,
-        minlen: 1,
-      });
-    }
-  }
-
   dagre.layout(graph);
 
-  const graphLabel = graph.graph() as {
-    width?: number;
-    height?: number;
-  };
-  const width = Math.max(graphLabel.width ?? 0, 760);
-  const height = graphLabel.height ?? 0;
+  const laneIndexByRole = new Map(usedRoles.map((role, index) => [role, index]));
+  const positionedNodes = nodes.map((node) => ({
+    node,
+    layout: graph.node(node.key) as { x: number; y: number; width: number; height: number },
+  }));
+
+  const laneRows = new Map<DiagramRole, Array<typeof positionedNodes[number]>>();
+  for (const positioned of positionedNodes) {
+    const current = laneRows.get(positioned.node.role) ?? [];
+    current.push(positioned);
+    laneRows.set(positioned.node.role, current);
+  }
+
+  const nodePositions = new Map<string, { x: number; y: number; width: number; height: number }>();
+  let maxRows = 0;
+
+  for (const role of usedRoles) {
+    const laneNodes = (laneRows.get(role) ?? []).sort((left, right) => left.layout.y - right.layout.y);
+    maxRows = Math.max(maxRows, laneNodes.length);
+    laneNodes.forEach((positioned, index) => {
+      const laneIndex = laneIndexByRole.get(role) ?? 0;
+      const x = marginX + laneIndex * (nodeWidth + laneGap);
+      const y = marginY + headerHeight + 26 + index * (nodeHeight + rowGap);
+      nodePositions.set(positioned.node.key, {
+        x,
+        y,
+        width: nodeWidth,
+        height: nodeHeight,
+      });
+    });
+  }
+
+  const width = Math.max(760, marginX * 2 + usedRoles.length * nodeWidth + Math.max(0, usedRoles.length - 1) * laneGap);
+  const height = marginY * 2 + headerHeight + 26 + maxRows * nodeHeight + Math.max(0, maxRows - 1) * rowGap;
 
   const edgeMarkup = edges
     .map((edge) => {
-      const edgeLayout = graph.edge({ v: edge.from, w: edge.to }) as
-        | { points?: Array<{ x: number; y: number }> }
-        | undefined;
-      if (!edgeLayout?.points || edgeLayout.points.length === 0) {
+      const source = nodePositions.get(edge.from);
+      const target = nodePositions.get(edge.to);
+      if (!source || !target) {
         return "";
       }
 
-      return `<path class="edge" d="${toSvgPath(edgeLayout.points)}" />`;
+      const startX = source.x + source.width;
+      const startY = source.y + source.height / 2;
+      const endX = target.x;
+      const endY = target.y + target.height / 2;
+      const middleX = (startX + endX) / 2;
+
+      return `<path class="edge" d="M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}" />`;
+    })
+    .join("\n");
+
+  const laneLabelMarkup = usedRoles
+    .map((role) => {
+      const laneIndex = laneIndexByRole.get(role) ?? 0;
+      const x = marginX + laneIndex * (nodeWidth + laneGap) + nodeWidth / 2;
+      return `<text class="lane-label" x="${x}" y="22" text-anchor="middle">${escapeHtml(DIAGRAM_ROLE_LABELS[role])}</text>`;
     })
     .join("\n");
 
@@ -318,26 +403,25 @@ function buildSvgOverview(document: DocumentAst): string {
 
   const nodeMarkup = nodes
     .map((node) => {
-      const layoutNode = graph.node(node.key) as
-        | { x: number; y: number; width: number; height: number }
-        | undefined;
+      const layoutNode = nodePositions.get(node.key);
       if (!layoutNode) {
         return "";
       }
-      const x = layoutNode.x - layoutNode.width / 2;
-      const y = layoutNode.y - layoutNode.height / 2;
-      const titleLines = wrapSvgText(node.title, 18, 1);
-      const subtitleLines = wrapSvgText(node.subtitle, 24, 2);
+      const titleLines = wrapSvgText(node.title, 20, 1);
+      const subtitleLines = wrapSvgText(node.subtitle, 26, 3);
       const roleLabel = DIAGRAM_ROLE_LABELS[node.role];
+      const dataAttributes = node.line && node.column
+        ? `data-line="${node.line}" data-column="${node.column}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
+        : "";
       return `
-        <g class="node node-${node.role}" transform="translate(${x}, ${y})">
+        <g class="node node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="18" ry="18" />
           <text class="node-role" x="18" y="18">${escapeHtml(roleLabel)}</text>
-          <text class="node-title" x="18" y="40">
+          <text class="node-title" x="18" y="42">
             ${titleLines.map((line) => `<tspan x="18" dy="0">${escapeHtml(line)}</tspan>`).join("")}
           </text>
-          <text class="node-subtitle" x="18" y="59">
-            ${subtitleLines.map((line, index) => `<tspan x="18" dy="${index === 0 ? 0 : 14}">${escapeHtml(line)}</tspan>`).join("")}
+          <text class="node-subtitle" x="18" y="62">
+            ${subtitleLines.map((line, index) => `<tspan x="18" dy="${index === 0 ? 0 : 15}">${escapeHtml(line)}</tspan>`).join("")}
           </text>
         </g>
       `;
@@ -361,6 +445,7 @@ function buildSvgOverview(document: DocumentAst): string {
               <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
             </marker>
           </defs>
+          <g class="lane-labels">${laneLabelMarkup}</g>
           <g class="edges">${edgeMarkup}</g>
           <g class="nodes">${nodeMarkup}</g>
         </svg>
@@ -534,6 +619,41 @@ function buildErrorHtml(error: ParseError | Error, title: string): string {
 </html>`;
 }
 
+function buildPreviewScript(): string {
+  return `
+    <script>
+      const vscode = acquireVsCodeApi();
+
+      const revealNode = (element) => {
+        const line = Number(element?.dataset?.line);
+        const column = Number(element?.dataset?.column ?? 1);
+        if (!Number.isFinite(line) || !Number.isFinite(column)) {
+          return;
+        }
+        vscode.postMessage({ type: "revealLocation", line, column });
+      };
+
+      document.addEventListener("click", (event) => {
+        const node = event.target.closest(".node[data-line]");
+        if (node) {
+          revealNode(node);
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        const node = event.target.closest(".node[data-line]");
+        if (node) {
+          event.preventDefault();
+          revealNode(node);
+        }
+      });
+    </script>
+  `;
+}
+
 function buildPreviewHtml(document: DocumentAst, markdown: string, title: string): string {
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -616,6 +736,12 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         min-width: 760px;
         height: auto;
       }
+      .lane-label {
+        fill: color-mix(in srgb, var(--vscode-descriptionForeground) 92%, transparent);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
       .diagram-legend {
         display: flex;
         flex-wrap: wrap;
@@ -649,6 +775,7 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
       }
       .node rect {
         stroke-width: 1.2;
+        transition: transform 120ms ease, filter 120ms ease, stroke-width 120ms ease;
       }
       .node-title,
       .node-role,
@@ -661,6 +788,17 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         letter-spacing: 0.08em;
         text-transform: uppercase;
         fill: color-mix(in srgb, var(--vscode-editor-foreground) 62%, transparent);
+      }
+      .node[data-line] {
+        cursor: pointer;
+      }
+      .node[data-line]:focus {
+        outline: none;
+      }
+      .node[data-line]:hover rect,
+      .node[data-line]:focus rect {
+        stroke-width: 1.8;
+        filter: brightness(1.06);
       }
       .node-title {
         font-size: 13px;
@@ -755,6 +893,7 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         ${markdownToHtml(markdown)}
       </section>
     </main>
+    ${buildPreviewScript()}
   </body>
 </html>`;
 }
