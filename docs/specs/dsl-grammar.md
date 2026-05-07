@@ -181,3 +181,75 @@ Literal         = String | Number | Boolean | "null" ;
 - 文字列の複数行対応
 - predicate 式のネスト優先順位
 - comments の正式導入
+
+### 8.1 comments 導入方針
+
+- comments は 2 段階で導入する
+- 第一段階では parser が読み飛ばせる自由コメントを導入する
+- 第一段階の自由コメントは監査対象外、参照解決対象外とする
+- 第二段階では意味を持つ記述を comments ではなく annotation のような第一級の注釈要素として導入する
+- 注釈は自由文字列ラベルではなく kind を持つ構造化要素として設計する
+- 詳細な設計判断は docs/process/comment-design.dsl を参照する
+
+### 8.2 自由コメントの予定構文
+
+- 第一段階の自由コメントは行頭インデントの後に `#` を置く独立行コメントとする
+- 自由コメントは空行と同じ位置に出現でき、parser は意味解析せず読み飛ばす
+- 第一段階では末尾行コメントは導入しない
+- 第一段階では format document 実行時に自由コメントは保持しない
+
+```ebnf
+CommentLine = [Indent] "#" { AnyCharExceptNewline } Newline ;
+Document    = { BlankLine | CommentLine | TopLevelBlock } ;
+```
+
+例:
+
+```llmthink
+# 文書全体の補足
+problem P1:
+	"コメント導入方針を決める"
+
+	# 次の step は parser 実装差分を整理する
+step S1:
+	evidence EV1:
+		"自由コメントは第一段階では AST へ載せない"
+```
+
+### 8.3 注釈の予定構文
+
+- 第二段階の意味付き記述は comment ではなく annotation として導入する
+- annotation kind の初期集合は explanation、rationale、caveat、todo とする
+- annotation の初期所有先は problem と premise、evidence、decision、pending とする
+- viewpoint、partition、framework rule、query への annotation 付与は後続課題とする
+
+```ebnf
+AnnotationKind = "explanation" | "rationale" | "caveat" | "todo" ;
+AnnotationDecl = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
+```
+
+例:
+
+```llmthink
+problem P1:
+	"コメント導入方針を決める"
+	annotation rationale:
+		"自由コメントと注釈を分離すると役割衝突を避けやすい"
+
+step S1:
+	decision D1 based_on EV1:
+		"第一段階では # 行コメントのみを導入する"
+		annotation caveat:
+			"format document は自由コメントを保持しない"
+```
+
+### 8.4 parser と formatter の最小差分方針
+
+- 第一段階の parser は文書ループと各ブロック走査で CommentLine を空行同様に読み飛ばす
+- 第一段階の AST には自由コメントを保存しない
+- 第一段階の formatter は AST から文書を再構成する現行方式を維持し、自由コメントは出力しない
+- 第二段階の AST では annotation を owner 配下の構造化配列として保持する
+- 第二段階の parser は本文 StringLine の直後に 0 個以上の annotation ブロックを受理する
+- 第二段階の formatter は owner 本文の直後に annotation ブロックを出力する
+
+詳細な実装差分は docs/process/comment-implementation-plan.md を参照する
