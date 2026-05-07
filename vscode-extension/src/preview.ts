@@ -305,8 +305,8 @@ function roleSortIndex(role: DiagramRole): number {
   return index === -1 ? DIAGRAM_ROLE_ORDER.length : index;
 }
 
-function portId(nodeId: string, side: "in" | "out"): string {
-  return `${nodeId}__${side}`;
+function portId(nodeId: string, side: "in" | "out", index: number): string {
+  return `${nodeId}__${side}_${index}`;
 }
 
 async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Promise<{
@@ -317,6 +317,19 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
 }> {
   const nodeWidth = 236;
   const nodeHeight = 108;
+  const incomingEdgesByNode = new Map<string, number[]>();
+  const outgoingEdgesByNode = new Map<string, number[]>();
+
+  for (const [index, edge] of edges.entries()) {
+    const incoming = incomingEdgesByNode.get(edge.to) ?? [];
+    incoming.push(index);
+    incomingEdgesByNode.set(edge.to, incoming);
+
+    const outgoing = outgoingEdgesByNode.get(edge.from) ?? [];
+    outgoing.push(index);
+    outgoingEdgesByNode.set(edge.from, outgoing);
+  }
+
   const graph = {
     id: "root",
     layoutOptions: {
@@ -340,28 +353,28 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
         "org.eclipse.elk.portConstraints": "FIXED_SIDE",
       },
       ports: [
-        {
-          id: portId(node.key, "in"),
+        ...(incomingEdgesByNode.get(node.key) ?? [0]).map((edgeIndex) => ({
+          id: portId(node.key, "in", edgeIndex),
           width: 8,
           height: 8,
           layoutOptions: {
             "org.eclipse.elk.port.side": "WEST",
           },
-        },
-        {
-          id: portId(node.key, "out"),
+        })),
+        ...(outgoingEdgesByNode.get(node.key) ?? [0]).map((edgeIndex) => ({
+          id: portId(node.key, "out", edgeIndex),
           width: 8,
           height: 8,
           layoutOptions: {
             "org.eclipse.elk.port.side": "EAST",
           },
-        },
+        })),
       ],
     })),
     edges: edges.map((edge, index) => ({
       id: `edge-${index}-${edge.from}-${edge.to}`,
-      sources: [portId(edge.from, "out")],
-      targets: [portId(edge.to, "in")],
+      sources: [portId(edge.from, "out", index)],
+      targets: [portId(edge.to, "in", index)],
     })),
   };
 
@@ -420,41 +433,6 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
     nodes.some((node) => node.role === role),
   );
 
-  const outgoingBySource = new Map<string, Array<{ edge: DiagramEdge; index: number }>>();
-  const incomingByTarget = new Map<string, Array<{ edge: DiagramEdge; index: number }>>();
-  for (const [index, edge] of edges.entries()) {
-    const outgoing = outgoingBySource.get(edge.from) ?? [];
-    outgoing.push({ edge, index });
-    outgoingBySource.set(edge.from, outgoing);
-
-    const incoming = incomingByTarget.get(edge.to) ?? [];
-    incoming.push({ edge, index });
-    incomingByTarget.set(edge.to, incoming);
-  }
-
-  const sourceOffsets = new Map<number, number>();
-  const targetOffsets = new Map<number, number>();
-  const spreadOffsets = (count: number): number[] => {
-    const center = (count - 1) / 2;
-    return Array.from({ length: count }, (_, index) => (index - center) * 6);
-  };
-
-  for (const siblings of outgoingBySource.values()) {
-    const ordered = [...siblings].sort((left, right) => left.index - right.index);
-    const offsets = spreadOffsets(ordered.length);
-    ordered.forEach((item, index) => {
-      sourceOffsets.set(item.index, offsets[index] ?? 0);
-    });
-  }
-
-  for (const siblings of incomingByTarget.values()) {
-    const ordered = [...siblings].sort((left, right) => left.index - right.index);
-    const offsets = spreadOffsets(ordered.length);
-    ordered.forEach((item, index) => {
-      targetOffsets.set(item.index, offsets[index] ?? 0);
-    });
-  }
-
   const edgeMarkup = edges
     .map((edge, index) => {
       const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
@@ -477,18 +455,7 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
         return "";
       }
 
-      const spread = (sourceOffsets.get(index) ?? 0) + (targetOffsets.get(index) ?? 0);
-      const adjustedPoints = points.map((point, pointIndex) => {
-        if (spread === 0 || pointIndex === 0 || pointIndex === points.length - 1) {
-          return point;
-        }
-        return {
-          x: point.x + spread,
-          y: point.y,
-        };
-      });
-
-      return `<path class="edge" d="${buildOrthogonalPath(adjustedPoints)}" />`;
+      return `<path class="edge" d="${buildOrthogonalPath(points)}" />`;
     })
     .join("\n");
 
