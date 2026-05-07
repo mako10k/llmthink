@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { restartLspClient, startLspClient, stopLspClient } from "./lsp";
-import { renderDslPreview } from "./preview";
+import { DSL_PREVIEW_VIEW_TYPE, DslPreviewEditorProvider } from "./preview-editor";
 import {
   addThoughtReflection,
   auditAndPersistThought,
@@ -56,7 +56,6 @@ const REFLECTION_KIND_ITEMS: Array<{
 
 let lastReport: AuditReport | undefined;
 let lastPanel: vscode.WebviewPanel | undefined;
-let previewPanel: vscode.WebviewPanel | undefined;
 
 function buildPanelHtml(report: AuditReport): string {
   return formatAuditReportHtml(report);
@@ -89,36 +88,6 @@ function showReportPanel(
 
   lastPanel.title = `LLMThink Audit: ${report.document_id}`;
   lastPanel.webview.html = buildPanelHtml(report);
-}
-
-function showDslPreviewPanel(
-  context: vscode.ExtensionContext,
-  title: string,
-  text: string,
-): void {
-  if (!previewPanel) {
-    previewPanel = vscode.window.createWebviewPanel(
-      "llmthinkDslPreview",
-      "LLMThink DSL Preview",
-      vscode.ViewColumn.Beside,
-      {
-        enableScripts: false,
-        retainContextWhenHidden: true,
-      },
-    );
-    previewPanel.onDidDispose(
-      () => {
-        previewPanel = undefined;
-      },
-      undefined,
-      context.subscriptions,
-    );
-  } else {
-    previewPanel.reveal(vscode.ViewColumn.Beside);
-  }
-
-  previewPanel.title = `LLMThink Preview: ${title}`;
-  previewPanel.webview.html = renderDslPreview(text, title);
 }
 
 function toDocumentId(document: vscode.TextDocument): string {
@@ -508,6 +477,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
   const subscriptions: vscode.Disposable[] = [outputChannel];
 
+  subscriptions.push(DslPreviewEditorProvider.register(context));
+
   if (typeof vscode.lm.registerTool === "function") {
     try {
       subscriptions.push(vscode.lm.registerTool(DSL_TOOL_NAME, new DslTool()));
@@ -585,10 +556,14 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      showDslPreviewPanel(
-        context,
-        toDocumentId(editor.document),
-        editor.document.getText(),
+      await vscode.commands.executeCommand(
+        "vscode.openWith",
+        editor.document.uri,
+        DSL_PREVIEW_VIEW_TYPE,
+        {
+          viewColumn: vscode.ViewColumn.Beside,
+          preview: true,
+        },
       );
     }),
     vscode.commands.registerCommand("llmthink.thoughtDraft", async () => {
