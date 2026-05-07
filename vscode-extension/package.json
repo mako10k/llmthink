@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -193,14 +193,14 @@
       "editor/title": [
         {
           "command": "llmthink.dslPreview",
-          "when": "resourceExtname == .dsl",
-          "group": "navigation@10"
+          "when": "resourceLangId == llmthink",
+          "group": "navigation"
         }
       ],
       "editor/context": [
         {
           "command": "llmthink.dslPreview",
-          "when": "resourceExtname == .dsl",
+          "when": "editorLangId == llmthink",
           "group": "navigation"
         }
       ],
