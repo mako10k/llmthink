@@ -25,6 +25,23 @@
   "engines": {
     "vscode": "^1.99.0"
   },
+  "activationEvents": [
+    "onLanguage:llmthink",
+    "onCommand:llmthink.dslAudit",
+    "onCommand:llmthink.dslReportShow",
+    "onCommand:llmthink.dslPreview",
+    "onCommand:llmthink.thoughtDraft",
+    "onCommand:llmthink.thoughtRelate",
+    "onCommand:llmthink.thoughtAudit",
+    "onCommand:llmthink.thoughtReflect",
+    "onCommand:llmthink.thoughtFinalize",
+    "onCommand:llmthink.thoughtReflections",
+    "onCommand:llmthink.thoughtHistory",
+    "onCommand:llmthink.thoughtSearch",
+    "onCommand:llmthink.thoughtList",
+    "onCommand:llmthink.thoughtDelete",
+    "onCommand:llmthink.lsp.restart"
+  ],
   "categories": [
     "Other"
   ],

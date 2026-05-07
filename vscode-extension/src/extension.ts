@@ -506,6 +506,21 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
 
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
+  const subscriptions: vscode.Disposable[] = [outputChannel];
+
+  if (typeof vscode.lm.registerTool === "function") {
+    try {
+      subscriptions.push(vscode.lm.registerTool(DSL_TOOL_NAME, new DslTool()));
+    } catch (error) {
+      outputChannel.appendLine(
+        `Failed to register LLMThink language model tool: ${String(error)}`,
+      );
+    }
+  } else {
+    outputChannel.appendLine(
+      "LLMThink language model tools are unavailable in this VS Code runtime.",
+    );
+  }
 
   void startLspClient(context, outputChannel).catch((error: unknown) => {
     outputChannel.appendLine(`Failed to start LLMThink language server: ${String(error)}`);
@@ -516,8 +531,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   context.subscriptions.push(
-    outputChannel,
-    vscode.lm.registerTool(DSL_TOOL_NAME, new DslTool()),
+    ...subscriptions,
     vscode.commands.registerCommand("llmthink.dslAudit", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
