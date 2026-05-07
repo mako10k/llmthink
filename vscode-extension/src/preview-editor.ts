@@ -53,12 +53,19 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
       editor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
     };
 
-    const update = () => {
+    let renderVersion = 0;
+
+    const update = async () => {
+      const currentVersion = ++renderVersion;
       webviewPanel.title = `LLMThink Preview: ${previewTitle(document)}`;
-      webviewPanel.webview.html = renderDslPreview(
+      const html = await renderDslPreview(
         document.getText(),
         previewTitle(document),
       );
+      if (currentVersion !== renderVersion || webviewPanel.visible === false) {
+        return;
+      }
+      webviewPanel.webview.html = html;
     };
 
     const messageSubscription = webviewPanel.webview.onDidReceiveMessage((message) => {
@@ -77,7 +84,7 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
       if (event.document.uri.toString() !== document.uri.toString()) {
         return;
       }
-      update();
+      void update();
     });
 
     webviewPanel.onDidDispose(
@@ -89,6 +96,6 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
       this.context.subscriptions,
     );
 
-    update();
+    void update();
   }
 }

@@ -35,8 +35,8 @@ step S5:
     "mermaid や Graphviz 系は導入容易性や見た目の初速はあるが、LLMThink 固有の lane 制御と source reveal 連携では抽象度が高すぎる"
 
 step S6:
-  pending PD1:
-    "ELK へ切り替えた後も node サイズ、port 制約、label overflow の微調整は必要である"
+  evidence EV5:
+    "ELK 実装では orthogonal routing と fixed-side ports を使い、click reveal と custom editor 契約を維持したまま layout engine を差し替えられる"
 
 step S7:
   decision D1 based_on EV1, EV2:
@@ -47,7 +47,7 @@ step S8:
     "preview graph library は elkjs を第一候補として採用し、SVG は引き続き自前生成しつつ layout と routing を ELK に委譲する"
 
 step S9:
-  decision D3 based_on PR1, D2, PD1:
+  decision D3 based_on PR1, D2, EV5:
     "click reveal、theme 追従、node copy clamp は現行 custom editor 実装を維持し、library 切り替えで UI 契約は変えない"
 
 query Q1:

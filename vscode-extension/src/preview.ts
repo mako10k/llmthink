@@ -1,4 +1,4 @@
-import dagre from "@dagrejs/dagre";
+import ELK from "elkjs/lib/elk.bundled.js";
 import {
   ParseError,
   parseDocument,
@@ -25,6 +25,39 @@ interface DiagramEdge {
   from: string;
   to: string;
 }
+
+interface DiagramPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ElkPoint {
+  x: number;
+  y: number;
+}
+
+interface ElkLayoutNode {
+  id?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  children?: ElkLayoutNode[];
+  ports?: Array<{ id: string; x?: number; y?: number; width?: number; height?: number }>;
+}
+
+interface ElkLayoutEdge {
+  id: string;
+  sections?: Array<{
+    startPoint?: ElkPoint;
+    bendPoints?: ElkPoint[];
+    endPoint?: ElkPoint;
+  }>;
+}
+
+const elk = new ELK();
 
 const DIAGRAM_ROLE_ORDER: DiagramRole[] = [
   "premise",
@@ -258,7 +291,7 @@ function wrapSvgText(value: string, maxLength: number, maxLines: number): string
   return lines;
 }
 
-function buildOrthogonalPath(points: Array<{ x: number; y: number }>): string {
+function buildOrthogonalPath(points: ElkPoint[]): string {
   if (points.length === 0) {
     return "";
   }
@@ -267,7 +300,105 @@ function buildOrthogonalPath(points: Array<{ x: number; y: number }>): string {
   return rest.reduce((path, point) => `${path} L ${point.x} ${point.y}`, `M ${first.x} ${first.y}`);
 }
 
-function buildSvgOverview(document: DocumentAst): string {
+function roleSortIndex(role: DiagramRole): number {
+  const index = DIAGRAM_ROLE_ORDER.indexOf(role);
+  return index === -1 ? DIAGRAM_ROLE_ORDER.length : index;
+}
+
+function portId(nodeId: string, side: "in" | "out"): string {
+  return `${nodeId}__${side}`;
+}
+
+async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Promise<{
+  nodePositions: Map<string, DiagramPosition>;
+  edgeSections: Map<string, ElkLayoutEdge["sections"]>;
+  width: number;
+  height: number;
+}> {
+  const nodeWidth = 236;
+  const nodeHeight = 108;
+  const graph = {
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "layered",
+      "elk.direction": "RIGHT",
+      "elk.edgeRouting": "ORTHOGONAL",
+      "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "96",
+      "elk.spacing.nodeNode": "36",
+      "elk.padding": "[top=28,left=28,bottom=24,right=28]",
+      "org.eclipse.elk.partitioning.activate": "true",
+    },
+    children: nodes.map((node) => ({
+      id: node.key,
+      width: nodeWidth,
+      height: nodeHeight,
+      layoutOptions: {
+        "org.eclipse.elk.partitioning.partition": String(roleSortIndex(node.role)),
+        "org.eclipse.elk.portConstraints": "FIXED_SIDE",
+      },
+      ports: [
+        {
+          id: portId(node.key, "in"),
+          width: 8,
+          height: 8,
+          layoutOptions: {
+            "org.eclipse.elk.port.side": "WEST",
+          },
+        },
+        {
+          id: portId(node.key, "out"),
+          width: 8,
+          height: 8,
+          layoutOptions: {
+            "org.eclipse.elk.port.side": "EAST",
+          },
+        },
+      ],
+    })),
+    edges: edges.map((edge, index) => ({
+      id: `edge-${index}-${edge.from}-${edge.to}`,
+      sources: [portId(edge.from, "out")],
+      targets: [portId(edge.to, "in")],
+    })),
+  };
+
+  const layout = await elk.layout(graph as never);
+  const nodePositions = new Map<string, DiagramPosition>();
+  const edgeSections = new Map<string, ElkLayoutEdge["sections"]>();
+
+  for (const child of ((layout as ElkLayoutNode).children ?? [])) {
+    if (
+      child.id &&
+      typeof child.x === "number" &&
+      typeof child.y === "number" &&
+      typeof child.width === "number" &&
+      typeof child.height === "number"
+    ) {
+      nodePositions.set(child.id, {
+        x: child.x,
+        y: child.y,
+        width: child.width,
+        height: child.height,
+      });
+    }
+  }
+
+  for (const edge of (((layout as unknown) as { edges?: ElkLayoutEdge[] }).edges ?? [])) {
+    edgeSections.set(edge.id, edge.sections);
+  }
+
+  return {
+    nodePositions,
+    edgeSections,
+    width: Math.max(760, Math.ceil(((layout as ElkLayoutNode).width ?? 760))),
+    height: Math.ceil(((layout as ElkLayoutNode).height ?? 320)),
+  };
+}
+
+async function buildSvgOverview(document: DocumentAst): Promise<string> {
   const { nodes, edges } = buildDiagramData(document);
 
   if (nodes.length === 0) {
@@ -284,170 +415,57 @@ function buildSvgOverview(document: DocumentAst): string {
     `;
   }
 
-  const nodeWidth = 236;
-  const nodeHeight = 108;
-  const laneGap = 84;
-  const rowGap = 30;
-  const headerHeight = 18;
-  const marginX = 28;
-  const marginY = 16;
-  const graph = new dagre.graphlib.Graph();
+  const { nodePositions, edgeSections, width, height } = await computeElkLayout(nodes, edges);
   const usedRoles = DIAGRAM_ROLE_ORDER.filter((role) =>
     nodes.some((node) => node.role === role),
   );
 
-  graph.setGraph({
-    rankdir: "LR",
-    ranksep: 100,
-    nodesep: 48,
-    edgesep: 22,
-    marginx: 24,
-    marginy: 24,
-    acyclicer: "greedy",
-    ranker: "network-simplex",
-  });
-  graph.setDefaultEdgeLabel(() => ({}));
-
-  for (const node of nodes) {
-    graph.setNode(node.key, {
-      width: nodeWidth,
-      height: nodeHeight,
-      role: node.role,
-    });
-  }
-
-  for (const edge of edges) {
-    graph.setEdge(edge.from, edge.to);
-  }
-
-  dagre.layout(graph);
-
-  const laneIndexByRole = new Map(usedRoles.map((role, index) => [role, index]));
-  const positionedNodes = nodes.map((node) => ({
-    node,
-    layout: graph.node(node.key) as { x: number; y: number; width: number; height: number },
-  }));
-
-  const laneRows = new Map<DiagramRole, Array<typeof positionedNodes[number]>>();
-  for (const positioned of positionedNodes) {
-    const current = laneRows.get(positioned.node.role) ?? [];
-    current.push(positioned);
-    laneRows.set(positioned.node.role, current);
-  }
-
-  const nodePositions = new Map<string, { x: number; y: number; width: number; height: number }>();
-  let maxRows = 0;
-
-  for (const role of usedRoles) {
-    const laneNodes = (laneRows.get(role) ?? []).sort((left, right) => left.layout.y - right.layout.y);
-    maxRows = Math.max(maxRows, laneNodes.length);
-    laneNodes.forEach((positioned, index) => {
-      const laneIndex = laneIndexByRole.get(role) ?? 0;
-      const x = marginX + laneIndex * (nodeWidth + laneGap);
-      const y = marginY + headerHeight + 26 + index * (nodeHeight + rowGap);
-      nodePositions.set(positioned.node.key, {
-        x,
-        y,
-        width: nodeWidth,
-        height: nodeHeight,
-      });
-    });
-  }
-
-  const width = Math.max(760, marginX * 2 + usedRoles.length * nodeWidth + Math.max(0, usedRoles.length - 1) * laneGap);
-  const height = marginY * 2 + headerHeight + 26 + maxRows * nodeHeight + Math.max(0, maxRows - 1) * rowGap;
-
-  const outgoingBySource = new Map<string, DiagramEdge[]>();
-  const incomingByTarget = new Map<string, DiagramEdge[]>();
-  for (const edge of edges) {
-    const outgoing = outgoingBySource.get(edge.from) ?? [];
-    outgoing.push(edge);
-    outgoingBySource.set(edge.from, outgoing);
-
-    const incoming = incomingByTarget.get(edge.to) ?? [];
-    incoming.push(edge);
-    incomingByTarget.set(edge.to, incoming);
-  }
-
-  const sourceOffsetByEdge = new Map<string, number>();
-  const targetOffsetByEdge = new Map<string, number>();
-  const edgeKey = (edge: DiagramEdge) => `${edge.from}->${edge.to}`;
-  const spreadOffsets = (count: number): number[] => {
-    const center = (count - 1) / 2;
-    return Array.from({ length: count }, (_, index) => (index - center) * 8);
-  };
-
-  for (const [source, sourceEdges] of outgoingBySource.entries()) {
-    const sorted = [...sourceEdges].sort((left, right) => {
-      const leftTarget = nodePositions.get(left.to);
-      const rightTarget = nodePositions.get(right.to);
-      return (leftTarget?.y ?? 0) - (rightTarget?.y ?? 0);
-    });
-    const offsets = spreadOffsets(sorted.length);
-    sorted.forEach((edge, index) => {
-      sourceOffsetByEdge.set(edgeKey(edge), offsets[index] ?? 0);
-    });
-  }
-
-  for (const [target, targetEdges] of incomingByTarget.entries()) {
-    const sorted = [...targetEdges].sort((left, right) => {
-      const leftSource = nodePositions.get(left.from);
-      const rightSource = nodePositions.get(right.from);
-      return (leftSource?.y ?? 0) - (rightSource?.y ?? 0);
-    });
-    const offsets = spreadOffsets(sorted.length);
-    sorted.forEach((edge, index) => {
-      targetOffsetByEdge.set(edgeKey(edge), offsets[index] ?? 0);
-    });
-  }
-
   const edgeMarkup = edges
-    .map((edge) => {
-      const source = nodePositions.get(edge.from);
-      const target = nodePositions.get(edge.to);
-      if (!source || !target) {
+    .map((edge, index) => {
+      const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
+      const sections = edgeSections.get(edgeId);
+      const points = sections?.flatMap((section) => {
+        const route: ElkPoint[] = [];
+        if (section.startPoint) {
+          route.push(section.startPoint);
+        }
+        if (section.bendPoints) {
+          route.push(...section.bendPoints);
+        }
+        if (section.endPoint) {
+          route.push(section.endPoint);
+        }
+        return route;
+      }) ?? [];
+
+      if (points.length === 0) {
         return "";
       }
 
-      const sourceRole = nodes.find((node) => node.key === edge.from)?.role;
-      const targetRole = nodes.find((node) => node.key === edge.to)?.role;
-      const sourceLane = sourceRole ? laneIndexByRole.get(sourceRole) : undefined;
-      const targetLane = targetRole ? laneIndexByRole.get(targetRole) : undefined;
-      if (sourceLane === undefined || targetLane === undefined) {
-        return "";
-      }
-
-      const sourceOffset = sourceOffsetByEdge.get(edgeKey(edge)) ?? 0;
-      const targetOffset = targetOffsetByEdge.get(edgeKey(edge)) ?? 0;
-      const startX = source.x + source.width;
-      const startY = source.y + source.height / 2 + sourceOffset;
-      const endX = target.x;
-      const endY = target.y + target.height / 2 + targetOffset;
-      const direction = sourceLane <= targetLane ? 1 : -1;
-      const gutterPoints: Array<{ x: number; y: number }> = [];
-
-      for (let lane = sourceLane; lane !== targetLane; lane += direction) {
-        const nextLane = lane + direction;
-        const leftLane = Math.min(lane, nextLane);
-        const gutterX = marginX + (leftLane + 1) * nodeWidth + leftLane * laneGap + laneGap / 2;
-        gutterPoints.push({ x: gutterX, y: startY });
-        gutterPoints.push({ x: gutterX, y: endY });
-      }
-
-      const route = [
-        { x: startX, y: startY },
-        ...gutterPoints,
-        { x: endX, y: endY },
-      ];
-
-      return `<path class="edge" d="${buildOrthogonalPath(route)}" />`;
+      return `<path class="edge" d="${buildOrthogonalPath(points)}" />`;
     })
     .join("\n");
 
+  const roleCenters = new Map<DiagramRole, number>();
+  for (const role of usedRoles) {
+    const roleNodes = nodes
+      .map((node) => ({ node, position: nodePositions.get(node.key) }))
+      .filter((entry): entry is { node: DiagramNode; position: DiagramPosition } =>
+        entry.node.role === role && entry.position !== undefined,
+      );
+    if (roleNodes.length === 0) {
+      continue;
+    }
+    const center = roleNodes.reduce(
+      (sum, entry) => sum + entry.position.x + entry.position.width / 2,
+      0,
+    ) / roleNodes.length;
+    roleCenters.set(role, center);
+  }
+
   const laneLabelMarkup = usedRoles
     .map((role) => {
-      const laneIndex = laneIndexByRole.get(role) ?? 0;
-      const x = marginX + laneIndex * (nodeWidth + laneGap) + nodeWidth / 2;
+      const x = roleCenters.get(role) ?? 0;
       return `<text class="lane-label" x="${x}" y="22" text-anchor="middle">${escapeHtml(DIAGRAM_ROLE_LABELS[role])}</text>`;
     })
     .join("\n");
@@ -715,7 +733,7 @@ function buildPreviewScript(): string {
   `;
 }
 
-function buildPreviewHtml(document: DocumentAst, markdown: string, title: string): string {
+function buildPreviewHtml(markdown: string, title: string, svgOverview: string): string {
   return `<!DOCTYPE html>
 <html lang="ja">
   <head>
@@ -961,7 +979,7 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         <div class="eyebrow">LLMThink Preview</div>
         <h1>${escapeHtml(title)}</h1>
       </section>
-      ${buildSvgOverview(document)}
+      ${svgOverview}
       <section class="markdown">
         ${markdownToHtml(markdown)}
       </section>
@@ -971,11 +989,12 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
 </html>`;
 }
 
-export function renderDslPreview(text: string, title: string): string {
+export async function renderDslPreview(text: string, title: string): Promise<string> {
   try {
     const document = parseDocument(text);
     const markdown = buildPreviewMarkdown(document, title);
-    return buildPreviewHtml(document, markdown, title);
+    const svgOverview = await buildSvgOverview(document);
+    return buildPreviewHtml(markdown, title, svgOverview);
   } catch (error) {
     if (error instanceof ParseError || error instanceof Error) {
       return buildErrorHtml(error, title);

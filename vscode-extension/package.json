@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -236,7 +236,7 @@
     "package:vsix": "npx @vscode/vsce package --out llmthink.vsix"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^3.0.0",
+    "elkjs": "^0.11.1",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
