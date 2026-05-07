@@ -153,7 +153,7 @@ function buildDiagramData(document: DocumentAst): {
     nodes.push({
       key: step.statement.id,
       title: truncateSvgText(step.statement.id, 24),
-      subtitle: truncateSvgText(formatStatementSummary(step.statement), 56),
+      subtitle: formatStatementSummary(step.statement),
       role,
       line: step.statement.span.line,
       column: step.statement.span.column,
@@ -258,20 +258,13 @@ function wrapSvgText(value: string, maxLength: number, maxLines: number): string
   return lines;
 }
 
-function toSvgPath(points: Array<{ x: number; y: number }>): string {
+function buildOrthogonalPath(points: Array<{ x: number; y: number }>): string {
   if (points.length === 0) {
     return "";
   }
 
   const [first, ...rest] = points;
-  return rest.reduce(
-    (path, point, index) => {
-      const previous = index === 0 ? first : rest[index - 1];
-      const controlX = (previous.x + point.x) / 2;
-      return `${path} C ${controlX} ${previous.y}, ${controlX} ${point.y}, ${point.x} ${point.y}`;
-    },
-    `M ${first.x} ${first.y}`,
-  );
+  return rest.reduce((path, point) => `${path} L ${point.x} ${point.y}`, `M ${first.x} ${first.y}`);
 }
 
 function buildSvgOverview(document: DocumentAst): string {
@@ -292,7 +285,7 @@ function buildSvgOverview(document: DocumentAst): string {
   }
 
   const nodeWidth = 236;
-  const nodeHeight = 94;
+  const nodeHeight = 108;
   const laneGap = 84;
   const rowGap = 30;
   const headerHeight = 18;
@@ -364,6 +357,50 @@ function buildSvgOverview(document: DocumentAst): string {
   const width = Math.max(760, marginX * 2 + usedRoles.length * nodeWidth + Math.max(0, usedRoles.length - 1) * laneGap);
   const height = marginY * 2 + headerHeight + 26 + maxRows * nodeHeight + Math.max(0, maxRows - 1) * rowGap;
 
+  const outgoingBySource = new Map<string, DiagramEdge[]>();
+  const incomingByTarget = new Map<string, DiagramEdge[]>();
+  for (const edge of edges) {
+    const outgoing = outgoingBySource.get(edge.from) ?? [];
+    outgoing.push(edge);
+    outgoingBySource.set(edge.from, outgoing);
+
+    const incoming = incomingByTarget.get(edge.to) ?? [];
+    incoming.push(edge);
+    incomingByTarget.set(edge.to, incoming);
+  }
+
+  const sourceOffsetByEdge = new Map<string, number>();
+  const targetOffsetByEdge = new Map<string, number>();
+  const edgeKey = (edge: DiagramEdge) => `${edge.from}->${edge.to}`;
+  const spreadOffsets = (count: number): number[] => {
+    const center = (count - 1) / 2;
+    return Array.from({ length: count }, (_, index) => (index - center) * 8);
+  };
+
+  for (const [source, sourceEdges] of outgoingBySource.entries()) {
+    const sorted = [...sourceEdges].sort((left, right) => {
+      const leftTarget = nodePositions.get(left.to);
+      const rightTarget = nodePositions.get(right.to);
+      return (leftTarget?.y ?? 0) - (rightTarget?.y ?? 0);
+    });
+    const offsets = spreadOffsets(sorted.length);
+    sorted.forEach((edge, index) => {
+      sourceOffsetByEdge.set(edgeKey(edge), offsets[index] ?? 0);
+    });
+  }
+
+  for (const [target, targetEdges] of incomingByTarget.entries()) {
+    const sorted = [...targetEdges].sort((left, right) => {
+      const leftSource = nodePositions.get(left.from);
+      const rightSource = nodePositions.get(right.from);
+      return (leftSource?.y ?? 0) - (rightSource?.y ?? 0);
+    });
+    const offsets = spreadOffsets(sorted.length);
+    sorted.forEach((edge, index) => {
+      targetOffsetByEdge.set(edgeKey(edge), offsets[index] ?? 0);
+    });
+  }
+
   const edgeMarkup = edges
     .map((edge) => {
       const source = nodePositions.get(edge.from);
@@ -372,13 +409,38 @@ function buildSvgOverview(document: DocumentAst): string {
         return "";
       }
 
-      const startX = source.x + source.width;
-      const startY = source.y + source.height / 2;
-      const endX = target.x;
-      const endY = target.y + target.height / 2;
-      const middleX = (startX + endX) / 2;
+      const sourceRole = nodes.find((node) => node.key === edge.from)?.role;
+      const targetRole = nodes.find((node) => node.key === edge.to)?.role;
+      const sourceLane = sourceRole ? laneIndexByRole.get(sourceRole) : undefined;
+      const targetLane = targetRole ? laneIndexByRole.get(targetRole) : undefined;
+      if (sourceLane === undefined || targetLane === undefined) {
+        return "";
+      }
 
-      return `<path class="edge" d="M ${startX} ${startY} C ${middleX} ${startY}, ${middleX} ${endY}, ${endX} ${endY}" />`;
+      const sourceOffset = sourceOffsetByEdge.get(edgeKey(edge)) ?? 0;
+      const targetOffset = targetOffsetByEdge.get(edgeKey(edge)) ?? 0;
+      const startX = source.x + source.width;
+      const startY = source.y + source.height / 2 + sourceOffset;
+      const endX = target.x;
+      const endY = target.y + target.height / 2 + targetOffset;
+      const direction = sourceLane <= targetLane ? 1 : -1;
+      const gutterPoints: Array<{ x: number; y: number }> = [];
+
+      for (let lane = sourceLane; lane !== targetLane; lane += direction) {
+        const nextLane = lane + direction;
+        const leftLane = Math.min(lane, nextLane);
+        const gutterX = marginX + (leftLane + 1) * nodeWidth + leftLane * laneGap + laneGap / 2;
+        gutterPoints.push({ x: gutterX, y: startY });
+        gutterPoints.push({ x: gutterX, y: endY });
+      }
+
+      const route = [
+        { x: startX, y: startY },
+        ...gutterPoints,
+        { x: endX, y: endY },
+      ];
+
+      return `<path class="edge" d="${buildOrthogonalPath(route)}" />`;
     })
     .join("\n");
 
@@ -408,7 +470,6 @@ function buildSvgOverview(document: DocumentAst): string {
         return "";
       }
       const titleLines = wrapSvgText(node.title, 20, 1);
-      const subtitleLines = wrapSvgText(node.subtitle, 26, 3);
       const roleLabel = DIAGRAM_ROLE_LABELS[node.role];
       const dataAttributes = node.line && node.column
         ? `data-line="${node.line}" data-column="${node.column}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
@@ -420,9 +481,9 @@ function buildSvgOverview(document: DocumentAst): string {
           <text class="node-title" x="18" y="42">
             ${titleLines.map((line) => `<tspan x="18" dy="0">${escapeHtml(line)}</tspan>`).join("")}
           </text>
-          <text class="node-subtitle" x="18" y="62">
-            ${subtitleLines.map((line, index) => `<tspan x="18" dy="${index === 0 ? 0 : 15}">${escapeHtml(line)}</tspan>`).join("")}
-          </text>
+          <foreignObject x="18" y="56" width="${layoutNode.width - 36}" height="${layoutNode.height - 68}" class="node-copy-wrap">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy">${escapeHtml(node.subtitle)}</div>
+          </foreignObject>
         </g>
       `;
     })
@@ -768,6 +829,7 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         fill: none;
         stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 82%, transparent);
         stroke-width: 2;
+        stroke-linejoin: round;
         marker-end: url(#arrowhead);
       }
       .arrowhead {
@@ -778,8 +840,7 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         transition: transform 120ms ease, filter 120ms ease, stroke-width 120ms ease;
       }
       .node-title,
-      .node-role,
-      .node-subtitle {
+      .node-role {
         fill: var(--vscode-editor-foreground);
         font-family: var(--vscode-font-family);
       }
@@ -804,9 +865,21 @@ function buildPreviewHtml(document: DocumentAst, markdown: string, title: string
         font-size: 13px;
         font-weight: 600;
       }
-      .node-subtitle {
+      .node-copy-wrap {
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .node-copy {
+        font-family: var(--vscode-font-family);
         font-size: 11px;
-        fill: color-mix(in srgb, var(--vscode-editor-foreground) 72%, transparent);
+        line-height: 1.35;
+        color: color-mix(in srgb, var(--vscode-editor-foreground) 72%, transparent);
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .node-premise rect {
         fill: color-mix(in srgb, var(--vscode-charts-blue) 18%, var(--vscode-editor-background));
