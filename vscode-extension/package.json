@@ -100,6 +100,10 @@
         "title": "LLMThink: DSL Report Show"
       },
       {
+        "command": "llmthink.dslPreview",
+        "title": "LLMThink: DSL Preview"
+      },
+      {
         "command": "llmthink.thoughtDraft",
         "title": "LLMThink: Thought Draft"
       },
@@ -153,6 +157,22 @@
           "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス。未指定時は workspace の build/llmthink-lsp.js、次に PATH 上の llmthink-lsp を使います。"
         }
       }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "llmthink.dslPreview",
+          "when": "resourceExtname == .dsl",
+          "group": "navigation@10"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "llmthink.dslPreview",
+          "when": "resourceExtname == .dsl",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {
