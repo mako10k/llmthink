@@ -57,6 +57,10 @@ const REFLECTION_KIND_ITEMS: Array<{
 let lastReport: AuditReport | undefined;
 let lastPanel: vscode.WebviewPanel | undefined;
 
+function isDslEditor(editor: vscode.TextEditor | undefined): boolean {
+  return editor?.document.languageId === "llmthink";
+}
+
 function buildPanelHtml(report: AuditReport): string {
   return formatAuditReportHtml(report);
 }
@@ -93,6 +97,18 @@ function showReportPanel(
 function toDocumentId(document: vscode.TextDocument): string {
   const baseName = path.basename(document.fileName || document.uri.path);
   return baseName.replace(/\.dsl$/i, "") || "active-document";
+}
+
+async function openPreviewForEditor(editor: vscode.TextEditor): Promise<void> {
+  await vscode.commands.executeCommand(
+    "vscode.openWith",
+    editor.document.uri,
+    DSL_PREVIEW_VIEW_TYPE,
+    {
+      viewColumn: vscode.ViewColumn.Beside,
+      preview: true,
+    },
+  );
 }
 
 function defaultThoughtIdForDocument(document: vscode.TextDocument): string {
@@ -476,8 +492,33 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
   const subscriptions: vscode.Disposable[] = [outputChannel];
+  const previewStatusItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    10,
+  );
 
-  subscriptions.push(DslPreviewEditorProvider.register(context));
+  previewStatusItem.name = "LLMThink Preview";
+  previewStatusItem.command = "llmthink.dslPreview";
+  previewStatusItem.text = "$(open-preview) LLMThink Preview";
+  previewStatusItem.tooltip = "アクティブな DSL 文書をプレビューで開く";
+
+  const updatePreviewStatusItem = (editor: vscode.TextEditor | undefined) => {
+    if (isDslEditor(editor)) {
+      previewStatusItem.show();
+      return;
+    }
+    previewStatusItem.hide();
+  };
+
+  subscriptions.push(
+    previewStatusItem,
+    DslPreviewEditorProvider.register(context),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      updatePreviewStatusItem(editor);
+    }),
+  );
+
+  updatePreviewStatusItem(vscode.window.activeTextEditor);
 
   if (typeof vscode.lm.registerTool === "function") {
     try {
@@ -556,15 +597,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      await vscode.commands.executeCommand(
-        "vscode.openWith",
-        editor.document.uri,
-        DSL_PREVIEW_VIEW_TYPE,
-        {
-          viewColumn: vscode.ViewColumn.Beside,
-          preview: true,
-        },
-      );
+      await openPreviewForEditor(editor);
     }),
     vscode.commands.registerCommand("llmthink.thoughtDraft", async () => {
       await saveActiveDocumentAsDraft(outputChannel);
