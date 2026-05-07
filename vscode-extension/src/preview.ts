@@ -316,7 +316,7 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
   height: number;
 }> {
   const nodeWidth = 236;
-  const nodeHeight = 108;
+  const nodeHeight = 96;
   const incomingEdgesByNode = new Map<string, number[]>();
   const outgoingEdgesByNode = new Map<string, number[]>();
 
@@ -476,20 +476,14 @@ async function buildSvgOverview(document: DocumentAst): Promise<string> {
       if (!layoutNode) {
         return "";
       }
-      const titleLines = wrapSvgText(node.title, 20, 1);
-      const roleLabel = DIAGRAM_ROLE_LABELS[node.role];
       const dataAttributes = node.line && node.column
         ? `data-line="${node.line}" data-column="${node.column}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
         : "";
       return `
         <g class="node node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="18" ry="18" />
-          <text class="node-role" x="18" y="18">${escapeHtml(roleLabel)}</text>
-          <text class="node-title" x="18" y="42">
-            ${titleLines.map((line) => `<tspan x="18" dy="0">${escapeHtml(line)}</tspan>`).join("")}
-          </text>
-          <foreignObject x="18" y="56" width="${layoutNode.width - 36}" height="${layoutNode.height - 68}" class="node-copy-wrap">
-            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy">${escapeHtml(node.subtitle)}</div>
+          <foreignObject x="16" y="14" width="${layoutNode.width - 32}" height="${layoutNode.height - 28}" class="node-copy-wrap">
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(node.subtitle)}</div>
           </foreignObject>
         </g>
       `;
@@ -839,17 +833,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string):
         stroke-width: 1.2;
         transition: transform 120ms ease, filter 120ms ease, stroke-width 120ms ease;
       }
-      .node-title,
-      .node-role {
-        fill: var(--vscode-editor-foreground);
-        font-family: var(--vscode-font-family);
-      }
-      .node-role {
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        fill: color-mix(in srgb, var(--vscode-editor-foreground) 62%, transparent);
-      }
       .node[data-line] {
         cursor: pointer;
       }
@@ -861,10 +844,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string):
         stroke-width: 1.8;
         filter: brightness(1.06);
       }
-      .node-title {
-        font-size: 13px;
-        font-weight: 600;
-      }
       .node-copy-wrap {
         pointer-events: none;
         overflow: hidden;
@@ -872,14 +851,18 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string):
       .node-copy {
         font-family: var(--vscode-font-family);
         font-size: 11px;
-        line-height: 1.35;
-        color: color-mix(in srgb, var(--vscode-editor-foreground) 72%, transparent);
+        line-height: 1.28;
+        color: color-mix(in srgb, var(--vscode-editor-foreground) 78%, transparent);
         overflow: hidden;
         display: -webkit-box;
         -webkit-box-orient: vertical;
-        -webkit-line-clamp: 3;
+        -webkit-line-clamp: 4;
         word-break: break-word;
         overflow-wrap: anywhere;
+      }
+      .node-copy-key {
+        color: var(--vscode-editor-foreground);
+        font-weight: 700;
       }
       .node-premise rect {
         fill: color-mix(in srgb, var(--vscode-charts-blue) 18%, var(--vscode-editor-background));
