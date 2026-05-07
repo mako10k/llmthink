@@ -39,6 +39,24 @@ function currentIndent(line: string): number {
   return line.match(/^\s*/)?.[0].length ?? 0;
 }
 
+function isCommentLine(line: string): boolean {
+  return line.trimStart().startsWith("#");
+}
+
+function nextSignificantLineIndex(lines: string[], startIndex: number): number {
+  let index = startIndex;
+  while (index < lines.length) {
+    const rawLine = lines[index] ?? "";
+    const line = rawLine.trim();
+    if (!line || isCommentLine(rawLine)) {
+      index += 1;
+      continue;
+    }
+    break;
+  }
+  return index;
+}
+
 function parseIdentifierAfterKeyword(
   header: string,
   keyword: string,
@@ -125,7 +143,7 @@ export function parseDocument(input: string): DocumentAst {
   while (index < lines.length) {
     const rawLine = lines[index] ?? "";
     const line = rawLine.trim();
-    if (!line) {
+    if (!line || isCommentLine(rawLine)) {
       index += 1;
       continue;
     }
@@ -197,7 +215,7 @@ function parseFramework(
   if (match[2] === ":") {
     while (index < lines.length) {
       const raw = lines[index] ?? "";
-      if (!raw.trim()) {
+      if (!raw.trim() || isCommentLine(raw)) {
         index += 1;
         continue;
       }
@@ -243,13 +261,14 @@ function parseDomain(
       rawHeader.length + 1,
     );
   }
-  const rawDescriptionLine = lines[startIndex + 1] ?? "";
+  const descriptionIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawDescriptionLine = lines[descriptionIndex] ?? "";
   const descriptionLine = rawDescriptionLine.trim() ?? "";
   const descriptionMatch = /^description\s+"(.+)"$/.exec(descriptionLine);
   if (!descriptionMatch) {
     throw new ParseError(
       "Domain description is required",
-      startIndex + 2,
+      descriptionIndex + 1,
       firstNonWhitespaceColumn(rawDescriptionLine),
       rawDescriptionLine.length + 1,
     );
@@ -260,7 +279,7 @@ function parseDomain(
       description: descriptionMatch[1],
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },
-    startIndex + 2,
+    descriptionIndex + 1,
   ];
 }
 
@@ -279,12 +298,13 @@ function parseProblem(
       rawHeader.length + 1,
     );
   }
-  const rawTextLine = lines[startIndex + 1] ?? "";
+  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawTextLine = lines[textIndex] ?? "";
   const textLine = rawTextLine.trim() ?? "";
   if (!textLine.startsWith('"')) {
     throw new ParseError(
       "Problem text is required",
-      startIndex + 2,
+      textIndex + 1,
       firstNonWhitespaceColumn(rawTextLine),
       rawTextLine.length + 1,
     );
@@ -295,7 +315,7 @@ function parseProblem(
       text: stripQuotes(textLine),
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },
-    startIndex + 2,
+    textIndex + 1,
   ];
 }
 
@@ -312,8 +332,9 @@ function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
     );
   }
 
-  const statementLine = lines[startIndex + 1]?.trim() ?? "";
-  const statement = parseStatement(lines, startIndex + 1, statementLine);
+  const statementIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const statementLine = lines[statementIndex]?.trim() ?? "";
+  const statement = parseStatement(lines, statementIndex, statementLine);
   return [
     {
       id: match[1],
@@ -385,12 +406,13 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
       rawHeader.length + 1,
     );
   }
-  const rawTextLine = lines[startIndex + 1] ?? "";
+  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawTextLine = lines[textIndex] ?? "";
   const textLine = rawTextLine.trim() ?? "";
   if (!textLine.startsWith('"')) {
     throw new ParseError(
       `${role} text is required`,
-      startIndex + 2,
+      textIndex + 1,
       firstNonWhitespaceColumn(rawTextLine),
       rawTextLine.length + 1,
     );
@@ -400,7 +422,7 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
     id,
     text: stripQuotes(textLine),
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
-    nextIndex: startIndex + 2,
+    nextIndex: textIndex + 1,
   };
 }
 
@@ -419,13 +441,14 @@ function parseViewpoint(
       rawHeader.length + 1,
     );
   }
-  const rawAxisLine = lines[startIndex + 1] ?? "";
+  const axisIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawAxisLine = lines[axisIndex] ?? "";
   const axisLine = rawAxisLine.trim() ?? "";
   const axisMatch = /^axis\s+([A-Za-z][A-Za-z0-9_-]*)$/.exec(axisLine);
   if (!axisMatch) {
     throw new ParseError(
       "Viewpoint axis is required",
-      startIndex + 2,
+      axisIndex + 1,
       firstNonWhitespaceColumn(rawAxisLine),
       rawAxisLine.length + 1,
     );
@@ -435,7 +458,7 @@ function parseViewpoint(
     id: match[1],
     axis: axisMatch[1],
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
-    nextIndex: startIndex + 2,
+    nextIndex: axisIndex + 1,
   };
 }
 
@@ -461,7 +484,7 @@ function parsePartition(
   let index = startIndex + 1;
   while (index < lines.length) {
     const raw = lines[index] ?? "";
-    if (!raw.trim()) {
+    if (!raw.trim() || isCommentLine(raw)) {
       index += 1;
       continue;
     }
@@ -506,12 +529,13 @@ function parseDecision(
       rawHeader.length + 1,
     );
   }
-  const rawTextLine = lines[startIndex + 1] ?? "";
+  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawTextLine = lines[textIndex] ?? "";
   const textLine = rawTextLine.trim() ?? "";
   if (!textLine.startsWith('"')) {
     throw new ParseError(
       "Decision text is required",
-      startIndex + 2,
+      textIndex + 1,
       firstNonWhitespaceColumn(rawTextLine),
       rawTextLine.length + 1,
     );
@@ -522,7 +546,7 @@ function parseDecision(
     basedOn: parsedHeader.basedOn,
     text: stripQuotes(textLine),
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
-    nextIndex: startIndex + 2,
+    nextIndex: textIndex + 1,
   };
 }
 
@@ -538,12 +562,13 @@ function parseQuery(lines: string[], startIndex: number): [QueryDecl, number] {
       rawHeader.length + 1,
     );
   }
-  const rawExpressionLine = lines[startIndex + 1] ?? "";
+  const expressionIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawExpressionLine = lines[expressionIndex] ?? "";
   const expressionLine = rawExpressionLine.trim() ?? "";
   if (!expressionLine) {
     throw new ParseError(
       "Query expression is required",
-      startIndex + 2,
+      expressionIndex + 1,
       firstNonWhitespaceColumn(rawExpressionLine),
       rawExpressionLine.length + 1,
     );
@@ -554,10 +579,10 @@ function parseQuery(lines: string[], startIndex: number): [QueryDecl, number] {
       expression: expressionLine,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
       expressionSpan: span(
-        startIndex + 2,
+        expressionIndex + 1,
         firstNonWhitespaceColumn(rawExpressionLine),
       ),
     },
-    startIndex + 2,
+    expressionIndex + 1,
   ];
 }
