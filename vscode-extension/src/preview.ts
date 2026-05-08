@@ -521,7 +521,34 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         return "";
       }
 
-      return `<path class="edge" d="${buildOrthogonalPath(points)}" />`;
+      const path = buildOrthogonalPath(points);
+      return `<path class="edge" d="${path}" data-edge-id="${edgeId}" data-edge-from="${escapeHtml(edge.from)}" data-edge-to="${escapeHtml(edge.to)}" />`;
+    })
+    .join("\n");
+
+  const edgeHitMarkup = edges
+    .map((edge, index) => {
+      const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
+      const sections = edgeSections.get(edgeId);
+      const points = sections?.flatMap((section) => {
+        const route: ElkPoint[] = [];
+        if (section.startPoint) {
+          route.push(section.startPoint);
+        }
+        if (section.bendPoints) {
+          route.push(...section.bendPoints);
+        }
+        if (section.endPoint) {
+          route.push(section.endPoint);
+        }
+        return route;
+      }) ?? [];
+
+      if (points.length === 0) {
+        return "";
+      }
+
+      return `<path class="edge-hit" d="${buildOrthogonalPath(points)}" data-edge-id="${edgeId}" data-edge-from="${escapeHtml(edge.from)}" data-edge-to="${escapeHtml(edge.to)}" />`;
     })
     .join("\n");
 
@@ -608,6 +635,7 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
               </defs>
               <g class="edges">${edgeMarkup}</g>
               <g class="nodes">${nodeMarkup}</g>
+              <g class="edge-hits">${edgeHitMarkup}</g>
             </svg>
           </div>
           <div class="diagram-controls-overlay" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
@@ -856,6 +884,7 @@ function buildPreviewScript(): string {
         const minimap = card.querySelector(".diagram-minimap");
         const minimapViewport = card.querySelector(".minimap-viewport");
         const minimapCard = card.querySelector(".diagram-minimap-card");
+        const minimapHandle = card.querySelector(".diagram-minimap-grip");
         const viewport = card.querySelector(".diagram-viewport");
         if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
           return;
@@ -866,6 +895,17 @@ function buildPreviewScript(): string {
         let zoom = 1;
         let dragState = undefined;
         let minimapDragState = undefined;
+        let minimapResizeState = undefined;
+        let suppressContextMenu = false;
+
+        const clampMinimapWidth = (width) => {
+          const minWidth = 96;
+          const viewportMax = viewport instanceof HTMLElement
+            ? Math.max(viewport.clientWidth - 20, minWidth)
+            : 320;
+          const maxWidth = Math.min(320, viewportMax);
+          return Math.min(Math.max(width, minWidth), maxWidth);
+        };
 
         const clampMinimapPosition = (left, top) => {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
@@ -887,6 +927,19 @@ function buildPreviewScript(): string {
           minimapCard.style.left = String(next.left) + "px";
           minimapCard.style.top = String(next.top) + "px";
           minimapCard.style.right = "auto";
+        };
+
+        const resizeMinimap = (nextWidth) => {
+          if (!(minimapCard instanceof HTMLElement)) {
+            return;
+          }
+          const clampedWidth = clampMinimapWidth(nextWidth);
+          const centerX = minimapCard.offsetLeft + minimapCard.offsetWidth / 2;
+          const top = minimapCard.offsetTop;
+          minimapCard.style.width = String(clampedWidth) + "px";
+          requestAnimationFrame(() => {
+            placeMinimap(centerX - minimapCard.offsetWidth / 2, top);
+          });
         };
 
         const updateMinimapViewport = () => {
@@ -911,6 +964,100 @@ function buildPreviewScript(): string {
           scroll.scrollLeft = Math.max(nodeCenterX - scroll.clientWidth / 2, 0);
           scroll.scrollTop = Math.max(nodeCenterY - scroll.clientHeight / 2, 0);
           requestAnimationFrame(updateMinimapViewport);
+        };
+
+        const fitNodesInViewport = (nodeElements) => {
+          const nodes = nodeElements.filter((node) => node instanceof SVGGElement);
+          if (nodes.length === 0) {
+            return;
+          }
+
+          const svgRect = svg.getBoundingClientRect();
+          const scrollRect = scroll.getBoundingClientRect();
+          const padding = 32;
+
+          const bounds = nodes.reduce((acc, node) => {
+            const nodeRect = node.getBoundingClientRect();
+            const left = nodeRect.left - svgRect.left;
+            const top = nodeRect.top - svgRect.top;
+            const right = left + nodeRect.width;
+            const bottom = top + nodeRect.height;
+            return {
+              left: Math.min(acc.left, left),
+              top: Math.min(acc.top, top),
+              right: Math.max(acc.right, right),
+              bottom: Math.max(acc.bottom, bottom),
+            };
+          }, {
+            left: Number.POSITIVE_INFINITY,
+            top: Number.POSITIVE_INFINITY,
+            right: Number.NEGATIVE_INFINITY,
+            bottom: Number.NEGATIVE_INFINITY,
+          });
+
+          const logicalBounds = {
+            left: bounds.left / zoom,
+            top: bounds.top / zoom,
+            width: (bounds.right - bounds.left) / zoom,
+            height: (bounds.bottom - bounds.top) / zoom,
+          };
+
+          const targetZoom = clampZoom(Math.min(
+            (scrollRect.width - padding * 2) / Math.max(logicalBounds.width, 1),
+            (scrollRect.height - padding * 2) / Math.max(logicalBounds.height, 1),
+          ));
+
+          zoom = targetZoom;
+          svg.style.width = String(baseWidth * zoom) + "px";
+          svg.style.height = String(baseHeight * zoom) + "px";
+
+          requestAnimationFrame(() => {
+            const contentWidth = logicalBounds.width * zoom;
+            const contentHeight = logicalBounds.height * zoom;
+            const centerX = logicalBounds.left * zoom + contentWidth / 2;
+            const centerY = logicalBounds.top * zoom + contentHeight / 2;
+            const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
+            const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
+            scroll.scrollLeft = Math.min(
+              Math.max(centerX - scroll.clientWidth / 2, 0),
+              maxLeft,
+            );
+            scroll.scrollTop = Math.min(
+              Math.max(centerY - scroll.clientHeight / 2, 0),
+              maxTop,
+            );
+            updateMinimapViewport();
+          });
+        };
+
+        const clearEdgeHighlights = () => {
+          card.querySelectorAll(".edge.edge-active").forEach((edge) => {
+            edge.classList.remove("edge-active");
+          });
+          card.querySelectorAll(".node.node-edge-active").forEach((node) => {
+            node.classList.remove("node-edge-active");
+          });
+        };
+
+        const highlightEdgeEndpoints = (edgeElement) => {
+          if (!(edgeElement instanceof SVGPathElement)) {
+            return;
+          }
+          clearEdgeHighlights();
+          const edgeId = edgeElement.getAttribute("data-edge-id");
+          const visibleEdge = edgeId
+            ? card.querySelector('.edge[data-edge-id="' + CSS.escape(edgeId) + '"]')
+            : edgeElement;
+          visibleEdge?.classList.add("edge-active");
+          const sourceId = edgeElement.getAttribute("data-edge-from");
+          const targetId = edgeElement.getAttribute("data-edge-to");
+          for (const nodeId of [sourceId, targetId]) {
+            if (!nodeId) {
+              continue;
+            }
+            const node = card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]');
+            node?.classList.add("node-edge-active");
+          }
         };
 
         const centerViewport = () => {
@@ -986,6 +1133,15 @@ function buildPreviewScript(): string {
           requestAnimationFrame(updateMinimapViewport);
         });
 
+        scroll.addEventListener("wheel", (event) => {
+          if (!event.ctrlKey) {
+            return;
+          }
+          event.preventDefault();
+          const delta = event.deltaY < 0 ? 0.12 : -0.12;
+          applyZoom(zoom + delta);
+        }, { passive: false });
+
         card.querySelectorAll(".diagram-button").forEach((button) => {
           button.addEventListener("click", () => {
             const action = button.dataset.action;
@@ -1008,11 +1164,12 @@ function buildPreviewScript(): string {
         });
 
         scroll.addEventListener("pointerdown", (event) => {
-          if (event.button !== 0 || event.target.closest(".node[data-line]")) {
+          if ((event.button !== 0 && event.button !== 2) || event.target.closest(".node[data-line]")) {
             return;
           }
           dragState = {
             pointerId: event.pointerId,
+            button: event.button,
             startX: event.clientX,
             startY: event.clientY,
             scrollLeft: scroll.scrollLeft,
@@ -1020,11 +1177,19 @@ function buildPreviewScript(): string {
           };
           scroll.setPointerCapture(event.pointerId);
           scroll.classList.add("dragging");
+          if (event.button === 2) {
+            suppressContextMenu = false;
+            event.preventDefault();
+          }
         });
 
         scroll.addEventListener("pointermove", (event) => {
           if (!dragState || dragState.pointerId !== event.pointerId) {
             return;
+          }
+          if (dragState.button === 2) {
+            suppressContextMenu = true;
+            event.preventDefault();
           }
           scroll.scrollLeft = dragState.scrollLeft - (event.clientX - dragState.startX);
           scroll.scrollTop = dragState.scrollTop - (event.clientY - dragState.startY);
@@ -1044,12 +1209,30 @@ function buildPreviewScript(): string {
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
         scroll.addEventListener("dblclick", () => fitToViewport());
+        scroll.addEventListener("contextmenu", (event) => {
+          if (!suppressContextMenu) {
+            return;
+          }
+          suppressContextMenu = false;
+          event.preventDefault();
+        });
 
         const stopMinimapDragging = (event) => {
           if (!minimapDragState || minimapDragState.pointerId !== event.pointerId) {
             return;
           }
           minimapDragState = undefined;
+          minimapCard?.classList.remove("dragging");
+          if (minimapCard instanceof HTMLElement && minimapCard.hasPointerCapture(event.pointerId)) {
+            minimapCard.releasePointerCapture(event.pointerId);
+          }
+        };
+
+        const stopMinimapResizing = (event) => {
+          if (!minimapResizeState || minimapResizeState.pointerId !== event.pointerId) {
+            return;
+          }
+          minimapResizeState = undefined;
           minimapCard?.classList.remove("dragging");
           if (minimapHandle instanceof HTMLElement && minimapHandle.hasPointerCapture(event.pointerId)) {
             minimapHandle.releasePointerCapture(event.pointerId);
@@ -1058,6 +1241,9 @@ function buildPreviewScript(): string {
 
         if (minimapCard instanceof HTMLElement) {
           minimapCard.addEventListener("pointerdown", (event) => {
+            if (event.target instanceof Element && event.target.closest(".diagram-minimap-grip")) {
+              return;
+            }
             if (event.button !== 0) {
               return;
             }
@@ -1087,6 +1273,34 @@ function buildPreviewScript(): string {
 
           minimapCard.addEventListener("pointerup", stopMinimapDragging);
           minimapCard.addEventListener("pointercancel", stopMinimapDragging);
+
+        }
+
+        if (minimapHandle instanceof HTMLElement) {
+          minimapHandle.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 || !(minimapCard instanceof HTMLElement)) {
+              return;
+            }
+            minimapResizeState = {
+              pointerId: event.pointerId,
+              startY: event.clientY,
+              width: minimapCard.offsetWidth,
+            };
+            minimapHandle.setPointerCapture(event.pointerId);
+            minimapCard.classList.add("dragging");
+            event.preventDefault();
+          });
+
+          minimapHandle.addEventListener("pointermove", (event) => {
+            if (!minimapResizeState || minimapResizeState.pointerId !== event.pointerId) {
+              return;
+            }
+            resizeMinimap(minimapResizeState.width + (minimapResizeState.startY - event.clientY));
+            event.preventDefault();
+          });
+
+          minimapHandle.addEventListener("pointerup", stopMinimapResizing);
+          minimapHandle.addEventListener("pointercancel", stopMinimapResizing);
         }
 
         window.addEventListener("resize", () => {
@@ -1100,6 +1314,26 @@ function buildPreviewScript(): string {
         card.querySelectorAll(".node[data-line]").forEach((node) => {
           node.addEventListener("click", () => {
             centerNodeInViewport(node);
+          });
+        });
+
+        card.querySelectorAll(".edge-hit[data-edge-from][data-edge-to]").forEach((edge) => {
+          edge.addEventListener("pointerenter", () => {
+            highlightEdgeEndpoints(edge);
+          });
+          edge.addEventListener("pointerleave", () => {
+            clearEdgeHighlights();
+          });
+          edge.addEventListener("dblclick", (event) => {
+            event.preventDefault();
+            const sourceId = edge.getAttribute("data-edge-from");
+            const targetId = edge.getAttribute("data-edge-to");
+            const nodes = [sourceId, targetId]
+              .map((nodeId) => nodeId
+                ? card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]')
+                : null)
+              .filter((node) => node instanceof SVGGElement);
+            fitNodesInViewport(nodes);
           });
         });
 
@@ -1159,6 +1393,9 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .hero,
       .diagram-card,
       .markdown {
+        width: min(100%, 1120px);
+        justify-self: center;
+        box-sizing: border-box;
         min-width: 0;
         border: 1px solid color-mix(in srgb, var(--vscode-editorWidget-border, var(--vscode-panel-border)) 80%, transparent);
         border-radius: 18px;
@@ -1171,10 +1408,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-card,
       .markdown {
         padding: 18px;
-      }
-      .diagram-card {
-        width: min(100%, 1120px);
-        justify-self: center;
       }
       .eyebrow {
         font-size: 12px;
@@ -1247,6 +1480,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         flex: 1 1 auto;
         min-height: 0;
         cursor: grab;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .diagram-scroll::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
       }
       .diagram-scroll.dragging {
         cursor: grabbing;
@@ -1261,7 +1501,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         display: flex;
         flex-direction: column;
         min-width: 0;
-        width: min(100%, 1080px);
+        width: 100%;
+        box-sizing: border-box;
         margin: 0 auto;
         height: clamp(320px, 50vh, 520px);
         border-radius: 14px;
@@ -1276,7 +1517,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-controls-overlay {
         position: absolute;
         left: 50%;
-        bottom: 10px;
+        top: 10px;
         transform: translateX(-50%);
         display: flex;
         gap: 6px;
@@ -1285,34 +1526,35 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         border-radius: 999px;
         background: color-mix(in srgb, var(--vscode-editor-background) 28%, transparent);
         backdrop-filter: blur(10px);
-        opacity: 0.28;
+        opacity: 0.5;
         transition: opacity 120ms ease, background 120ms ease;
         z-index: 2;
       }
       .diagram-viewport:hover .diagram-controls-overlay,
       .diagram-controls-overlay:focus-within {
-        opacity: 0.5;
+        opacity: 0.75;
       }
       .diagram-minimap-card {
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
         border-radius: 10px;
         background: color-mix(in srgb, var(--vscode-editor-background) 42%, transparent);
         backdrop-filter: blur(10px);
-        padding: 6px;
+        padding: 14px 6px 6px;
         position: absolute;
         top: 10px;
         right: 10px;
         width: min(112px, 18vw);
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-        opacity: 0.28;
+        opacity: 0.5;
         transition: opacity 120ms ease, box-shadow 120ms ease;
         z-index: 2;
         cursor: grab;
+        touch-action: none;
       }
       .diagram-minimap-card:hover,
       .diagram-minimap-card:focus-within,
       .diagram-minimap-card.dragging {
-        opacity: 0.56;
+        opacity: 0.75;
         box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
       }
       .diagram-minimap-card.dragging {
@@ -1326,10 +1568,20 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         overflow: hidden;
       }
       .diagram-minimap-grip {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translate(-50%, -50%);
         display: flex;
         justify-content: center;
         gap: 3px;
-        margin-top: 4px;
+        margin-top: 0;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--vscode-editor-background) 58%, transparent);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+        cursor: ns-resize;
+        touch-action: none;
       }
       .diagram-minimap-grip span {
         width: 4px;
@@ -1415,6 +1667,21 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         stroke-width: 2;
         stroke-linejoin: round;
         marker-end: url(#arrowhead);
+        transition: stroke-width 120ms ease, filter 120ms ease, stroke 120ms ease;
+      }
+      .edge-hit {
+        fill: none;
+        stroke: rgba(0, 0, 0, 0.001);
+        stroke-width: 16;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        pointer-events: stroke;
+        cursor: pointer;
+      }
+      .edge.edge-active {
+        stroke: color-mix(in srgb, var(--vscode-focusBorder) 88%, transparent);
+        stroke-width: 3.4;
+        filter: brightness(1.08);
       }
       .arrowhead {
         fill: color-mix(in srgb, var(--vscode-textLink-foreground) 82%, transparent);
@@ -1438,6 +1705,10 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .node[data-line]:focus rect {
         stroke-width: 1.8;
         filter: brightness(1.06);
+      }
+      .node.node-edge-active rect {
+        stroke-width: 2.4;
+        filter: brightness(1.09);
       }
       .node-copy-wrap {
         pointer-events: none;
