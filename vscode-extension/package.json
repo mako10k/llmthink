@@ -249,7 +249,7 @@
   "scripts": {
     "build": "npm --prefix .. run build && node ./build.mjs",
     "typecheck": "npm --prefix .. run build && tsc -p tsconfig.json --noEmit",
-    "package:vsix": "npx -y @vscode/vsce@3.2.2 package --out llmthink.vsix"
+    "package:vsix": "npx -y @vscode/vsce@3.9.1 package --out llmthink.vsix"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
