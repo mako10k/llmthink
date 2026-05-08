@@ -1209,7 +1209,7 @@ function buildPreviewScript(): string {
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
         scroll.addEventListener("dblclick", (event) => {
-          if (event.target instanceof Element && event.target.closest(".edge-hit, .node, .diagram-button, .diagram-minimap-card")) {
+          if (event.target instanceof Element && event.target.closest(".edge, .edge-hit, .node, .diagram-button, .diagram-minimap-card")) {
             return;
           }
           fitToViewport();
@@ -1322,7 +1322,7 @@ function buildPreviewScript(): string {
           });
         });
 
-        card.querySelectorAll(".edge-hit[data-edge-from][data-edge-to]").forEach((edge) => {
+        card.querySelectorAll(".edge[data-edge-from][data-edge-to], .edge-hit[data-edge-from][data-edge-to]").forEach((edge) => {
           edge.addEventListener("pointerenter", () => {
             highlightEdgeEndpoints(edge);
           });

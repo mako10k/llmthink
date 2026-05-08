@@ -483,19 +483,23 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       assert.equal(hovered.sourceActive, true);
       assert.equal(hovered.targetActive, true);
 
-      await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("dblclick");
+      await page.locator('.diagram-scroll .edge[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("dblclick", {
+        bubbles: true,
+      });
       await page.evaluate(
         () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
       );
 
       const fitMetrics = await page.evaluate(() => {
         const scroll = document.querySelector('.diagram-scroll');
+        const svg = document.querySelector('.diagram');
         const source = document.querySelector('.node[data-node-key="PR1"]');
         const target = document.querySelector('.node[data-node-key="D1"]');
-        if (!(scroll instanceof HTMLElement) || !(source instanceof SVGGElement) || !(target instanceof SVGGElement)) {
+        if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGSVGElement) || !(source instanceof SVGGElement) || !(target instanceof SVGGElement)) {
           throw new Error("edge fit elements not found");
         }
         const scrollRect = scroll.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
         const sourceRect = source.getBoundingClientRect();
         const targetRect = target.getBoundingClientRect();
         return {
@@ -509,11 +513,13 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
             targetRect.right <= scrollRect.right + 2 &&
             targetRect.top >= scrollRect.top - 2 &&
             targetRect.bottom <= scrollRect.bottom + 2,
+          fillsWholeWidth: svgRect.width - scrollRect.width < 2,
         };
       });
 
       assert.equal(fitMetrics.sourceWithin, true);
       assert.equal(fitMetrics.targetWithin, true);
+      assert.equal(fitMetrics.fillsWholeWidth, false);
     } finally {
       await browser.close();
     }
