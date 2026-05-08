@@ -521,7 +521,34 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         return "";
       }
 
-      return `<path class="edge" d="${buildOrthogonalPath(points)}" />`;
+      const path = buildOrthogonalPath(points);
+      return `<path class="edge" d="${path}" data-edge-id="${edgeId}" data-edge-from="${escapeHtml(edge.from)}" data-edge-to="${escapeHtml(edge.to)}" />`;
+    })
+    .join("\n");
+
+  const edgeHitMarkup = edges
+    .map((edge, index) => {
+      const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
+      const sections = edgeSections.get(edgeId);
+      const points = sections?.flatMap((section) => {
+        const route: ElkPoint[] = [];
+        if (section.startPoint) {
+          route.push(section.startPoint);
+        }
+        if (section.bendPoints) {
+          route.push(...section.bendPoints);
+        }
+        if (section.endPoint) {
+          route.push(section.endPoint);
+        }
+        return route;
+      }) ?? [];
+
+      if (points.length === 0) {
+        return "";
+      }
+
+      return `<path class="edge-hit" d="${buildOrthogonalPath(points)}" data-edge-id="${edgeId}" data-edge-from="${escapeHtml(edge.from)}" data-edge-to="${escapeHtml(edge.to)}" />`;
     })
     .join("\n");
 
@@ -608,6 +635,7 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
               </defs>
               <g class="edges">${edgeMarkup}</g>
               <g class="nodes">${nodeMarkup}</g>
+              <g class="edge-hits">${edgeHitMarkup}</g>
             </svg>
           </div>
           <div class="diagram-controls-overlay" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
@@ -938,6 +966,100 @@ function buildPreviewScript(): string {
           requestAnimationFrame(updateMinimapViewport);
         };
 
+        const fitNodesInViewport = (nodeElements) => {
+          const nodes = nodeElements.filter((node) => node instanceof SVGGElement);
+          if (nodes.length === 0) {
+            return;
+          }
+
+          const svgRect = svg.getBoundingClientRect();
+          const scrollRect = scroll.getBoundingClientRect();
+          const padding = 32;
+
+          const bounds = nodes.reduce((acc, node) => {
+            const nodeRect = node.getBoundingClientRect();
+            const left = nodeRect.left - svgRect.left;
+            const top = nodeRect.top - svgRect.top;
+            const right = left + nodeRect.width;
+            const bottom = top + nodeRect.height;
+            return {
+              left: Math.min(acc.left, left),
+              top: Math.min(acc.top, top),
+              right: Math.max(acc.right, right),
+              bottom: Math.max(acc.bottom, bottom),
+            };
+          }, {
+            left: Number.POSITIVE_INFINITY,
+            top: Number.POSITIVE_INFINITY,
+            right: Number.NEGATIVE_INFINITY,
+            bottom: Number.NEGATIVE_INFINITY,
+          });
+
+          const logicalBounds = {
+            left: bounds.left / zoom,
+            top: bounds.top / zoom,
+            width: (bounds.right - bounds.left) / zoom,
+            height: (bounds.bottom - bounds.top) / zoom,
+          };
+
+          const targetZoom = clampZoom(Math.min(
+            (scrollRect.width - padding * 2) / Math.max(logicalBounds.width, 1),
+            (scrollRect.height - padding * 2) / Math.max(logicalBounds.height, 1),
+          ));
+
+          zoom = targetZoom;
+          svg.style.width = String(baseWidth * zoom) + "px";
+          svg.style.height = String(baseHeight * zoom) + "px";
+
+          requestAnimationFrame(() => {
+            const contentWidth = logicalBounds.width * zoom;
+            const contentHeight = logicalBounds.height * zoom;
+            const centerX = logicalBounds.left * zoom + contentWidth / 2;
+            const centerY = logicalBounds.top * zoom + contentHeight / 2;
+            const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
+            const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
+            scroll.scrollLeft = Math.min(
+              Math.max(centerX - scroll.clientWidth / 2, 0),
+              maxLeft,
+            );
+            scroll.scrollTop = Math.min(
+              Math.max(centerY - scroll.clientHeight / 2, 0),
+              maxTop,
+            );
+            updateMinimapViewport();
+          });
+        };
+
+        const clearEdgeHighlights = () => {
+          card.querySelectorAll(".edge.edge-active").forEach((edge) => {
+            edge.classList.remove("edge-active");
+          });
+          card.querySelectorAll(".node.node-edge-active").forEach((node) => {
+            node.classList.remove("node-edge-active");
+          });
+        };
+
+        const highlightEdgeEndpoints = (edgeElement) => {
+          if (!(edgeElement instanceof SVGPathElement)) {
+            return;
+          }
+          clearEdgeHighlights();
+          const edgeId = edgeElement.getAttribute("data-edge-id");
+          const visibleEdge = edgeId
+            ? card.querySelector('.edge[data-edge-id="' + CSS.escape(edgeId) + '"]')
+            : edgeElement;
+          visibleEdge?.classList.add("edge-active");
+          const sourceId = edgeElement.getAttribute("data-edge-from");
+          const targetId = edgeElement.getAttribute("data-edge-to");
+          for (const nodeId of [sourceId, targetId]) {
+            if (!nodeId) {
+              continue;
+            }
+            const node = card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]');
+            node?.classList.add("node-edge-active");
+          }
+        };
+
         const centerViewport = () => {
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
@@ -1192,6 +1314,26 @@ function buildPreviewScript(): string {
         card.querySelectorAll(".node[data-line]").forEach((node) => {
           node.addEventListener("click", () => {
             centerNodeInViewport(node);
+          });
+        });
+
+        card.querySelectorAll(".edge-hit[data-edge-from][data-edge-to]").forEach((edge) => {
+          edge.addEventListener("pointerenter", () => {
+            highlightEdgeEndpoints(edge);
+          });
+          edge.addEventListener("pointerleave", () => {
+            clearEdgeHighlights();
+          });
+          edge.addEventListener("dblclick", (event) => {
+            event.preventDefault();
+            const sourceId = edge.getAttribute("data-edge-from");
+            const targetId = edge.getAttribute("data-edge-to");
+            const nodes = [sourceId, targetId]
+              .map((nodeId) => nodeId
+                ? card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]')
+                : null)
+              .filter((node) => node instanceof SVGGElement);
+            fitNodesInViewport(nodes);
           });
         });
 
@@ -1525,6 +1667,21 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         stroke-width: 2;
         stroke-linejoin: round;
         marker-end: url(#arrowhead);
+        transition: stroke-width 120ms ease, filter 120ms ease, stroke 120ms ease;
+      }
+      .edge-hit {
+        fill: none;
+        stroke: rgba(0, 0, 0, 0.001);
+        stroke-width: 16;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        pointer-events: stroke;
+        cursor: pointer;
+      }
+      .edge.edge-active {
+        stroke: color-mix(in srgb, var(--vscode-focusBorder) 88%, transparent);
+        stroke-width: 3.4;
+        filter: brightness(1.08);
       }
       .arrowhead {
         fill: color-mix(in srgb, var(--vscode-textLink-foreground) 82%, transparent);
@@ -1548,6 +1705,10 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .node[data-line]:focus rect {
         stroke-width: 1.8;
         filter: brightness(1.06);
+      }
+      .node.node-edge-active rect {
+        stroke-width: 2.4;
+        filter: brightness(1.09);
       }
       .node-copy-wrap {
         pointer-events: none;

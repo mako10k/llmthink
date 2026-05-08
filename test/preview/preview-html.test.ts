@@ -424,3 +424,100 @@ test("preview:html marks intentional orphan nodes with a weak visual class", asy
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test("preview:html highlights edge endpoints on hover and fits them on edge double click", async () => {
+  const repoRoot = resolve("/home/mako10k/llmthink");
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-edge-"));
+  const inputPath = join(tempDir, "edge-fit.dsl");
+  const outputPath = join(tempDir, "preview.html");
+
+  writeFileSync(
+    inputPath,
+    [
+      "problem P1:",
+      '  "Choose a path"',
+      "",
+      "step:",
+      "  premise PR1:",
+      '    "Constraint one"',
+      "",
+      "step:",
+      "  evidence EV1:",
+      '    "Constraint two"',
+      "",
+      "step:",
+      "  decision D1 based_on P1, PR1, EV1:",
+      '    "Pick a direction"',
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  try {
+    execFileSync(
+      "npm",
+      ["run", "preview:html", "--", inputPath, "--out", outputPath, "--locale", "ja"],
+      { cwd: repoRoot, stdio: "pipe" },
+    );
+
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(`file://${outputPath}`);
+      await page.waitForSelector('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]');
+
+      await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("pointerenter");
+
+      const hovered = await page.evaluate(() => {
+        const edge = document.querySelector('.edge[data-edge-from="PR1"][data-edge-to="D1"]');
+        const source = document.querySelector('.node[data-node-key="PR1"]');
+        const target = document.querySelector('.node[data-node-key="D1"]');
+        return {
+          edgeActive: edge?.classList.contains("edge-active") ?? false,
+          sourceActive: source?.classList.contains("node-edge-active") ?? false,
+          targetActive: target?.classList.contains("node-edge-active") ?? false,
+        };
+      });
+
+      assert.equal(hovered.edgeActive, true);
+      assert.equal(hovered.sourceActive, true);
+      assert.equal(hovered.targetActive, true);
+
+      await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("dblclick");
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+
+      const fitMetrics = await page.evaluate(() => {
+        const scroll = document.querySelector('.diagram-scroll');
+        const source = document.querySelector('.node[data-node-key="PR1"]');
+        const target = document.querySelector('.node[data-node-key="D1"]');
+        if (!(scroll instanceof HTMLElement) || !(source instanceof SVGGElement) || !(target instanceof SVGGElement)) {
+          throw new Error("edge fit elements not found");
+        }
+        const scrollRect = scroll.getBoundingClientRect();
+        const sourceRect = source.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        return {
+          sourceWithin:
+            sourceRect.left >= scrollRect.left - 2 &&
+            sourceRect.right <= scrollRect.right + 2 &&
+            sourceRect.top >= scrollRect.top - 2 &&
+            sourceRect.bottom <= scrollRect.bottom + 2,
+          targetWithin:
+            targetRect.left >= scrollRect.left - 2 &&
+            targetRect.right <= scrollRect.right + 2 &&
+            targetRect.top >= scrollRect.top - 2 &&
+            targetRect.bottom <= scrollRect.bottom + 2,
+        };
+      });
+
+      assert.equal(fitMetrics.sourceWithin, true);
+      assert.equal(fitMetrics.targetWithin, true);
+    } finally {
+      await browser.close();
+    }
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
