@@ -356,13 +356,32 @@ step S79:
     "用語は CLI と preview でそろえ、document_summary、pair_summary、unreviewed_pairs の 3 語を内部・表示の共通概念として扱う"
 
 step S80:
-  pending PD8:
-    "metadata line で value に空白や引用を含む場合の escaping を文字列必須にするか生値許可にするかは parser 実装差分を見て決める必要がある"
+  decision D39 based_on PR11, D31, D35:
+    "metadata line の value は空白を含まない単純値だけを bare token で許可し、空白、引用符、記号を含む値は DSL の通常 string と同じ二重引用符で必ず囲う"
+
+problem P15:
+  "metadata line の escaping 規則が曖昧だと、CLI 自動追記と手編集が衝突し、reviewer 名や model 名のような空白入り値で parser の解釈がぶれやすい"
 
 step S81:
+  evidence EV16:
+    "reviewer や model には空白を含む値が現れやすく、bare token と quoted string の境界を固定しないと formatter と parser の往復が不安定になる"
+
+step S82:
+  decision D40 based_on P15, PR11, EV16, D39:
+    "MVP の metadata line では key ごとの専用 escaping を持たず、Identifier 相当の bare token か、通常 string のどちらかに限定する"
+
+step S83:
+  decision D41 based_on D23, D25, D35, D39, D40, EV17:
+    "semantic-audit.dsl の具体サンプルは、header、quoted metadata line、bare token metadata line、reason body を 1 つずつ含む形で guidance と test の基準例にする"
+
+step S84:
+  evidence EV17:
+    "想定サンプル: semantic_audit SA1 on D1 support E1 verdict supported: reviewer \"QA reviewer\" / model gpt-5.4 / audited_at 2026-05-08T07:00:00Z / source_thought contradiction-pending / body reason"
+
+step S85:
   pending PD9:
     "thought show summary に semantic audit の 1 行要約を常時含めるか、semantic audit が存在するときだけ動的に増やすかは summary の簡潔さを見て微調整が必要である"
 
-step S82:
+step S86:
   pending PD10:
     "preview の disclosure トグルを document ごと 1 つにするか、decision ごとの pair group にするかは実際の情報量と操作回数を見て詰める必要がある"
