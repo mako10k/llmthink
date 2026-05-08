@@ -10,7 +10,8 @@ export type StatementRole =
 export type ComparisonRelation =
   | "preferred_over"
   | "weaker_than"
-  | "incomparable";
+  | "incomparable"
+  | "counterexample_to";
 
 export interface SourceSpan {
   line: number;

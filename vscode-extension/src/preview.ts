@@ -20,6 +20,11 @@ interface DiagramNode {
   title: string;
   subtitle: string;
   role: DiagramRole;
+  comparisonMeta?: {
+    relation: string;
+    leftDecisionId: string;
+    rightDecisionId: string;
+  };
   intentionalOrphan?: boolean;
   line?: number;
   column?: number;
@@ -28,6 +33,13 @@ interface DiagramNode {
 interface DiagramEdge {
   from: string;
   to: string;
+}
+
+interface DiagramComparisonLink {
+  id: string;
+  relation: string;
+  leftDecisionId: string;
+  rightDecisionId: string;
 }
 
 interface DiagramPosition {
@@ -208,9 +220,11 @@ function truncateSvgText(value: string, maxLength: number): string {
 function buildDiagramData(document: DocumentAst): {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  comparisons: DiagramComparisonLink[];
 } {
   const nodes: DiagramNode[] = [];
   const edges: DiagramEdge[] = [];
+  const comparisons: DiagramComparisonLink[] = [];
   const declaredIds = new Set<string>();
 
   for (const problem of document.problems) {
@@ -234,6 +248,14 @@ function buildDiagramData(document: DocumentAst): {
       title: truncateSvgText(step.statement.id, 24),
       subtitle: formatStatementSummary(step.statement),
       role,
+      comparisonMeta:
+        role === "comparison"
+          ? {
+              relation: step.statement.relation,
+              leftDecisionId: step.statement.leftDecisionId,
+              rightDecisionId: step.statement.rightDecisionId,
+            }
+          : undefined,
       intentionalOrphan:
         "annotations" in step.statement
           ? hasIntentionalOrphanAnnotation(step.statement.annotations)
@@ -246,6 +268,15 @@ function buildDiagramData(document: DocumentAst): {
       for (const source of step.statement.basedOn) {
         edges.push({ from: source, to: step.statement.id });
       }
+    }
+
+    if (role === "comparison") {
+      comparisons.push({
+        id: step.statement.id,
+        relation: step.statement.relation,
+        leftDecisionId: step.statement.leftDecisionId,
+        rightDecisionId: step.statement.rightDecisionId,
+      });
     }
   }
 
@@ -267,7 +298,26 @@ function buildDiagramData(document: DocumentAst): {
   return {
     nodes,
     edges,
+    comparisons,
   };
+}
+
+function buildComparisonHoverPath(
+  fromNode: DiagramPosition,
+  toNode: DiagramPosition,
+): string {
+  const leftToRight = fromNode.x <= toNode.x;
+  const startX = leftToRight ? fromNode.x + fromNode.width : fromNode.x;
+  const endX = leftToRight ? toNode.x : toNode.x + toNode.width;
+  const startY = fromNode.y + fromNode.height / 2;
+  const endY = toNode.y + toNode.height / 2;
+  const midX = (startX + endX) / 2;
+  return buildOrthogonalPath([
+    { x: startX, y: startY },
+    { x: midX, y: startY },
+    { x: midX, y: endY },
+    { x: endX, y: endY },
+  ]);
 }
 
 function wrapSvgText(value: string, maxLength: number, maxLines: number): string[] {
@@ -477,7 +527,7 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
 }
 
 async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): Promise<string> {
-  const { nodes, edges } = buildDiagramData(document);
+  const { nodes, edges, comparisons } = buildDiagramData(document);
   const strings = getPreviewStrings(locale);
 
   if (nodes.length === 0) {
@@ -552,6 +602,17 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
     })
     .join("\n");
 
+  const comparisonLinkMarkup = comparisons
+    .map((comparison) => {
+      const leftNode = nodePositions.get(comparison.leftDecisionId);
+      const rightNode = nodePositions.get(comparison.rightDecisionId);
+      if (!leftNode || !rightNode) {
+        return "";
+      }
+      return `<path class="comparison-link comparison-link-${escapeHtml(comparison.relation)}" d="${buildComparisonHoverPath(leftNode, rightNode)}" data-comparison-id="${escapeHtml(comparison.id)}" data-comparison-from="${escapeHtml(comparison.leftDecisionId)}" data-comparison-to="${escapeHtml(comparison.rightDecisionId)}" data-comparison-relation="${escapeHtml(comparison.relation)}" />`;
+    })
+    .join("\n");
+
   const legendMarkup = usedRoles
     .map((role) => {
       return `
@@ -575,6 +636,9 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       const dataAttributes = node.line && node.column
         ? `data-line="${node.line}" data-column="${node.column}" data-node-key="${escapeHtml(node.key)}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
         : "";
+      const comparisonAttributes = node.comparisonMeta
+        ? `data-comparison-id="${escapeHtml(node.key)}" data-comparison-from="${escapeHtml(node.comparisonMeta.leftDecisionId)}" data-comparison-to="${escapeHtml(node.comparisonMeta.rightDecisionId)}" data-comparison-relation="${escapeHtml(node.comparisonMeta.relation)}"`
+        : "";
       const nodeClasses = [
         "node",
         `node-${node.role}`,
@@ -583,7 +647,7 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         .filter(Boolean)
         .join(" ");
       return `
-        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
+        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes} ${comparisonAttributes}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="18" ry="18" />
           <foreignObject x="16" y="14" width="${layoutNode.width - 32}" height="${layoutNode.height - 28}" class="node-copy-wrap">
             <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(subtitle)}</div>
@@ -634,6 +698,7 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
                 </marker>
               </defs>
               <g class="edges">${edgeMarkup}</g>
+              <g class="comparison-links">${comparisonLinkMarkup}</g>
               <g class="nodes">${nodeMarkup}</g>
               <g class="edge-hits">${edgeHitMarkup}</g>
             </svg>
@@ -900,6 +965,7 @@ function buildPreviewScript(): string {
         let edgeHighlightClearTimer = undefined;
         let lastActiveEdgeId = undefined;
         let lastActiveEdgeUntil = 0;
+        let comparisonHighlightClearTimer = undefined;
 
         const clampMinimapWidth = (width) => {
           const minWidth = 96;
@@ -993,6 +1059,22 @@ function buildPreviewScript(): string {
           lastActiveEdgeUntil = Date.now() + 500;
         };
 
+        const cancelPendingComparisonClear = () => {
+          if (comparisonHighlightClearTimer === undefined) {
+            return;
+          }
+          window.clearTimeout(comparisonHighlightClearTimer);
+          comparisonHighlightClearTimer = undefined;
+        };
+
+        const resolveComparisonLink = (comparisonId) => {
+          if (!comparisonId) {
+            return null;
+          }
+          const link = card.querySelector('.comparison-link[data-comparison-id="' + CSS.escape(comparisonId) + '"]');
+          return link instanceof SVGPathElement ? link : null;
+        };
+
         const fitNodesInViewport = (nodeElements) => {
           const nodes = nodeElements.filter((node) => node instanceof SVGGElement);
           if (nodes.length === 0) {
@@ -1077,10 +1159,29 @@ function buildPreviewScript(): string {
           });
         };
 
+        const clearComparisonHighlights = ({ immediate = false } = {}) => {
+          cancelPendingComparisonClear();
+          if (!immediate) {
+            comparisonHighlightClearTimer = window.setTimeout(() => {
+              comparisonHighlightClearTimer = undefined;
+              clearComparisonHighlights({ immediate: true });
+            }, 500);
+            return;
+          }
+          card.querySelectorAll(".comparison-link.comparison-link-active").forEach((link) => {
+            link.classList.remove("comparison-link-active");
+          });
+          card.querySelectorAll(".node.node-edge-active").forEach((node) => {
+            node.classList.remove("node-edge-active");
+          });
+        };
+
         const highlightEdgeEndpoints = (edgeElement) => {
           if (!(edgeElement instanceof SVGPathElement)) {
             return;
           }
+          cancelPendingComparisonClear();
+          clearComparisonHighlights({ immediate: true });
           cancelPendingEdgeClear();
           clearEdgeHighlights({ immediate: true });
           const edgeId = edgeElement.getAttribute("data-edge-id");
@@ -1089,6 +1190,28 @@ function buildPreviewScript(): string {
           rememberActiveEdge(edgeId);
           const sourceId = edgeElement.getAttribute("data-edge-from");
           const targetId = edgeElement.getAttribute("data-edge-to");
+          for (const nodeId of [sourceId, targetId]) {
+            if (!nodeId) {
+              continue;
+            }
+            const node = card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]');
+            node?.classList.add("node-edge-active");
+          }
+        };
+
+        const highlightComparisonEndpoints = (nodeElement) => {
+          if (!(nodeElement instanceof SVGGElement)) {
+            return;
+          }
+          cancelPendingEdgeClear();
+          clearEdgeHighlights({ immediate: true });
+          cancelPendingComparisonClear();
+          clearComparisonHighlights({ immediate: true });
+          const comparisonId = nodeElement.getAttribute("data-comparison-id");
+          const comparisonLink = resolveComparisonLink(comparisonId);
+          comparisonLink?.classList.add("comparison-link-active");
+          const sourceId = nodeElement.getAttribute("data-comparison-from");
+          const targetId = nodeElement.getAttribute("data-comparison-to");
           for (const nodeId of [sourceId, targetId]) {
             if (!nodeId) {
               continue;
@@ -1387,6 +1510,15 @@ function buildPreviewScript(): string {
         card.querySelectorAll(".node[data-line]").forEach((node) => {
           node.addEventListener("click", () => {
             centerNodeInViewport(node);
+          });
+        });
+
+        card.querySelectorAll(".node-comparison[data-comparison-id]").forEach((node) => {
+          node.addEventListener("pointerenter", () => {
+            highlightComparisonEndpoints(node);
+          });
+          node.addEventListener("pointerleave", () => {
+            clearComparisonHighlights();
           });
         });
 
@@ -1744,6 +1876,34 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         stroke: color-mix(in srgb, var(--vscode-focusBorder) 88%, transparent);
         stroke-width: 3.4;
         filter: brightness(1.08);
+      }
+      .comparison-link {
+        fill: none;
+        stroke-width: 3;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        stroke-dasharray: 8 6;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease, filter 120ms ease, stroke 120ms ease;
+      }
+      .comparison-link-preferred_over {
+        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 76%, transparent);
+      }
+      .comparison-link-weaker_than {
+        stroke: color-mix(in srgb, var(--vscode-descriptionForeground) 86%, transparent);
+      }
+      .comparison-link-incomparable {
+        stroke: color-mix(in srgb, var(--vscode-descriptionForeground) 70%, transparent);
+        stroke-dasharray: 4 7;
+      }
+      .comparison-link-counterexample_to {
+        stroke: color-mix(in srgb, var(--vscode-editorWarning-foreground) 82%, transparent);
+        stroke-dasharray: 10 6;
+      }
+      .comparison-link.comparison-link-active {
+        opacity: 1;
+        filter: brightness(1.04);
       }
       .arrowhead {
         fill: color-mix(in srgb, var(--vscode-textLink-foreground) 82%, transparent);

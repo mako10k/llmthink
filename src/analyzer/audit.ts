@@ -459,7 +459,8 @@ function addComparisonConsistencyIssues(
         .sort()
         .join("::");
       if (
-        comparison.statement.relation !== "incomparable" &&
+        (comparison.statement.relation === "preferred_over" ||
+          comparison.statement.relation === "weaker_than") &&
         incomparablePairs.has(pairKey)
       ) {
         createIssue(issues, {
@@ -498,7 +499,10 @@ function addComparisonConsistencyIssues(
     };
 
     for (const comparison of scopeComparisons) {
-      if (comparison.statement.relation === "incomparable") {
+      if (
+        comparison.statement.relation !== "preferred_over" &&
+        comparison.statement.relation !== "weaker_than"
+      ) {
         continue;
       }
       const from = comparison.statement.relation === "preferred_over"

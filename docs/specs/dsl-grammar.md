@@ -156,7 +156,7 @@ AnnotationKind  = "explanation" | "rationale" | "caveat" | "todo" | "orphan_futu
 
 ```ebnf
 ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier "relation" ComparisonRelation Identifier "," Identifier ":" Newline Indent StringLine Dedent ;
-ComparisonRelation = "preferred_over" | "weaker_than" | "incomparable" ;
+ComparisonRelation = "preferred_over" | "weaker_than" | "incomparable" | "counterexample_to" ;
 ```
 
 ### 5.11 query 宣言

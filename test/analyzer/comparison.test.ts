@@ -58,3 +58,35 @@ step:
     true,
   );
 });
+
+test("auditDslText does not treat counterexample comparisons as preference edges", async () => {
+  const report = await auditDslText(`
+problem P1:
+  "Compare decisions"
+
+step:
+  viewpoint VP1:
+    axis robustness
+
+step:
+  decision D1 based_on P1, VP1:
+    "Claim A"
+
+step:
+  decision D2 based_on P1, VP1:
+    "Counterexample B"
+
+step:
+  comparison CMP1 on P1 viewpoint VP1 relation counterexample_to D2, D1:
+    "D2 rebuts D1"
+
+step:
+  comparison CMP2 on P1 viewpoint VP1 relation incomparable D1, D2:
+    "Do not order them"
+`);
+
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("incomparable と preference")),
+    false,
+  );
+});

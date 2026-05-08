@@ -346,8 +346,8 @@ test("preview:html renders comparison statements and comparison section", async 
       '    "Option B"',
       "",
       "step:",
-      "  comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:",
-      '    "Cost favors A"',
+      "  comparison CMP1 on P1 viewpoint VP1 relation counterexample_to D2, D1:",
+      '    "Option B breaks a premise of A"',
       "",
     ].join("\n"),
     "utf8",
@@ -363,7 +363,43 @@ test("preview:html renders comparison statements and comparison section", async 
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /node-comparison/);
     assert.match(html, /Comparisons/);
-    assert.match(html, /preferred_over D1, D2/);
+    assert.match(html, /counterexample_to D2, D1/);
+
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(`file://${outputPath}`);
+      await page.locator('.node-comparison[data-comparison-id="CMP1"]').dispatchEvent("pointerenter");
+
+      const hoverMetrics = await page.evaluate(() => {
+        const link = document.querySelector('.comparison-link[data-comparison-id="CMP1"]');
+        const left = document.querySelector('.node[data-node-key="D2"]');
+        const right = document.querySelector('.node[data-node-key="D1"]');
+        return {
+          linkActive: link?.classList.contains("comparison-link-active") ?? false,
+          leftActive: left?.classList.contains("node-edge-active") ?? false,
+          rightActive: right?.classList.contains("node-edge-active") ?? false,
+        };
+      });
+
+      assert.equal(hoverMetrics.linkActive, true);
+      assert.equal(hoverMetrics.leftActive, true);
+      assert.equal(hoverMetrics.rightActive, true);
+
+      await page.locator('.node-comparison[data-comparison-id="CMP1"]').dispatchEvent("pointerleave");
+      await page.waitForTimeout(650);
+
+      const cleared = await page.evaluate(() => {
+        const link = document.querySelector('.comparison-link[data-comparison-id="CMP1"]');
+        return {
+          linkActive: link?.classList.contains("comparison-link-active") ?? false,
+        };
+      });
+
+      assert.equal(cleared.linkActive, false);
+    } finally {
+      await browser.close();
+    }
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

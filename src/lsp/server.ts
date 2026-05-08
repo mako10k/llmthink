@@ -83,6 +83,7 @@ const KEYWORD_DOCS: Record<string, string> = {
   preferred_over: "comparison relation です。左側 decision を右側より優先します。",
   weaker_than: "comparison relation です。左側 decision が右側より弱いことを表します。",
   incomparable: "comparison relation です。2 つの decision を同一軸では順序付けしないことを表します。",
+  counterexample_to: "comparison relation です。左側 decision が右側 decision の反例や反証になることを表します。",
   pending: "未解決事項を表す step body です。",
   query: "DSL 文書に対する問い合わせを宣言します。",
   requires: "framework が要求する役割を表します。",

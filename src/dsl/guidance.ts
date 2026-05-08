@@ -174,17 +174,20 @@ const HELP_NODES: HelpNode[] = [
     summary: "同一 problem / viewpoint scope で decision 間の相対比較を記述する。",
     quick: [
       "`comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:` の形を使う。",
-      "relation は preferred_over / weaker_than / incomparable の閉じた集合。",
+      "relation は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合。",
       "次行は quoted text で、比較理由や読み筋を補足する。",
     ],
     detail: [
       "comparison は global weight ではなく、problem と viewpoint を明示した局所比較として扱う。",
       "left/right decision は既存 decision id を参照する。",
+      "counterexample_to は左側 decision が右側 decision への反例や反証として機能することを表す。優先順位の partial order には入れない。",
       "audit は未解決参照、scope 内 conflict、preference cycle を検査できる。",
     ],
     examples: [
       "comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:",
       '  "cost では D1 を D2 より優先する"',
+      "comparison CMP2 on P1 viewpoint VP1 relation counterexample_to D3, D1:",
+      '  "D3 は D1 の前提を崩す反例になる"',
     ],
     exampleSamples: ["decision-comparison"],
     related: ["syntax.decision", "syntax.step", "samples.decision-comparison"],

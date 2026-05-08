@@ -16,3 +16,7 @@ step S3:
 step S4:
   comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:
     "cost では hosted option を優先する"
+
+step S5:
+  comparison CMP2 on P1 viewpoint VP1 relation counterexample_to D2, D1:
+    "self-hosted option は hosted option のコスト前提を崩す反例として扱える"

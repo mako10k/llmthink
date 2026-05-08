@@ -261,3 +261,34 @@ comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:
     /comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:/,
   );
 });
+
+test("parseDocument accepts counterexample comparison relations", () => {
+  const document = parseDocument(`
+problem P1:
+  "Check counterexamples"
+
+step S1:
+  viewpoint VP1:
+    axis robustness
+
+step S2:
+  decision D1 based_on P1:
+    "Adopt claim A"
+
+step S3:
+  decision D2 based_on P1:
+    "Present claim B"
+
+step S4:
+  comparison CMP1 on P1 viewpoint VP1 relation counterexample_to D2, D1:
+    "D2 breaks a premise of D1"
+`);
+
+  assert.equal(document.steps[3]?.statement.role, "comparison");
+  assert.equal(
+    document.steps[3]?.statement.role === "comparison"
+      ? document.steps[3].statement.relation
+      : undefined,
+    "counterexample_to",
+  );
+});

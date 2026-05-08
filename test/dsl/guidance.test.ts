@@ -82,6 +82,7 @@ test("getDslSyntaxGuidanceText exposes comparison syntax guidance", () => {
   });
   assert.match(text, /Topic: syntax.comparison/);
   assert.match(text, /preferred_over/);
+  assert.match(text, /counterexample_to/);
   assert.match(text, /decision-comparison/);
 });
 
