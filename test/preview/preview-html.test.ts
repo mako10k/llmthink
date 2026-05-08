@@ -340,6 +340,8 @@ test("preview:html renders comparison statements and comparison section", async 
       "step:",
       "  decision D1 based_on P1, VP1:",
       '    "Option A"',
+      "    annotation status:",
+      '      "rejected"',
       "",
       "step:",
       "  decision D2 based_on P1, VP1:",
@@ -364,6 +366,8 @@ test("preview:html renders comparison statements and comparison section", async 
     assert.match(html, /node-comparison/);
     assert.match(html, /Comparisons/);
     assert.match(html, /counterexample_to D2, D1/);
+    assert.match(html, /node-status-badge status-rejected/);
+    assert.match(html, /data-status="rejected"/);
 
     const browser = await chromium.launch();
     try {
@@ -375,16 +379,24 @@ test("preview:html renders comparison statements and comparison section", async 
         const link = document.querySelector('.comparison-link[data-comparison-id="CMP1"]');
         const left = document.querySelector('.node[data-node-key="D2"]');
         const right = document.querySelector('.node[data-node-key="D1"]');
+        const rightBadge = right?.querySelector('.node-status-badge');
+        const minimapRight = document.querySelector('.minimap-node[data-target-node="D1"]');
         return {
           linkActive: link?.classList.contains("comparison-link-active") ?? false,
           leftActive: left?.classList.contains("node-edge-active") ?? false,
           rightActive: right?.classList.contains("node-edge-active") ?? false,
+          rightRejected: right?.classList.contains("status-rejected") ?? false,
+          badgeText: rightBadge?.textContent?.trim() ?? "",
+          minimapRejected: minimapRight?.classList.contains("status-rejected") ?? false,
         };
       });
 
       assert.equal(hoverMetrics.linkActive, true);
       assert.equal(hoverMetrics.leftActive, true);
       assert.equal(hoverMetrics.rightActive, true);
+      assert.equal(hoverMetrics.rightRejected, true);
+      assert.equal(hoverMetrics.badgeText, "rejected");
+      assert.equal(hoverMetrics.minimapRejected, true);
 
       await page.locator('.node-comparison[data-comparison-id="CMP1"]').dispatchEvent("pointerleave");
       await page.waitForTimeout(650);

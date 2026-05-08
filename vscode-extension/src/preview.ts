@@ -20,6 +20,7 @@ interface DiagramNode {
   title: string;
   subtitle: string;
   role: DiagramRole;
+  status?: string;
   comparisonMeta?: {
     relation: string;
     leftDecisionId: string;
@@ -106,6 +107,16 @@ function hasIntentionalOrphanAnnotation(annotations: Annotation[]): boolean {
       annotation.kind === "orphan_future" ||
       annotation.kind === "orphan_reference",
   );
+}
+
+function getStatusAnnotation(annotations: Annotation[]): string | undefined {
+  return annotations.find((annotation) => annotation.kind === "status")?.text.trim();
+}
+
+function toStatusClass(status: string | undefined): string {
+  return status
+    ? `status-${status.toLowerCase().replaceAll(/[^a-z0-9_-]+/g, "-")}`
+    : "";
 }
 
 function formatFrameworkRule(rule: FrameworkRule): string {
@@ -234,6 +245,7 @@ function buildDiagramData(document: DocumentAst): {
       title: truncateSvgText(problem.name, 24),
       subtitle: problem.text,
       role: "problem",
+      status: getStatusAnnotation(problem.annotations),
       intentionalOrphan: hasIntentionalOrphanAnnotation(problem.annotations),
       line: problem.span.line,
       column: problem.span.column,
@@ -248,6 +260,10 @@ function buildDiagramData(document: DocumentAst): {
       title: truncateSvgText(step.statement.id, 24),
       subtitle: formatStatementSummary(step.statement),
       role,
+      status:
+        "annotations" in step.statement
+          ? getStatusAnnotation(step.statement.annotations)
+          : undefined,
       comparisonMeta:
         role === "comparison"
           ? {
@@ -639,18 +655,25 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       const comparisonAttributes = node.comparisonMeta
         ? `data-comparison-id="${escapeHtml(node.key)}" data-comparison-from="${escapeHtml(node.comparisonMeta.leftDecisionId)}" data-comparison-to="${escapeHtml(node.comparisonMeta.rightDecisionId)}" data-comparison-relation="${escapeHtml(node.comparisonMeta.relation)}"`
         : "";
+      const statusAttributes = node.status
+        ? `data-status="${escapeHtml(node.status)}"`
+        : "";
       const nodeClasses = [
         "node",
         `node-${node.role}`,
+        toStatusClass(node.status),
         node.intentionalOrphan ? "node-intentional-orphan" : "",
       ]
         .filter(Boolean)
         .join(" ");
+      const badgeMarkup = node.status
+        ? `<span class="node-status-badge ${toStatusClass(node.status)}">${escapeHtml(node.status)}</span>`
+        : "";
       return `
-        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes} ${comparisonAttributes}>
+        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes} ${comparisonAttributes} ${statusAttributes}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="18" ry="18" />
           <foreignObject x="16" y="14" width="${layoutNode.width - 32}" height="${layoutNode.height - 28}" class="node-copy-wrap">
-            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(subtitle)}</div>
+            <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-header"><span class="node-copy-key">${escapeHtml(node.title)}:</span>${badgeMarkup}</span> ${escapeHtml(subtitle)}</div>
           </foreignObject>
         </g>
       `;
@@ -666,12 +689,13 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       const nodeClasses = [
         "minimap-node",
         `minimap-node-${node.role}`,
+        toStatusClass(node.status),
         node.intentionalOrphan ? "minimap-node-intentional-orphan" : "",
       ]
         .filter(Boolean)
         .join(" ");
       return `
-        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" data-target-node="${escapeHtml(node.key)}">
+        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" data-target-node="${escapeHtml(node.key)}" ${node.status ? `data-status="${escapeHtml(node.status)}"` : ""}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="10" ry="10" />
         </g>
       `;
@@ -1948,9 +1972,28 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         word-break: break-word;
         overflow-wrap: anywhere;
       }
+      .node-copy-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-right: 4px;
+      }
       .node-copy-key {
         color: var(--vscode-editor-foreground);
         font-weight: 700;
+      }
+      .node-status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+        background: color-mix(in srgb, var(--vscode-editor-background) 84%, transparent);
+        color: var(--vscode-editor-foreground);
       }
       .node-problem rect {
         fill: color-mix(in srgb, var(--vscode-charts-red) 18%, var(--vscode-editor-background));
@@ -1991,6 +2034,38 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         fill: color-mix(in srgb, var(--vscode-charts-purple) 18%, var(--vscode-editor-background));
         stroke: color-mix(in srgb, var(--vscode-charts-purple) 65%, transparent);
       }
+      .node.status-rejected rect,
+      .node.status-negated rect {
+        stroke-width: 2.2;
+      }
+      .node.status-rejected rect {
+        fill: color-mix(in srgb, var(--vscode-editorError-foreground) 15%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-editorError-foreground) 86%, transparent);
+      }
+      .node.status-negated rect {
+        fill: color-mix(in srgb, var(--vscode-editorWarning-foreground) 15%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-editorWarning-foreground) 86%, transparent);
+      }
+      .node.status-superseded rect {
+        fill: color-mix(in srgb, var(--vscode-descriptionForeground) 18%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-descriptionForeground) 84%, transparent);
+        stroke-dasharray: 10 5;
+      }
+      .node-status-badge.status-rejected {
+        color: var(--vscode-editorError-foreground);
+        border-color: color-mix(in srgb, var(--vscode-editorError-foreground) 65%, transparent);
+        background: color-mix(in srgb, var(--vscode-editorError-foreground) 12%, var(--vscode-editor-background));
+      }
+      .node-status-badge.status-negated {
+        color: var(--vscode-editorWarning-foreground);
+        border-color: color-mix(in srgb, var(--vscode-editorWarning-foreground) 68%, transparent);
+        background: color-mix(in srgb, var(--vscode-editorWarning-foreground) 12%, var(--vscode-editor-background));
+      }
+      .node-status-badge.status-superseded {
+        color: var(--vscode-descriptionForeground);
+        border-color: color-mix(in srgb, var(--vscode-descriptionForeground) 68%, transparent);
+        background: color-mix(in srgb, var(--vscode-descriptionForeground) 10%, var(--vscode-editor-background));
+      }
       .legend-decision {
         color: var(--vscode-charts-purple);
       }
@@ -2015,6 +2090,23 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .legend-external {
         color: var(--vscode-disabledForeground);
+      }
+      .minimap-node.status-rejected rect,
+      .minimap-node.status-negated rect {
+        stroke-width: 2;
+      }
+      .minimap-node.status-rejected rect {
+        fill: color-mix(in srgb, var(--vscode-editorError-foreground) 22%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-editorError-foreground) 88%, transparent);
+      }
+      .minimap-node.status-negated rect {
+        fill: color-mix(in srgb, var(--vscode-editorWarning-foreground) 20%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-editorWarning-foreground) 86%, transparent);
+      }
+      .minimap-node.status-superseded rect {
+        fill: color-mix(in srgb, var(--vscode-descriptionForeground) 18%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-descriptionForeground) 86%, transparent);
+        stroke-dasharray: 8 4;
       }
       @media (max-width: 960px) {
         .diagram-minimap-card {
