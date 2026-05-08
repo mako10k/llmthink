@@ -1192,7 +1192,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-scroll {
         overflow: auto;
         width: 100%;
-        height: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
         cursor: grab;
       }
       .diagram-scroll.dragging {
@@ -1204,10 +1205,11 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-viewport {
         position: relative;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
         width: min(100%, 1080px);
         margin: 0 auto;
-        max-height: min(64vh, 720px);
-        min-height: clamp(320px, 50vh, 520px);
+        height: clamp(320px, 50vh, 520px);
         border-radius: 14px;
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
         background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
