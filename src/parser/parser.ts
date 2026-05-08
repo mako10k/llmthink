@@ -140,7 +140,7 @@ function parsePartitionMemberLine(line: string): PartitionMember | undefined {
 
 function parseAnnotationKind(header: string): AnnotationKind | undefined {
   const match =
-    /^annotation\s+(explanation|rationale|caveat|todo|orphan_future|orphan_reference):$/.exec(header);
+    /^annotation\s+(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference):$/.exec(header);
   return match?.[1] as AnnotationKind | undefined;
 }
 

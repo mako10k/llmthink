@@ -8,6 +8,10 @@ step S1:
 step S2:
   decision D1 based_on P1, VP1:
     "hosted option を選ぶ"
+    annotation status:
+      "rejected"
+    annotation rationale:
+      "counterexample により前提が崩れたため、採用候補から外す"
 
 step S3:
   decision D2 based_on P1, VP1:

@@ -63,6 +63,8 @@ problem P1:
   "Decide comment syntax"
   annotation rationale:
     "Separate annotations from free comments"
+  annotation status:
+    "superseded"
   annotation orphan_reference:
     "Reference-only problem"
 
@@ -79,6 +81,7 @@ step S1:
 
   assert.deepEqual(document.problems[0]?.annotations.map((item) => item.kind), [
     "rationale",
+    "status",
     "orphan_reference",
   ]);
   assert.deepEqual(

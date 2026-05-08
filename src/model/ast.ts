@@ -21,6 +21,7 @@ export interface SourceSpan {
 export type AnnotationKind =
   | "explanation"
   | "rationale"
+  | "status"
   | "caveat"
   | "todo"
   | "orphan_future"

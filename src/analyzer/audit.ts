@@ -6,7 +6,9 @@ import type {
   Annotation,
   DecisionStatement,
   DocumentAst,
+  ProblemDecl,
   PartitionStatement,
+  SourceSpan,
   StepStatement,
 } from "../model/ast.js";
 import type {
@@ -137,6 +139,53 @@ function hasIntentionalOrphanAnnotation(annotations: Annotation[]): boolean {
       annotation.kind === "orphan_future" ||
       annotation.kind === "orphan_reference",
   );
+}
+
+const STATUS_VALUES = ["rejected", "negated", "superseded"] as const;
+const STATUS_VALUE_SET = new Set<string>(STATUS_VALUES);
+
+type StatusValue = (typeof STATUS_VALUES)[number];
+
+interface StatusTarget {
+  id: string;
+  role: string;
+  stepId?: string;
+  annotations: Annotation[];
+  span: SourceSpan;
+}
+
+function annotationTargetReference(target: StatusTarget): AuditReference {
+  return {
+    ref_id: target.id,
+    role: target.role,
+    step_id: target.stepId,
+  };
+}
+
+function collectStatusValues(annotations: Annotation[]): Array<{
+  annotation: Annotation;
+  value: string;
+}> {
+  return annotations
+    .filter((annotation) => annotation.kind === "status")
+    .map((annotation) => ({ annotation, value: annotation.text.trim() }));
+}
+
+function hasStatus(
+  annotations: Annotation[],
+  statuses: StatusValue[],
+): boolean {
+  const statusSet = new Set(statuses);
+  return collectStatusValues(annotations).some(({ value }) =>
+    statusSet.has(value as StatusValue),
+  );
+}
+
+function hasAnnotationKind(
+  annotations: Annotation[],
+  kind: Annotation["kind"],
+): boolean {
+  return annotations.some((annotation) => annotation.kind === kind);
 }
 
 function collectDirectDecisionRefs(document: DocumentAst): Set<string> {
@@ -529,6 +578,166 @@ function addComparisonConsistencyIssues(
   }
 }
 
+function collectStatusTargets(document: DocumentAst): StatusTarget[] {
+  const targets: StatusTarget[] = document.problems.map((problem: ProblemDecl) => ({
+    id: problem.name,
+    role: "problem",
+    annotations: problem.annotations,
+    span: problem.span,
+  }));
+
+  for (const step of document.steps) {
+    if (!("annotations" in step.statement)) {
+      continue;
+    }
+
+    targets.push({
+      id: step.statement.id,
+      role: step.statement.role,
+      stepId: step.id,
+      annotations: step.statement.annotations,
+      span: step.statement.span,
+    });
+  }
+
+  return targets;
+}
+
+function addStatusAnnotationIssues(
+  issues: AuditIssue[],
+  document: DocumentAst,
+  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
+  comparisons: Array<{ stepId: string; statement: ComparisonStatement }>,
+): void {
+  const targets = collectStatusTargets(document);
+  const decisionById = new Map(
+    decisions.map((decision) => [decision.statement.id, decision.statement]),
+  );
+  const incomingCounterexamples = new Map<string, ComparisonStatement[]>();
+
+  for (const comparison of comparisons) {
+    if (comparison.statement.relation !== "counterexample_to") {
+      continue;
+    }
+    const current = incomingCounterexamples.get(comparison.statement.rightDecisionId) ?? [];
+    current.push(comparison.statement);
+    incomingCounterexamples.set(comparison.statement.rightDecisionId, current);
+  }
+
+  for (const target of targets) {
+    const statuses = collectStatusValues(target.annotations);
+    if (statuses.length === 0) {
+      continue;
+    }
+
+    for (const { annotation, value } of statuses) {
+      if (STATUS_VALUE_SET.has(value)) {
+        continue;
+      }
+      createIssue(issues, {
+        category: "contract_violation",
+        severity: "error",
+        target_refs: [annotationTargetReference(target)],
+        message: `${target.role} ${target.id} の annotation status ${value} は未定義である。`,
+        rationale: `status は ${STATUS_VALUES.join(" / ")} のいずれかであるべきである。`,
+        suggestion: "status 値を既知の集合へ修正する。",
+        metadata: {
+          line: annotation.span.line,
+          column: annotation.span.column,
+          end_column: annotation.span.column + "annotation status".length,
+          status: value,
+        },
+      });
+    }
+
+    const distinctStatuses = new Set(
+      statuses
+        .map(({ value }) => value)
+        .filter((value) => STATUS_VALUE_SET.has(value)),
+    );
+    if (distinctStatuses.size > 1) {
+      createIssue(issues, {
+        category: "contract_violation",
+        severity: "error",
+        target_refs: [annotationTargetReference(target)],
+        message: `${target.role} ${target.id} に排他的な status が併記されている。`,
+        rationale: "status は単一の状態として解釈されるため、同一要素に複数の異なる状態を同時付与できない。",
+        suggestion: "status を 1 つに絞る。",
+        metadata: {
+          line: target.span.line,
+          column: target.span.column,
+          end_column: target.span.column + target.id.length,
+          statuses: [...distinctStatuses],
+        },
+      });
+    }
+  }
+
+  for (const comparison of comparisons) {
+    if (comparison.statement.relation !== "counterexample_to") {
+      continue;
+    }
+
+    const leftDecision = decisionById.get(comparison.statement.leftDecisionId);
+    const rightDecision = decisionById.get(comparison.statement.rightDecisionId);
+    if (!leftDecision || !rightDecision) {
+      continue;
+    }
+
+    const leftIsNegated = hasStatus(leftDecision.annotations, ["rejected", "negated"]);
+    const rightIsNegated = hasStatus(rightDecision.annotations, ["rejected", "negated"]);
+
+    if (!rightIsNegated) {
+      createIssue(issues, {
+        category: "semantic_hint",
+        severity: leftIsNegated ? "warning" : "hint",
+        target_refs: [statementReference(comparison.statement, comparison.stepId)],
+        message: leftIsNegated
+          ? `comparison ${comparison.statement.id} は counterexample_to の左側 ${leftDecision.id} を negated/rejected にしており、向きと status が逆転している可能性がある。`
+          : `comparison ${comparison.statement.id} は counterexample_to の対象 ${rightDecision.id} に negated/rejected status がなく、反例の向きが監査上読み取りにくい。`,
+        rationale: leftIsNegated
+          ? "counterexample_to は左側が反例、右側が崩される対象という向きで扱う。"
+          : "counterexample_to の右側が negated または rejected であると、反例により崩された対象を機械的に追いやすい。",
+        suggestion: leftIsNegated
+          ? `status を ${rightDecision.id} 側へ移すか、comparison の左右を見直す。`
+          : `${rightDecision.id} に annotation status rejected か negated を付けることを検討する。`,
+        metadata: {
+          line: comparison.statement.span.line,
+          column: statementIdentifierColumn(comparison.statement),
+          end_column: statementIdentifierEndColumn(comparison.statement),
+        },
+      });
+    }
+  }
+
+  for (const decision of decisions) {
+    const requiresSupport = hasStatus(decision.statement.annotations, ["rejected", "negated"]);
+    if (!requiresSupport) {
+      continue;
+    }
+
+    const hasCounterexample = (incomingCounterexamples.get(decision.statement.id) ?? []).length > 0;
+    const hasRationale = hasAnnotationKind(decision.statement.annotations, "rationale");
+    if (hasCounterexample || hasRationale) {
+      continue;
+    }
+
+    createIssue(issues, {
+      category: "semantic_hint",
+      severity: "info",
+      target_refs: [statementReference(decision.statement, decision.stepId)],
+      message: `decision ${decision.statement.id} は negated/rejected status を持つが、その根拠となる counterexample_to comparison または rationale がない。`,
+      rationale: "否定系 status は、比較関係または注記理由と対で残すと後続の監査と読解が安定する。",
+      suggestion: "対応する comparison を追加するか、annotation rationale で理由を補う。",
+      metadata: {
+        line: decision.statement.span.line,
+        column: statementIdentifierColumn(decision.statement),
+        end_column: statementIdentifierEndColumn(decision.statement),
+      },
+    });
+  }
+}
+
 function auditStepContracts(
   issues: AuditIssue[],
   document: DocumentAst,
@@ -770,6 +979,7 @@ async function auditDocument(
   addOrphanNodeIssues(issues, document, directDecisionRefs);
   addContradictionCandidateIssues(issues, decisions);
   addComparisonConsistencyIssues(issues, comparisons);
+  addStatusAnnotationIssues(issues, document, decisions, comparisons);
   addPendingHintIssue(issues, pendingSteps, decisions);
 
   const semanticContext = await createSemanticContext(

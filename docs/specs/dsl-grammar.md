@@ -48,6 +48,7 @@
 - preferred_over
 - weaker_than
 - incomparable
+- counterexample_to
 - pending
 - query
 - requires
@@ -56,6 +57,7 @@
 - annotation
 - explanation
 - rationale
+- status
 - caveat
 - todo
 - orphan_future
@@ -149,7 +151,7 @@ ReferenceList   = Identifier { "," Identifier } ;
 PendingDecl     = "pending" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
 
 AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
-AnnotationKind  = "explanation" | "rationale" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
+AnnotationKind  = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
 ```
 
 ### 5.10 comparison 宣言

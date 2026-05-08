@@ -158,10 +158,13 @@ const HELP_NODES: HelpNode[] = [
       "based_on は declared problem id または statement id の列を参照する。",
       "根拠なし decision は parse error ではなく、監査で contract_violation 候補になる。",
       "decision text の後に annotation を並べられる。",
+      "annotation status は rejected / negated / superseded のような状態タグを付ける用途に使える。",
     ],
     examples: [
       "decision D1 based_on PR1, EV1:",
       '  "ADR を先に確定する"',
+      "  annotation status:",
+      '    "rejected"',
       "  annotation rationale:",
       '    "根拠を明示する"',
     ],

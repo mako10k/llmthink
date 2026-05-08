@@ -63,3 +63,47 @@ step:
     true,
   );
 });
+
+test("auditDslText validates status annotation values and exclusivity", async () => {
+  const report = await auditDslText(`
+problem P1:
+  "Track invalid statuses"
+
+step:
+  decision D1 based_on P1:
+    "Option A"
+    annotation status:
+      "retired"
+    annotation status:
+      "negated"
+    annotation status:
+      "rejected"
+`);
+
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("annotation status retired は未定義")),
+    true,
+  );
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("排他的な status が併記")),
+    true,
+  );
+});
+
+test("auditDslText reports unsupported negated status without comparison or rationale", async () => {
+  const report = await auditDslText(`
+problem P1:
+  "Track unsupported statuses"
+
+step:
+  decision D1 based_on P1:
+    "Option A"
+    annotation status:
+      "negated"
+`);
+
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("counterexample_to comparison または rationale がない")),
+    true,
+  );
+});

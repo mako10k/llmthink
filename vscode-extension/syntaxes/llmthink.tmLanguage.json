@@ -55,7 +55,7 @@
         },
         {
           "name": "storage.type.annotation.llmthink",
-          "match": "(?<=\\bannotation\\s)(explanation|rationale|caveat|todo|orphan_future|orphan_reference)(?=:)"
+          "match": "(?<=\\bannotation\\s)(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference)(?=:)"
         },
         {
           "name": "entity.name.function.query.llmthink",

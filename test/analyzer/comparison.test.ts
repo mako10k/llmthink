@@ -90,3 +90,33 @@ step:
     false,
   );
 });
+
+test("auditDslText checks counterexample direction against decision status", async () => {
+  const report = await auditDslText(`
+problem P1:
+  "Compare decisions"
+
+step:
+  viewpoint VP1:
+    axis robustness
+
+step:
+  decision D1 based_on P1, VP1:
+    "Claim A"
+
+step:
+  decision D2 based_on P1, VP1:
+    "Counterexample B"
+    annotation status:
+      "negated"
+
+step:
+  comparison CMP1 on P1 viewpoint VP1 relation counterexample_to D2, D1:
+    "D2 rebuts D1"
+`);
+
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("向きと status が逆転")),
+    true,
+  );
+});

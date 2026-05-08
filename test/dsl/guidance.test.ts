@@ -86,6 +86,16 @@ test("getDslSyntaxGuidanceText exposes comparison syntax guidance", () => {
   assert.match(text, /decision-comparison/);
 });
 
+test("getDslSyntaxGuidanceText exposes status annotations in decision guidance", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "syntax",
+    subtopic: "decision",
+    detail: "detail",
+  });
+  assert.match(text, /annotation status/);
+  assert.match(text, /rejected/);
+});
+
 test("getDslSyntaxGuidanceText lists use-case profiles for ideation and problem solving", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "usecases",

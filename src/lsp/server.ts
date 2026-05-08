@@ -66,6 +66,7 @@ const KEYWORD_DOCS: Record<string, string> = {
   annotation: "problem や text-bearing statement に付く構造化注釈を宣言します。",
   explanation: "annotation kind です。補足説明を表します。",
   rationale: "annotation kind です。判断理由や背景説明を表します。",
+  status: "annotation kind です。要素の状態を表します。rejected、negated、superseded などを使います。",
   caveat: "annotation kind です。注意点や制約を表します。",
   todo: "annotation kind です。後続作業や未完了事項を表します。",
   orphan_future: "annotation kind です。将来扱う intentional orphan を表します。",
