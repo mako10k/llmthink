@@ -15,7 +15,7 @@ step S2:
     "A社は初期費用が低い"
 
 step S3:
-  decision D1 based_on PR1, EV1:
+  decision D1 based_on P1, PR1, EV1:
     "A社を採用する"
 
 step S4:

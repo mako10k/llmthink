@@ -11,7 +11,7 @@ step S1:
     "主要な判断を先に固定すると議論の再読性が上がる"
 
 step S2:
-  decision D1 based_on EV1:
+  decision D1 based_on P1, EV1:
     "ADR を先に確定する"
 
 query Q1:

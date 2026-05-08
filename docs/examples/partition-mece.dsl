@@ -5,6 +5,8 @@ domain SupportTickets:
 
 problem P1:
   "問い合わせを一次分類する"
+  annotation orphan_reference:
+    "partition の単独例として分類軸だけを示すため、decision へはまだ接続していない"
 
 step S1:
   viewpoint VP1:
