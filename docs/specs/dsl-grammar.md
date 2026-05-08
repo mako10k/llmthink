@@ -55,7 +55,7 @@
 
 ```ebnf
 Document        = { TopLevelBlock } ;
-TopLevelBlock   = FrameworkDecl | DomainDecl | ProblemDecl | StepDecl | QueryDecl ;
+TopLevelBlock   = FrameworkDecl | DomainDecl | ProblemDecl | StepDecl | ImplicitStepDecl | QueryDecl ;
 ```
 
 トップレベルでは、複数の domain や query を宣言してよい。
@@ -92,7 +92,8 @@ StringLine      = String Newline ;
 ### 5.4 step 宣言
 
 ```ebnf
-StepDecl        = "step" Identifier ":" Newline Indent StepBody Dedent ;
+StepDecl        = "step" [Identifier] ":" Newline Indent StepBody Dedent ;
+ImplicitStepDecl = StepBody ;
 StepBody        = PremiseDecl | ViewpointDecl | PartitionDecl | EvidenceDecl | DecisionDecl | PendingDecl ;
 ```
 
@@ -164,6 +165,8 @@ Literal         = String | Number | Boolean | "null" ;
 - partition の Others は構文上は通常の Identifier として扱う
 - ただし意味論上は補集合扱いの特別ルールを持つ
 - step 本文は 1 要素のみを持つ
+- `step:` のように Identifier を省略した場合、parser は内部 Step ID を statement ID から合成して補う
+- top-level に StepBody を直接置いた場合も implicit step として扱い、内部 Step ID を statement ID から合成して補う
 
 ---
 

@@ -18,6 +18,13 @@ const DSL_SYNTAX_GUIDANCE = [
   "  step S1:",
   "    premise PR1:",
   '      "..."',
+  "  step:",
+  "    evidence EV1:",
+  '      "..."',
+  "  evidence EV2:",
+  '    "..."',
+  "  evidence EV2:",
+  '    "..."',
   "  step S2:",
   "    evidence EV1:",
   '      "..."',
@@ -38,8 +45,9 @@ const DSL_SYNTAX_GUIDANCE = [
   '    .problems[] | select(.id == "P1") | related_decisions',
   "",
   "Rules:",
-  "  - top-level keywords are framework, domain, problem, step, query",
-  "  - domain/problem/query/step headers end with ':'",
+  "  - top-level keywords are framework, domain, problem, step, query, and step statement roles",
+  "  - domain/problem/query headers end with ':'",
+  "  - step headers are either 'step StepId:' or 'step:' and may be omitted entirely",
   "  - step body starts on the next indented line",
   "  - premise/evidence/pending/decision text is a quoted string on the next indented line",
   "  - decision based_on is optional, but when present it is comma-separated",
@@ -71,16 +79,15 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
       startsWithAny(message, ["Unexpected top-level statement:"]),
     help: {
       rationale:
-        "top-level では framework / domain / problem / step / query だけが許可される。",
+        "top-level では framework / domain / problem / step / query に加えて premise / evidence / pending / viewpoint / partition / decision も許可される。",
       expectedSyntax: [
         "framework ReviewAudit",
         "domain DesignReview:",
         '  description "..."',
         "problem P1:",
         '  "..."',
-        "step S1:",
-        "  evidence EV1:",
-        '    "..."',
+        "evidence EV1:",
+        '  "..."',
         "query Q1:",
         '  .problems[] | select(.id == "P1") | related_decisions',
       ].join("\n"),
@@ -128,16 +135,16 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
     matches: (message) => startsWithAny(message, ["Invalid step declaration"]),
     help: {
       rationale:
-        "step は 'step StepId:' で始め、その次の indented line に statement を置く。",
-      expectedSyntax: ["step S1:", "  evidence EV1:", '    "根拠"'].join("\n"),
+        "step は 'step StepId:' または 'step:' で始める。あるいは step 自体を省略して statement を top-level に直接置ける。",
+      expectedSyntax: ["step:", "  evidence EV1:", '    "根拠"'].join("\n"),
     },
   },
   {
     matches: (message) => startsWithAny(message, ["Unknown statement type"]),
     help: {
       rationale:
-        "step の直下では premise / evidence / pending / viewpoint / partition / decision だけが許可される。",
-      expectedSyntax: ["step S1:", "  premise PR1:", '    "前提"'].join("\n"),
+        "step の直下、または top-level の implicit step では premise / evidence / pending / viewpoint / partition / decision だけが許可される。",
+      expectedSyntax: ["premise PR1:", '  "前提"'].join("\n"),
     },
   },
   {

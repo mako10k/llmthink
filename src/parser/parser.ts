@@ -71,6 +71,54 @@ function parseIdentifierAfterKeyword(
   return /^[A-Za-z][A-Za-z0-9_-]*$/.test(identifier) ? identifier : undefined;
 }
 
+function parseStepHeader(
+  header: string,
+): { valid: true; id?: string } | { valid: false } {
+  if (header === "step:") {
+    return { valid: true };
+  }
+
+  const prefix = "step ";
+  if (!header.startsWith(prefix) || !header.endsWith(":")) {
+    return { valid: false };
+  }
+
+  const identifier = header.slice(prefix.length, -1).trim();
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(identifier)) {
+    return { valid: false };
+  }
+
+  return { valid: true, id: identifier };
+}
+
+function synthesizeStepId(statementId: string): string {
+  return `S-${statementId}`;
+}
+
+function isStatementHeader(line: string): boolean {
+  return (
+    line.startsWith("premise ") ||
+    line.startsWith("evidence ") ||
+    line.startsWith("pending ") ||
+    line.startsWith("viewpoint ") ||
+    line.startsWith("partition ") ||
+    line.startsWith("decision ")
+  );
+}
+
+function implicitStepFromStatement(
+  statement: StepStatement & { nextIndex: number },
+): [StepDecl, number] {
+  return [
+    {
+      id: synthesizeStepId(statement.id),
+      statement,
+      span: statement.span,
+    },
+    statement.nextIndex,
+  ];
+}
+
 function parsePartitionMemberLine(line: string): PartitionMember | undefined {
   const separatorIndex = line.indexOf(":=");
   if (separatorIndex <= 0) {
@@ -229,8 +277,16 @@ export function parseDocument(input: string): DocumentAst {
       continue;
     }
 
-    if (line.startsWith("step ")) {
+    if (line === "step:" || line.startsWith("step ")) {
       const [step, nextIndex] = parseStep(lines, index);
+      document.steps.push(step);
+      index = nextIndex;
+      continue;
+    }
+
+    if (isStatementHeader(line)) {
+      const statement = parseStatement(lines, index, line);
+      const [step, nextIndex] = implicitStepFromStatement(statement);
       document.steps.push(step);
       index = nextIndex;
       continue;
@@ -388,8 +444,8 @@ function parseProblem(
 function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
   const header = lines[startIndex]?.trim() ?? "";
   const rawHeader = lines[startIndex] ?? "";
-  const match = /^step\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
-  if (!match) {
+  const parsedHeader = parseStepHeader(header);
+  if (!parsedHeader.valid) {
     throw new ParseError(
       "Invalid step declaration",
       startIndex + 1,
@@ -403,7 +459,7 @@ function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
   const statement = parseStatement(lines, statementIndex, statementLine);
   return [
     {
-      id: match[1],
+      id: parsedHeader.id ?? synthesizeStepId(statement.id),
       statement,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },

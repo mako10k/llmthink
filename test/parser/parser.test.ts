@@ -115,3 +115,37 @@ step S1:
     ].join("\n"),
   );
 });
+
+test("parseDocument accepts step headers without explicit step ids", () => {
+  const document = parseDocument(`
+problem P1:
+  "Allow implicit step ids"
+
+step:
+  premise PR1:
+    "Parser synthesizes the step id from the statement id"
+`);
+
+  assert.equal(document.steps[0]?.id, "S-PR1");
+  assert.equal(document.steps[0]?.statement.id, "PR1");
+  assert.equal(document.steps[0]?.statement.role, "premise");
+});
+
+test("parseDocument accepts top-level statements as implicit steps", () => {
+  const document = parseDocument(`
+problem P1:
+  "Allow flattened step syntax"
+
+evidence EV1:
+  "Top-level evidence becomes an implicit step"
+
+decision D1 based_on EV1:
+  "Top-level decision also becomes an implicit step"
+`);
+
+  assert.equal(document.steps.length, 2);
+  assert.equal(document.steps[0]?.id, "S-EV1");
+  assert.equal(document.steps[0]?.statement.role, "evidence");
+  assert.equal(document.steps[1]?.id, "S-D1");
+  assert.equal(document.steps[1]?.statement.role, "decision");
+});
