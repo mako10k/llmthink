@@ -63,6 +63,8 @@ problem P1:
   "Decide comment syntax"
   annotation rationale:
     "Separate annotations from free comments"
+  annotation orphan_reference:
+    "Reference-only problem"
 
 step S1:
   decision D1 based_on P1:
@@ -71,16 +73,19 @@ step S1:
       "Formatter intentionally drops free comments"
     annotation todo:
       "Preserve comment trivia later"
+    annotation orphan_future:
+      "Keep this branch visible"
 `);
 
   assert.deepEqual(document.problems[0]?.annotations.map((item) => item.kind), [
     "rationale",
+    "orphan_reference",
   ]);
   assert.deepEqual(
     document.steps[0]?.statement.role === "decision"
       ? document.steps[0].statement.annotations.map((item) => item.kind)
       : [],
-    ["caveat", "todo"],
+    ["caveat", "todo", "orphan_future"],
   );
 });
 
