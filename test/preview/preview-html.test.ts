@@ -41,42 +41,73 @@ test("preview:html emits browser-openable HTML and preserves viewport anchor on 
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector(".diagram-scroll");
 
-      await page.click('.diagram-button[data-action="zoom-in"]');
-
-      await page.evaluate(() => {
-        const scroll = document.querySelector(".diagram-scroll");
-        if (!(scroll instanceof HTMLElement)) {
-          throw new Error("diagram-scroll not found");
-        }
-        scroll.scrollLeft = 180;
-      });
-
       const before = await page.evaluate(() => {
+        const card = document.querySelector(".diagram-card");
+        const viewport = document.querySelector(".diagram-viewport");
         const scroll = document.querySelector(".diagram-scroll");
-        if (!(scroll instanceof HTMLElement)) {
+        const svg = document.querySelector(".diagram");
+        if (!(card instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(scroll instanceof HTMLElement)) {
           throw new Error("diagram-scroll not found");
         }
+        if (!(svg instanceof SVGElement)) {
+          throw new Error("diagram svg not found");
+        }
+        const scrollRect = scroll.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        const baseWidth = Number(scroll.dataset.baseWidth || 0);
+        const baseHeight = Number(scroll.dataset.baseHeight || 0);
+        const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
+        const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
+        const visibleCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
+        const visibleCenterY = scroll.scrollTop + scroll.clientHeight / 2;
+        const logicalScaleX = baseWidth > 0 ? baseWidth / svgRect.width : 1;
+        const logicalScaleY = baseHeight > 0 ? baseHeight / svgRect.height : 1;
         return {
+          documentWidth: document.documentElement.scrollWidth,
+          viewportLeft: viewport.getBoundingClientRect().left,
+          cardLeft: card.getBoundingClientRect().left,
           scrollLeft: scroll.scrollLeft,
           scrollTop: scroll.scrollTop,
           clientWidth: scroll.clientWidth,
           clientHeight: scroll.clientHeight,
           scrollWidth: scroll.scrollWidth,
           scrollHeight: scroll.scrollHeight,
+          svgAnchorX: (visibleCenterX - svgOffsetX) * logicalScaleX,
+          svgAnchorY: (visibleCenterY - svgOffsetY) * logicalScaleY,
         };
       });
 
-      assert.ok(before.scrollWidth > before.clientWidth);
-
       await page.click('.diagram-button[data-action="zoom-in"]');
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
 
       const after = await page.evaluate(() => {
+        const card = document.querySelector(".diagram-card");
+        const viewport = document.querySelector(".diagram-viewport");
         const scroll = document.querySelector(".diagram-scroll");
         const zoomLabel = document.querySelector(".diagram-zoom-level");
-        if (!(scroll instanceof HTMLElement) || !(zoomLabel instanceof HTMLOutputElement)) {
+        const svg = document.querySelector(".diagram");
+        if (!(card instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(scroll instanceof HTMLElement) || !(zoomLabel instanceof HTMLOutputElement)) {
           throw new Error("preview controls not found");
         }
+        if (!(svg instanceof SVGElement)) {
+          throw new Error("diagram svg not found");
+        }
+        const scrollRect = scroll.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        const baseWidth = Number(scroll.dataset.baseWidth || 0);
+        const baseHeight = Number(scroll.dataset.baseHeight || 0);
+        const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
+        const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
+        const visibleCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
+        const visibleCenterY = scroll.scrollTop + scroll.clientHeight / 2;
+        const logicalScaleX = baseWidth > 0 ? baseWidth / svgRect.width : 1;
+        const logicalScaleY = baseHeight > 0 ? baseHeight / svgRect.height : 1;
         return {
+          documentWidth: document.documentElement.scrollWidth,
+          viewportLeft: viewport.getBoundingClientRect().left,
+          cardLeft: card.getBoundingClientRect().left,
           scrollLeft: scroll.scrollLeft,
           scrollTop: scroll.scrollTop,
           clientWidth: scroll.clientWidth,
@@ -84,18 +115,17 @@ test("preview:html emits browser-openable HTML and preserves viewport anchor on 
           scrollWidth: scroll.scrollWidth,
           scrollHeight: scroll.scrollHeight,
           zoomText: zoomLabel.textContent ?? "",
+          svgAnchorX: (visibleCenterX - svgOffsetX) * logicalScaleX,
+          svgAnchorY: (visibleCenterY - svgOffsetY) * logicalScaleY,
         };
       });
 
       assert.notEqual(after.zoomText, "100%");
       assert.ok(after.scrollWidth > before.scrollWidth);
-
-      const beforeCenterX = before.scrollLeft + before.clientWidth / 2;
-      const scaleX = after.scrollWidth / before.scrollWidth;
-      const expectedCenterX = beforeCenterX * scaleX;
-      const actualCenterX = after.scrollLeft + after.clientWidth / 2;
-
-      assert.ok(Math.abs(actualCenterX - expectedCenterX) < 48);
+  assert.equal(after.documentWidth, before.documentWidth);
+  assert.ok(Math.abs(after.viewportLeft - before.viewportLeft) < 1);
+  assert.ok(Math.abs(after.cardLeft - before.cardLeft) < 1);
+      assert.ok(Math.abs(after.svgAnchorX - before.svgAnchorX) < 24);
     } finally {
       await browser.close();
     }

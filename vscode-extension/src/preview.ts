@@ -888,26 +888,39 @@ function buildPreviewScript(): string {
           requestAnimationFrame(updateMinimapViewport);
         };
 
-        const preserveViewportAnchor = (previousZoom) => {
+        const captureViewportAnchor = (currentZoom) => {
+          const scrollRect = scroll.getBoundingClientRect();
+          const svgRect = svg.getBoundingClientRect();
+          const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
+          const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
           const viewportCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
           const viewportCenterY = scroll.scrollTop + scroll.clientHeight / 2;
-          const anchorX = viewportCenterX / previousZoom;
-          const anchorY = viewportCenterY / previousZoom;
+          return {
+            x: (viewportCenterX - svgOffsetX) / currentZoom,
+            y: (viewportCenterY - svgOffsetY) / currentZoom,
+          };
+        };
+
+        const preserveViewportAnchor = (anchor) => {
+          const scrollRect = scroll.getBoundingClientRect();
+          const svgRect = svg.getBoundingClientRect();
+          const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
+          const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
           scroll.scrollLeft = Math.min(
-            Math.max(anchorX * zoom - scroll.clientWidth / 2, 0),
+            Math.max(anchor.x * zoom + svgOffsetX - scroll.clientWidth / 2, 0),
             maxLeft,
           );
           scroll.scrollTop = Math.min(
-            Math.max(anchorY * zoom - scroll.clientHeight / 2, 0),
+            Math.max(anchor.y * zoom + svgOffsetY - scroll.clientHeight / 2, 0),
             maxTop,
           );
           requestAnimationFrame(updateMinimapViewport);
         };
 
         const applyZoom = (nextZoom, { mode = "preserve" } = {}) => {
-          const previousZoom = zoom;
+          const anchor = mode === "preserve" ? captureViewportAnchor(zoom) : undefined;
           zoom = clampZoom(nextZoom);
           svg.style.width = String(baseWidth * zoom) + "px";
           svg.style.height = String(baseHeight * zoom) + "px";
@@ -915,7 +928,13 @@ function buildPreviewScript(): string {
           if (mode === "recenter") {
             requestAnimationFrame(centerViewport);
           } else {
-            requestAnimationFrame(() => preserveViewportAnchor(previousZoom));
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                if (anchor) {
+                  preserveViewportAnchor(anchor);
+                }
+              });
+            });
           }
         };
 
@@ -1096,6 +1115,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       body {
         margin: 0;
         padding: 18px;
+        overflow-x: hidden;
         font-family: var(--vscode-font-family);
         color: var(--vscode-editor-foreground);
         background:
@@ -1111,6 +1131,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .hero,
       .diagram-card,
       .markdown {
+        min-width: 0;
         border: 1px solid color-mix(in srgb, var(--vscode-editorWidget-border, var(--vscode-panel-border)) 80%, transparent);
         border-radius: 18px;
         background: color-mix(in srgb, var(--vscode-editor-background) 90%, white 10%);
@@ -1222,12 +1243,14 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .diagram-shell {
         position: relative;
+        min-width: 0;
       }
       .diagram-viewport {
         position: relative;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        min-width: 0;
         width: min(100%, 1080px);
         margin: 0 auto;
         height: clamp(320px, 50vh, 520px);
@@ -1245,6 +1268,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .diagram {
         display: block;
+        flex: none;
       }
       .diagram-minimap-card {
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
