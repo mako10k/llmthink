@@ -1063,21 +1063,33 @@ function buildPreviewScript(): string {
           }
         };
 
-        const fitActiveEdgeOrViewport = () => {
+        const resolveEdgeNodes = (edgeElement) => {
+          if (!(edgeElement instanceof SVGPathElement)) {
+            return [];
+          }
+          const sourceId = edgeElement.getAttribute("data-edge-from");
+          const targetId = edgeElement.getAttribute("data-edge-to");
+          return [sourceId, targetId]
+            .map((nodeId) => nodeId
+              ? card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]')
+              : null)
+            .filter((node) => node instanceof SVGGElement);
+        };
+
+        const fitActiveEdgeOrViewport = (eventTarget) => {
+          const targetEdge = eventTarget instanceof Element
+            ? eventTarget.closest(".edge[data-edge-from][data-edge-to], .edge-hit[data-edge-from][data-edge-to]")
+            : null;
           const activeEdge = card.querySelector(".edge.edge-active[data-edge-from][data-edge-to]");
-          if (activeEdge instanceof SVGPathElement) {
-            const sourceId = activeEdge.getAttribute("data-edge-from");
-            const targetId = activeEdge.getAttribute("data-edge-to");
-            const nodes = [sourceId, targetId]
-              .map((nodeId) => nodeId
-                ? card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]')
-                : null)
-              .filter((node) => node instanceof SVGGElement);
+
+          for (const edge of [targetEdge, activeEdge]) {
+            const nodes = resolveEdgeNodes(edge);
             if (nodes.length > 0) {
               fitNodesInViewport(nodes);
               return;
             }
           }
+
           fitToViewport();
         };
 
@@ -1229,8 +1241,8 @@ function buildPreviewScript(): string {
 
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
-        scroll.addEventListener("dblclick", () => {
-          fitActiveEdgeOrViewport();
+        scroll.addEventListener("dblclick", (event) => {
+          fitActiveEdgeOrViewport(event.target);
         });
         scroll.addEventListener("contextmenu", (event) => {
           if (!suppressContextMenu) {
