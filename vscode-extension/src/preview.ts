@@ -886,22 +886,41 @@ function buildPreviewScript(): string {
           requestAnimationFrame(updateMinimapViewport);
         };
 
-        const applyZoom = (nextZoom, { center = true } = {}) => {
+        const preserveViewportAnchor = (previousZoom) => {
+          const viewportCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
+          const viewportCenterY = scroll.scrollTop + scroll.clientHeight / 2;
+          const anchorX = viewportCenterX / previousZoom;
+          const anchorY = viewportCenterY / previousZoom;
+          const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
+          const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
+          scroll.scrollLeft = Math.min(
+            Math.max(anchorX * zoom - scroll.clientWidth / 2, 0),
+            maxLeft,
+          );
+          scroll.scrollTop = Math.min(
+            Math.max(anchorY * zoom - scroll.clientHeight / 2, 0),
+            maxTop,
+          );
+          requestAnimationFrame(updateMinimapViewport);
+        };
+
+        const applyZoom = (nextZoom, { mode = "preserve" } = {}) => {
+          const previousZoom = zoom;
           zoom = clampZoom(nextZoom);
           svg.style.width = String(baseWidth * zoom) + "px";
           svg.style.height = String(baseHeight * zoom) + "px";
           updateZoomLabel();
-          if (center) {
+          if (mode === "recenter") {
             requestAnimationFrame(centerViewport);
           } else {
-            requestAnimationFrame(updateMinimapViewport);
+            requestAnimationFrame(() => preserveViewportAnchor(previousZoom));
           }
         };
 
         const fitToViewport = () => {
           const horizontal = (scroll.clientWidth - 10) / baseWidth;
           const vertical = (scroll.clientHeight - 10) / baseHeight;
-          applyZoom(Math.min(horizontal, vertical), { center: true });
+          applyZoom(Math.min(horizontal, vertical), { mode: "recenter" });
         };
 
         const initializeMinimapPosition = () => {
@@ -928,7 +947,7 @@ function buildPreviewScript(): string {
               return;
             }
             if (action === "reset") {
-              applyZoom(1);
+              applyZoom(1, { mode: "recenter" });
               return;
             }
             if (action === "fit") {
@@ -1053,7 +1072,7 @@ function buildPreviewScript(): string {
           });
         }
 
-        applyZoom(1, { center: false });
+        applyZoom(1);
         requestAnimationFrame(initializeMinimapPosition);
         requestAnimationFrame(fitToViewport);
       });
