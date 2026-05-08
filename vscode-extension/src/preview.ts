@@ -882,7 +882,7 @@ function buildPreviewScript(): string {
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
           scroll.scrollLeft = maxLeft / 2;
-          scroll.scrollTop = maxTop / 2;
+          scroll.scrollTop = maxTop;
           requestAnimationFrame(updateMinimapViewport);
         };
 
