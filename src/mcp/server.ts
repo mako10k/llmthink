@@ -16,6 +16,8 @@ import {
   formatThoughtList,
   formatThoughtReflections,
   formatThoughtSearchResults,
+  formatThoughtSemanticAuditPairs,
+  formatThoughtSemanticAuditSummary,
   formatThoughtSummary,
 } from "../presentation/thought.js";
 import {
@@ -62,7 +64,14 @@ function getStoredThoughtText(thoughtId: string): string | undefined {
 
 function showThoughtView(
   thoughtId: string,
-  view?: "summary" | "draft" | "final" | "audit" | "reflections",
+  view?:
+    | "summary"
+    | "draft"
+    | "final"
+    | "audit"
+    | "reflections"
+    | "semantic-audit"
+    | "semantic-audit-pairs",
 ) {
   const snapshot = loadThought(thoughtId);
   if (view === "draft") {
@@ -85,6 +94,16 @@ function showThoughtView(
   if (view === "reflections") {
     return {
       content: [textContent(formatThoughtReflections(snapshot.reflections))],
+    };
+  }
+  if (view === "semantic-audit") {
+    return {
+      content: [textContent(formatThoughtSemanticAuditSummary(snapshot))],
+    };
+  }
+  if (view === "semantic-audit-pairs") {
+    return {
+      content: [textContent(formatThoughtSemanticAuditPairs(snapshot))],
     };
   }
   return { content: [textContent(formatThoughtSummary(snapshot))] };
@@ -244,7 +263,15 @@ async function handleThoughtAction(
   query: string | undefined,
   limit: number | undefined,
   includeReflections: boolean,
-  view: "summary" | "draft" | "final" | "audit" | "reflections" | undefined,
+  view:
+    | "summary"
+    | "draft"
+    | "final"
+    | "audit"
+    | "reflections"
+    | "semantic-audit"
+    | "semantic-audit-pairs"
+    | undefined,
 ) {
   if (action === "list") {
     return { content: [textContent(formatThoughtList(listThoughts()))] };
@@ -367,7 +394,15 @@ server.tool(
     limit: z.number().int().positive().max(20).optional(),
     includeReflections: z.boolean().default(false),
     view: z
-      .enum(["summary", "draft", "final", "audit", "reflections"])
+      .enum([
+        "summary",
+        "draft",
+        "final",
+        "audit",
+        "reflections",
+        "semantic-audit",
+        "semantic-audit-pairs",
+      ])
       .optional(),
   },
   async ({
