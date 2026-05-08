@@ -1326,6 +1326,7 @@ function buildPreviewScript(): string {
           });
           edge.addEventListener("dblclick", (event) => {
             event.preventDefault();
+            event.stopPropagation();
             const sourceId = edge.getAttribute("data-edge-from");
             const targetId = edge.getAttribute("data-edge-to");
             const nodes = [sourceId, targetId]
