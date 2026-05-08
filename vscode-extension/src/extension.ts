@@ -21,6 +21,7 @@ import {
   formatThoughtSummary,
   getDslSyntaxGuidanceText,
   isDslHelpRequest,
+  parseDslHelpRequest,
   loadThought,
   listThoughts,
   relateThought,
@@ -37,6 +38,9 @@ interface DslToolInput {
   dslText?: string;
   documentId?: string;
   thoughtId?: string;
+  topic?: string;
+  subtopic?: string;
+  detail?: "index" | "quick" | "detail";
 }
 
 const REFLECTION_KIND_ITEMS: Array<{
@@ -451,15 +455,30 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
   ): Promise<vscode.LanguageModelToolResult> {
     if (options.input.action === "help") {
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(getDslSyntaxGuidanceText()),
+        new vscode.LanguageModelTextPart(
+          getDslSyntaxGuidanceText({
+            topic: options.input.topic?.trim(),
+            subtopic: options.input.subtopic?.trim(),
+            detail: options.input.detail,
+            channel: "vsix",
+          }),
+        ),
       ]);
     }
 
     const providedText = options.input.dslText?.trim();
     if (providedText) {
       if (isDslHelpRequest(providedText)) {
+        const request = parseDslHelpRequest(providedText);
         return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(getDslSyntaxGuidanceText()),
+          new vscode.LanguageModelTextPart(
+            getDslSyntaxGuidanceText({
+              topic: request?.topic,
+              subtopic: request?.subtopic,
+              detail: request?.detail,
+              channel: "vsix",
+            }),
+          ),
         ]);
       }
       const persisted = await runRegisteredAudit(providedText, {

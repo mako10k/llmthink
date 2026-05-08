@@ -4,7 +4,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { getDslSyntaxGuidanceText, isDslHelpRequest } from "../dsl/guidance.js";
+import {
+  getDslSyntaxGuidanceText,
+  isDslHelpRequest,
+  parseDslHelpRequest,
+} from "../dsl/guidance.js";
 import { formatAuditReportText } from "../presentation/report.js";
 import {
   formatPersistedThoughtAudit,
@@ -286,11 +290,24 @@ server.tool(
     filePath: z.string().optional(),
     documentId: z.string().optional(),
     thoughtId: z.string().optional(),
+    topic: z.string().optional(),
+    subtopic: z.string().optional(),
+    detail: z.enum(["index", "quick", "detail"]).optional(),
   },
-  async ({ action, dslText, filePath, documentId, thoughtId }) => {
+  async ({ action, dslText, filePath, documentId, thoughtId, topic, subtopic, detail }) => {
     if (action === "help" || (dslText && isDslHelpRequest(dslText))) {
+      const parsedRequest = dslText ? parseDslHelpRequest(dslText) : undefined;
       return {
-        content: [textContent(getDslSyntaxGuidanceText())],
+        content: [
+          textContent(
+            getDslSyntaxGuidanceText({
+              topic: parsedRequest?.topic ?? topic,
+              subtopic: parsedRequest?.subtopic ?? subtopic,
+              detail: parsedRequest?.detail ?? detail,
+              channel: "mcp",
+            }),
+          ),
+        ],
       };
     }
 

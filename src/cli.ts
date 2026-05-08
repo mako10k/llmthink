@@ -144,7 +144,7 @@ function printUsage(): void {
       "Usage:",
       "  llmthink dsl audit <file> [--pretty]",
       '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty]',
-      "  llmthink dsl help",
+      "  llmthink dsl help [topic] [subtopic] [index|quick|detail]",
       '  llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]',
       "  llmthink thought relate --id <thought-id> --from source-thought-id",
       '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]',
@@ -210,7 +210,19 @@ function readCurrentThoughtDraft(id: string): string {
 
 async function handleDslCommand(options: CliOptions): Promise<void> {
   if (options.subcommand === "help") {
-    process.stdout.write(getDslSyntaxGuidanceText());
+    const last = options.positionals.at(-1);
+    const detail =
+      last === "index" || last === "quick" || last === "detail"
+        ? last
+        : undefined;
+    process.stdout.write(
+      getDslSyntaxGuidanceText({
+        topic: options.positionals[0],
+        subtopic: options.positionals[1],
+        detail,
+        channel: "cli",
+      }),
+    );
     return;
   }
 

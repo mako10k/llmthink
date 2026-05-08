@@ -1,6 +1,15 @@
 export { auditDslFile, auditDslText } from "./analyzer/audit.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
-export { getDslSyntaxGuidanceText, isDslHelpRequest } from "./dsl/guidance.js";
+export {
+  getDslSyntaxGuidanceText,
+  isDslHelpRequest,
+  parseDslHelpRequest,
+} from "./dsl/guidance.js";
+export type {
+  DslHelpChannel,
+  DslHelpDetail,
+  DslHelpRequest,
+} from "./dsl/guidance.js";
 export { parseDocument, ParseError } from "./parser/parser.js";
 export {
   formatAuditReportHtml,
