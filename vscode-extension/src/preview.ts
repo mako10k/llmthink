@@ -1063,6 +1063,24 @@ function buildPreviewScript(): string {
           }
         };
 
+        const fitActiveEdgeOrViewport = () => {
+          const activeEdge = card.querySelector(".edge.edge-active[data-edge-from][data-edge-to]");
+          if (activeEdge instanceof SVGPathElement) {
+            const sourceId = activeEdge.getAttribute("data-edge-from");
+            const targetId = activeEdge.getAttribute("data-edge-to");
+            const nodes = [sourceId, targetId]
+              .map((nodeId) => nodeId
+                ? card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]')
+                : null)
+              .filter((node) => node instanceof SVGGElement);
+            if (nodes.length > 0) {
+              fitNodesInViewport(nodes);
+              return;
+            }
+          }
+          fitToViewport();
+        };
+
         const centerViewport = () => {
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
@@ -1211,6 +1229,9 @@ function buildPreviewScript(): string {
 
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
+        scroll.addEventListener("dblclick", () => {
+          fitActiveEdgeOrViewport();
+        });
         scroll.addEventListener("contextmenu", (event) => {
           if (!suppressContextMenu) {
             return;
@@ -1325,18 +1346,6 @@ function buildPreviewScript(): string {
           });
           edge.addEventListener("pointerleave", () => {
             clearEdgeHighlights();
-          });
-          edge.addEventListener("dblclick", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            const sourceId = edge.getAttribute("data-edge-from");
-            const targetId = edge.getAttribute("data-edge-to");
-            const nodes = [sourceId, targetId]
-              .map((nodeId) => nodeId
-                ? card.querySelector('.node[data-node-key="' + CSS.escape(nodeId) + '"]')
-                : null)
-              .filter((node) => node instanceof SVGGElement);
-            fitNodesInViewport(nodes);
           });
         });
 

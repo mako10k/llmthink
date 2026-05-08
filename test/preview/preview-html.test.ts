@@ -530,6 +530,30 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       assert.equal(fitMetrics.targetWithin, true);
       assert.equal(fitMetrics.fillsWholeWidth, false);
       assert.equal(fitMetrics.svgWidth > initialSvgWidth + 8, true);
+
+      await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("pointerleave");
+      await page.locator('.diagram-scroll').dispatchEvent("dblclick", { bubbles: true });
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+
+      const fallbackMetrics = await page.evaluate(() => {
+        const scroll = document.querySelector('.diagram-scroll');
+        const svg = document.querySelector('.diagram');
+        const activeEdge = document.querySelector('.edge.edge-active');
+        if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGSVGElement)) {
+          throw new Error("fallback fit elements not found");
+        }
+        const scrollRect = scroll.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        return {
+          hasActiveEdge: activeEdge instanceof SVGPathElement,
+          fillsWholeWidth: svgRect.width - scrollRect.width < 2,
+        };
+      });
+
+      assert.equal(fallbackMetrics.hasActiveEdge, false);
+      assert.equal(fallbackMetrics.fillsWholeWidth, true);
     } finally {
       await browser.close();
     }
