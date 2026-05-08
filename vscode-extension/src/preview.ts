@@ -1003,13 +1003,22 @@ function buildPreviewScript(): string {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
             return;
           }
-          const left = (viewport.clientWidth - minimapCard.offsetWidth) / 2;
+          const left = viewport.clientWidth - minimapCard.offsetWidth - 10;
           placeMinimap(left, 10);
         };
 
         scroll.addEventListener("scroll", () => {
           requestAnimationFrame(updateMinimapViewport);
         });
+
+        scroll.addEventListener("wheel", (event) => {
+          if (!event.ctrlKey) {
+            return;
+          }
+          event.preventDefault();
+          const delta = event.deltaY < 0 ? 0.12 : -0.12;
+          applyZoom(zoom + delta);
+        }, { passive: false });
 
         card.querySelectorAll(".diagram-button").forEach((button) => {
           button.addEventListener("click", () => {
@@ -1143,13 +1152,6 @@ function buildPreviewScript(): string {
           minimapCard.addEventListener("pointerup", stopMinimapDragging);
           minimapCard.addEventListener("pointercancel", stopMinimapDragging);
 
-          minimapCard.addEventListener("wheel", (event) => {
-            if (!event.ctrlKey) {
-              return;
-            }
-            event.preventDefault();
-            resizeMinimap(minimapCard.offsetWidth - event.deltaY * 0.12);
-          }, { passive: false });
         }
 
         if (minimapHandle instanceof HTMLElement) {
@@ -1366,7 +1368,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-controls-overlay {
         position: absolute;
         left: 50%;
-        bottom: 10px;
+        top: 10px;
         transform: translateX(-50%);
         display: flex;
         gap: 6px;
@@ -1375,13 +1377,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         border-radius: 999px;
         background: color-mix(in srgb, var(--vscode-editor-background) 28%, transparent);
         backdrop-filter: blur(10px);
-        opacity: 0.28;
+        opacity: 0.5;
         transition: opacity 120ms ease, background 120ms ease;
         z-index: 2;
       }
       .diagram-viewport:hover .diagram-controls-overlay,
       .diagram-controls-overlay:focus-within {
-        opacity: 0.5;
+        opacity: 0.75;
       }
       .diagram-minimap-card {
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
