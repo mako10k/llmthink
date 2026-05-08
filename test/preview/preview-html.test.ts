@@ -466,6 +466,14 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]');
 
+      const initialSvgWidth = await page.evaluate(() => {
+        const svg = document.querySelector('.diagram');
+        if (!(svg instanceof SVGSVGElement)) {
+          throw new Error('diagram svg not found');
+        }
+        return svg.getBoundingClientRect().width;
+      });
+
       await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("pointerenter");
 
       const hovered = await page.evaluate(() => {
@@ -503,6 +511,7 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
         const sourceRect = source.getBoundingClientRect();
         const targetRect = target.getBoundingClientRect();
         return {
+          svgWidth: svgRect.width,
           sourceWithin:
             sourceRect.left >= scrollRect.left - 2 &&
             sourceRect.right <= scrollRect.right + 2 &&
@@ -520,6 +529,7 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       assert.equal(fitMetrics.sourceWithin, true);
       assert.equal(fitMetrics.targetWithin, true);
       assert.equal(fitMetrics.fillsWholeWidth, false);
+      assert.equal(fitMetrics.svgWidth > initialSvgWidth + 8, true);
     } finally {
       await browser.close();
     }

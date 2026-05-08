@@ -876,7 +876,7 @@ function buildPreviewScript(): string {
         }
       });
 
-      const clampZoom = (value) => Math.min(2.5, Math.max(0.35, Number(value.toFixed(2))));
+      const clampZoom = (value) => Math.min(2.5, Math.max(0.35, value));
 
       document.querySelectorAll(".diagram-card").forEach((card) => {
         const scroll = card.querySelector(".diagram-scroll");
@@ -972,16 +972,19 @@ function buildPreviewScript(): string {
             return;
           }
 
-          const svgRect = svg.getBoundingClientRect();
-          const scrollRect = scroll.getBoundingClientRect();
-          const padding = 32;
+          const viewportWidth = scroll.clientWidth;
+          const viewportHeight = scroll.clientHeight;
+          const padding = 12;
 
           const bounds = nodes.reduce((acc, node) => {
-            const nodeRect = node.getBoundingClientRect();
-            const left = nodeRect.left - svgRect.left;
-            const top = nodeRect.top - svgRect.top;
-            const right = left + nodeRect.width;
-            const bottom = top + nodeRect.height;
+            const nodeBounds = node.getBBox();
+            const translation = node.transform.baseVal.consolidate()?.matrix;
+            const offsetX = translation?.e ?? 0;
+            const offsetY = translation?.f ?? 0;
+            const left = nodeBounds.x + offsetX;
+            const top = nodeBounds.y + offsetY;
+            const right = nodeBounds.x + nodeBounds.width + offsetX;
+            const bottom = nodeBounds.y + nodeBounds.height + offsetY;
             return {
               left: Math.min(acc.left, left),
               top: Math.min(acc.top, top),
@@ -996,15 +999,15 @@ function buildPreviewScript(): string {
           });
 
           const logicalBounds = {
-            left: bounds.left / zoom,
-            top: bounds.top / zoom,
-            width: (bounds.right - bounds.left) / zoom,
-            height: (bounds.bottom - bounds.top) / zoom,
+            left: bounds.left,
+            top: bounds.top,
+            width: bounds.right - bounds.left,
+            height: bounds.bottom - bounds.top,
           };
 
           const targetZoom = clampZoom(Math.min(
-            (scrollRect.width - padding * 2) / Math.max(logicalBounds.width, 1),
-            (scrollRect.height - padding * 2) / Math.max(logicalBounds.height, 1),
+            (viewportWidth - padding * 2) / Math.max(logicalBounds.width, 1),
+            (viewportHeight - padding * 2) / Math.max(logicalBounds.height, 1),
           ));
 
           zoom = targetZoom;
