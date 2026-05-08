@@ -213,6 +213,47 @@
 - category = query_result
 - severity = hint
 
+### R009 orphan_problem
+
+対象:
+
+- problem
+
+条件:
+
+- どの decision からも direct な based_on 参照を受けていない
+- orphan_future または orphan_reference annotation がない
+
+結果:
+
+- category = semantic_hint
+- severity = warning
+
+注記:
+
+- first pass では transitive graph や意味推定ではなく explicit based_on edge のみを見る
+
+### R010 orphan_supporting_node
+
+対象:
+
+- premise
+- evidence
+
+条件:
+
+- どの decision からも direct な based_on 参照を受けていない
+- orphan_future または orphan_reference annotation がない
+
+結果:
+
+- category = semantic_hint
+- severity = hint
+
+注記:
+
+- suppression は orphan finding にだけ効き、unresolved reference や decision_without_reference には効かない
+
 ---
 
 ## 5. 判定順序
