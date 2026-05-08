@@ -13,3 +13,19 @@ await build({
   sourcemap: false,
   logLevel: "info",
 });
+
+await build({
+  entryPoints: ["../src/lsp/server.ts"],
+  outfile: "dist/llmthink-lsp.js",
+  bundle: true,
+  format: "cjs",
+  platform: "node",
+  target: "node20",
+  minify: true,
+  legalComments: "none",
+  sourcemap: false,
+  logLevel: "info",
+  banner: {
+    js: "#!/usr/bin/env node",
+  },
+});

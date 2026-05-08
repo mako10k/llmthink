@@ -8,7 +8,7 @@ import {
   type ProblemDecl,
   type StepDecl,
   type StepStatement,
-} from "llmthink";
+} from "../../dist/index.js";
 import {
   getPreviewStrings,
   type DiagramRole,

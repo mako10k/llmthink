@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.3.16",
+  "version": "0.3.18",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -25,24 +25,6 @@
   "engines": {
     "vscode": "^1.99.0"
   },
-  "activationEvents": [
-    "onLanguage:llmthink",
-    "onCustomEditor:llmthink.preview",
-    "onCommand:llmthink.dslAudit",
-    "onCommand:llmthink.dslReportShow",
-    "onCommand:llmthink.dslPreview",
-    "onCommand:llmthink.thoughtDraft",
-    "onCommand:llmthink.thoughtRelate",
-    "onCommand:llmthink.thoughtAudit",
-    "onCommand:llmthink.thoughtReflect",
-    "onCommand:llmthink.thoughtFinalize",
-    "onCommand:llmthink.thoughtReflections",
-    "onCommand:llmthink.thoughtHistory",
-    "onCommand:llmthink.thoughtSearch",
-    "onCommand:llmthink.thoughtList",
-    "onCommand:llmthink.thoughtDelete",
-    "onCommand:llmthink.lsp.restart"
-  ],
   "categories": [
     "Other"
   ],
@@ -188,7 +170,7 @@
         "llmthink.languageServer.path": {
           "type": "string",
           "default": "",
-          "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス。未指定時は workspace の build/llmthink-lsp.js、次に PATH 上の llmthink-lsp を使います。"
+          "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス、または PATH 上のコマンド名。未指定または解決不可のときは workspace の build/llmthink-lsp.js、PATH 上の llmthink-lsp、最後に拡張機能同梱の fallback を順に試します。"
         }
       }
     },
@@ -233,15 +215,13 @@
   "scripts": {
     "build": "npm --prefix .. run build && node ./build.mjs",
     "typecheck": "npm --prefix .. run build && tsc -p tsconfig.json --noEmit",
-    "package:vsix": "npx @vscode/vsce package --out llmthink.vsix"
+    "package:vsix": "npx -y @vscode/vsce@3.2.2 package --out llmthink.vsix"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
     "@types/vscode": "^1.99.0",
-    "@vscode/vsce": "^3.2.2",
     "elkjs": "^0.11.1",
     "esbuild": "^0.25.11",
-    "llmthink": "file:..",
     "typescript": "^5.8.3",
     "vscode-languageclient": "^9.0.1"
   }

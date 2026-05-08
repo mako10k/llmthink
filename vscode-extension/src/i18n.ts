@@ -1,4 +1,4 @@
-import type { StepStatement } from "llmthink";
+import type { StepStatement } from "../../dist/index.js";
 
 export type PreviewLocale = "ja" | "en";
 export type DiagramRole = StepStatement["role"] | "external";

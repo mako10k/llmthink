@@ -27,8 +27,8 @@ import {
   searchThoughtRecords,
   type PersistedThoughtAudit,
   type ThoughtReflectionKind,
-} from "llmthink";
-import type { AuditReport } from "llmthink";
+} from "../../dist/index.js";
+import type { AuditReport } from "../../dist/index.js";
 
 const DSL_TOOL_NAME = "llmthink-dsl";
 
