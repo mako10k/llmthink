@@ -23,7 +23,11 @@
       "patterns": [
         {
           "name": "keyword.control.llmthink",
-          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|decision|based_on|pending|query|requires|forbids|warns)\\b"
+          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|decision|comparison|relation|based_on|pending|query|requires|forbids|warns)\\b"
+        },
+        {
+          "name": "keyword.operator.relation.llmthink",
+          "match": "\\b(preferred_over|weaker_than|incomparable|counterexample_to)\\b"
         }
       ]
     },
@@ -47,11 +51,11 @@
         },
         {
           "name": "entity.name.function.statement.llmthink",
-          "match": "(?<=\\b(premise|viewpoint|partition|evidence|decision|pending)\\s)[A-Za-z][A-Za-z0-9_-]*"
+          "match": "(?<=\\b(premise|viewpoint|partition|evidence|decision|comparison|pending)\\s)[A-Za-z][A-Za-z0-9_-]*"
         },
         {
           "name": "storage.type.annotation.llmthink",
-          "match": "(?<=\\bannotation\\s)(explanation|rationale|caveat|todo)(?=:)"
+          "match": "(?<=\\bannotation\\s)(explanation|rationale|caveat|todo|orphan_future|orphan_reference)(?=:)"
         },
         {
           "name": "entity.name.function.query.llmthink",
