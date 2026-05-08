@@ -20,6 +20,7 @@ interface DiagramNode {
   title: string;
   subtitle: string;
   role: DiagramRole;
+  intentionalOrphan?: boolean;
   line?: number;
   column?: number;
 }
@@ -85,6 +86,14 @@ function escapeHtml(value: string): string {
 
 function formatAnnotationLabel(annotation: Annotation): string {
   return `${annotation.kind}: ${annotation.text}`;
+}
+
+function hasIntentionalOrphanAnnotation(annotations: Annotation[]): boolean {
+  return annotations.some(
+    (annotation) =>
+      annotation.kind === "orphan_future" ||
+      annotation.kind === "orphan_reference",
+  );
 }
 
 function formatFrameworkRule(rule: FrameworkRule): string {
@@ -211,6 +220,7 @@ function buildDiagramData(document: DocumentAst): {
       title: truncateSvgText(problem.name, 24),
       subtitle: problem.text,
       role: "problem",
+      intentionalOrphan: hasIntentionalOrphanAnnotation(problem.annotations),
       line: problem.span.line,
       column: problem.span.column,
     });
@@ -224,6 +234,10 @@ function buildDiagramData(document: DocumentAst): {
       title: truncateSvgText(step.statement.id, 24),
       subtitle: formatStatementSummary(step.statement),
       role,
+      intentionalOrphan:
+        "annotations" in step.statement
+          ? hasIntentionalOrphanAnnotation(step.statement.annotations)
+          : false,
       line: step.statement.span.line,
       column: step.statement.span.column,
     });
@@ -534,8 +548,15 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       const dataAttributes = node.line && node.column
         ? `data-line="${node.line}" data-column="${node.column}" data-node-key="${escapeHtml(node.key)}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
         : "";
+      const nodeClasses = [
+        "node",
+        `node-${node.role}`,
+        node.intentionalOrphan ? "node-intentional-orphan" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       return `
-        <g class="node node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
+        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="18" ry="18" />
           <foreignObject x="16" y="14" width="${layoutNode.width - 32}" height="${layoutNode.height - 28}" class="node-copy-wrap">
             <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(subtitle)}</div>
@@ -551,8 +572,15 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       if (!layoutNode) {
         return "";
       }
+      const nodeClasses = [
+        "minimap-node",
+        `minimap-node-${node.role}`,
+        node.intentionalOrphan ? "minimap-node-intentional-orphan" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       return `
-        <g class="minimap-node minimap-node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" data-target-node="${escapeHtml(node.key)}">
+        <g class="${nodeClasses}" transform="translate(${layoutNode.x}, ${layoutNode.y})" data-target-node="${escapeHtml(node.key)}">
           <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="10" ry="10" />
         </g>
       `;
@@ -1312,6 +1340,11 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .minimap-node rect {
         stroke-width: 1;
       }
+      .minimap-node-intentional-orphan rect {
+        stroke: color-mix(in srgb, var(--vscode-descriptionForeground) 72%, transparent);
+        stroke-width: 2;
+        stroke-dasharray: 7 5;
+      }
       .minimap-node-problem rect {
         fill: color-mix(in srgb, var(--vscode-charts-red) 28%, var(--vscode-editor-background));
         stroke: color-mix(in srgb, var(--vscode-charts-red) 76%, transparent);
@@ -1389,6 +1422,11 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .node rect {
         stroke-width: 1.2;
         transition: transform 120ms ease, filter 120ms ease, stroke-width 120ms ease;
+      }
+      .node-intentional-orphan rect {
+        stroke: color-mix(in srgb, var(--vscode-descriptionForeground) 82%, transparent);
+        stroke-width: 2.2;
+        stroke-dasharray: 7 5;
       }
       .node[data-line] {
         cursor: pointer;

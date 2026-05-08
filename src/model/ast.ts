@@ -21,7 +21,9 @@ export type AnnotationKind =
   | "explanation"
   | "rationale"
   | "caveat"
-  | "todo";
+  | "todo"
+  | "orphan_future"
+  | "orphan_reference";
 
 export interface Annotation {
   kind: AnnotationKind;

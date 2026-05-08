@@ -238,3 +238,59 @@ test("preview:html renders comparison statements and comparison section", async 
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test("preview:html marks intentional orphan nodes with a weak visual class", async () => {
+  const repoRoot = resolve("/home/mako10k/llmthink");
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-orphan-"));
+  const inputPath = join(tempDir, "intentional-orphan.dsl");
+  const outputPath = join(tempDir, "preview.html");
+
+  writeFileSync(
+    inputPath,
+    [
+      "problem P1:",
+      '  "future backlog problem"',
+      "  annotation orphan_future:",
+      '    "connect later"',
+      "",
+      "step:",
+      "  evidence EV1:",
+      '    "reference note"',
+      "    annotation orphan_reference:",
+      '      "context only"',
+      "",
+      "step:",
+      "  decision D1 based_on P1:",
+      '    "keep one connected decision"',
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  try {
+    execFileSync(
+      "npm",
+      [
+        "run",
+        "preview:html",
+        "--",
+        inputPath,
+        "--out",
+        outputPath,
+        "--locale",
+        "ja",
+      ],
+      {
+        cwd: repoRoot,
+        stdio: "pipe",
+      },
+    );
+
+    const html = readFileSync(outputPath, "utf8");
+    assert.match(html, /node-intentional-orphan/);
+    assert.match(html, /minimap-node-intentional-orphan/);
+    assert.match(html, /stroke-dasharray: 7 5/);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});

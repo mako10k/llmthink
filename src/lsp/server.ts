@@ -68,6 +68,8 @@ const KEYWORD_DOCS: Record<string, string> = {
   rationale: "annotation kind です。判断理由や背景説明を表します。",
   caveat: "annotation kind です。注意点や制約を表します。",
   todo: "annotation kind です。後続作業や未完了事項を表します。",
+  orphan_future: "annotation kind です。将来扱う intentional orphan を表します。",
+  orphan_reference: "annotation kind です。参照用に残す intentional orphan を表します。",
   step: "1 つの推論ステップを表します。",
   premise: "前提を表す step body です。",
   viewpoint: "評価軸を表す step body です。",

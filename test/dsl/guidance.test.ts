@@ -84,3 +84,24 @@ test("getDslSyntaxGuidanceText exposes comparison syntax guidance", () => {
   assert.match(text, /preferred_over/);
   assert.match(text, /decision-comparison/);
 });
+
+test("getDslSyntaxGuidanceText lists use-case profiles for ideation and problem solving", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "usecases",
+  });
+  assert.match(text, /- ideation:/);
+  assert.match(text, /- problem-solving:/);
+  assert.match(text, /- other-profiles:/);
+});
+
+test("getDslSyntaxGuidanceText exposes ideation profile aliases and samples", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "usecases",
+    subtopic: "ideation",
+    detail: "detail",
+  });
+  assert.match(text, /idea seed/);
+  assert.match(text, /cluster/);
+  assert.match(text, /ideation-profile/);
+  assert.match(text, /docs\/examples\/ideation-profile\.dsl/);
+});

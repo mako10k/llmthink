@@ -53,6 +53,13 @@
 - requires
 - forbids
 - warns
+- annotation
+- explanation
+- rationale
+- caveat
+- todo
+- orphan_future
+- orphan_reference
 
 ---
 
@@ -90,7 +97,7 @@ DescriptionLine = "description" String Newline ;
 ### 5.3 problem 宣言
 
 ```ebnf
-ProblemDecl     = "problem" Identifier ":" Newline Indent StringLine Dedent ;
+ProblemDecl     = "problem" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
 StringLine      = String Newline ;
 ```
 
@@ -105,7 +112,7 @@ StepBody        = PremiseDecl | ViewpointDecl | PartitionDecl | EvidenceDecl | D
 ### 5.5 premise 宣言
 
 ```ebnf
-PremiseDecl     = "premise" Identifier ":" Newline Indent StringLine Dedent ;
+PremiseDecl     = "premise" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
 ```
 
 ### 5.6 viewpoint 宣言
@@ -126,20 +133,23 @@ PredicateExpr   = Identifier | "not" Identifier | Identifier { ("and" | "or") Id
 ### 5.8 evidence 宣言
 
 ```ebnf
-EvidenceDecl    = "evidence" Identifier ":" Newline Indent StringLine Dedent ;
+EvidenceDecl    = "evidence" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
 ```
 
 ### 5.9 decision 宣言
 
 ```ebnf
-DecisionDecl    = "decision" Identifier ["based_on" ReferenceList] ":" Newline Indent StringLine Dedent ;
+DecisionDecl    = "decision" Identifier ["based_on" ReferenceList] ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
 ReferenceList   = Identifier { "," Identifier } ;
 ```
 
 ### 5.10 pending 宣言
 
 ```ebnf
-PendingDecl     = "pending" Identifier ":" Newline Indent StringLine Dedent ;
+PendingDecl     = "pending" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+
+AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
+AnnotationKind  = "explanation" | "rationale" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
 ```
 
 ### 5.10 comparison 宣言

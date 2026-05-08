@@ -405,22 +405,87 @@ const HELP_NODES: HelpNode[] = [
   {
     key: "usecases",
     title: "Use Case Index",
-    summary: "目的文から query テンプレートへ逆引きする入口。",
+    summary: "目的文や思考 profile から query テンプレートと代表例へ逆引きする入口。",
     quick: [
       "query 文法ではなく、やりたいことから辿りたいときの入口。",
-      "迷ったら usecase を選び、関連する query root と function を見る。",
+      "迷ったら usecase profile を選び、最小 role、alias、関連 query を見る。",
     ],
     detail: [
-      "usecase は query examples より目的主導で、短い説明と関連 reference を返す。",
+      "usecase は query examples より目的主導で、最小 role、alias、関連 reference を返す。",
       "LLM には usecase の短いテンプレートを返し、人間には see also を付ける。",
     ],
     index: [
+      { key: "usecases.ideation", label: "ideation", summary: "発散 -> 収束 -> クラスタ化 -> ラベル -> 結論を既存 role で記述したい" },
+      { key: "usecases.problem-solving", label: "problem-solving", summary: "課題解決・問題解決の最小 role を知りたい" },
+      { key: "usecases.other-profiles", label: "other-profiles", summary: "その他ユースケースを representative profile で見たい" },
       { key: "usecases.problem-to-decision", label: "problem-to-decision", summary: "problem から関連 decision を出したい" },
       { key: "usecases.decision-without-basis", label: "decision-without-basis", summary: "根拠のない decision を探したい" },
       { key: "usecases.open-pending", label: "open-pending", summary: "pending を含む thought を探したい" },
       { key: "usecases.audit-findings", label: "audit-findings", summary: "warning 以上の finding を集計したい" },
     ],
     related: ["query.examples", "query.functions"],
+  },
+  {
+    key: "usecases.ideation",
+    title: "Use Case: Ideation Support",
+    summary: "発散、収束、クラスタ化、ラベル付け、結論化を既存 role で表す。",
+    quick: [
+      "最小 role は `problem`、`premise` または `evidence`、`viewpoint`、`partition`、`decision`、`pending`。",
+      "`premise` / `evidence` は idea seed、`partition` は cluster、`decision` は conclusion と読める。",
+    ],
+    detail: [
+      "発散段階では premise や evidence を seed 候補として並べる。",
+      "収束とラベル付けは viewpoint と partition を使って cluster を明示する。",
+      "採用しなかった枝や次回候補は pending に残す。",
+    ],
+    examples: [
+      'problem P1:\n  "次に検討する案を整理したい"',
+      'viewpoint VP1:\n  axis activation',
+      'partition PT1 on Ideation axis activation:\n  Guided := guided_entry\n  Checklist := checklist_entry\n  Others := not Guided and not Checklist',
+      'decision D1 based_on P1, PR1, EV1:\n  "guided entry を中心案として収束する"',
+    ],
+    exampleSamples: ["ideation-profile"],
+    related: ["syntax.step", "syntax.decision", "query.examples"],
+  },
+  {
+    key: "usecases.problem-solving",
+    title: "Use Case: Problem Solving",
+    summary: "課題解決・問題解決を最小 role で追う。",
+    quick: [
+      "最小 role は `problem`、`premise`、`evidence`、`decision`、`pending`。",
+      "必要なら `viewpoint` や `partition` を追加して比較軸や分類を明示する。",
+    ],
+    detail: [
+      "まず problem で解く対象を固定し、premise で制約や前提を置く。",
+      "evidence を積んで decision へ接続し、未解決は pending に残す。",
+      "複数解法を比較する場合だけ viewpoint や partition を追加する。",
+    ],
+    examples: [
+      'problem P1:\n  "nightly build failure を止めたい"',
+      'premise PR1:\n  "失敗は CI 上で再現する"',
+      'decision D1 based_on P1, PR1, EV1:\n  "dependency cache invalidation を先に試す"',
+    ],
+    exampleSamples: ["problem-solving-profile"],
+    related: ["usecases.problem-to-decision", "usecases.open-pending", "syntax.decision"],
+  },
+  {
+    key: "usecases.other-profiles",
+    title: "Use Case: Other Profiles",
+    summary: "その他ユースケースは syntax 追加ではなく representative profile を段階追加する。",
+    quick: [
+      "設計レビュー、比較検討、計画整理、振り返りなどを profile と example で増やす。",
+      "alias は parser keyword ではなく docs/help 上の説明語として扱う。",
+    ],
+    detail: [
+      "AST、audit、preview、query の role 名は固定し、usecase ごとの差分は guidance で吸収する。",
+      "既存 role では表現しきれない差分が確認されるまで、新しい statement role は追加しない。",
+    ],
+    examples: [
+      "design review: problem / premise / evidence / decision / pending",
+      "planning: problem / premise / partition / decision / pending",
+      "retrospective: problem / evidence / decision / pending",
+    ],
+    related: ["usecases.ideation", "usecases.problem-solving", "samples"],
   },
   {
     key: "usecases.problem-to-decision",

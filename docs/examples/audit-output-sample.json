@@ -5,7 +5,7 @@
   "summary": {
     "fatal_count": 0,
     "error_count": 1,
-    "warning_count": 0,
+    "warning_count": 1,
     "info_count": 1,
     "hint_count": 1
   },
@@ -33,6 +33,26 @@
     {
       "issue_id": "ISSUE-002",
       "category": "semantic_hint",
+      "severity": "warning",
+      "target_refs": [
+        {
+          "ref_id": "P1",
+          "role": "problem"
+        }
+      ],
+      "message": "problem P1 がどの decision からも直接参照されていない。",
+      "rationale": "problem は explicit based_on graph 上で少なくとも 1 つの decision から直接参照されると、解決対象との対応が読みやすくなる。",
+      "suggestion": "対応する decision の based_on に追加するか、意図的な孤立であれば orphan_future / orphan_reference annotation を付ける。",
+      "metadata": {
+        "line": 6,
+        "column": 9,
+        "end_column": 11,
+        "orphan_rule": "problem_direct_incoming_edge"
+      }
+    },
+    {
+      "issue_id": "ISSUE-003",
+      "category": "semantic_hint",
       "severity": "info",
       "target_refs": [
         {
@@ -49,7 +69,7 @@
       }
     },
     {
-      "issue_id": "ISSUE-003",
+      "issue_id": "ISSUE-004",
       "category": "semantic_hint",
       "severity": "hint",
       "target_refs": [

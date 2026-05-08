@@ -3,6 +3,7 @@ import { basename } from "node:path";
 
 import type {
   ComparisonStatement,
+  Annotation,
   DecisionStatement,
   DocumentAst,
   PartitionStatement,
@@ -128,6 +129,27 @@ function collectDeclaredIds(document: DocumentAst): Set<string> {
   for (const problem of document.problems) ids.add(problem.name);
   for (const step of document.steps) ids.add(step.statement.id);
   return ids;
+}
+
+function hasIntentionalOrphanAnnotation(annotations: Annotation[]): boolean {
+  return annotations.some(
+    (annotation) =>
+      annotation.kind === "orphan_future" ||
+      annotation.kind === "orphan_reference",
+  );
+}
+
+function collectDirectDecisionRefs(document: DocumentAst): Set<string> {
+  const refs = new Set<string>();
+  for (const step of document.steps) {
+    if (step.statement.role !== "decision") {
+      continue;
+    }
+    for (const ref of step.statement.basedOn) {
+      refs.add(ref);
+    }
+  }
+  return refs;
 }
 
 function findDecisions(
@@ -580,6 +602,71 @@ function addPendingHintIssue(
   });
 }
 
+function addOrphanNodeIssues(
+  issues: AuditIssue[],
+  document: DocumentAst,
+  directDecisionRefs: Set<string>,
+): void {
+  for (const problem of document.problems) {
+    if (
+      directDecisionRefs.has(problem.name) ||
+      hasIntentionalOrphanAnnotation(problem.annotations)
+    ) {
+      continue;
+    }
+
+    createIssue(issues, {
+      category: "semantic_hint",
+      severity: "warning",
+      target_refs: [{ ref_id: problem.name, role: "problem" }],
+      message: `problem ${problem.name} がどの decision からも直接参照されていない。`,
+      rationale:
+        "problem は explicit based_on graph 上で少なくとも 1 つの decision から直接参照されると、解決対象との対応が読みやすくなる。",
+      suggestion:
+        "対応する decision の based_on に追加するか、意図的な孤立であれば orphan_future / orphan_reference annotation を付ける。",
+      metadata: {
+        line: problem.span.line,
+        column: problem.span.column + "problem ".length,
+        end_column: problem.span.column + "problem ".length + problem.name.length,
+        orphan_rule: "problem_direct_incoming_edge",
+      },
+    });
+  }
+
+  for (const step of document.steps) {
+    if (
+      step.statement.role !== "premise" &&
+      step.statement.role !== "evidence"
+    ) {
+      continue;
+    }
+
+    if (
+      directDecisionRefs.has(step.statement.id) ||
+      hasIntentionalOrphanAnnotation(step.statement.annotations)
+    ) {
+      continue;
+    }
+
+    createIssue(issues, {
+      category: "semantic_hint",
+      severity: "hint",
+      target_refs: [statementReference(step.statement, step.id)],
+      message: `${step.statement.role} ${step.statement.id} がどの decision からも直接参照されていない。`,
+      rationale:
+        "supporting node が explicit based_on graph に現れないと、何の判断を支える記述なのか再読時に追いにくい。",
+      suggestion:
+        "対応する decision の based_on に追加するか、意図的な孤立であれば orphan_future / orphan_reference annotation を付ける。",
+      metadata: {
+        line: step.statement.span.line,
+        column: statementIdentifierColumn(step.statement),
+        end_column: statementIdentifierEndColumn(step.statement),
+        orphan_rule: "supporting_node_direct_incoming_edge",
+      },
+    });
+  }
+}
+
 function addDecisionSemanticHint(
   issues: AuditIssue[],
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
@@ -668,6 +755,7 @@ async function auditDocument(
 ): Promise<AuditReport> {
   const issues: AuditIssue[] = [];
   const ids = collectDeclaredIds(document);
+  const directDecisionRefs = collectDirectDecisionRefs(document);
   const pendingSteps = findPending(document);
   const decisions = findDecisions(document);
   const comparisons = findComparisons(document);
@@ -675,6 +763,7 @@ async function auditDocument(
   auditFrameworkRequirements(issues, document);
   auditStepContracts(issues, document, ids);
   auditQueryReferences(issues, document, ids);
+  addOrphanNodeIssues(issues, document, directDecisionRefs);
   addContradictionCandidateIssues(issues, decisions);
   addComparisonConsistencyIssues(issues, comparisons);
   addPendingHintIssue(issues, pendingSteps, decisions);

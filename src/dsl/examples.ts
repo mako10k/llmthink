@@ -25,6 +25,16 @@ export const DSL_EXAMPLES: DslExampleEntry[] = [
     summary: "同一 problem / viewpoint 内の decision comparison 例",
   },
   {
+    id: "ideation-profile",
+    path: "docs/examples/ideation-profile.dsl",
+    summary: "発想支援 profile の代表例",
+  },
+  {
+    id: "problem-solving-profile",
+    path: "docs/examples/problem-solving-profile.dsl",
+    summary: "課題解決 profile の代表例",
+  },
+  {
     id: "framework-requires-and",
     path: "docs/examples/framework-requires-and.dsl",
     summary: "framework の requires and/or を含む最小例",
