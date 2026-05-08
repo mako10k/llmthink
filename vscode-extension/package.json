@@ -118,6 +118,42 @@
             }
           }
         }
+      },
+      {
+        "name": "llmthink-thought",
+        "toolReferenceName": "llmthink-thought",
+        "displayName": "LLMThink Thought",
+        "modelDescription": "LLMThink thought views. Use action=show with view=semantic-audit or semantic-audit-pairs to inspect semantic audit state.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "show"
+              ],
+              "description": "Thought operation to run."
+            },
+            "thoughtId": {
+              "type": "string",
+              "description": "Optional thought identifier. If omitted, the active editor document is used when possible."
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "summary",
+                "draft",
+                "final",
+                "audit",
+                "reflections",
+                "semantic-audit",
+                "semantic-audit-pairs"
+              ],
+              "description": "Thought view to render."
+            }
+          }
+        }
       }
     ],
     "commands": [

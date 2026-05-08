@@ -11,6 +11,8 @@ import {
   formatThoughtList,
   formatThoughtReflections,
   formatThoughtSearchResults,
+  formatThoughtSemanticAuditPairs,
+  formatThoughtSemanticAuditSummary,
   formatThoughtSummary,
 } from "./presentation/thought.js";
 import {
@@ -151,7 +153,7 @@ function printUsage(): void {
       '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
       '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
       "  llmthink thought delete --id <thought-id>",
-      "  llmthink thought show --id <thought-id> [summary|draft|final|audit|reflections]",
+      "  llmthink thought show --id <thought-id> [summary|draft|final|audit|reflections|semantic-audit|semantic-audit-pairs]",
       "  llmthink thought history --id <thought-id>",
       "  llmthink thought search <query> [--limit 5] [--with-reflections]",
       "  llmthink thought list",
@@ -376,6 +378,10 @@ function handleThoughtShow(thoughtId: string, options: CliOptions): void {
       : "No audit yet.\n";
   } else if (view === "reflections") {
     viewText = formatThoughtReflections(snapshot.reflections);
+  } else if (view === "semantic-audit") {
+    viewText = formatThoughtSemanticAuditSummary(snapshot);
+  } else if (view === "semantic-audit-pairs") {
+    viewText = formatThoughtSemanticAuditPairs(snapshot);
   }
   if (viewText !== undefined) {
     process.stdout.write(viewText);

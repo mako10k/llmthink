@@ -58,6 +58,7 @@ export interface ThoughtSnapshot {
   record: ThoughtRecord;
   draftText?: string;
   finalText?: string;
+  semanticAuditText?: string;
   latestAudit?: AuditReport;
   history: ThoughtEvent[];
   reflections: ThoughtReflection[];
@@ -97,6 +98,7 @@ interface ThoughtPaths {
   thoughtsDir: string;
   thoughtDir: string;
   auditsDir: string;
+  semanticAuditPath: string;
   recordPath: string;
   historyPath: string;
   reflectionsPath: string;
@@ -117,6 +119,7 @@ function thoughtPaths(id: string, baseDir?: string): ThoughtPaths {
     thoughtsDir,
     thoughtDir,
     auditsDir: join(thoughtDir, "audits"),
+    semanticAuditPath: join(thoughtDir, "semantic-audit.dsl"),
     recordPath: join(thoughtDir, "thought.json"),
     historyPath: join(thoughtDir, "history.json"),
     reflectionsPath: join(thoughtDir, "reflections.json"),
@@ -396,6 +399,7 @@ export function loadThought(id: string, baseDir?: string): ThoughtSnapshot {
     record,
     draftText: readTextIfExists(paths.draftPath),
     finalText: readTextIfExists(paths.finalPath),
+    semanticAuditText: readTextIfExists(paths.semanticAuditPath),
     latestAudit,
     history,
     reflections: readThoughtReflections(id, baseDir),

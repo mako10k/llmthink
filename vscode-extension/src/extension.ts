@@ -18,6 +18,8 @@ import {
   formatThoughtList,
   formatThoughtReflections,
   formatThoughtSearchResults,
+  formatThoughtSemanticAuditPairs,
+  formatThoughtSemanticAuditSummary,
   formatThoughtSummary,
   getDslSyntaxGuidanceText,
   isDslHelpRequest,
@@ -32,6 +34,7 @@ import {
 import type { AuditReport } from "../../dist/index.js";
 
 const DSL_TOOL_NAME = "llmthink-dsl";
+const THOUGHT_TOOL_NAME = "llmthink-thought";
 
 interface DslToolInput {
   action?: "audit" | "help";
@@ -41,6 +44,19 @@ interface DslToolInput {
   topic?: string;
   subtopic?: string;
   detail?: "index" | "quick" | "detail";
+}
+
+interface ThoughtToolInput {
+  action?: "show";
+  thoughtId?: string;
+  view?:
+    | "summary"
+    | "draft"
+    | "final"
+    | "audit"
+    | "reflections"
+    | "semantic-audit"
+    | "semantic-audit-pairs";
 }
 
 const REFLECTION_KIND_ITEMS: Array<{
@@ -520,6 +536,65 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
   }
 }
 
+class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<ThoughtToolInput>,
+  ): Promise<vscode.LanguageModelToolResult> {
+    const action = options.input.action ?? "show";
+    if (action !== "show") {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart("Unsupported thought tool action."),
+      ]);
+    }
+
+    const editor = vscode.window.activeTextEditor;
+    const thoughtId = options.input.thoughtId?.trim() || (
+      editor ? defaultThoughtIdForDocument(editor.document) : undefined
+    );
+    if (!thoughtId) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          "thoughtId が指定されておらず、アクティブエディタからも導出できません。thoughtId を指定してください。",
+        ),
+      ]);
+    }
+
+    const snapshot = loadThought(thoughtId);
+    const view = options.input.view ?? "semantic-audit";
+    const text = view === "draft"
+      ? snapshot.draftText ?? ""
+      : view === "final"
+        ? snapshot.finalText ?? ""
+        : view === "audit"
+          ? snapshot.latestAudit
+            ? formatAuditReportText(snapshot.latestAudit)
+            : "No audit yet.\n"
+          : view === "reflections"
+            ? formatThoughtReflections(snapshot.reflections)
+            : view === "semantic-audit-pairs"
+              ? formatThoughtSemanticAuditPairs(snapshot)
+              : view === "semantic-audit"
+                ? formatThoughtSemanticAuditSummary(snapshot)
+                : formatThoughtSummary(snapshot);
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(text),
+    ]);
+  }
+
+  prepareInvocation(
+    options: vscode.LanguageModelToolInvocationPrepareOptions<ThoughtToolInput>,
+  ): vscode.PreparedToolInvocation {
+    const thoughtId = options.input.thoughtId?.trim();
+    const view = options.input.view ?? "semantic-audit";
+    return {
+      invocationMessage: thoughtId
+        ? `LLMThink で ${thoughtId} の ${view} を表示しています`
+        : `LLMThink で thought の ${view} を表示しています`,
+    };
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
   const subscriptions: vscode.Disposable[] = [outputChannel];
@@ -555,6 +630,7 @@ export function activate(context: vscode.ExtensionContext): void {
   if (typeof vscode.lm.registerTool === "function") {
     try {
       subscriptions.push(vscode.lm.registerTool(DSL_TOOL_NAME, new DslTool()));
+      subscriptions.push(vscode.lm.registerTool(THOUGHT_TOOL_NAME, new ThoughtTool()));
     } catch (error) {
       outputChannel.appendLine(
         `Failed to register LLMThink language model tool: ${String(error)}`,

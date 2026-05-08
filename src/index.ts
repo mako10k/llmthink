@@ -21,6 +21,8 @@ export {
   formatThoughtHistory,
   formatThoughtList,
   formatThoughtSearchResults,
+  formatThoughtSemanticAuditPairs,
+  formatThoughtSemanticAuditSummary,
   formatThoughtSummary,
 } from "./presentation/thought.js";
 export {
@@ -46,5 +48,6 @@ export type * from "./model/diagnostics.js";
 export type {
   ThoughtReflection,
   ThoughtReflectionKind,
+  ThoughtSnapshot,
 } from "./thought/store.js";
 export type { PersistedThoughtAudit, ThoughtIdSource } from "./thought/workflow.js";
