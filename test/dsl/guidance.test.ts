@@ -20,6 +20,14 @@ test("parseDslHelpRequest extracts topic, subtopic, and detail", () => {
   });
 });
 
+test("parseDslHelpRequest keeps topic-only detail requests without subtopic", () => {
+  assert.deepEqual(parseDslHelpRequest("dsl help query detail"), {
+    topic: "query",
+    subtopic: undefined,
+    detail: "detail",
+  });
+});
+
 test("getDslSyntaxGuidanceText returns indexed overview by default", () => {
   const text = getDslSyntaxGuidanceText();
   assert.match(text, /LLMThink DSL Help/);
@@ -40,4 +48,15 @@ test("getDslSyntaxGuidanceText returns query function detail with next requests"
   assert.match(text, /audit_findings/);
   assert.match(text, /Next Requests/);
   assert.match(text, /llmthink dsl help query functions detail/);
+});
+
+test("getDslSyntaxGuidanceText includes concrete example files for query topics", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "query",
+    subtopic: "examples",
+    detail: "detail",
+  });
+  assert.match(text, /Example Files/);
+  assert.match(text, /docs\/examples\/query-assist\.dsl/);
+  assert.match(text, /docs\/examples\/query-unresolved\.dsl/);
 });

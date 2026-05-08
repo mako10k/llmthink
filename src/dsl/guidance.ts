@@ -31,6 +31,7 @@ interface HelpNode {
   quick: string[];
   detail: string[];
   examples?: string[];
+  exampleFiles?: Array<{ path: string; summary: string }>;
   index?: Array<{ key: string; label: string; summary: string }>;
   related?: string[];
 }
@@ -106,6 +107,9 @@ const HELP_NODES: HelpNode[] = [
       "problem P1:",
       '  "監査したい問題"',
     ],
+    exampleFiles: [
+      { path: "docs/examples/framework-requires-and.dsl", summary: "framework の requires and/or を含む最小例" },
+    ],
     related: ["syntax.step", "syntax.query-block"],
   },
   {
@@ -134,6 +138,9 @@ const HELP_NODES: HelpNode[] = [
       "decision D1 based_on EV1:",
       '  "implicit step"',
     ],
+    exampleFiles: [
+      { path: "docs/examples/decision-minimal.dsl", summary: "flatten 記法でも読める decision の最小例" },
+    ],
     related: ["syntax.decision", "query"],
   },
   {
@@ -156,6 +163,10 @@ const HELP_NODES: HelpNode[] = [
       "  annotation rationale:",
       '    "根拠を明示する"',
     ],
+    exampleFiles: [
+      { path: "docs/examples/decision-minimal.dsl", summary: "decision と based_on の最小例" },
+      { path: "docs/examples/contradiction-pending.dsl", summary: "decision と pending が同居する監査例" },
+    ],
     related: ["syntax.step", "query.functions", "usecases.decision-without-basis"],
   },
   {
@@ -175,6 +186,10 @@ const HELP_NODES: HelpNode[] = [
     examples: [
       "query Q1:",
       '  .problems[] | select(.id == "P1") | related_decisions',
+    ],
+    exampleFiles: [
+      { path: "docs/examples/query-assist.dsl", summary: "query block と related_decisions の代表例" },
+      { path: "docs/examples/query-unresolved.dsl", summary: "query 参照が未解決なときの例" },
     ],
     related: ["query", "query.examples", "usecases.problem-to-decision"],
   },
@@ -221,6 +236,9 @@ const HELP_NODES: HelpNode[] = [
       '.problems[] | select(.id == "P1") | related_decisions',
       '.steps[] | select(.role == "decision")',
       '.audit | audit_findings("warning")',
+    ],
+    exampleFiles: [
+      { path: "docs/examples/query-assist.dsl", summary: "problem root から decision を辿る例" },
     ],
     related: ["query.functions", "query.examples"],
   },
@@ -283,6 +301,10 @@ const HELP_NODES: HelpNode[] = [
       '.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}',
       '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
     ],
+    exampleFiles: [
+      { path: "docs/examples/query-assist.dsl", summary: "related_decisions を使う正規例" },
+      { path: "docs/examples/query-unresolved.dsl", summary: "関数や参照の誤りを含む比較例" },
+    ],
     related: ["query.roots", "query.examples", "usecases.problem-to-decision"],
   },
   {
@@ -324,6 +346,11 @@ const HELP_NODES: HelpNode[] = [
       '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
       '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
     ],
+    exampleFiles: [
+      { path: "docs/examples/query-assist.dsl", summary: "解決済み query の代表例" },
+      { path: "docs/examples/query-unresolved.dsl", summary: "未解決参照を含む対比例" },
+      { path: "docs/examples/dsl-samples.md", summary: "DSL 全体サンプル集" },
+    ],
     related: ["usecases", "query.functions", "query.projections"],
   },
   {
@@ -343,6 +370,10 @@ const HELP_NODES: HelpNode[] = [
     examples: [
       'query Q1:\n  .problems[] | select(.id == "P1") | related_decisions',
       'query Q2:\n  .steps[] | select(.role == "decision")',
+    ],
+    exampleFiles: [
+      { path: "docs/examples/query-unresolved.dsl", summary: "query トラブルシュートの起点になる失敗例" },
+      { path: "docs/examples/query-assist.dsl", summary: "失敗例と比較しやすい成功例" },
     ],
     related: ["query.roots", "query.functions", "usecases"],
   },
@@ -381,6 +412,9 @@ const HELP_NODES: HelpNode[] = [
     examples: [
       '.problems[] | select(.id == "P1") | related_decisions | {id: .id, text: .text, based_on: .based_on}',
     ],
+    exampleFiles: [
+      { path: "docs/examples/query-assist.dsl", summary: "problem から decision を辿る完成例" },
+    ],
     related: ["query.functions", "query.projections", "syntax.query-block"],
   },
   {
@@ -397,6 +431,10 @@ const HELP_NODES: HelpNode[] = [
     ],
     examples: [
       '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
+    ],
+    exampleFiles: [
+      { path: "docs/examples/decision-minimal.dsl", summary: "decision 単体の見直し用最小例" },
+      { path: "docs/examples/contradiction-pending.dsl", summary: "監査で decision を点検する複合例" },
     ],
     related: ["query.conditions", "syntax.decision"],
   },
@@ -431,6 +469,10 @@ const HELP_NODES: HelpNode[] = [
     ],
     examples: [
       '.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}',
+    ],
+    exampleFiles: [
+      { path: "docs/examples/query-assist.audit.json", summary: "query 実行後の監査出力サンプル" },
+      { path: "docs/examples/audit-output-sample.json", summary: "監査結果 JSON の全体像" },
     ],
     related: ["query.functions", "query.projections"],
   },
@@ -628,6 +670,17 @@ function formatDetailReference(node: HelpNode): string[] {
   ];
 }
 
+function formatExampleFiles(node: HelpNode): string[] {
+  if (!node.exampleFiles || node.exampleFiles.length === 0) {
+    return [];
+  }
+  return [
+    "Example Files",
+    ...node.exampleFiles.map((item) => `- ${item.path}: ${item.summary}`),
+    "",
+  ];
+}
+
 export function parseDslHelpRequest(input: string): DslHelpRequest | undefined {
   const tokens = input.trim().split(/\s+/u).filter(Boolean);
   if (tokens[0]?.toLowerCase() !== "dsl" || tokens[1]?.toLowerCase() !== "help") {
@@ -641,7 +694,11 @@ export function parseDslHelpRequest(input: string): DslHelpRequest | undefined {
       : undefined;
   return {
     topic: tokens[2],
-    subtopic: detail ? tokens[3] : tokens[3],
+    subtopic: detail
+      ? tokens.length >= 5
+        ? tokens[3]
+        : undefined
+      : tokens[3],
     detail,
   };
 }
@@ -676,6 +733,7 @@ export function getDslSyntaxGuidanceText(request: DslHelpRequest = {}): string {
     lines.push(...formatDetailReference(node));
   }
 
+  lines.push(...formatExampleFiles(node));
   lines.push(...formatRelatedIndex(request, node));
   lines.push("Next Requests", ...helpInvocationExamples(node, request));
   return `${lines.join("\n")}\n`;
