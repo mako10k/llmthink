@@ -298,13 +298,90 @@ step S66:
     "semantic-audit.dsl の最小サンプルは 'semantic_audit SA1 on D1 support E1 verdict supported:' の header と、1 行の reason body を基本形とする"
 
 step S67:
-  pending PD8:
-    "semantic_audit statement の補助メタデータを annotation kind で表すか、metadata line で表すかは parser の単純さと将来 query を見て再判断が必要である"
+  decision D31 based_on PR9, D22, D23, D26:
+    "semantic_audit statement の補助メタデータは annotation kind 追加ではなく fixed metadata line で表し、reviewer、model、audited_at、source_thought などを key-value 的に機械抽出しやすくする"
 
 step S68:
-  pending PD9:
-    "thought show の view 名を semantic-audit、semantic-audit-summary、semantic-audit-pairs のどこへ寄せるかは既存 show UI の一貫性を見て決める必要がある"
+  decision D32 based_on PR10, EV10, D27, D29:
+    "thought show の view 名は 'semantic-audit' を document_summary 相当、'semantic-audit-pairs' を pair_summary 相当として追加し、既存の短い view 名スタイルに寄せる"
 
 step S69:
+  decision D33 based_on PR10, EV11, D28, D29:
+    "preview の pair_summary は既定で折りたたみ、明示トグルで開く方式とし、通常表示では document_summary と未監査件数だけを見せて情報密度を抑える"
+
+problem P13:
+  "semantic_audit の補助メタデータを annotation kind に寄せると、構造化値の読み出しと将来 query での抽出が awkward になりやすい"
+
+problem P14:
+  "thought show と preview の view 名や既定表示が曖昧だと、document_summary と pair_summary のどちらをどこで見るべきか利用者が予測しにくい"
+
+step S70:
+  premise PR11:
+    "MVP の補助メタデータは自由文説明よりも機械抽出を優先し、値の比較やフィルタに耐える素朴な構造を選ぶべきである"
+
+step S71:
+  premise PR12:
+    "日常運用で最短到達したい情報は document 単位の監査有無と未解決件数であり、pair ごとの長い reason は常時露出しないほうが扱いやすい"
+
+step S72:
+  evidence EV13:
+    "annotation kind は現在も閉じた列挙で運用しており、reviewer や model のような項目ごとに kind を増やすと DSL 全体へ波及しやすい"
+
+step S73:
+  evidence EV14:
+    "thought show は terminal での一覧確認に向いており、view 名は短く予測可能なほうが補完と記憶の負荷が低い"
+
+step S74:
+  evidence EV15:
+    "preview は markdown と graph の両方を同時表示するため、pair 単位の長文 reason を初期表示すると主要構造の読解を妨げやすい"
+
+step S75:
+  decision D34 based_on P13, PR11, EV13, D31:
+    "fixed metadata line の初期集合は reviewer、model、audited_at、source_thought とし、必要なら locale 非依存 key を追加する方式で拡張する"
+
+step S76:
+  decision D35 based_on PR11, D31, D34:
+    "metadata line の基本形は 'reviewer <value>' や 'audited_at <iso8601>' のような単純行とし、annotation の入れ子ではなく semantic_audit body の先頭に並べる"
+
+step S77:
+  decision D36 based_on P14, PR12, EV10, EV14, D32:
+    "thought show の既定 summary には semantic audit の document_summary を 1 行要約で含め、詳細が必要なときだけ 'semantic-audit' または 'semantic-audit-pairs' view へ降りる構成にする"
+
+step S78:
+  decision D37 based_on P14, PR12, EV11, EV15, D33:
+    "preview は document_summary を固定表示し、pair_summary はセクション単位の disclosure トグルで開く。未監査 pair がある場合は閉じた状態でも件数だけ明示する"
+
+step S79:
+  decision D38 based_on D32, D36, D37:
+    "用語は CLI と preview でそろえ、document_summary、pair_summary、unreviewed_pairs の 3 語を内部・表示の共通概念として扱う"
+
+step S80:
+  decision D39 based_on PR11, D31, D35:
+    "metadata line の value は空白を含まない単純値だけを bare token で許可し、空白、引用符、記号を含む値は DSL の通常 string と同じ二重引用符で必ず囲う"
+
+problem P15:
+  "metadata line の escaping 規則が曖昧だと、CLI 自動追記と手編集が衝突し、reviewer 名や model 名のような空白入り値で parser の解釈がぶれやすい"
+
+step S81:
+  evidence EV16:
+    "reviewer や model には空白を含む値が現れやすく、bare token と quoted string の境界を固定しないと formatter と parser の往復が不安定になる"
+
+step S82:
+  decision D40 based_on P15, PR11, EV16, D39:
+    "MVP の metadata line では key ごとの専用 escaping を持たず、Identifier 相当の bare token か、通常 string のどちらかに限定する"
+
+step S83:
+  decision D41 based_on D23, D25, D35, D39, D40, EV17:
+    "semantic-audit.dsl の具体サンプルは、header、quoted metadata line、bare token metadata line、reason body を 1 つずつ含む形で guidance と test の基準例にする"
+
+step S84:
+  evidence EV17:
+    "想定サンプル: semantic_audit SA1 on D1 support E1 verdict supported: reviewer \"QA reviewer\" / model gpt-5.4 / audited_at 2026-05-08T07:00:00Z / source_thought contradiction-pending / body reason"
+
+step S85:
+  pending PD9:
+    "thought show summary に semantic audit の 1 行要約を常時含めるか、semantic audit が存在するときだけ動的に増やすかは summary の簡潔さを見て微調整が必要である"
+
+step S86:
   pending PD10:
-    "preview で pair_summary を常時表示するか、トグルで開くかは graph の情報密度とモバイル幅を見て調整が必要である"
+    "preview の disclosure トグルを document ごと 1 つにするか、decision ごとの pair group にするかは実際の情報量と操作回数を見て詰める必要がある"
