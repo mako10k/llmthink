@@ -378,10 +378,40 @@ step S84:
   evidence EV17:
     "想定サンプル: semantic_audit SA1 on D1 support E1 verdict supported: reviewer \"QA reviewer\" / model gpt-5.4 / audited_at 2026-05-08T07:00:00Z / source_thought contradiction-pending / body reason"
 
+problem P16:
+  "thought show summary の semantic audit 1 行要約は、常時表示固定だと簡潔さを損ねる一方、完全自動だと運用ごとの好みやスクリプト利用に合わせにくい"
+
+problem P17:
+  "preview の pair_summary disclosure 粒度が粗すぎると特定 decision 周辺だけを追いにくく、細かすぎるとトグル操作が増えすぎる"
+
 step S85:
-  pending PD9:
-    "thought show summary に semantic audit の 1 行要約を常時含めるか、semantic audit が存在するときだけ動的に増やすかは summary の簡潔さを見て微調整が必要である"
+  premise PR13:
+    "summary 面の情報量は既定値だけで固定せず、CLI option で増減できるほうが運用差に適応しやすい"
 
 step S86:
+  evidence EV18:
+    "terminal での summary 利用には、人が目視する場面と機械処理の前段で軽量一覧だけ欲しい場面が混在する"
+
+step S87:
+  evidence EV19:
+    "preview で利用者が最初に追いたい単位は文書全体より decision 周辺であることが多く、support pair も decision に束ねて見えるほうが局所探索しやすい"
+
+step S88:
+  decision D42 based_on P16, PR13, EV10, EV18, D36:
+    "thought show summary の semantic audit 1 行要約は option で制御し、既定では存在時のみ表示、--with-semantic-audit-summary のような明示指定で常時表示を許可する"
+
+step S89:
+  decision D43 based_on P17, PR12, EV11, EV15, EV19, D37:
+    "preview の disclosure トグルは decision ごとの pair group を第一候補とし、各 decision 配下で reviewed pair と unreviewed_pairs をまとめて開閉できる形にする"
+
+step S90:
+  decision D44 based_on D38, D42, D43:
+    "表示用語はそのまま document_summary、pair_summary、unreviewed_pairs を使い、CLI option と preview group の両方で同じ概念名を再利用する"
+
+step S91:
+  pending PD9:
+    "CLI option 名を --with-semantic-audit-summary、--semantic-audit-summary=always|auto|never のどちらへ寄せるかは既存 option 命名規則と整合を見て決める必要がある"
+
+step S92:
   pending PD10:
-    "preview の disclosure トグルを document ごと 1 つにするか、decision ごとの pair group にするかは実際の情報量と操作回数を見て詰める必要がある"
+    "decision ごとの pair group 内で reviewed と unreviewed をさらに分けるか、単一 list に verdict badge だけ付けるかは preview の実装モックを見て調整が必要である"
