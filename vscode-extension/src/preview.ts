@@ -1208,7 +1208,12 @@ function buildPreviewScript(): string {
 
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
-        scroll.addEventListener("dblclick", () => fitToViewport());
+        scroll.addEventListener("dblclick", (event) => {
+          if (event.target instanceof Element && event.target.closest(".edge-hit, .node, .diagram-button, .diagram-minimap-card")) {
+            return;
+          }
+          fitToViewport();
+        });
         scroll.addEventListener("contextmenu", (event) => {
           if (!suppressContextMenu) {
             return;
