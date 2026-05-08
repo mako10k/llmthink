@@ -345,14 +345,14 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
-      "elk.direction": "RIGHT",
+      "elk.direction": "DOWN",
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "96",
-      "elk.spacing.nodeNode": "36",
-      "elk.padding": "[top=28,left=28,bottom=24,right=28]",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "54",
+      "elk.spacing.nodeNode": "28",
+      "elk.padding": "[top=20,left=20,bottom=20,right=20]",
       "org.eclipse.elk.partitioning.activate": "true",
     },
     children: nodes.map((node) => ({
@@ -804,11 +804,11 @@ function buildPreviewScript(): string {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
             return { left, top };
           }
-          const maxLeft = Math.max(viewport.clientWidth - minimapCard.offsetWidth - 8, 8);
-          const maxTop = Math.max(viewport.clientHeight - minimapCard.offsetHeight - 8, 8);
+          const maxLeft = Math.max(viewport.clientWidth - minimapCard.offsetWidth - 10, 10);
+          const maxTop = Math.max(viewport.clientHeight - minimapCard.offsetHeight - 10, 10);
           return {
-            left: Math.min(Math.max(left, 8), maxLeft),
-            top: Math.min(Math.max(top, 8), maxTop),
+            left: Math.min(Math.max(left, 10), maxLeft),
+            top: Math.min(Math.max(top, 10), maxTop),
           };
         };
 
@@ -908,8 +908,8 @@ function buildPreviewScript(): string {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
             return;
           }
-          const left = viewport.clientWidth - minimapCard.offsetWidth - 12;
-          placeMinimap(left, 12);
+          const left = viewport.clientWidth - minimapCard.offsetWidth - 10;
+          placeMinimap(left, 10);
         };
 
         scroll.addEventListener("scroll", () => {
@@ -1187,11 +1187,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .diagram-scroll {
         overflow: auto;
-        max-height: min(78vh, 920px);
-        min-height: min(72vh, 720px);
-        border-radius: 14px;
-        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
-        background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
+        width: 100%;
+        height: 100%;
         cursor: grab;
       }
       .diagram-scroll.dragging {
@@ -1202,6 +1199,12 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .diagram-viewport {
         position: relative;
+        overflow: hidden;
+        max-height: min(78vh, 920px);
+        min-height: min(72vh, 720px);
+        border-radius: 14px;
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+        background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
       }
       .diagram-stage {
         min-width: 100%;
@@ -1209,7 +1212,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding: 4px;
+        padding: 2px;
       }
       .diagram {
         display: block;
@@ -1221,8 +1224,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         backdrop-filter: blur(10px);
         padding: 8px 8px 10px;
         position: absolute;
-        top: 12px;
-        right: 12px;
+        top: 10px;
+        right: 10px;
         width: min(148px, 24vw);
         box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
         opacity: 0.76;
