@@ -856,6 +856,7 @@ function buildPreviewScript(): string {
         const minimap = card.querySelector(".diagram-minimap");
         const minimapViewport = card.querySelector(".minimap-viewport");
         const minimapCard = card.querySelector(".diagram-minimap-card");
+        const minimapHandle = card.querySelector(".diagram-minimap-grip");
         const viewport = card.querySelector(".diagram-viewport");
         if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
           return;
@@ -866,6 +867,17 @@ function buildPreviewScript(): string {
         let zoom = 1;
         let dragState = undefined;
         let minimapDragState = undefined;
+        let minimapResizeState = undefined;
+        let suppressContextMenu = false;
+
+        const clampMinimapWidth = (width) => {
+          const minWidth = 96;
+          const viewportMax = viewport instanceof HTMLElement
+            ? Math.max(viewport.clientWidth - 20, minWidth)
+            : 320;
+          const maxWidth = Math.min(320, viewportMax);
+          return Math.min(Math.max(width, minWidth), maxWidth);
+        };
 
         const clampMinimapPosition = (left, top) => {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
@@ -887,6 +899,19 @@ function buildPreviewScript(): string {
           minimapCard.style.left = String(next.left) + "px";
           minimapCard.style.top = String(next.top) + "px";
           minimapCard.style.right = "auto";
+        };
+
+        const resizeMinimap = (nextWidth) => {
+          if (!(minimapCard instanceof HTMLElement)) {
+            return;
+          }
+          const clampedWidth = clampMinimapWidth(nextWidth);
+          const centerX = minimapCard.offsetLeft + minimapCard.offsetWidth / 2;
+          const top = minimapCard.offsetTop;
+          minimapCard.style.width = String(clampedWidth) + "px";
+          requestAnimationFrame(() => {
+            placeMinimap(centerX - minimapCard.offsetWidth / 2, top);
+          });
         };
 
         const updateMinimapViewport = () => {
@@ -978,7 +1003,7 @@ function buildPreviewScript(): string {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
             return;
           }
-          const left = viewport.clientWidth - minimapCard.offsetWidth - 10;
+          const left = (viewport.clientWidth - minimapCard.offsetWidth) / 2;
           placeMinimap(left, 10);
         };
 
@@ -1008,11 +1033,12 @@ function buildPreviewScript(): string {
         });
 
         scroll.addEventListener("pointerdown", (event) => {
-          if (event.button !== 0 || event.target.closest(".node[data-line]")) {
+          if ((event.button !== 0 && event.button !== 2) || event.target.closest(".node[data-line]")) {
             return;
           }
           dragState = {
             pointerId: event.pointerId,
+            button: event.button,
             startX: event.clientX,
             startY: event.clientY,
             scrollLeft: scroll.scrollLeft,
@@ -1020,11 +1046,19 @@ function buildPreviewScript(): string {
           };
           scroll.setPointerCapture(event.pointerId);
           scroll.classList.add("dragging");
+          if (event.button === 2) {
+            suppressContextMenu = false;
+            event.preventDefault();
+          }
         });
 
         scroll.addEventListener("pointermove", (event) => {
           if (!dragState || dragState.pointerId !== event.pointerId) {
             return;
+          }
+          if (dragState.button === 2) {
+            suppressContextMenu = true;
+            event.preventDefault();
           }
           scroll.scrollLeft = dragState.scrollLeft - (event.clientX - dragState.startX);
           scroll.scrollTop = dragState.scrollTop - (event.clientY - dragState.startY);
@@ -1044,12 +1078,30 @@ function buildPreviewScript(): string {
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
         scroll.addEventListener("dblclick", () => fitToViewport());
+        scroll.addEventListener("contextmenu", (event) => {
+          if (!suppressContextMenu) {
+            return;
+          }
+          suppressContextMenu = false;
+          event.preventDefault();
+        });
 
         const stopMinimapDragging = (event) => {
           if (!minimapDragState || minimapDragState.pointerId !== event.pointerId) {
             return;
           }
           minimapDragState = undefined;
+          minimapCard?.classList.remove("dragging");
+          if (minimapCard instanceof HTMLElement && minimapCard.hasPointerCapture(event.pointerId)) {
+            minimapCard.releasePointerCapture(event.pointerId);
+          }
+        };
+
+        const stopMinimapResizing = (event) => {
+          if (!minimapResizeState || minimapResizeState.pointerId !== event.pointerId) {
+            return;
+          }
+          minimapResizeState = undefined;
           minimapCard?.classList.remove("dragging");
           if (minimapHandle instanceof HTMLElement && minimapHandle.hasPointerCapture(event.pointerId)) {
             minimapHandle.releasePointerCapture(event.pointerId);
@@ -1058,6 +1110,9 @@ function buildPreviewScript(): string {
 
         if (minimapCard instanceof HTMLElement) {
           minimapCard.addEventListener("pointerdown", (event) => {
+            if (event.target instanceof Element && event.target.closest(".diagram-minimap-grip")) {
+              return;
+            }
             if (event.button !== 0) {
               return;
             }
@@ -1087,6 +1142,41 @@ function buildPreviewScript(): string {
 
           minimapCard.addEventListener("pointerup", stopMinimapDragging);
           minimapCard.addEventListener("pointercancel", stopMinimapDragging);
+
+          minimapCard.addEventListener("wheel", (event) => {
+            if (!event.ctrlKey) {
+              return;
+            }
+            event.preventDefault();
+            resizeMinimap(minimapCard.offsetWidth - event.deltaY * 0.12);
+          }, { passive: false });
+        }
+
+        if (minimapHandle instanceof HTMLElement) {
+          minimapHandle.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 || !(minimapCard instanceof HTMLElement)) {
+              return;
+            }
+            minimapResizeState = {
+              pointerId: event.pointerId,
+              startY: event.clientY,
+              width: minimapCard.offsetWidth,
+            };
+            minimapHandle.setPointerCapture(event.pointerId);
+            minimapCard.classList.add("dragging");
+            event.preventDefault();
+          });
+
+          minimapHandle.addEventListener("pointermove", (event) => {
+            if (!minimapResizeState || minimapResizeState.pointerId !== event.pointerId) {
+              return;
+            }
+            resizeMinimap(minimapResizeState.width + (minimapResizeState.startY - event.clientY));
+            event.preventDefault();
+          });
+
+          minimapHandle.addEventListener("pointerup", stopMinimapResizing);
+          minimapHandle.addEventListener("pointercancel", stopMinimapResizing);
         }
 
         window.addEventListener("resize", () => {
@@ -1298,21 +1388,22 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         border-radius: 10px;
         background: color-mix(in srgb, var(--vscode-editor-background) 42%, transparent);
         backdrop-filter: blur(10px);
-        padding: 6px;
+        padding: 14px 6px 6px;
         position: absolute;
         top: 10px;
         right: 10px;
         width: min(112px, 18vw);
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-        opacity: 0.28;
+        opacity: 0.5;
         transition: opacity 120ms ease, box-shadow 120ms ease;
         z-index: 2;
         cursor: grab;
+        touch-action: none;
       }
       .diagram-minimap-card:hover,
       .diagram-minimap-card:focus-within,
       .diagram-minimap-card.dragging {
-        opacity: 0.56;
+        opacity: 0.75;
         box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
       }
       .diagram-minimap-card.dragging {
@@ -1326,10 +1417,20 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         overflow: hidden;
       }
       .diagram-minimap-grip {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translate(-50%, -50%);
         display: flex;
         justify-content: center;
         gap: 3px;
-        margin-top: 4px;
+        margin-top: 0;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--vscode-editor-background) 58%, transparent);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+        cursor: ns-resize;
+        touch-action: none;
       }
       .diagram-minimap-grip span {
         width: 4px;
