@@ -91,3 +91,107 @@ step S18:
 step S19:
   pending PD4:
     "意味監査結果を本体 DSL に追記するだけで十分か、thought history や別 report にも残すべきかは、差分可読性と検索性を見て再判断が必要である"
+
+problem P6:
+  "意味監査結果の正本をどこへ置くかで、diff の読みやすさ、merge 競合、CLI 自動追記のしやすさが大きく変わる"
+
+problem P7:
+  "本体 DSL に追記すると議論と監査ログが同居して再読性は上がるが、append が増えるほど本文が膨らみやすい"
+
+problem P8:
+  "別ファイル化すると監査ログの追記はしやすいが、本体と分離されるため参照規約と discoverability を設計しないと運用が崩れやすい"
+
+problem P9:
+  "DSL 外の history や store だけに残す方式は本文汚染を避けられるが、Git diff や repo grep だけでは監査結果を追いにくい"
+
+step S20:
+  premise PR5:
+    "運用上の正本は、append-heavy な更新でも競合を局所化でき、かつ repo 内レビューで追跡できる形が望ましい"
+
+step S21:
+  premise PR6:
+    "意味監査は一度きりではなく、verdict の更新、理由の差し替え、再監査の追記が起こりうる"
+
+step S22:
+  premise PR7:
+    "本体 DSL は思考の構造を短く再読するための面であり、監査ログは時系列 append に寄りやすい"
+
+step S23:
+  evidence EV5:
+    "人手レビューでも LLM 補助でも、pair ごとの verdict と理由は回数を重ねて増えるため、statement 本文よりログ列に近い運用になる"
+
+step S24:
+  evidence EV6:
+    "Git 上で同一ファイル末尾への append を複数人が行うと、意味的衝突がなくても mechanical conflict が起きやすい"
+
+step S25:
+  evidence EV7:
+    "repo 内の sidecar file なら、CLI が構造化追記しやすく、PR diff でも監査追加だけを独立にレビューしやすい"
+
+step S26:
+  evidence EV8:
+    "DSL 外 store のみを正本にすると、clone 直後の repo だけでは監査状態が完結せず、エディタやコードレビューで文脈が切れやすい"
+
+step S27:
+  viewpoint VP1:
+    axis collaboration
+
+step S28:
+  viewpoint VP2:
+    axis portability
+
+step S29:
+  viewpoint VP3:
+    axis automation
+
+step S30:
+  decision D8 based_on P6, P7, PR5, PR6, PR7:
+    "案A: 意味監査結果の正本を本体 DSL に append する"
+
+step S31:
+  decision D9 based_on P6, P8, PR5, PR6, PR7:
+    "案B: 意味監査結果の正本を thought ごとの sidecar file に append し、本体 DSL とは別に管理する"
+
+step S32:
+  decision D10 based_on P6, P9, PR5, PR6:
+    "案C: 意味監査結果の正本を DSL 外の history/store にだけ残す"
+
+step S33:
+  comparison CMP1 on P6 viewpoint VP1 relation preferred_over D9, D8:
+    "共同編集と append-heavy 運用では sidecar file の方が mechanical conflict を局所化しやすい"
+
+step S34:
+  comparison CMP2 on P6 viewpoint VP2 relation preferred_over D8, D10:
+    "repo 単体での再読性と持ち運びやすさでは本体 DSL 追記の方が外部 store 専用より優れる"
+
+step S35:
+  comparison CMP3 on P6 viewpoint VP3 relation preferred_over D9, D10:
+    "CLI からの構造化追記、再監査、一覧化では sidecar file の方が外部 store 専用より扱いやすい"
+
+step S36:
+  decision D11 based_on P7, PR6, PR7, EV5, EV6, D8:
+    "案A は監査件数が少ない初期導入や最終スナップショットには向くが、継続運用の正本としては本文肥大化と競合の面で弱い"
+
+step S37:
+  decision D12 based_on P8, PR5, PR6, EV5, EV6, EV7, D9:
+    "案B は append-heavy な監査運用、PR レビュー、再監査履歴の保持を両立しやすく、継続運用の正本候補として最も安定している"
+
+step S38:
+  decision D13 based_on P9, PR5, EV8, D10:
+    "案C は内部実装として併用する余地はあるが、利用者が repo だけ見ても監査状態を理解できないため正本にはしない"
+
+step S39:
+  decision D14 based_on P2, P6, PR4, PR5, D6, D12, D13:
+    "運用方針としては sidecar file を意味監査結果の正本とし、本体 DSL には要約 annotation または生成ビューだけを置く hybrid を第一候補にする"
+
+step S40:
+  pending PD5:
+    "sidecar file の形式を DSL にするか JSON にするかは、手編集性、差分可読性、query のしやすさを見て再判断が必要である"
+
+step S41:
+  pending PD6:
+    "sidecar file の配置を thought 直下にするか、audits 配下に時系列で置くかは、一覧性と rename 耐性を見て決める必要がある"
+
+step S42:
+  pending PD7:
+    "本体 DSL へ置く要約 annotation を pair 単位にするか document 単位にするかは、本文ノイズと可視性のバランスを見て調整が必要である"
