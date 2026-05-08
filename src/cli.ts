@@ -23,8 +23,10 @@ import {
   listThoughts,
   loadThought,
   draftThought,
+  saveThoughtSemanticAudit,
   searchThoughtRecords,
   type ThoughtReflectionKind,
+  type ThoughtSemanticAuditVerdict,
 } from "./thought/store.js";
 import { auditAndPersistThought } from "./thought/workflow.js";
 
@@ -39,6 +41,15 @@ interface CliOptions {
   includeReflections: boolean;
   limit?: number;
   view?: string;
+  auditId?: string;
+  decisionId?: string;
+  supportId?: string;
+  verdict?: string;
+  reason?: string;
+  reviewer?: string;
+  model?: string;
+  auditedAt?: string;
+  sourceThoughtId?: string;
   positionals: string[];
   pretty: boolean;
 }
@@ -71,6 +82,33 @@ const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
     const parsed = Number(rawValue);
     options.limit = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   },
+  "--audit-id": (options, remainingArgs) => {
+    options.auditId = remainingArgs.shift();
+  },
+  "--decision": (options, remainingArgs) => {
+    options.decisionId = remainingArgs.shift();
+  },
+  "--support": (options, remainingArgs) => {
+    options.supportId = remainingArgs.shift();
+  },
+  "--verdict": (options, remainingArgs) => {
+    options.verdict = remainingArgs.shift();
+  },
+  "--reason": (options, remainingArgs) => {
+    options.reason = remainingArgs.shift();
+  },
+  "--reviewer": (options, remainingArgs) => {
+    options.reviewer = remainingArgs.shift();
+  },
+  "--model": (options, remainingArgs) => {
+    options.model = remainingArgs.shift();
+  },
+  "--audited-at": (options, remainingArgs) => {
+    options.auditedAt = remainingArgs.shift();
+  },
+  "--source-thought": (options, remainingArgs) => {
+    options.sourceThoughtId = remainingArgs.shift();
+  },
 };
 
 function isThoughtIdRequired(subcommand?: string): boolean {
@@ -79,6 +117,7 @@ function isThoughtIdRequired(subcommand?: string): boolean {
     "relate",
     "audit",
     "finalize",
+    "semantic-audit",
     "show",
     "history",
     "reflect",
@@ -105,6 +144,29 @@ function resolveReflectionKind(
   }
   throw new Error(
     `Invalid --kind value: ${kind}. Use one of ${REFLECTION_KINDS.join(", ")}.`,
+  );
+}
+
+const SEMANTIC_AUDIT_VERDICTS = [
+  "supported",
+  "unsupported",
+  "mixed",
+  "unknown",
+] satisfies ThoughtSemanticAuditVerdict[];
+
+function resolveSemanticAuditVerdict(
+  verdict: string | undefined,
+): ThoughtSemanticAuditVerdict {
+  if (!verdict) {
+    throw new Error(
+      `semantic-audit requires --verdict. Use one of ${SEMANTIC_AUDIT_VERDICTS.join(", ")}.`,
+    );
+  }
+  if (SEMANTIC_AUDIT_VERDICTS.includes(verdict as ThoughtSemanticAuditVerdict)) {
+    return verdict as ThoughtSemanticAuditVerdict;
+  }
+  throw new Error(
+    `Invalid --verdict value: ${verdict}. Use one of ${SEMANTIC_AUDIT_VERDICTS.join(", ")}.`,
   );
 }
 
@@ -152,6 +214,7 @@ function printUsage(): void {
       '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]',
       '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
       '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
+      '  llmthink thought semantic-audit --id <thought-id> --decision D1 --support E1 --verdict supported --reason "..." [--reviewer name] [--model name]',
       "  llmthink thought delete --id <thought-id>",
       "  llmthink thought show --id <thought-id> [summary|draft|final|audit|reflections|semantic-audit|semantic-audit-pairs]",
       "  llmthink thought history --id <thought-id>",
@@ -279,6 +342,8 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
       return handleThoughtAudit(thoughtId!, options);
     case "finalize":
       return handleThoughtFinalize(thoughtId!, options);
+    case "semantic-audit":
+      return handleThoughtSemanticAudit(thoughtId!, options);
     case "reflect":
       return handleThoughtReflect(thoughtId!, options);
     case "delete":
@@ -354,6 +419,28 @@ function handleThoughtReflect(thoughtId: string, options: CliOptions): void {
     throw new Error("reflect requires --text or trailing text.");
   }
   addThoughtReflection(thoughtId, text, resolveReflectionKind(options.kind));
+  printThoughtSummary(thoughtId);
+}
+
+function handleThoughtSemanticAudit(thoughtId: string, options: CliOptions): void {
+  if (!options.decisionId || !options.supportId) {
+    throw new Error("semantic-audit requires --decision and --support.");
+  }
+  if (!options.reason) {
+    throw new Error("semantic-audit requires --reason.");
+  }
+
+  saveThoughtSemanticAudit(thoughtId, {
+    auditId: options.auditId,
+    decisionId: options.decisionId,
+    supportId: options.supportId,
+    verdict: resolveSemanticAuditVerdict(options.verdict),
+    reason: options.reason,
+    reviewer: options.reviewer,
+    model: options.model,
+    auditedAt: options.auditedAt,
+    sourceThoughtId: options.sourceThoughtId,
+  });
   printThoughtSummary(thoughtId);
 }
 

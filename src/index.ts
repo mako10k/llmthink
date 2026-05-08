@@ -34,6 +34,7 @@ export {
   listThoughts,
   loadThought,
   recordThoughtAudit,
+  saveThoughtSemanticAudit,
   draftThought,
   searchThoughtRecords,
 } from "./thought/store.js";
@@ -48,6 +49,8 @@ export type * from "./model/diagnostics.js";
 export type {
   ThoughtReflection,
   ThoughtReflectionKind,
+  ThoughtSemanticAuditInput,
+  ThoughtSemanticAuditVerdict,
   ThoughtSnapshot,
 } from "./thought/store.js";
 export type { PersistedThoughtAudit, ThoughtIdSource } from "./thought/workflow.js";

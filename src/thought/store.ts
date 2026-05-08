@@ -22,12 +22,30 @@ export type ThoughtReflectionKind =
   | "decision"
   | "follow_up"
   | "audit_response";
+export type ThoughtSemanticAuditVerdict =
+  | "supported"
+  | "unsupported"
+  | "mixed"
+  | "unknown";
 export type ThoughtEventKind =
   | "draft_saved"
   | "audit_recorded"
+  | "semantic_audit_saved"
   | "finalized"
   | "related_created"
   | "reflect_recorded";
+
+export interface ThoughtSemanticAuditInput {
+  auditId?: string;
+  decisionId: string;
+  supportId: string;
+  verdict: ThoughtSemanticAuditVerdict;
+  reason: string;
+  reviewer?: string;
+  model?: string;
+  auditedAt?: string;
+  sourceThoughtId?: string;
+}
 
 export interface ThoughtReflection {
   id: string;
@@ -106,6 +124,9 @@ interface ThoughtPaths {
   finalPath: string;
 }
 
+const SEMANTIC_AUDIT_HEADER =
+  /^semantic_audit\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+support\s+([A-Za-z][A-Za-z0-9_-]*)\s+verdict\s+(supported|unsupported|mixed|unknown):$/;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -143,6 +164,80 @@ function readJsonFile<T>(filePath: string, fallback: T): T {
 
 function writeJsonFile(filePath: string, value: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function quoteSemanticAuditValue(value: string): string {
+  return /^[A-Za-z][A-Za-z0-9_.:-]*$/.test(value)
+    ? value
+    : JSON.stringify(value);
+}
+
+function defaultSemanticAuditId(input: ThoughtSemanticAuditInput): string {
+  return input.auditId ?? `${input.supportId}-${input.decisionId}`;
+}
+
+function formatSemanticAuditBlock(input: ThoughtSemanticAuditInput): string {
+  const auditId = defaultSemanticAuditId(input);
+  const auditedAt = input.auditedAt ?? nowIso();
+  const metadataLines = [
+    input.reviewer
+      ? `  reviewer ${quoteSemanticAuditValue(input.reviewer)}`
+      : undefined,
+    input.model ? `  model ${quoteSemanticAuditValue(input.model)}` : undefined,
+    `  audited_at ${quoteSemanticAuditValue(auditedAt)}`,
+    input.sourceThoughtId
+      ? `  source_thought ${quoteSemanticAuditValue(input.sourceThoughtId)}`
+      : undefined,
+  ].filter((line): line is string => Boolean(line));
+
+  return [
+    `semantic_audit ${auditId} on ${input.decisionId} support ${input.supportId} verdict ${input.verdict}:`,
+    ...metadataLines,
+    `  ${JSON.stringify(input.reason)}`,
+  ].join("\n");
+}
+
+function matchesSemanticAuditBlock(block: string, input: ThoughtSemanticAuditInput): boolean {
+  const header = block.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  const match = header.match(SEMANTIC_AUDIT_HEADER);
+  if (!match) {
+    return false;
+  }
+
+  const [, auditId, decisionId, supportId] = match;
+  const targetAuditId = defaultSemanticAuditId(input);
+  return (
+    auditId === targetAuditId ||
+    (decisionId === input.decisionId && supportId === input.supportId)
+  );
+}
+
+function upsertSemanticAuditText(
+  existingText: string | undefined,
+  input: ThoughtSemanticAuditInput,
+): string {
+  const nextBlock = formatSemanticAuditBlock(input);
+  const blocks = (existingText ?? "")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const updatedBlocks: string[] = [];
+  let replaced = false;
+
+  for (const block of blocks) {
+    if (matchesSemanticAuditBlock(block, input)) {
+      updatedBlocks.push(nextBlock);
+      replaced = true;
+      continue;
+    }
+    updatedBlocks.push(block);
+  }
+
+  if (!replaced) {
+    updatedBlocks.push(nextBlock);
+  }
+
+  return `${updatedBlocks.join("\n\n")}\n`;
 }
 
 function readTextIfExists(filePath: string): string | undefined {
@@ -373,6 +468,37 @@ export function recordThoughtAudit(
       kind: "audit_recorded",
       summary: `audit を保存した。fatal=${report.summary.fatal_count} error=${report.summary.error_count} warning=${report.summary.warning_count}`,
       path: updated.latest_audit_path,
+    },
+    baseDir,
+  );
+  return updated;
+}
+
+export function saveThoughtSemanticAudit(
+  id: string,
+  input: ThoughtSemanticAuditInput,
+  baseDir?: string,
+): ThoughtRecord {
+  const paths = ensureThoughtDir(id, baseDir);
+  const record = ensureThoughtRecord(id, baseDir);
+  const nextText = upsertSemanticAuditText(
+    readTextIfExists(paths.semanticAuditPath),
+    input,
+  );
+  writeFileSync(paths.semanticAuditPath, nextText, "utf8");
+  const updatedAt = nowIso();
+  const updated: ThoughtRecord = {
+    ...record,
+    updated_at: updatedAt,
+  };
+  writeThoughtRecord(updated, baseDir);
+  appendThoughtEvent(
+    id,
+    {
+      at: updatedAt,
+      kind: "semantic_audit_saved",
+      summary: `semantic audit を保存した。${input.supportId}->${input.decisionId} verdict=${input.verdict}`,
+      path: relativeToRoot(paths.semanticAuditPath, baseDir),
     },
     baseDir,
   );
