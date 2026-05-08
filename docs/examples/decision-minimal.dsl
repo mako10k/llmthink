@@ -15,5 +15,5 @@ step S2:
     "バックログの消化速度が3スプリント連続で低下している"
 
 step S3:
-  decision D1 based_on PR1, EV1:
+  decision D1 based_on P1, PR1, EV1:
     "バックエンド採用を優先する"

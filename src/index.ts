@@ -14,6 +14,7 @@ export { parseDocument, ParseError } from "./parser/parser.js";
 export {
   formatAuditReportHtml,
   formatAuditReportText,
+  limitAuditReport,
 } from "./presentation/report.js";
 export {
   formatPersistedThoughtAudit,

@@ -4,6 +4,7 @@ export type AuditCategory =
   | "contract_violation"
   | "mece_assessment"
   | "semantic_hint"
+  | "output_limit"
   | "query_result";
 
 export type AuditSeverity = "fatal" | "error" | "warning" | "info" | "hint";

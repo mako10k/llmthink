@@ -9,7 +9,7 @@ import {
   isDslHelpRequest,
   parseDslHelpRequest,
 } from "../dsl/guidance.js";
-import { formatAuditReportText } from "../presentation/report.js";
+import { formatAuditReportText, limitAuditReport } from "../presentation/report.js";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,
@@ -185,15 +185,18 @@ async function handleThoughtAuditAction(
         `${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`,
       ),
       textContent(
-        JSON.stringify(
-          {
-            thought_id: persisted.thoughtId,
-            id_source: persisted.idSource,
-            report: persisted.report,
-          },
-          null,
-          2,
-        ),
+        (() => {
+          const outputReport = limitAuditReport(persisted.report);
+          return JSON.stringify(
+            {
+              thought_id: persisted.thoughtId,
+              id_source: persisted.idSource,
+              report: outputReport,
+            },
+            null,
+            2,
+          );
+        })(),
       ),
     ],
   };
