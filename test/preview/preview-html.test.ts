@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { chromium } from "playwright";
 
-test("preview:html emits browser-openable HTML and preserves viewport anchor on zoom", async () => {
+test("preview:html defaults to fit and keeps the outer map area stable on zoom", async () => {
   const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-"));
   const outputPath = join(tempDir, "preview.html");
@@ -34,6 +34,8 @@ test("preview:html emits browser-openable HTML and preserves viewport anchor on 
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /ステップマップ/);
     assert.match(html, /diagram-scroll/);
+    assert.doesNotMatch(html, /diagram-minimap-title/);
+    assert.doesNotMatch(html, /diagram-zoom-level/);
 
     const browser = await chromium.launch();
     try {
@@ -77,6 +79,9 @@ test("preview:html emits browser-openable HTML and preserves viewport anchor on 
         };
       });
 
+      assert.ok(before.scrollWidth <= before.clientWidth + 2);
+      assert.ok(before.scrollHeight <= before.clientHeight + 2);
+
       await page.click('.diagram-button[data-action="zoom-in"]');
       await page.evaluate(
         () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
@@ -86,9 +91,8 @@ test("preview:html emits browser-openable HTML and preserves viewport anchor on 
         const card = document.querySelector(".diagram-card");
         const viewport = document.querySelector(".diagram-viewport");
         const scroll = document.querySelector(".diagram-scroll");
-        const zoomLabel = document.querySelector(".diagram-zoom-level");
         const svg = document.querySelector(".diagram");
-        if (!(card instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(scroll instanceof HTMLElement) || !(zoomLabel instanceof HTMLOutputElement)) {
+        if (!(card instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(scroll instanceof HTMLElement)) {
           throw new Error("preview controls not found");
         }
         if (!(svg instanceof SVGElement)) {
@@ -114,13 +118,11 @@ test("preview:html emits browser-openable HTML and preserves viewport anchor on 
           clientHeight: scroll.clientHeight,
           scrollWidth: scroll.scrollWidth,
           scrollHeight: scroll.scrollHeight,
-          zoomText: zoomLabel.textContent ?? "",
           svgAnchorX: (visibleCenterX - svgOffsetX) * logicalScaleX,
           svgAnchorY: (visibleCenterY - svgOffsetY) * logicalScaleY,
         };
       });
 
-      assert.notEqual(after.zoomText, "100%");
       assert.ok(after.scrollWidth > before.scrollWidth);
   assert.equal(after.documentWidth, before.documentWidth);
   assert.ok(Math.abs(after.viewportLeft - before.viewportLeft) < 1);

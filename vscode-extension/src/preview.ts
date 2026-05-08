@@ -532,23 +532,23 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       <div class="diagram-shell">
         <div class="diagram-viewport">
           <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
-            <div class="diagram-stage">
-              <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-                    <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
-                  </marker>
-                </defs>
-                <g class="edges">${edgeMarkup}</g>
-                <g class="nodes">${nodeMarkup}</g>
-              </svg>
-            </div>
+            <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                  <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
+                </marker>
+              </defs>
+              <g class="edges">${edgeMarkup}</g>
+              <g class="nodes">${nodeMarkup}</g>
+            </svg>
+          </div>
+          <div class="diagram-controls-overlay" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
+            <button type="button" class="diagram-button" data-action="zoom-out" aria-label="${escapeHtml(strings.diagramControls.zoomOut)}">${renderDiagramIcon("zoom-out")}</button>
+            <button type="button" class="diagram-button" data-action="zoom-in" aria-label="${escapeHtml(strings.diagramControls.zoomIn)}">${renderDiagramIcon("zoom-in")}</button>
+            <button type="button" class="diagram-button" data-action="reset" aria-label="${escapeHtml(strings.diagramControls.reset)}">${renderDiagramIcon("reset")}</button>
+            <button type="button" class="diagram-button" data-action="fit" aria-label="${escapeHtml(strings.diagramControls.fit)}">${renderDiagramIcon("fit")}</button>
           </div>
           <aside class="diagram-minimap-card" aria-label="${escapeHtml(strings.minimap.title)}">
-            <div class="diagram-minimap-header" data-drag-handle="true">
-              <div class="diagram-minimap-title">${escapeHtml(strings.minimap.title)}</div>
-              <output class="diagram-zoom-level" aria-live="polite">${escapeHtml(strings.diagramControls.zoomLevel(100))}</output>
-            </div>
             <svg class="diagram-minimap" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(strings.minimap.title)}">
               <g class="minimap-edges">${edgeMarkup}</g>
               <g class="minimap-nodes">${minimapNodeMarkup}</g>
@@ -556,15 +556,7 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
                 <title>${escapeHtml(strings.minimap.viewport)}</title>
               </rect>
             </svg>
-            <div class="diagram-hud">
-              <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
-              <div class="diagram-controls" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
-                <button type="button" class="diagram-button" data-action="zoom-out" aria-label="${escapeHtml(strings.diagramControls.zoomOut)}">${renderDiagramIcon("zoom-out")}</button>
-                <button type="button" class="diagram-button" data-action="zoom-in" aria-label="${escapeHtml(strings.diagramControls.zoomIn)}">${renderDiagramIcon("zoom-in")}</button>
-                <button type="button" class="diagram-button" data-action="reset" aria-label="${escapeHtml(strings.diagramControls.reset)}">${renderDiagramIcon("reset")}</button>
-                <button type="button" class="diagram-button" data-action="fit" aria-label="${escapeHtml(strings.diagramControls.fit)}">${renderDiagramIcon("fit")}</button>
-              </div>
-            </div>
+            <div class="diagram-minimap-grip" aria-hidden="true"><span></span><span></span><span></span></div>
           </aside>
         </div>
       </div>
@@ -785,11 +777,9 @@ function buildPreviewScript(): string {
       document.querySelectorAll(".diagram-card").forEach((card) => {
         const scroll = card.querySelector(".diagram-scroll");
         const svg = card.querySelector(".diagram");
-        const zoomLevel = card.querySelector(".diagram-zoom-level");
         const minimap = card.querySelector(".diagram-minimap");
         const minimapViewport = card.querySelector(".minimap-viewport");
         const minimapCard = card.querySelector(".diagram-minimap-card");
-        const minimapHandle = card.querySelector("[data-drag-handle='true']");
         const viewport = card.querySelector(".diagram-viewport");
         if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
           return;
@@ -800,7 +790,6 @@ function buildPreviewScript(): string {
         let zoom = 1;
         let dragState = undefined;
         let minimapDragState = undefined;
-        let selectedNode = undefined;
 
         const clampMinimapPosition = (left, top) => {
           if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
@@ -824,47 +813,15 @@ function buildPreviewScript(): string {
           minimapCard.style.right = "auto";
         };
 
-        const selectNode = (nodeKey) => {
-          selectedNode = nodeKey;
-          card.querySelectorAll(".node.selected, .minimap-node.selected").forEach((element) => {
-            element.classList.remove("selected");
-          });
-          if (!nodeKey) {
-            return;
-          }
-          const escapedKey = CSS.escape(nodeKey);
-          card.querySelectorAll('.node[data-node-key="' + escapedKey + '"] , .minimap-node[data-target-node="' + escapedKey + '"]').forEach((element) => {
-            element.classList.add("selected");
-          });
-        };
-
-        const updateZoomLabel = () => {
-          if (zoomLevel instanceof HTMLOutputElement) {
-            zoomLevel.value = String(Math.round(zoom * 100)) + "%";
-            zoomLevel.textContent = zoomLevel.value;
-          }
-        };
-
         const updateMinimapViewport = () => {
           if (!(minimap instanceof SVGElement) || !(minimapViewport instanceof SVGRectElement)) {
             return;
           }
 
-          const scrollRect = scroll.getBoundingClientRect();
-          const svgRect = svg.getBoundingClientRect();
-          const visibleLeft = Math.max(scrollRect.left, svgRect.left);
-          const visibleTop = Math.max(scrollRect.top, svgRect.top);
-          const visibleRight = Math.min(scrollRect.right, svgRect.right);
-          const visibleBottom = Math.min(scrollRect.bottom, svgRect.bottom);
-          const visibleWidth = Math.max(visibleRight - visibleLeft, 0);
-          const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
-          const offsetX = Math.max(visibleLeft - svgRect.left, 0);
-          const offsetY = Math.max(visibleTop - svgRect.top, 0);
-
-          minimapViewport.setAttribute("x", String(offsetX / zoom));
-          minimapViewport.setAttribute("y", String(offsetY / zoom));
-          minimapViewport.setAttribute("width", String(visibleWidth / zoom));
-          minimapViewport.setAttribute("height", String(visibleHeight / zoom));
+          minimapViewport.setAttribute("x", String(scroll.scrollLeft / zoom));
+          minimapViewport.setAttribute("y", String(scroll.scrollTop / zoom));
+          minimapViewport.setAttribute("width", String(scroll.clientWidth / zoom));
+          minimapViewport.setAttribute("height", String(scroll.clientHeight / zoom));
         };
 
         const centerNodeInViewport = (nodeElement) => {
@@ -884,36 +841,26 @@ function buildPreviewScript(): string {
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
           scroll.scrollLeft = maxLeft / 2;
-          scroll.scrollTop = maxTop;
+          scroll.scrollTop = 0;
           requestAnimationFrame(updateMinimapViewport);
         };
 
         const captureViewportAnchor = (currentZoom) => {
-          const scrollRect = scroll.getBoundingClientRect();
-          const svgRect = svg.getBoundingClientRect();
-          const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
-          const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
-          const viewportCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
-          const viewportCenterY = scroll.scrollTop + scroll.clientHeight / 2;
           return {
-            x: (viewportCenterX - svgOffsetX) / currentZoom,
-            y: (viewportCenterY - svgOffsetY) / currentZoom,
+            x: (scroll.scrollLeft + scroll.clientWidth / 2) / currentZoom,
+            y: (scroll.scrollTop + scroll.clientHeight / 2) / currentZoom,
           };
         };
 
         const preserveViewportAnchor = (anchor) => {
-          const scrollRect = scroll.getBoundingClientRect();
-          const svgRect = svg.getBoundingClientRect();
-          const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
-          const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
           scroll.scrollLeft = Math.min(
-            Math.max(anchor.x * zoom + svgOffsetX - scroll.clientWidth / 2, 0),
+            Math.max(anchor.x * zoom - scroll.clientWidth / 2, 0),
             maxLeft,
           );
           scroll.scrollTop = Math.min(
-            Math.max(anchor.y * zoom + svgOffsetY - scroll.clientHeight / 2, 0),
+            Math.max(anchor.y * zoom - scroll.clientHeight / 2, 0),
             maxTop,
           );
           requestAnimationFrame(updateMinimapViewport);
@@ -924,24 +871,31 @@ function buildPreviewScript(): string {
           zoom = clampZoom(nextZoom);
           svg.style.width = String(baseWidth * zoom) + "px";
           svg.style.height = String(baseHeight * zoom) + "px";
-          updateZoomLabel();
-          if (mode === "recenter") {
-            requestAnimationFrame(centerViewport);
+          if (mode === "reset") {
+            requestAnimationFrame(() => {
+              scroll.scrollLeft = 0;
+              scroll.scrollTop = 0;
+              updateMinimapViewport();
+            });
           } else {
             requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                if (anchor) {
-                  preserveViewportAnchor(anchor);
-                }
-              });
+              if (mode === "fit") {
+                scroll.scrollLeft = 0;
+                scroll.scrollTop = 0;
+                updateMinimapViewport();
+                return;
+              }
+              if (anchor) {
+                preserveViewportAnchor(anchor);
+              }
             });
           }
         };
 
         const fitToViewport = () => {
-          const horizontal = (scroll.clientWidth - 10) / baseWidth;
-          const vertical = (scroll.clientHeight - 10) / baseHeight;
-          applyZoom(Math.min(horizontal, vertical), { mode: "recenter" });
+          const horizontal = Math.max((scroll.clientWidth - 2) / baseWidth, 0.1);
+          const vertical = Math.max((scroll.clientHeight - 2) / baseHeight, 0.1);
+          applyZoom(Math.min(horizontal, vertical), { mode: "fit" });
         };
 
         const initializeMinimapPosition = () => {
@@ -1026,8 +980,8 @@ function buildPreviewScript(): string {
           }
         };
 
-        if (minimapHandle instanceof HTMLElement && minimapCard instanceof HTMLElement) {
-          minimapHandle.addEventListener("pointerdown", (event) => {
+        if (minimapCard instanceof HTMLElement) {
+          minimapCard.addEventListener("pointerdown", (event) => {
             if (event.button !== 0) {
               return;
             }
@@ -1040,12 +994,12 @@ function buildPreviewScript(): string {
               shellLeft: viewportRect.left,
               shellTop: viewportRect.top,
             };
-            minimapHandle.setPointerCapture(event.pointerId);
+            minimapCard.setPointerCapture(event.pointerId);
             minimapCard.classList.add("dragging");
             event.preventDefault();
           });
 
-          minimapHandle.addEventListener("pointermove", (event) => {
+          minimapCard.addEventListener("pointermove", (event) => {
             if (!minimapDragState || minimapDragState.pointerId !== event.pointerId) {
               return;
             }
@@ -1055,8 +1009,8 @@ function buildPreviewScript(): string {
             );
           });
 
-          minimapHandle.addEventListener("pointerup", stopMinimapDragging);
-          minimapHandle.addEventListener("pointercancel", stopMinimapDragging);
+          minimapCard.addEventListener("pointerup", stopMinimapDragging);
+          minimapCard.addEventListener("pointercancel", stopMinimapDragging);
         }
 
         window.addEventListener("resize", () => {
@@ -1069,8 +1023,6 @@ function buildPreviewScript(): string {
 
         card.querySelectorAll(".node[data-line]").forEach((node) => {
           node.addEventListener("click", () => {
-            const nodeKey = node.getAttribute("data-node-key") || undefined;
-            selectNode(nodeKey);
             centerNodeInViewport(node);
           });
         });
@@ -1085,7 +1037,6 @@ function buildPreviewScript(): string {
             if (!nodeKey) {
               return;
             }
-            selectNode(nodeKey);
             const mainNode = card.querySelector('.node[data-node-key="' + CSS.escape(nodeKey) + '"]');
             if (mainNode instanceof SVGGElement) {
               centerNodeInViewport(mainNode);
@@ -1093,7 +1044,8 @@ function buildPreviewScript(): string {
           });
         }
 
-        applyZoom(1);
+        svg.style.width = String(baseWidth) + "px";
+        svg.style.height = String(baseHeight) + "px";
         requestAnimationFrame(initializeMinimapPosition);
         requestAnimationFrame(fitToViewport);
       });
@@ -1181,11 +1133,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         color: var(--vscode-descriptionForeground);
         white-space: nowrap;
       }
-      .diagram-controls {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-      }
       .diagram-button {
         width: 28px;
         height: 28px;
@@ -1218,19 +1165,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         stroke-linecap: round;
         stroke-linejoin: round;
       }
-      .diagram-zoom-level {
-        min-width: 56px;
-        color: color-mix(in srgb, var(--vscode-descriptionForeground) 82%, transparent);
-        text-align: right;
-        font-size: 11px;
-      }
-      .diagram-hint {
-        margin: 0;
-        color: color-mix(in srgb, var(--vscode-descriptionForeground) 72%, transparent);
-        font-size: 10px;
-        opacity: 0.18;
-        transition: opacity 120ms ease;
-      }
       .diagram-scroll {
         overflow: auto;
         width: 100%;
@@ -1258,63 +1192,74 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
         background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
       }
-      .diagram-stage {
-        min-width: 100%;
-        width: max-content;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding: 2px;
-      }
       .diagram {
         display: block;
         flex: none;
+        margin: 0 auto;
+      }
+      .diagram-controls-overlay {
+        position: absolute;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 6px 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--vscode-editor-background) 28%, transparent);
+        backdrop-filter: blur(10px);
+        opacity: 0.16;
+        transition: opacity 120ms ease, background 120ms ease;
+        z-index: 2;
+      }
+      .diagram-viewport:hover .diagram-controls-overlay,
+      .diagram-controls-overlay:focus-within {
+        opacity: 0.42;
       }
       .diagram-minimap-card {
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
-        border-radius: 14px;
-        background: color-mix(in srgb, var(--vscode-editor-background) 72%, transparent);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--vscode-editor-background) 42%, transparent);
         backdrop-filter: blur(10px);
-        padding: 8px 8px 10px;
+        padding: 6px;
         position: absolute;
         top: 10px;
         right: 10px;
-        width: min(148px, 24vw);
-        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
-        opacity: 0.76;
+        width: min(112px, 18vw);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+        opacity: 0.2;
         transition: opacity 120ms ease, box-shadow 120ms ease;
         z-index: 2;
+        cursor: grab;
       }
       .diagram-minimap-card:hover,
       .diagram-minimap-card:focus-within,
       .diagram-minimap-card.dragging {
-        opacity: 0.94;
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.26);
+        opacity: 0.48;
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
       }
-      .diagram-minimap-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 6px;
-        cursor: grab;
-        user-select: none;
-      }
-      .diagram-minimap-card.dragging .diagram-minimap-header {
+      .diagram-minimap-card.dragging {
         cursor: grabbing;
-      }
-      .diagram-minimap-title {
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: color-mix(in srgb, var(--vscode-descriptionForeground) 88%, transparent);
       }
       .diagram-minimap {
         width: 100%;
         height: auto;
         display: block;
-        border-radius: 10px;
+        border-radius: 6px;
         overflow: hidden;
+      }
+      .diagram-minimap-grip {
+        display: flex;
+        justify-content: center;
+        gap: 3px;
+        margin-top: 4px;
+      }
+      .diagram-minimap-grip span {
+        width: 4px;
+        height: 4px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--vscode-descriptionForeground) 72%, transparent);
       }
       .minimap-node rect {
         stroke-width: 1;
@@ -1352,21 +1297,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         stroke: var(--vscode-focusBorder);
         stroke-width: 5;
         pointer-events: none;
-      }
-      .diagram-hud {
-        display: grid;
-        justify-items: center;
-        gap: 6px;
-        margin-top: 6px;
-      }
-      .diagram-minimap-card:hover .diagram-hint,
-      .diagram-minimap-card:focus-within .diagram-hint {
-        opacity: 0.42;
-      }
-      .node.selected rect,
-      .minimap-node.selected rect {
-        stroke: var(--vscode-focusBorder);
-        stroke-width: 2.4;
       }
       .diagram-legend {
         display: flex;
@@ -1487,7 +1417,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       @media (max-width: 960px) {
         .diagram-minimap-card {
-          width: min(132px, 38vw);
+          width: min(96px, 30vw);
         }
       }
       .empty-state p {
