@@ -345,14 +345,14 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
-      "elk.direction": "DOWN",
+      "elk.direction": "RIGHT",
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "54",
-      "elk.spacing.nodeNode": "28",
-      "elk.padding": "[top=20,left=20,bottom=20,right=20]",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "96",
+      "elk.spacing.nodeNode": "36",
+      "elk.padding": "[top=28,left=28,bottom=24,right=28]",
       "org.eclipse.elk.partitioning.activate": "true",
     },
     children: nodes.map((node) => ({
@@ -1102,6 +1102,10 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .markdown {
         padding: 18px;
       }
+      .diagram-card {
+        width: min(100%, 1120px);
+        justify-self: center;
+      }
       .eyebrow {
         font-size: 12px;
         letter-spacing: 0.12em;
@@ -1200,6 +1204,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-viewport {
         position: relative;
         overflow: hidden;
+        width: min(100%, 1080px);
+        margin: 0 auto;
         max-height: min(78vh, 920px);
         min-height: min(72vh, 720px);
         border-radius: 14px;
