@@ -27,9 +27,11 @@ import {
   loadThought,
   listThoughts,
   relateThought,
+  saveThoughtSemanticAudit,
   searchThoughtRecords,
   type PersistedThoughtAudit,
   type ThoughtReflectionKind,
+  type ThoughtSemanticAuditVerdict,
 } from "../../dist/index.js";
 import type { AuditReport } from "../../dist/index.js";
 
@@ -47,7 +49,7 @@ interface DslToolInput {
 }
 
 interface ThoughtToolInput {
-  action?: "show";
+  action?: "show" | "semantic-audit";
   thoughtId?: string;
   view?:
     | "summary"
@@ -57,6 +59,15 @@ interface ThoughtToolInput {
     | "reflections"
     | "semantic-audit"
     | "semantic-audit-pairs";
+  decisionId?: string;
+  supportId?: string;
+  verdict?: "supported" | "unsupported" | "mixed" | "unknown";
+  reason?: string;
+  auditId?: string;
+  reviewer?: string;
+  model?: string;
+  auditedAt?: string;
+  sourceThoughtId?: string;
 }
 
 const REFLECTION_KIND_ITEMS: Array<{
@@ -73,6 +84,17 @@ const REFLECTION_KIND_ITEMS: Array<{
     description: "監査結果への応答",
     value: "audit_response",
   },
+];
+
+const SEMANTIC_AUDIT_VERDICT_ITEMS: Array<{
+  label: string;
+  description: string;
+  value: ThoughtSemanticAuditVerdict;
+}> = [
+  { label: "supported", description: "根拠として支持できる", value: "supported" },
+  { label: "unsupported", description: "根拠として支持できない", value: "unsupported" },
+  { label: "mixed", description: "一部支持できるが留保がある", value: "mixed" },
+  { label: "unknown", description: "現時点では判定保留", value: "unknown" },
 ];
 
 let lastReport: AuditReport | undefined;
@@ -213,6 +235,16 @@ async function promptReflectionKind(): Promise<
 > {
   const selected = await vscode.window.showQuickPick(REFLECTION_KIND_ITEMS, {
     placeHolder: "reflect kind を選択してください",
+    ignoreFocusOut: true,
+  });
+  return selected?.value;
+}
+
+async function promptSemanticAuditVerdict(): Promise<
+  ThoughtSemanticAuditVerdict | undefined
+> {
+  const selected = await vscode.window.showQuickPick(SEMANTIC_AUDIT_VERDICT_ITEMS, {
+    placeHolder: "semantic audit verdict を選択してください",
     ignoreFocusOut: true,
   });
   return selected?.value;
@@ -429,6 +461,66 @@ async function showThoughtReflectionsInOutput(
   );
 }
 
+async function saveThoughtSemanticAuditFromPrompt(
+  outputChannel: vscode.OutputChannel,
+): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  const defaultThoughtId = editor ? defaultThoughtIdForDocument(editor.document) : undefined;
+  const thoughtId = await promptThoughtId(defaultThoughtId);
+  if (!thoughtId) {
+    return;
+  }
+  const decisionId = await vscode.window.showInputBox({
+    prompt: "decision id を入力してください",
+    ignoreFocusOut: true,
+  });
+  if (!decisionId) {
+    return;
+  }
+  const supportId = await vscode.window.showInputBox({
+    prompt: "support id を入力してください",
+    ignoreFocusOut: true,
+  });
+  if (!supportId) {
+    return;
+  }
+  const verdict = await promptSemanticAuditVerdict();
+  if (!verdict) {
+    return;
+  }
+  const reason = await vscode.window.showInputBox({
+    prompt: "semantic audit reason を入力してください",
+    ignoreFocusOut: true,
+  });
+  if (!reason) {
+    return;
+  }
+  const reviewer = await vscode.window.showInputBox({
+    prompt: "reviewer を入力してください (任意)",
+    ignoreFocusOut: true,
+  });
+  const model = await vscode.window.showInputBox({
+    prompt: "model を入力してください (任意)",
+    ignoreFocusOut: true,
+  });
+
+  saveThoughtSemanticAudit(thoughtId, {
+    decisionId,
+    supportId,
+    verdict,
+    reason,
+    reviewer: reviewer?.trim() || undefined,
+    model: model?.trim() || undefined,
+  });
+  const snapshot = loadThought(thoughtId);
+  showTextInOutput(
+    outputChannel,
+    `LLMThink Thought Semantic Audit: ${thoughtId}`,
+    `${formatThoughtSemanticAuditSummary(snapshot)}\n${formatThoughtSemanticAuditPairs(snapshot)}`,
+  );
+  vscode.window.showInformationMessage(`LLMThink semantic audit 保存完了: ${thoughtId}`);
+}
+
 async function deleteThoughtFromPrompt(
   outputChannel: vscode.OutputChannel,
 ): Promise<void> {
@@ -540,13 +632,6 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<ThoughtToolInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const action = options.input.action ?? "show";
-    if (action !== "show") {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart("Unsupported thought tool action."),
-      ]);
-    }
-
     const editor = vscode.window.activeTextEditor;
     const thoughtId = options.input.thoughtId?.trim() || (
       editor ? defaultThoughtIdForDocument(editor.document) : undefined
@@ -556,6 +641,40 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
         new vscode.LanguageModelTextPart(
           "thoughtId が指定されておらず、アクティブエディタからも導出できません。thoughtId を指定してください。",
         ),
+      ]);
+    }
+
+    const action = options.input.action ?? "show";
+    if (action === "semantic-audit") {
+      if (!options.input.decisionId || !options.input.supportId || !options.input.verdict || !options.input.reason) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart(
+            "semantic-audit には decisionId, supportId, verdict, reason が必要です。",
+          ),
+        ]);
+      }
+      saveThoughtSemanticAudit(thoughtId, {
+        auditId: options.input.auditId?.trim(),
+        decisionId: options.input.decisionId,
+        supportId: options.input.supportId,
+        verdict: options.input.verdict,
+        reason: options.input.reason,
+        reviewer: options.input.reviewer?.trim(),
+        model: options.input.model?.trim(),
+        auditedAt: options.input.auditedAt?.trim(),
+        sourceThoughtId: options.input.sourceThoughtId?.trim(),
+      });
+      const savedSnapshot = loadThought(thoughtId);
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `${formatThoughtSemanticAuditSummary(savedSnapshot)}\n${formatThoughtSemanticAuditPairs(savedSnapshot)}`,
+        ),
+      ]);
+    }
+
+    if (action !== "show") {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart("Unsupported thought tool action."),
       ]);
     }
 
@@ -586,11 +705,16 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
     options: vscode.LanguageModelToolInvocationPrepareOptions<ThoughtToolInput>,
   ): vscode.PreparedToolInvocation {
     const thoughtId = options.input.thoughtId?.trim();
+    const action = options.input.action ?? "show";
     const view = options.input.view ?? "semantic-audit";
     return {
-      invocationMessage: thoughtId
-        ? `LLMThink で ${thoughtId} の ${view} を表示しています`
-        : `LLMThink で thought の ${view} を表示しています`,
+      invocationMessage: action === "semantic-audit"
+        ? thoughtId
+          ? `LLMThink で ${thoughtId} に semantic audit を保存しています`
+          : "LLMThink で thought に semantic audit を保存しています"
+        : thoughtId
+          ? `LLMThink で ${thoughtId} の ${view} を表示しています`
+          : `LLMThink で thought の ${view} を表示しています`,
     };
   }
 }
@@ -732,6 +856,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("llmthink.thoughtReflect", async () => {
       await addThoughtReflectionFromPrompt(outputChannel);
+    }),
+    vscode.commands.registerCommand("llmthink.thoughtSemanticAudit", async () => {
+      await saveThoughtSemanticAuditFromPrompt(outputChannel);
     }),
     vscode.commands.registerCommand("llmthink.thoughtReflections", async () => {
       await showThoughtReflectionsInOutput(outputChannel);

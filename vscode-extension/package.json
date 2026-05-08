@@ -123,7 +123,7 @@
         "name": "llmthink-thought",
         "toolReferenceName": "llmthink-thought",
         "displayName": "LLMThink Thought",
-        "modelDescription": "LLMThink thought views. Use action=show with view=semantic-audit or semantic-audit-pairs to inspect semantic audit state.",
+        "modelDescription": "LLMThink thought operations. Use action=show with view=semantic-audit or semantic-audit-pairs to inspect semantic audit state, or action=semantic-audit to save one.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
@@ -131,7 +131,8 @@
             "action": {
               "type": "string",
               "enum": [
-                "show"
+                "show",
+                "semantic-audit"
               ],
               "description": "Thought operation to run."
             },
@@ -151,6 +152,48 @@
                 "semantic-audit-pairs"
               ],
               "description": "Thought view to render."
+            },
+            "decisionId": {
+              "type": "string",
+              "description": "Decision id for action=semantic-audit."
+            },
+            "supportId": {
+              "type": "string",
+              "description": "Support statement id for action=semantic-audit."
+            },
+            "verdict": {
+              "type": "string",
+              "enum": [
+                "supported",
+                "unsupported",
+                "mixed",
+                "unknown"
+              ],
+              "description": "Semantic audit verdict for action=semantic-audit."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason text for action=semantic-audit."
+            },
+            "auditId": {
+              "type": "string",
+              "description": "Optional semantic audit id."
+            },
+            "reviewer": {
+              "type": "string",
+              "description": "Optional reviewer metadata."
+            },
+            "model": {
+              "type": "string",
+              "description": "Optional model metadata."
+            },
+            "auditedAt": {
+              "type": "string",
+              "description": "Optional audited_at metadata."
+            },
+            "sourceThoughtId": {
+              "type": "string",
+              "description": "Optional source thought metadata."
             }
           }
         }
@@ -196,6 +239,10 @@
       {
         "command": "llmthink.thoughtReflect",
         "title": "LLMThink: Thought Reflect"
+      },
+      {
+        "command": "llmthink.thoughtSemanticAudit",
+        "title": "LLMThink: Thought Semantic Audit"
       },
       {
         "command": "llmthink.thoughtFinalize",

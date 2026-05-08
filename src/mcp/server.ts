@@ -28,8 +28,10 @@ import {
   listThoughts,
   loadThought,
   draftThought,
+  saveThoughtSemanticAudit,
   searchThoughtRecords,
   type ThoughtReflectionKind,
+  type ThoughtSemanticAuditVerdict,
 } from "../thought/store.js";
 import { auditAndPersistThought } from "../thought/workflow.js";
 
@@ -231,6 +233,13 @@ const REFLECTION_KIND_SCHEMA = z.enum([
   "audit_response",
 ]);
 
+const SEMANTIC_AUDIT_VERDICT_SCHEMA = z.enum([
+  "supported",
+  "unsupported",
+  "mixed",
+  "unknown",
+]);
+
 function handleThoughtReflectAction(
   thoughtId: string,
   text: string | undefined,
@@ -240,6 +249,42 @@ function handleThoughtReflectAction(
     throw new Error("text is required when action=reflect");
   }
   addThoughtReflection(thoughtId, text, kind);
+  return summarizeThought(thoughtId);
+}
+
+function handleThoughtSemanticAuditAction(
+  thoughtId: string,
+  decisionId: string | undefined,
+  supportId: string | undefined,
+  verdict: ThoughtSemanticAuditVerdict | undefined,
+  reason: string | undefined,
+  auditId: string | undefined,
+  reviewer: string | undefined,
+  model: string | undefined,
+  auditedAt: string | undefined,
+  sourceThoughtId: string | undefined,
+) {
+  if (!decisionId || !supportId) {
+    throw new Error("decisionId and supportId are required when action=semantic-audit");
+  }
+  if (!verdict) {
+    throw new Error("verdict is required when action=semantic-audit");
+  }
+  if (!reason) {
+    throw new Error("reason is required when action=semantic-audit");
+  }
+
+  saveThoughtSemanticAudit(thoughtId, {
+    auditId,
+    decisionId,
+    supportId,
+    verdict,
+    reason,
+    reviewer,
+    model,
+    auditedAt,
+    sourceThoughtId,
+  });
   return summarizeThought(thoughtId);
 }
 
@@ -254,7 +299,8 @@ async function handleThoughtAction(
     | "show"
     | "history"
     | "search"
-    | "list",
+    | "list"
+    | "semantic-audit",
   thoughtId: string | undefined,
   dslText: string | undefined,
   fromThoughtId: string | undefined,
@@ -263,6 +309,15 @@ async function handleThoughtAction(
   query: string | undefined,
   limit: number | undefined,
   includeReflections: boolean,
+  decisionId: string | undefined,
+  supportId: string | undefined,
+  verdict: ThoughtSemanticAuditVerdict | undefined,
+  reason: string | undefined,
+  auditId: string | undefined,
+  reviewer: string | undefined,
+  model: string | undefined,
+  auditedAt: string | undefined,
+  sourceThoughtId: string | undefined,
   view:
     | "summary"
     | "draft"
@@ -297,6 +352,19 @@ async function handleThoughtAction(
       return handleThoughtFinalizeAction(resolvedThoughtId, sourceText);
     case "reflect":
       return handleThoughtReflectAction(resolvedThoughtId, text, kind);
+    case "semantic-audit":
+      return handleThoughtSemanticAuditAction(
+        resolvedThoughtId,
+        decisionId,
+        supportId,
+        verdict,
+        reason,
+        auditId,
+        reviewer,
+        model,
+        auditedAt,
+        sourceThoughtId,
+      );
     case "delete":
       return handleThoughtDeleteAction(resolvedThoughtId);
     case "history":
@@ -371,7 +439,7 @@ server.tool(
 
 server.tool(
   "thought",
-  "LLMThink thought lifecycle operations. Use action=draft|relate|audit|finalize|reflect|delete|show|history|search|list.",
+  "LLMThink thought lifecycle operations. Use action=draft|relate|audit|finalize|reflect|semantic-audit|delete|show|history|search|list.",
   {
     action: z.enum([
       "draft",
@@ -379,6 +447,7 @@ server.tool(
       "audit",
       "finalize",
       "reflect",
+      "semantic-audit",
       "delete",
       "show",
       "history",
@@ -393,6 +462,15 @@ server.tool(
     query: z.string().optional(),
     limit: z.number().int().positive().max(20).optional(),
     includeReflections: z.boolean().default(false),
+    decisionId: z.string().optional(),
+    supportId: z.string().optional(),
+    verdict: SEMANTIC_AUDIT_VERDICT_SCHEMA.optional(),
+    reason: z.string().optional(),
+    auditId: z.string().optional(),
+    reviewer: z.string().optional(),
+    model: z.string().optional(),
+    auditedAt: z.string().optional(),
+    sourceThoughtId: z.string().optional(),
     view: z
       .enum([
         "summary",
@@ -415,6 +493,15 @@ server.tool(
     query,
     limit,
     includeReflections,
+    decisionId,
+    supportId,
+    verdict,
+    reason,
+    auditId,
+    reviewer,
+    model,
+    auditedAt,
+    sourceThoughtId,
     view,
   }) => {
     return handleThoughtAction(
@@ -427,6 +514,15 @@ server.tool(
       query,
       limit,
       includeReflections,
+      decisionId,
+      supportId,
+      verdict,
+      reason,
+      auditId,
+      reviewer,
+      model,
+      auditedAt,
+      sourceThoughtId,
       view,
     );
   },
