@@ -897,6 +897,9 @@ function buildPreviewScript(): string {
         let minimapDragState = undefined;
         let minimapResizeState = undefined;
         let suppressContextMenu = false;
+        let edgeHighlightClearTimer = undefined;
+        let lastActiveEdgeId = undefined;
+        let lastActiveEdgeUntil = 0;
 
         const clampMinimapWidth = (width) => {
           const minWidth = 96;
@@ -966,6 +969,30 @@ function buildPreviewScript(): string {
           requestAnimationFrame(updateMinimapViewport);
         };
 
+        const cancelPendingEdgeClear = () => {
+          if (edgeHighlightClearTimer === undefined) {
+            return;
+          }
+          window.clearTimeout(edgeHighlightClearTimer);
+          edgeHighlightClearTimer = undefined;
+        };
+
+        const resolveVisibleEdge = (edgeId) => {
+          if (!edgeId) {
+            return null;
+          }
+          const visibleEdge = card.querySelector('.edge[data-edge-id="' + CSS.escape(edgeId) + '"]');
+          return visibleEdge instanceof SVGPathElement ? visibleEdge : null;
+        };
+
+        const rememberActiveEdge = (edgeId) => {
+          if (!edgeId) {
+            return;
+          }
+          lastActiveEdgeId = edgeId;
+          lastActiveEdgeUntil = Date.now() + 500;
+        };
+
         const fitNodesInViewport = (nodeElements) => {
           const nodes = nodeElements.filter((node) => node instanceof SVGGElement);
           if (nodes.length === 0) {
@@ -1033,7 +1060,15 @@ function buildPreviewScript(): string {
           });
         };
 
-        const clearEdgeHighlights = () => {
+        const clearEdgeHighlights = ({ immediate = false } = {}) => {
+          cancelPendingEdgeClear();
+          if (!immediate) {
+            edgeHighlightClearTimer = window.setTimeout(() => {
+              edgeHighlightClearTimer = undefined;
+              clearEdgeHighlights({ immediate: true });
+            }, 500);
+            return;
+          }
           card.querySelectorAll(".edge.edge-active").forEach((edge) => {
             edge.classList.remove("edge-active");
           });
@@ -1046,12 +1081,12 @@ function buildPreviewScript(): string {
           if (!(edgeElement instanceof SVGPathElement)) {
             return;
           }
-          clearEdgeHighlights();
+          cancelPendingEdgeClear();
+          clearEdgeHighlights({ immediate: true });
           const edgeId = edgeElement.getAttribute("data-edge-id");
-          const visibleEdge = edgeId
-            ? card.querySelector('.edge[data-edge-id="' + CSS.escape(edgeId) + '"]')
-            : edgeElement;
+          const visibleEdge = edgeId ? resolveVisibleEdge(edgeId) : edgeElement;
           visibleEdge?.classList.add("edge-active");
+          rememberActiveEdge(edgeId);
           const sourceId = edgeElement.getAttribute("data-edge-from");
           const targetId = edgeElement.getAttribute("data-edge-to");
           for (const nodeId of [sourceId, targetId]) {
@@ -1081,8 +1116,11 @@ function buildPreviewScript(): string {
             ? eventTarget.closest(".edge[data-edge-from][data-edge-to], .edge-hit[data-edge-from][data-edge-to]")
             : null;
           const activeEdge = card.querySelector(".edge.edge-active[data-edge-from][data-edge-to]");
+          const rememberedEdge = lastActiveEdgeUntil >= Date.now()
+            ? resolveVisibleEdge(lastActiveEdgeId)
+            : null;
 
-          for (const edge of [targetEdge, activeEdge]) {
+          for (const edge of [targetEdge, activeEdge, rememberedEdge]) {
             const nodes = resolveEdgeNodes(edge);
             if (nodes.length > 0) {
               fitNodesInViewport(nodes);
