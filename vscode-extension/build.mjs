@@ -8,6 +8,8 @@ await build({
   platform: "node",
   target: "node20",
   external: ["vscode"],
+  minify: true,
+  legalComments: "none",
   sourcemap: false,
   logLevel: "info",
 });
