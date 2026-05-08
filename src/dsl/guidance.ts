@@ -77,13 +77,14 @@ const HELP_NODES: HelpNode[] = [
     ],
     detail: [
       "problem は top-level の quoted text block。",
-      "statement role は premise / evidence / decision / pending / viewpoint / partition。",
+      "statement role は premise / evidence / decision / comparison / pending / viewpoint / partition。",
       "decision based_on は任意だが、未指定 decision は監査対象になりうる。",
     ],
     index: [
       { key: "syntax.top-level", label: "top-level", summary: "framework / domain / problem / step / query の入口" },
       { key: "syntax.step", label: "step", summary: "explicit step、step:、flatten 記法" },
       { key: "syntax.decision", label: "decision", summary: "based_on を含む decision 文法" },
+      { key: "syntax.comparison", label: "comparison", summary: "problem / viewpoint scope を持つ decision 比較文法" },
       { key: "syntax.query-block", label: "query-block", summary: "query 宣言と DSLQL body" },
     ],
     related: ["query", "usecases"],
@@ -166,6 +167,27 @@ const HELP_NODES: HelpNode[] = [
     ],
     exampleSamples: ["decision-minimal", "contradiction-pending"],
     related: ["syntax.step", "query.functions", "usecases.decision-without-basis"],
+  },
+  {
+    key: "syntax.comparison",
+    title: "Comparison Syntax",
+    summary: "同一 problem / viewpoint scope で decision 間の相対比較を記述する。",
+    quick: [
+      "`comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:` の形を使う。",
+      "relation は preferred_over / weaker_than / incomparable の閉じた集合。",
+      "次行は quoted text で、比較理由や読み筋を補足する。",
+    ],
+    detail: [
+      "comparison は global weight ではなく、problem と viewpoint を明示した局所比較として扱う。",
+      "left/right decision は既存 decision id を参照する。",
+      "audit は未解決参照、scope 内 conflict、preference cycle を検査できる。",
+    ],
+    examples: [
+      "comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:",
+      '  "cost では D1 を D2 より優先する"',
+    ],
+    exampleSamples: ["decision-comparison"],
+    related: ["syntax.decision", "syntax.step", "samples.decision-comparison"],
   },
   {
     key: "syntax.query-block",

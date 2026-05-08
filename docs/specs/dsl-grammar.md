@@ -42,7 +42,12 @@
 - partition
 - evidence
 - decision
+- comparison
 - based_on
+- relation
+- preferred_over
+- weaker_than
+- incomparable
 - pending
 - query
 - requires
@@ -101,7 +106,7 @@ StringLine      = String Newline ;
 ```ebnf
 StepDecl        = "step" [Identifier] ":" Newline Indent StepBody Dedent ;
 ImplicitStepDecl = StepBody ;
-StepBody        = PremiseDecl | ViewpointDecl | PartitionDecl | EvidenceDecl | DecisionDecl | PendingDecl ;
+StepBody        = PremiseDecl | ViewpointDecl | PartitionDecl | EvidenceDecl | DecisionDecl | ComparisonDecl | PendingDecl ;
 ```
 
 ### 5.5 premise 宣言
@@ -145,6 +150,13 @@ PendingDecl     = "pending" Identifier ":" Newline Indent StringLine { Annotatio
 
 AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
 AnnotationKind  = "explanation" | "rationale" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
+```
+
+### 5.10 comparison 宣言
+
+```ebnf
+ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier "relation" ComparisonRelation Identifier "," Identifier ":" Newline Indent StringLine Dedent ;
+ComparisonRelation = "preferred_over" | "weaker_than" | "incomparable" ;
 ```
 
 ### 5.11 query 宣言

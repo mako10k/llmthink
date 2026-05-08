@@ -1,5 +1,6 @@
 import type {
   Annotation,
+  ComparisonStatement,
   DecisionStatement,
   DocumentAst,
   EvidenceStatement,
@@ -60,6 +61,14 @@ function formatDecision(statement: DecisionStatement): string[] {
   ];
 }
 
+function formatComparison(statement: ComparisonStatement): string[] {
+  return [
+    `comparison ${statement.id} on ${statement.problemId} viewpoint ${statement.viewpointId} relation ${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId}:`,
+    indent(quote(statement.text)),
+    ...formatAnnotations(statement.annotations).map(indent),
+  ];
+}
+
 function formatViewpoint(statement: ViewpointStatement): string[] {
   return [`viewpoint ${statement.id}:`, indent(`axis ${statement.axis}`)];
 }
@@ -74,6 +83,8 @@ function formatStepBody(step: StepDecl): string[] {
       return formatQuotedStepBody("pending", step.statement);
     case "decision":
       return formatDecision(step.statement);
+    case "comparison":
+      return formatComparison(step.statement);
     case "viewpoint":
       return formatViewpoint(step.statement);
     case "partition":

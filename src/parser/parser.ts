@@ -1,6 +1,7 @@
 import {
   type Annotation,
   type AnnotationKind,
+  type ComparisonStatement,
   type DecisionStatement,
   type DocumentAst,
   type DomainDecl,
@@ -102,6 +103,7 @@ function isStatementHeader(line: string): boolean {
     line.startsWith("pending ") ||
     line.startsWith("viewpoint ") ||
     line.startsWith("partition ") ||
+    line.startsWith("comparison ") ||
     line.startsWith("decision ")
   );
 }
@@ -216,6 +218,33 @@ function parseDecisionHeader(
     .map((value) => value.trim())
     .filter(Boolean);
   return { id, basedOn };
+}
+
+function parseComparisonHeader(
+  header: string,
+): {
+  id: string;
+  problemId: string;
+  viewpointId: string;
+  relation: ComparisonStatement["relation"];
+  leftDecisionId: string;
+  rightDecisionId: string;
+} | undefined {
+  const match =
+    /^comparison\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+viewpoint\s+([A-Za-z][A-Za-z0-9_-]*)\s+relation\s+(preferred_over|weaker_than|incomparable)\s+([A-Za-z][A-Za-z0-9_-]*)\s*,\s*([A-Za-z][A-Za-z0-9_-]*):$/.exec(
+      header,
+    );
+  if (!match) {
+    return undefined;
+  }
+  return {
+    id: match[1],
+    problemId: match[2],
+    viewpointId: match[3],
+    relation: match[4] as ComparisonStatement["relation"],
+    leftDecisionId: match[5],
+    rightDecisionId: match[6],
+  };
 }
 
 function parseFrameworkRuleLine(line: string): FrameworkRule | undefined {
@@ -510,6 +539,9 @@ function parseStatement(
   if (line.startsWith("decision ")) {
     return parseDecision(lines, lineIndex);
   }
+  if (line.startsWith("comparison ")) {
+    return parseComparison(lines, lineIndex);
+  }
   throw new ParseError(
     "Unknown statement type",
     lineIndex + 1,
@@ -685,6 +717,52 @@ function parseDecision(
     role: "decision",
     id: parsedHeader.id,
     basedOn: parsedHeader.basedOn,
+    text: stripQuotes(textLine),
+    annotations,
+    span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+    nextIndex,
+  };
+}
+
+function parseComparison(
+  lines: string[],
+  startIndex: number,
+): ComparisonStatement & { nextIndex: number } {
+  const header = lines[startIndex]?.trim() ?? "";
+  const rawHeader = lines[startIndex] ?? "";
+  const parsedHeader = parseComparisonHeader(header);
+  if (!parsedHeader) {
+    throw new ParseError(
+      "Invalid comparison declaration",
+      startIndex + 1,
+      firstNonWhitespaceColumn(rawHeader),
+      rawHeader.length + 1,
+    );
+  }
+  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
+  const rawTextLine = lines[textIndex] ?? "";
+  const textLine = rawTextLine.trim() ?? "";
+  if (!textLine.startsWith('"')) {
+    throw new ParseError(
+      "Comparison text is required",
+      textIndex + 1,
+      firstNonWhitespaceColumn(rawTextLine),
+      rawTextLine.length + 1,
+    );
+  }
+  const { annotations, nextIndex } = parseAnnotations(
+    lines,
+    textIndex + 1,
+    currentIndent(rawTextLine),
+  );
+  return {
+    role: "comparison",
+    id: parsedHeader.id,
+    problemId: parsedHeader.problemId,
+    viewpointId: parsedHeader.viewpointId,
+    relation: parsedHeader.relation,
+    leftDecisionId: parsedHeader.leftDecisionId,
+    rightDecisionId: parsedHeader.rightDecisionId,
     text: stripQuotes(textLine),
     annotations,
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),

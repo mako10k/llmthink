@@ -191,6 +191,54 @@ test("preview:html renders problem references as problem nodes instead of unreso
   }
 });
 
+test("preview:html renders comparison statements and comparison section", async () => {
+  const repoRoot = resolve("/home/mako10k/llmthink");
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-comparison-"));
+  const inputPath = join(tempDir, "comparison.dsl");
+  const outputPath = join(tempDir, "preview.html");
+
+  writeFileSync(
+    inputPath,
+    [
+      "problem P1:",
+      '  "Compare decisions"',
+      "",
+      "step:",
+      "  viewpoint VP1:",
+      "    axis cost",
+      "",
+      "step:",
+      "  decision D1 based_on P1, VP1:",
+      '    "Option A"',
+      "",
+      "step:",
+      "  decision D2 based_on P1, VP1:",
+      '    "Option B"',
+      "",
+      "step:",
+      "  comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:",
+      '    "Cost favors A"',
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  try {
+    execFileSync(
+      "npm",
+      ["run", "preview:html", "--", inputPath, "--out", outputPath, "--locale", "ja"],
+      { cwd: repoRoot, stdio: "pipe" },
+    );
+
+    const html = readFileSync(outputPath, "utf8");
+    assert.match(html, /node-comparison/);
+    assert.match(html, /Comparisons/);
+    assert.match(html, /preferred_over D1, D2/);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("preview:html marks intentional orphan nodes with a weak visual class", async () => {
   const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-orphan-"));

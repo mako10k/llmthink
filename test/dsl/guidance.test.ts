@@ -74,6 +74,17 @@ test("getDslSyntaxGuidanceText exposes sample detail help", () => {
   assert.match(text, /resolved_path:/);
 });
 
+test("getDslSyntaxGuidanceText exposes comparison syntax guidance", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "syntax",
+    subtopic: "comparison",
+    detail: "detail",
+  });
+  assert.match(text, /Topic: syntax.comparison/);
+  assert.match(text, /preferred_over/);
+  assert.match(text, /decision-comparison/);
+});
+
 test("getDslSyntaxGuidanceText lists use-case profiles for ideation and problem solving", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "usecases",

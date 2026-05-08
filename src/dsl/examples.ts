@@ -20,6 +20,11 @@ const candidateRoots = (() => {
 
 export const DSL_EXAMPLES: DslExampleEntry[] = [
   {
+    id: "decision-comparison",
+    path: "docs/examples/decision-comparison.dsl",
+    summary: "同一 problem / viewpoint 内の decision comparison 例",
+  },
+  {
     id: "ideation-profile",
     path: "docs/examples/ideation-profile.dsl",
     summary: "発想支援 profile の代表例",

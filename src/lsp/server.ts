@@ -77,7 +77,12 @@ const KEYWORD_DOCS: Record<string, string> = {
   partition: "MECE 分割候補を表す step body です。",
   evidence: "根拠を表す step body です。",
   decision: "判断を表す step body です。",
+  comparison: "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
   based_on: "decision の参照根拠を列挙します。",
+  relation: "comparison の比較関係を表します。",
+  preferred_over: "comparison relation です。左側 decision を右側より優先します。",
+  weaker_than: "comparison relation です。左側 decision が右側より弱いことを表します。",
+  incomparable: "comparison relation です。2 つの decision を同一軸では順序付けしないことを表します。",
   pending: "未解決事項を表す step body です。",
   query: "DSL 文書に対する問い合わせを宣言します。",
   requires: "framework が要求する役割を表します。",
@@ -616,6 +621,8 @@ function stepBodySymbol(step: StepDecl): DocumentSymbol {
     switch (step.statement.role) {
       case "decision":
         return SymbolKind.EnumMember;
+      case "comparison":
+        return SymbolKind.Operator;
       case "evidence":
       case "premise":
         return SymbolKind.String;

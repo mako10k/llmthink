@@ -4,7 +4,13 @@ export type StatementRole =
   | "partition"
   | "evidence"
   | "decision"
+  | "comparison"
   | "pending";
+
+export type ComparisonRelation =
+  | "preferred_over"
+  | "weaker_than"
+  | "incomparable";
 
 export interface SourceSpan {
   line: number;
@@ -96,6 +102,19 @@ export interface DecisionStatement {
   span: SourceSpan;
 }
 
+export interface ComparisonStatement {
+  role: "comparison";
+  id: string;
+  problemId: string;
+  viewpointId: string;
+  relation: ComparisonRelation;
+  leftDecisionId: string;
+  rightDecisionId: string;
+  text: string;
+  annotations: Annotation[];
+  span: SourceSpan;
+}
+
 export interface PendingStatement {
   role: "pending";
   id: string;
@@ -110,6 +129,7 @@ export type StepStatement =
   | PartitionStatement
   | EvidenceStatement
   | DecisionStatement
+  | ComparisonStatement
   | PendingStatement;
 
 export interface StepSyntax {
