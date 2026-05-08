@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.3.19",
+  "version": "0.3.20",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -114,10 +114,18 @@
       },
       {
         "command": "llmthink.dslPreview",
-        "title": "LLMThink: DSL Preview",
+        "title": "LLMThink: DSL Preview Here",
         "icon": {
           "light": "./media/preview-light.svg",
           "dark": "./media/preview-dark.svg"
+        }
+      },
+      {
+        "command": "llmthink.dslPreviewBeside",
+        "title": "LLMThink: DSL Preview to Side",
+        "icon": {
+          "light": "./media/preview-side-light.svg",
+          "dark": "./media/preview-side-dark.svg"
         }
       },
       {
@@ -181,6 +189,11 @@
           "command": "llmthink.dslPreview",
           "when": "editorLangId == llmthink && !notebookEditorFocused",
           "group": "navigation@1"
+        },
+        {
+          "command": "llmthink.dslPreviewBeside",
+          "when": "editorLangId == llmthink && !notebookEditorFocused",
+          "group": "navigation@2"
         }
       ],
       "modalEditor/editorTitle": [
@@ -188,6 +201,11 @@
           "command": "llmthink.dslPreview",
           "when": "editorLangId == llmthink && !notebookEditorFocused",
           "group": "navigation@1"
+        },
+        {
+          "command": "llmthink.dslPreviewBeside",
+          "when": "editorLangId == llmthink && !notebookEditorFocused",
+          "group": "navigation@2"
         }
       ],
       "editor/title/context": [
@@ -195,6 +213,11 @@
           "command": "llmthink.dslPreview",
           "when": "resourceLangId == llmthink",
           "group": "1_open"
+        },
+        {
+          "command": "llmthink.dslPreviewBeside",
+          "when": "resourceLangId == llmthink",
+          "group": "1_open@2"
         }
       ],
       "editor/context": [
@@ -202,6 +225,11 @@
           "command": "llmthink.dslPreview",
           "when": "editorLangId == llmthink",
           "group": "navigation"
+        },
+        {
+          "command": "llmthink.dslPreviewBeside",
+          "when": "editorLangId == llmthink",
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [
@@ -209,6 +237,11 @@
           "command": "llmthink.dslPreview",
           "when": "resourceExtname == .dsl",
           "group": "navigation"
+        },
+        {
+          "command": "llmthink.dslPreviewBeside",
+          "when": "resourceExtname == .dsl",
+          "group": "navigation@2"
         }
       ]
     }

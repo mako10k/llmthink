@@ -101,13 +101,24 @@ function toDocumentId(document: vscode.TextDocument): string {
 }
 
 async function openPreviewForEditor(editor: vscode.TextEditor): Promise<void> {
+  await openPreviewForEditorInColumn(editor, editor.viewColumn);
+}
+
+async function openPreviewForEditorBeside(editor: vscode.TextEditor): Promise<void> {
+  await openPreviewForEditorInColumn(editor, vscode.ViewColumn.Beside);
+}
+
+async function openPreviewForEditorInColumn(
+  editor: vscode.TextEditor,
+  viewColumn: vscode.ViewColumn | undefined,
+): Promise<void> {
   await vscode.commands.executeCommand(
     "vscode.openWith",
     editor.document.uri,
     DSL_PREVIEW_VIEW_TYPE,
     {
-      viewColumn: vscode.ViewColumn.Beside,
-      preview: true,
+      viewColumn,
+      preview: false,
     },
   );
 }
@@ -600,6 +611,17 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       await openPreviewForEditor(editor);
+    }),
+    vscode.commands.registerCommand("llmthink.dslPreviewBeside", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage(
+          previewStrings.previewMissingEditor,
+        );
+        return;
+      }
+
+      await openPreviewForEditorBeside(editor);
     }),
     vscode.commands.registerCommand("llmthink.thoughtDraft", async () => {
       await saveActiveDocumentAsDraft(outputChannel);
