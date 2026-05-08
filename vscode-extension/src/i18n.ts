@@ -1,7 +1,7 @@
 import type { StepStatement } from "../../dist/index.js";
 
 export type PreviewLocale = "ja" | "en";
-export type DiagramRole = StepStatement["role"] | "external";
+export type DiagramRole = "problem" | StepStatement["role"] | "external";
 
 interface PreviewStrings {
   previewName: string;
@@ -76,6 +76,7 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
     annotationLabel: "注記",
     previewError: "DSL をプレビューできませんでした。",
     roleLabels: {
+      problem: "問題",
       premise: "前提",
       evidence: "根拠",
       viewpoint: "観点",
@@ -120,6 +121,7 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
     annotationLabel: "Annotation",
     previewError: "The DSL preview could not be rendered.",
     roleLabels: {
+      problem: "Problems",
       premise: "Premises",
       evidence: "Evidence",
       viewpoint: "Viewpoints",

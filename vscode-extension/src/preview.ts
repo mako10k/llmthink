@@ -63,6 +63,7 @@ interface ElkLayoutEdge {
 const elk = new ELK();
 
 const DIAGRAM_ROLE_ORDER: DiagramRole[] = [
+  "problem",
   "premise",
   "evidence",
   "viewpoint",
@@ -175,10 +176,23 @@ function buildDiagramData(document: DocumentAst): {
 } {
   const nodes: DiagramNode[] = [];
   const edges: DiagramEdge[] = [];
-  const stepIds = new Set(document.steps.map((step) => step.statement.id));
+  const declaredIds = new Set<string>();
+
+  for (const problem of document.problems) {
+    declaredIds.add(problem.name);
+    nodes.push({
+      key: problem.name,
+      title: truncateSvgText(problem.name, 24),
+      subtitle: problem.text,
+      role: "problem",
+      line: problem.span.line,
+      column: problem.span.column,
+    });
+  }
 
   for (const step of document.steps) {
     const role = step.statement.role;
+    declaredIds.add(step.statement.id);
     nodes.push({
       key: step.statement.id,
       title: truncateSvgText(step.statement.id, 24),
@@ -198,7 +212,7 @@ function buildDiagramData(document: DocumentAst): {
   const unresolvedReferences = new Set(
     edges
       .map((edge) => edge.from)
-      .filter((source) => !stepIds.has(source)),
+      .filter((source) => !declaredIds.has(source)),
   );
 
   for (const source of unresolvedReferences) {
@@ -1264,6 +1278,10 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .minimap-node rect {
         stroke-width: 1;
       }
+      .minimap-node-problem rect {
+        fill: color-mix(in srgb, var(--vscode-textLink-foreground) 24%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 72%, transparent);
+      }
       .minimap-node-premise rect {
         fill: color-mix(in srgb, var(--vscode-charts-blue) 28%, var(--vscode-editor-background));
         stroke: color-mix(in srgb, var(--vscode-charts-blue) 72%, transparent);
@@ -1364,6 +1382,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .node-copy-key {
         color: var(--vscode-editor-foreground);
         font-weight: 700;
+      }
+      .node-problem rect {
+        fill: color-mix(in srgb, var(--vscode-textLink-foreground) 16%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 62%, transparent);
+      }
+      .legend-problem {
+        color: var(--vscode-textLink-foreground);
       }
       .node-premise rect {
         fill: color-mix(in srgb, var(--vscode-charts-blue) 18%, var(--vscode-editor-background));

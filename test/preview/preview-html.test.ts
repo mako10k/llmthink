@@ -135,3 +135,57 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test("preview:html renders problem references as problem nodes instead of unresolved refs", async () => {
+  const repoRoot = resolve("/home/mako10k/llmthink");
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-problem-"));
+  const outputPath = join(tempDir, "preview.html");
+
+  try {
+    execFileSync(
+      "npm",
+      [
+        "run",
+        "preview:html",
+        "--",
+        "docs/process/license-model-review.dsl",
+        "--out",
+        outputPath,
+        "--locale",
+        "ja",
+      ],
+      {
+        cwd: repoRoot,
+        stdio: "pipe",
+      },
+    );
+
+    const html = readFileSync(outputPath, "utf8");
+    assert.match(html, /node-problem/);
+    assert.match(html, /問題/);
+    assert.doesNotMatch(html, /P4:[^\n]*参照先が未定義です/);
+
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(`file://${outputPath}`);
+      await page.waitForSelector('.node-problem[data-node-key="P4"]');
+
+      const metrics = await page.evaluate(() => {
+        const problemNode = document.querySelector('.node-problem[data-node-key="P4"]');
+        const unresolvedNode = document.querySelector('.node-external[data-node-key="P4"]');
+        return {
+          hasProblemNode: problemNode instanceof SVGGElement,
+          hasUnresolvedNode: unresolvedNode instanceof SVGGElement,
+        };
+      });
+
+      assert.equal(metrics.hasProblemNode, true);
+      assert.equal(metrics.hasUnresolvedNode, false);
+    } finally {
+      await browser.close();
+    }
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
