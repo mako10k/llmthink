@@ -2,6 +2,8 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
+現行 release version は 0.4.0。
+
 ## 構成
 
 - docs/specs: 要求仕様
@@ -16,7 +18,9 @@
 
 - docs/specs/requirements.md
 - docs/process/adr-rules.md
+- docs/process/release-checklist.md
 - docs/process/version-bump-rules.dsl
+- CHANGELOG.md
 - docs/adr/0001-thought-audit-engine.md
 - docs/adr/0002-audit-severity-model.md
 - docs/adr/0003-mece-as-structural-discipline.md
@@ -47,6 +51,14 @@
 - npm run mcp
 - npm run typecheck:extension
 - npm run build:extension
+- npm run package:vsix
+
+## 配布
+
+- VS Code 拡張の配布物は vscode-extension/llmthink.vsix を生成して配布する
+- 生成コマンドは npm run package:vsix
+- release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
+- 変更内容の公開履歴は CHANGELOG.md を正とする
 
 ## Thought CLI
 
@@ -191,7 +203,9 @@ hostAddressLoopback=true
 - release version の判断基準は docs/process/version-bump-rules.dsl を正とする
 - root package、MCP server、VSIX extension は同じ release version を共有する
 - main へ入る公開差分ごとに version を bump する
+- 0.4.0 は preview HTML CLI、Playwright 回帰テスト、sample registry、DSL help 導線整理、VSIX preview UX 改善をまとめた minor release とする
 
 ## ライセンス
 
 - 本リポジトリは UNLICENSED 扱いであり、利用・再配布・改変には権利者の事前許可が必要
+- public repository として公開しても、上記ライセンス条件は変わらない
