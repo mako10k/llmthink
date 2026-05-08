@@ -136,6 +136,136 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
   }
 });
 
+test("preview:html keeps cards aligned, hides scrollbars, and applies control opacity", async () => {
+  const repoRoot = resolve("/home/mako10k/llmthink");
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-layout-"));
+  const outputPath = join(tempDir, "preview.html");
+
+  try {
+    execFileSync(
+      "npm",
+      [
+        "run",
+        "preview:html",
+        "--",
+        "docs/process/help-navigation-design.dsl",
+        "--out",
+        outputPath,
+        "--locale",
+        "ja",
+      ],
+      {
+        cwd: repoRoot,
+        stdio: "pipe",
+      },
+    );
+
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      await page.goto(`file://${outputPath}`);
+      await page.waitForSelector(".diagram-scroll");
+
+      const readMetrics = async () => page.evaluate(() => {
+        const hero = document.querySelector(".hero");
+        const card = document.querySelector(".diagram-card");
+        const markdown = document.querySelector(".markdown");
+        const viewport = document.querySelector(".diagram-viewport");
+        const controls = document.querySelector(".diagram-controls-overlay");
+        const minimap = document.querySelector(".diagram-minimap-card");
+        const scroll = document.querySelector(".diagram-scroll");
+        const zoomIn = document.querySelector('.diagram-button[data-action="zoom-in"]');
+        if (!(hero instanceof HTMLElement) || !(card instanceof HTMLElement) || !(markdown instanceof HTMLElement)) {
+          throw new Error("preview cards not found");
+        }
+        if (!(viewport instanceof HTMLElement) || !(controls instanceof HTMLElement) || !(minimap instanceof HTMLElement)) {
+          throw new Error("preview controls not found");
+        }
+        if (!(scroll instanceof HTMLElement) || !(zoomIn instanceof HTMLElement)) {
+          throw new Error("preview scroll or zoom button not found");
+        }
+
+        const heroRect = hero.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const markdownRect = markdown.getBoundingClientRect();
+        const viewportRect = viewport.getBoundingClientRect();
+
+        return {
+          heroLeft: heroRect.left,
+          cardLeft: cardRect.left,
+          markdownLeft: markdownRect.left,
+          heroWidth: heroRect.width,
+          cardWidth: cardRect.width,
+          markdownWidth: markdownRect.width,
+          viewportWidth: viewportRect.width,
+          controlsOpacity: Number(getComputedStyle(controls).opacity),
+          minimapOpacity: Number(getComputedStyle(minimap).opacity),
+          scrollClientWidth: scroll.clientWidth,
+          scrollOffsetWidth: scroll.offsetWidth,
+          scrollClientHeight: scroll.clientHeight,
+          scrollOffsetHeight: scroll.offsetHeight,
+        };
+      });
+
+      const initial = await readMetrics();
+      assert.ok(Math.abs(initial.heroLeft - initial.cardLeft) < 1);
+      assert.ok(Math.abs(initial.cardLeft - initial.markdownLeft) < 1);
+      assert.ok(Math.abs(initial.heroWidth - initial.cardWidth) < 1);
+      assert.ok(Math.abs(initial.cardWidth - initial.markdownWidth) < 1);
+      assert.ok(Math.abs(initial.viewportWidth - (initial.cardWidth - 36)) < 2);
+      assert.ok(Math.abs(initial.controlsOpacity - 0.5) < 0.01);
+      assert.ok(Math.abs(initial.minimapOpacity - 0.5) < 0.01);
+
+      await page.hover(".diagram-viewport");
+      await page.waitForTimeout(180);
+      const controlsHoverOpacity = await page.evaluate(() => {
+        const controls = document.querySelector(".diagram-controls-overlay");
+        if (!(controls instanceof HTMLElement)) {
+          throw new Error("controls not found");
+        }
+        return Number(getComputedStyle(controls).opacity);
+      });
+      assert.ok(Math.abs(controlsHoverOpacity - 0.75) < 0.01);
+
+      await page.hover(".diagram-minimap-card");
+      await page.waitForTimeout(180);
+      const minimapHoverOpacity = await page.evaluate(() => {
+        const minimap = document.querySelector(".diagram-minimap-card");
+        if (!(minimap instanceof HTMLElement)) {
+          throw new Error("minimap not found");
+        }
+        return Number(getComputedStyle(minimap).opacity);
+      });
+      assert.ok(Math.abs(minimapHoverOpacity - 0.75) < 0.01);
+
+      await page.click('.diagram-button[data-action="zoom-in"]');
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+
+      const zoomed = await readMetrics();
+      assert.ok(zoomed.scrollOffsetWidth - zoomed.scrollClientWidth < 2);
+      assert.ok(zoomed.scrollOffsetHeight - zoomed.scrollClientHeight < 2);
+
+      await page.setViewportSize({ width: 980, height: 1000 });
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+
+      const narrow = await readMetrics();
+      assert.ok(Math.abs(narrow.heroLeft - narrow.cardLeft) < 1);
+      assert.ok(Math.abs(narrow.cardLeft - narrow.markdownLeft) < 1);
+      assert.ok(Math.abs(narrow.heroWidth - narrow.cardWidth) < 1);
+      assert.ok(Math.abs(narrow.cardWidth - narrow.markdownWidth) < 1);
+      assert.ok(Math.abs(narrow.viewportWidth - (narrow.cardWidth - 36)) < 2);
+    } finally {
+      await browser.close();
+    }
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("preview:html renders problem references as problem nodes instead of unresolved refs", async () => {
   const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-problem-"));

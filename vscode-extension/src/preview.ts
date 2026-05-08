@@ -1251,6 +1251,9 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .hero,
       .diagram-card,
       .markdown {
+        width: min(100%, 1120px);
+        justify-self: center;
+        box-sizing: border-box;
         min-width: 0;
         border: 1px solid color-mix(in srgb, var(--vscode-editorWidget-border, var(--vscode-panel-border)) 80%, transparent);
         border-radius: 18px;
@@ -1263,10 +1266,6 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-card,
       .markdown {
         padding: 18px;
-      }
-      .diagram-card {
-        width: min(100%, 1120px);
-        justify-self: center;
       }
       .eyebrow {
         font-size: 12px;
@@ -1339,6 +1338,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         flex: 1 1 auto;
         min-height: 0;
         cursor: grab;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .diagram-scroll::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        display: none;
       }
       .diagram-scroll.dragging {
         cursor: grabbing;
@@ -1353,7 +1359,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         display: flex;
         flex-direction: column;
         min-width: 0;
-        width: min(100%, 1080px);
+        width: 100%;
+        box-sizing: border-box;
         margin: 0 auto;
         height: clamp(320px, 50vh, 520px);
         border-radius: 14px;
