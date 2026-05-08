@@ -185,13 +185,52 @@ step S39:
     "運用方針としては sidecar file を意味監査結果の正本とし、本体 DSL には要約 annotation または生成ビューだけを置く hybrid を第一候補にする"
 
 step S40:
-  pending PD5:
-    "sidecar file の形式を DSL にするか JSON にするかは、手編集性、差分可読性、query のしやすさを見て再判断が必要である"
+  decision D15 based_on PR4, PR5, EV7, D12:
+    "sidecar file の形式は JSON ではなく DSL とし、人手レビュー、差分確認、必要時の手修正をしやすくする"
 
 step S41:
-  pending PD6:
-    "sidecar file の配置を thought 直下にするか、audits 配下に時系列で置くかは、一覧性と rename 耐性を見て決める必要がある"
+  decision D16 based_on PR5, PR7, EV7, D12, D15:
+    "sidecar DSL の正本配置は .llmthink/thoughts/<thought-id>/semantic-audit.dsl を第一候補とし、draft.dsl や final.dsl に隣接させて discoverability を上げる"
 
 step S42:
+  decision D17 based_on PR4, PR6, PR7, D14, D16:
+    "時系列の再監査履歴や実行ログが必要な場合は、semantic-audit.dsl を正本としつつ、派生履歴を .llmthink/thoughts/<thought-id>/semantic-audits/ 配下へ追加保存する構成にする"
+
+problem P10:
+  "本体 DSL に出す要約は、常時固定だと運用ごとのノイズ許容量に合わず、軽い確認と厳密な追跡の両方を満たしにくい"
+
+step S44:
+  premise PR8:
+    "要約は正本ではなく運用向けの表示面として扱い、チームやフェーズに応じて粒度を切り替えられるほうがよい"
+
+step S45:
+  evidence EV9:
+    "日常運用では『監査済みかどうか』だけ見えれば十分な場面と、pair ごとの最新 verdict まで見たい場面が分かれる"
+
+step S46:
+  decision D18 based_on P10, PR8, EV9, D14:
+    "本体 DSL 側の要約は固定 1 種にせず、none、document_summary、pair_summary のような運用プロファイルから選べるようにする"
+
+step S47:
+  decision D19 based_on PR8, EV9, D18:
+    "既定値は document_summary とし、本文には『この thought に意味監査記録がある』ことと最新更新時刻、未解決件数など document 単位の短い要約だけを出す"
+
+step S48:
+  decision D20 based_on PR8, D18:
+    "pair_summary はレビューや集中的な検証で使う運用モードとし、対象 pair id、最新 verdict、短い reason を本文または生成ビューへ展開できるようにする"
+
+step S49:
+  decision D21 based_on PR8, D18:
+    "none は本文ノイズを最小化したい運用モードとして許可し、その場合も sidecar DSL 自体は必ず残して CLI と preview から到達できるようにする"
+
+step S50:
+  pending PD5:
+    "semantic-audit.dsl の具体文法を既存 statement role の組み合わせで表すか、semantic_audit のような専用 role を導入するかは parser 差分を見て再判断が必要である"
+
+step S51:
+  pending PD6:
+    "document_summary と pair_summary の切替を annotation 生成で行うか、preview や thought show の生成ビューで行うかは UI 面と diff 面を見て決める必要がある"
+
+step S52:
   pending PD7:
-    "本体 DSL へ置く要約 annotation を pair 単位にするか document 単位にするかは、本文ノイズと可視性のバランスを見て調整が必要である"
+    "semantic-audits/ 配下に置く派生履歴を append-only DSL にするか、timestamp ごとの snapshot DSL にするかは merge 競合と追跡性を見て調整が必要である"
