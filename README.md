@@ -16,6 +16,7 @@
 
 - docs/specs/requirements.md
 - docs/process/adr-rules.md
+- docs/process/version-bump-rules.dsl
 - docs/adr/0001-thought-audit-engine.md
 - docs/adr/0002-audit-severity-model.md
 - docs/adr/0003-mece-as-structural-discipline.md
@@ -40,6 +41,7 @@
 - npm run cli -- dsl audit docs/examples/contradiction-pending.dsl
 - npm run cli -- dsl audit docs/examples/contradiction-pending.dsl --pretty
 - npm run cli -- dsl help
+- npm run cli -- dsl help samples query-assist detail
 - npm run verify-examples
 - npm run mcp
 - npm run typecheck:extension
@@ -179,8 +181,15 @@ hostAddressLoopback=true
 ## DSL ヘルプ
 
 - CLI では `llmthink dsl help` で全体文法を表示する
+- sample は固定 path ではなく sample id で案内し、`llmthink dsl help samples <sample-id> detail` で現在環境の resolved path を確認できる
 - MCP では `dsl action=help`、VSIX tool では `action=help` を使う
 - 文法エラー時は、関連する理由、期待される構文、その場で呼べる help 導線を fatal report に含める
+
+## Versioning
+
+- release version の判断基準は docs/process/version-bump-rules.dsl を正とする
+- root package、MCP server、VSIX extension は同じ release version を共有する
+- main へ入る公開差分ごとに version を bump する
 
 ## ライセンス
 

@@ -1,3 +1,7 @@
+import {
+  listDslExamples,
+  resolveDslExamplePath,
+} from "./examples.js";
 import type { AuditIssue, AuditReport } from "../model/diagnostics.js";
 import type { ParseError } from "../parser/parser.js";
 
@@ -31,7 +35,7 @@ interface HelpNode {
   quick: string[];
   detail: string[];
   examples?: string[];
-  exampleFiles?: Array<{ path: string; summary: string }>;
+  exampleSamples?: string[];
   index?: Array<{ key: string; label: string; summary: string }>;
   related?: string[];
 }
@@ -57,9 +61,10 @@ const HELP_NODES: HelpNode[] = [
       { key: "syntax", label: "syntax", summary: "top-level block、step 記法、各 statement の基本文法" },
       { key: "query", label: "query", summary: "DSLQL の root、operator、関数、代表 query" },
       { key: "usecases", label: "usecases", summary: "目的別の逆引き query テンプレート" },
+      { key: "samples", label: "samples", summary: "論理 sample id から具体例と現在環境での配置を辿る" },
       { key: "channels", label: "channels", summary: "CLI / MCP / VSIX からの呼び出し方法" },
     ],
-    related: ["query", "usecases", "channels"],
+    related: ["query", "usecases", "samples"],
   },
   {
     key: "syntax",
@@ -107,9 +112,7 @@ const HELP_NODES: HelpNode[] = [
       "problem P1:",
       '  "監査したい問題"',
     ],
-    exampleFiles: [
-      { path: "docs/examples/framework-requires-and.dsl", summary: "framework の requires and/or を含む最小例" },
-    ],
+    exampleSamples: ["framework-requires-and"],
     related: ["syntax.step", "syntax.query-block"],
   },
   {
@@ -138,9 +141,7 @@ const HELP_NODES: HelpNode[] = [
       "decision D1 based_on EV1:",
       '  "implicit step"',
     ],
-    exampleFiles: [
-      { path: "docs/examples/decision-minimal.dsl", summary: "flatten 記法でも読める decision の最小例" },
-    ],
+    exampleSamples: ["decision-minimal"],
     related: ["syntax.decision", "query"],
   },
   {
@@ -163,10 +164,7 @@ const HELP_NODES: HelpNode[] = [
       "  annotation rationale:",
       '    "根拠を明示する"',
     ],
-    exampleFiles: [
-      { path: "docs/examples/decision-minimal.dsl", summary: "decision と based_on の最小例" },
-      { path: "docs/examples/contradiction-pending.dsl", summary: "decision と pending が同居する監査例" },
-    ],
+    exampleSamples: ["decision-minimal", "contradiction-pending"],
     related: ["syntax.step", "query.functions", "usecases.decision-without-basis"],
   },
   {
@@ -187,10 +185,7 @@ const HELP_NODES: HelpNode[] = [
       "query Q1:",
       '  .problems[] | select(.id == "P1") | related_decisions',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-assist.dsl", summary: "query block と related_decisions の代表例" },
-      { path: "docs/examples/query-unresolved.dsl", summary: "query 参照が未解決なときの例" },
-    ],
+    exampleSamples: ["query-assist", "query-unresolved"],
     related: ["query", "query.examples", "usecases.problem-to-decision"],
   },
   {
@@ -216,7 +211,7 @@ const HELP_NODES: HelpNode[] = [
       { key: "query.examples", label: "examples", summary: "代表 query のテンプレート" },
       { key: "query.errors", label: "errors", summary: "よくある迷い方と回復導線" },
     ],
-    related: ["syntax.query-block", "usecases", "channels"],
+    related: ["syntax.query-block", "usecases", "samples"],
   },
   {
     key: "query.roots",
@@ -237,9 +232,7 @@ const HELP_NODES: HelpNode[] = [
       '.steps[] | select(.role == "decision")',
       '.audit | audit_findings("warning")',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-assist.dsl", summary: "problem root から decision を辿る例" },
-    ],
+    exampleSamples: ["query-assist"],
     related: ["query.functions", "query.examples"],
   },
   {
@@ -301,10 +294,7 @@ const HELP_NODES: HelpNode[] = [
       '.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}',
       '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-assist.dsl", summary: "related_decisions を使う正規例" },
-      { path: "docs/examples/query-unresolved.dsl", summary: "関数や参照の誤りを含む比較例" },
-    ],
+    exampleSamples: ["query-assist", "query-unresolved"],
     related: ["query.roots", "query.examples", "usecases.problem-to-decision"],
   },
   {
@@ -346,11 +336,7 @@ const HELP_NODES: HelpNode[] = [
       '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
       '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-assist.dsl", summary: "解決済み query の代表例" },
-      { path: "docs/examples/query-unresolved.dsl", summary: "未解決参照を含む対比例" },
-      { path: "docs/examples/dsl-samples.md", summary: "DSL 全体サンプル集" },
-    ],
+    exampleSamples: ["query-assist", "query-unresolved", "dsl-samples"],
     related: ["usecases", "query.functions", "query.projections"],
   },
   {
@@ -371,11 +357,28 @@ const HELP_NODES: HelpNode[] = [
       'query Q1:\n  .problems[] | select(.id == "P1") | related_decisions',
       'query Q2:\n  .steps[] | select(.role == "decision")',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-unresolved.dsl", summary: "query トラブルシュートの起点になる失敗例" },
-      { path: "docs/examples/query-assist.dsl", summary: "失敗例と比較しやすい成功例" },
-    ],
+    exampleSamples: ["query-unresolved", "query-assist"],
     related: ["query.roots", "query.functions", "usecases"],
+  },
+  {
+    key: "samples",
+    title: "Sample Index",
+    summary: "論理 sample id から具体例と現在環境での配置を辿る。",
+    quick: [
+      "sample は固定パスではなく logical id で案内する。",
+      "現在の checkout に sample が存在する場合だけ resolved path を表示する。",
+      "詳細は `dsl help samples <sample-id> detail` で辿る。",
+    ],
+    detail: [
+      "配布形態によって docs/examples の位置や同梱有無が変わるため、help は sample id を主 anchor にする。",
+      "resolved path は補助情報であり、存在しない場合でも sample id と summary は安定して使える。",
+    ],
+    index: listDslExamples().map((entry) => ({
+      key: `samples.${entry.id}`,
+      label: entry.id,
+      summary: entry.summary,
+    })),
+    related: ["query.examples", "channels"],
   },
   {
     key: "usecases",
@@ -412,9 +415,7 @@ const HELP_NODES: HelpNode[] = [
     examples: [
       '.problems[] | select(.id == "P1") | related_decisions | {id: .id, text: .text, based_on: .based_on}',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-assist.dsl", summary: "problem から decision を辿る完成例" },
-    ],
+    exampleSamples: ["query-assist"],
     related: ["query.functions", "query.projections", "syntax.query-block"],
   },
   {
@@ -432,10 +433,7 @@ const HELP_NODES: HelpNode[] = [
     examples: [
       '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
     ],
-    exampleFiles: [
-      { path: "docs/examples/decision-minimal.dsl", summary: "decision 単体の見直し用最小例" },
-      { path: "docs/examples/contradiction-pending.dsl", summary: "監査で decision を点検する複合例" },
-    ],
+    exampleSamples: ["decision-minimal", "contradiction-pending"],
     related: ["query.conditions", "syntax.decision"],
   },
   {
@@ -470,10 +468,7 @@ const HELP_NODES: HelpNode[] = [
     examples: [
       '.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}',
     ],
-    exampleFiles: [
-      { path: "docs/examples/query-assist.audit.json", summary: "query 実行後の監査出力サンプル" },
-      { path: "docs/examples/audit-output-sample.json", summary: "監査結果 JSON の全体像" },
-    ],
+    exampleSamples: ["query-assist-audit", "audit-output-sample"],
     related: ["query.functions", "query.projections"],
   },
   {
@@ -494,7 +489,7 @@ const HELP_NODES: HelpNode[] = [
       { key: "channels.mcp", label: "mcp", summary: "MCP tool 引数としての使い方" },
       { key: "channels.vsix", label: "vsix", summary: "VSIX language model tool と dsl help text の使い方" },
     ],
-    related: ["overview", "query"],
+    related: ["overview", "query", "samples"],
   },
   {
     key: "channels.cli",
@@ -544,7 +539,24 @@ const HELP_NODES: HelpNode[] = [
 ];
 
 const HELP_LOOKUP = new Map<string, HelpNode>();
-for (const node of HELP_NODES) {
+const SAMPLE_HELP_NODES: HelpNode[] = listDslExamples().map((entry) => ({
+  key: `samples.${entry.id}`,
+  title: `Sample: ${entry.id}`,
+  summary: entry.summary,
+  quick: [
+    `sample id は ${entry.id}。`,
+    "help では sample id を主 anchor とし、固定パスは補助表示に留める。",
+  ],
+  detail: [
+    `元の相対配置は ${entry.path}。`,
+    "現在の checkout に sample が存在する場合だけ resolved path が表示される。",
+    "sample を利用する側は path 文字列ではなく id と summary を保持すると配布形態差異に強い。",
+  ],
+  exampleSamples: [entry.id],
+  related: ["samples", "query.examples", "syntax.query-block"],
+}));
+
+for (const node of [...HELP_NODES, ...SAMPLE_HELP_NODES]) {
   HELP_LOOKUP.set(node.key, node);
 }
 
@@ -670,13 +682,23 @@ function formatDetailReference(node: HelpNode): string[] {
   ];
 }
 
-function formatExampleFiles(node: HelpNode): string[] {
-  if (!node.exampleFiles || node.exampleFiles.length === 0) {
+function formatExampleSamples(node: HelpNode): string[] {
+  if (!node.exampleSamples || node.exampleSamples.length === 0) {
     return [];
   }
+  const entries = listDslExamples(node.exampleSamples);
   return [
-    "Example Files",
-    ...node.exampleFiles.map((item) => `- ${item.path}: ${item.summary}`),
+    "Example Samples",
+    ...entries.flatMap((entry) => {
+      const resolvedPath = resolveDslExamplePath(entry.id);
+      return [
+        `- ${entry.id}: ${entry.summary}`,
+        `  help: llmthink dsl help samples ${entry.id} detail`,
+        resolvedPath
+          ? `  resolved_path: ${resolvedPath}`
+          : "  resolved_path: unavailable in current distribution",
+      ];
+    }),
     "",
   ];
 }
@@ -733,7 +755,7 @@ export function getDslSyntaxGuidanceText(request: DslHelpRequest = {}): string {
     lines.push(...formatDetailReference(node));
   }
 
-  lines.push(...formatExampleFiles(node));
+  lines.push(...formatExampleSamples(node));
   lines.push(...formatRelatedIndex(request, node));
   lines.push("Next Requests", ...helpInvocationExamples(node, request));
   return `${lines.join("\n")}\n`;

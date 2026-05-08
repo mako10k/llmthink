@@ -1,6 +1,6 @@
 {
   "name": "llmthink",
-  "version": "0.3.0",
+  "version": "0.3.21",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -22,6 +22,7 @@
   },
   "files": [
     "dist",
+    "docs/examples",
     "README.md",
     "schemas"
   ],

@@ -33,7 +33,7 @@ import { auditAndPersistThought } from "../thought/workflow.js";
 
 const server = new McpServer({
   name: "llmthink",
-  version: "0.3.0",
+  version: "0.3.21",
 });
 
 function textContent(text: string) {

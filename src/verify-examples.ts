@@ -2,29 +2,30 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { auditDslFile } from "./analyzer/audit.js";
+import { getDslExample } from "./dsl/examples.js";
 import type { AuditReport } from "./model/diagnostics.js";
 
 interface ExampleCase {
-  input: string;
-  expected: string;
+  inputId: string;
+  expectedId: string;
 }
 
 const exampleCases: ExampleCase[] = [
   {
-    input: "docs/examples/contradiction-pending.dsl",
-    expected: "docs/examples/audit-output-sample.json",
+    inputId: "contradiction-pending",
+    expectedId: "audit-output-sample",
   },
   {
-    input: "docs/examples/query-assist.dsl",
-    expected: "docs/examples/query-assist.audit.json",
+    inputId: "query-assist",
+    expectedId: "query-assist-audit",
   },
   {
-    input: "docs/examples/query-unresolved.dsl",
-    expected: "docs/examples/query-unresolved.audit.json",
+    inputId: "query-unresolved",
+    expectedId: "query-unresolved-audit",
   },
   {
-    input: "docs/examples/framework-requires-and.dsl",
-    expected: "docs/examples/framework-requires-and.audit.json",
+    inputId: "framework-requires-and",
+    expectedId: "framework-requires-and-audit",
   },
 ];
 
@@ -39,22 +40,29 @@ async function main(): Promise<void> {
   let failed = false;
 
   for (const exampleCase of exampleCases) {
+    const input = getDslExample(exampleCase.inputId);
+    const expectedOutput = getDslExample(exampleCase.expectedId);
+    if (!input || !expectedOutput) {
+      process.stderr.write(`Missing example registry entry: ${exampleCase.inputId} / ${exampleCase.expectedId}\n`);
+      failed = true;
+      continue;
+    }
     const actual = normalize(
-      await auditDslFile(resolve(process.cwd(), exampleCase.input), {
+      await auditDslFile(resolve(process.cwd(), input.path), {
         embeddings: { provider: "none" },
       }),
     );
     const expected = JSON.parse(
-      readFileSync(resolve(process.cwd(), exampleCase.expected), "utf8"),
+      readFileSync(resolve(process.cwd(), expectedOutput.path), "utf8"),
     ) as AuditReport;
     const actualJson = JSON.stringify(actual, null, 2);
     const expectedJson = JSON.stringify(expected, null, 2);
     if (actualJson !== expectedJson) {
       failed = true;
-      process.stderr.write(`Mismatch: ${exampleCase.input}\n`);
-      process.stderr.write(`Expected: ${exampleCase.expected}\n`);
+      process.stderr.write(`Mismatch: ${input.path}\n`);
+      process.stderr.write(`Expected: ${expectedOutput.path}\n`);
     } else {
-      process.stdout.write(`OK: ${exampleCase.input}\n`);
+      process.stdout.write(`OK: ${input.path}\n`);
     }
   }
 

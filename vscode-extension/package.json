@@ -2,7 +2,7 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "publisher": "mako10k",
   "private": true,
   "license": "UNLICENSED",
@@ -98,6 +98,23 @@
             "thoughtId": {
               "type": "string",
               "description": "Optional thought identifier to reuse for re-audit or later lifecycle actions."
+            },
+            "topic": {
+              "type": "string",
+              "description": "Optional help topic such as syntax, query, usecases, samples, or channels."
+            },
+            "subtopic": {
+              "type": "string",
+              "description": "Optional help subtopic such as functions, examples, or a sample id."
+            },
+            "detail": {
+              "type": "string",
+              "enum": [
+                "index",
+                "quick",
+                "detail"
+              ],
+              "description": "Optional help detail level."
             }
           }
         }

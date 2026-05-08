@@ -50,13 +50,26 @@ test("getDslSyntaxGuidanceText returns query function detail with next requests"
   assert.match(text, /llmthink dsl help query functions detail/);
 });
 
-test("getDslSyntaxGuidanceText includes concrete example files for query topics", () => {
+test("getDslSyntaxGuidanceText includes logical sample references for query topics", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "query",
     subtopic: "examples",
     detail: "detail",
   });
-  assert.match(text, /Example Files/);
+  assert.match(text, /Example Samples/);
+  assert.match(text, /query-assist/);
+  assert.match(text, /query-unresolved/);
+  assert.match(text, /resolved_path:/);
+});
+
+test("getDslSyntaxGuidanceText exposes sample detail help", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "samples",
+    subtopic: "query-assist",
+    detail: "detail",
+  });
+  assert.match(text, /Topic: samples.query-assist/);
+  assert.match(text, /解決済み query の代表例/);
   assert.match(text, /docs\/examples\/query-assist\.dsl/);
-  assert.match(text, /docs\/examples\/query-unresolved\.dsl/);
+  assert.match(text, /resolved_path:/);
 });
