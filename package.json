@@ -36,6 +36,7 @@
     "test": "node --import tsx --test test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "cli": "tsx src/cli.ts",
+    "preview:html": "tsx vscode-extension/src/render-preview-html.ts",
     "verify-examples": "tsx src/verify-examples.ts",
     "mcp": "tsx src/mcp/server.ts",
     "lint": "eslint .",
@@ -62,9 +63,10 @@
     "globals": "^16.3.0",
     "jscpd": "^4.0.5",
     "knip": "^5.61.3",
+    "playwright": "^1.59.1",
     "prettier": "^3.6.2",
     "tsx": "^4.19.2",
-    "typescript-eslint": "^8.35.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.1"
   }
 }

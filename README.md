@@ -42,6 +42,7 @@
 - npm run cli -- dsl audit docs/examples/contradiction-pending.dsl --pretty
 - npm run cli -- dsl help
 - npm run cli -- dsl help samples query-assist detail
+- npm run preview:html -- docs/process/help-navigation-design.dsl --out /tmp/llmthink-preview.html
 - npm run verify-examples
 - npm run mcp
 - npm run typecheck:extension

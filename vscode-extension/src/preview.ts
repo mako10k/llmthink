@@ -749,7 +749,9 @@ function markdownToHtml(markdown: string): string {
 function buildPreviewScript(): string {
   return `
     <script>
-      const vscode = acquireVsCodeApi();
+      const vscode = typeof acquireVsCodeApi === "function"
+        ? acquireVsCodeApi()
+        : { postMessage: () => undefined };
 
       const revealNode = (element) => {
         const line = Number(element?.dataset?.line);
