@@ -1146,13 +1146,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        opacity: 0.22;
+        opacity: 0.3;
         transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, transform 120ms ease;
       }
       .diagram-button:hover,
       .diagram-button:focus-visible,
       .diagram-minimap-card:hover .diagram-button {
-        opacity: 0.58;
+        opacity: 0.62;
         background: color-mix(in srgb, var(--vscode-editor-background) 76%, transparent);
         border-color: color-mix(in srgb, var(--vscode-focusBorder) 36%, transparent);
       }
@@ -1209,13 +1209,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         border-radius: 999px;
         background: color-mix(in srgb, var(--vscode-editor-background) 28%, transparent);
         backdrop-filter: blur(10px);
-        opacity: 0.16;
+        opacity: 0.28;
         transition: opacity 120ms ease, background 120ms ease;
         z-index: 2;
       }
       .diagram-viewport:hover .diagram-controls-overlay,
       .diagram-controls-overlay:focus-within {
-        opacity: 0.42;
+        opacity: 0.5;
       }
       .diagram-minimap-card {
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
@@ -1228,7 +1228,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         right: 10px;
         width: min(112px, 18vw);
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-        opacity: 0.2;
+        opacity: 0.28;
         transition: opacity 120ms ease, box-shadow 120ms ease;
         z-index: 2;
         cursor: grab;
@@ -1236,7 +1236,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-minimap-card:hover,
       .diagram-minimap-card:focus-within,
       .diagram-minimap-card.dragging {
-        opacity: 0.48;
+        opacity: 0.56;
         box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
       }
       .diagram-minimap-card.dragging {
