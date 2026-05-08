@@ -1206,8 +1206,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         overflow: hidden;
         width: min(100%, 1080px);
         margin: 0 auto;
-        max-height: min(78vh, 920px);
-        min-height: min(72vh, 720px);
+        max-height: min(64vh, 720px);
+        min-height: clamp(320px, 50vh, 520px);
         border-radius: 14px;
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
         background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
