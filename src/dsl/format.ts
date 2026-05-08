@@ -64,30 +64,37 @@ function formatViewpoint(statement: ViewpointStatement): string[] {
   return [`viewpoint ${statement.id}:`, indent(`axis ${statement.axis}`)];
 }
 
-function formatStep(step: StepDecl): string {
-  const bodyLines = (() => {
-    switch (step.statement.role) {
-      case "premise":
-        return formatQuotedStepBody("premise", step.statement);
-      case "evidence":
-        return formatQuotedStepBody("evidence", step.statement);
-      case "pending":
-        return formatQuotedStepBody("pending", step.statement);
-      case "decision":
-        return formatDecision(step.statement);
-      case "viewpoint":
-        return formatViewpoint(step.statement);
-      case "partition":
-        return [
-          `partition ${step.statement.id} on ${step.statement.domainName} axis ${step.statement.axis}:`,
-          ...step.statement.members.map((member) =>
-            indent(`${member.name} := ${member.predicate}`),
-          ),
-        ];
-    }
-  })();
+function formatStepBody(step: StepDecl): string[] {
+  switch (step.statement.role) {
+    case "premise":
+      return formatQuotedStepBody("premise", step.statement);
+    case "evidence":
+      return formatQuotedStepBody("evidence", step.statement);
+    case "pending":
+      return formatQuotedStepBody("pending", step.statement);
+    case "decision":
+      return formatDecision(step.statement);
+    case "viewpoint":
+      return formatViewpoint(step.statement);
+    case "partition":
+      return [
+        `partition ${step.statement.id} on ${step.statement.domainName} axis ${step.statement.axis}:`,
+        ...step.statement.members.map((member) =>
+          indent(`${member.name} := ${member.predicate}`),
+        ),
+      ];
+  }
+}
 
-  return [`step ${step.id}:`, ...bodyLines.map(indent)].join("\n");
+function formatStep(step: StepDecl): string {
+  const bodyLines = formatStepBody(step);
+  if (step.syntax.step === "implicit") {
+    return bodyLines.join("\n");
+  }
+
+  const header =
+    step.syntax.stepId === "explicit" ? `step ${step.id}:` : "step:";
+  return [header, ...bodyLines.map(indent)].join("\n");
 }
 
 function formatQuery(query: QueryDecl): string {

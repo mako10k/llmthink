@@ -110,10 +110,16 @@ export type StepStatement =
   | DecisionStatement
   | PendingStatement;
 
+export interface StepSyntax {
+  step: "explicit" | "implicit";
+  stepId: "explicit" | "synthetic";
+}
+
 export interface StepDecl {
   id: string;
   statement: StepStatement;
   span: SourceSpan;
+  syntax: StepSyntax;
 }
 
 export interface QueryDecl {

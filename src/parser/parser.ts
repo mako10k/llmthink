@@ -114,6 +114,10 @@ function implicitStepFromStatement(
       id: synthesizeStepId(statement.id),
       statement,
       span: statement.span,
+      syntax: {
+        step: "implicit",
+        stepId: "synthetic",
+      },
     },
     statement.nextIndex,
   ];
@@ -462,6 +466,10 @@ function parseStep(lines: string[], startIndex: number): [StepDecl, number] {
       id: parsedHeader.id ?? synthesizeStepId(statement.id),
       statement,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+      syntax: {
+        step: "explicit",
+        stepId: parsedHeader.id ? "explicit" : "synthetic",
+      },
     },
     statement.nextIndex,
   ];
