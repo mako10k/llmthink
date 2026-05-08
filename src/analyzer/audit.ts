@@ -277,7 +277,7 @@ function auditDecisionStep(
       target_refs: [statementReference(step.statement, step.id)],
       message: `decision ${step.statement.id} に根拠参照がない。`,
       rationale:
-        "decision は based_on に premise または evidence を持つことが推奨される。",
+        "decision は based_on に declared problem id または statement id を持つことが推奨される。",
       suggestion: "based_on を追加する。",
       metadata: {
         line: step.statement.span.line,

@@ -154,7 +154,7 @@ const HELP_NODES: HelpNode[] = [
       "次行は quoted text。",
     ],
     detail: [
-      "based_on は statement id の列を参照する。",
+      "based_on は declared problem id または statement id の列を参照する。",
       "根拠なし decision は parse error ではなく、監査で contract_violation 候補になる。",
       "decision text の後に annotation を並べられる。",
     ],

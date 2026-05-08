@@ -22,7 +22,7 @@
         }
       ],
       "message": "decision D2 に根拠参照がない。",
-      "rationale": "decision は based_on に premise または evidence を持つことが推奨される。",
+      "rationale": "decision は based_on に declared problem id または statement id を持つことが推奨される。",
       "suggestion": "based_on を追加する。",
       "metadata": {
         "line": 22,

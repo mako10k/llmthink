@@ -109,6 +109,7 @@
 条件:
 
 - 参照先 Identifier が解決できない
+- decision based_on の参照先は declared problem id または statement id とする
 
 結果:
 

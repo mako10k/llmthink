@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 0.4.0。
+現行 release version は 0.4.1。
 
 ## 構成
 
@@ -196,6 +196,7 @@ hostAddressLoopback=true
 - CLI では `llmthink dsl help` で全体文法を表示する
 - sample は固定 path ではなく sample id で案内し、`llmthink dsl help samples <sample-id> detail` で現在環境の resolved path を確認できる
 - MCP では `dsl action=help`、VSIX tool では `action=help` を使う
+- `decision based_on` は declared problem id と statement id を参照できる
 - 文法エラー時は、関連する理由、期待される構文、その場で呼べる help 導線を fatal report に含める
 
 ## Versioning
@@ -204,8 +205,10 @@ hostAddressLoopback=true
 - root package、MCP server、VSIX extension は同じ release version を共有する
 - main へ入る公開差分ごとに version を bump する
 - 0.4.0 は preview HTML CLI、Playwright 回帰テスト、sample registry、DSL help 導線整理、VSIX preview UX 改善をまとめた minor release とする
+- 0.4.1 は MPL-2.0 への切替、`based_on` 文言明確化、preview の problem node 表示と配色調整をまとめた patch release とする
 
 ## ライセンス
 
-- 本リポジトリは UNLICENSED 扱いであり、利用・再配布・改変には権利者の事前許可が必要
-- public repository として公開しても、上記ライセンス条件は変わらない
+- 本リポジトリは MPL-2.0 で提供する
+- 依存ライブラリはそれぞれのライセンス条件に従う
+- MPL-2.0 の全文は LICENSE を参照する

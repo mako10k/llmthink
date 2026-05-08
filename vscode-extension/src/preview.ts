@@ -1279,8 +1279,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         stroke-width: 1;
       }
       .minimap-node-problem rect {
-        fill: color-mix(in srgb, var(--vscode-textLink-foreground) 24%, var(--vscode-editor-background));
-        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 72%, transparent);
+        fill: color-mix(in srgb, var(--vscode-charts-red) 28%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-red) 76%, transparent);
       }
       .minimap-node-premise rect {
         fill: color-mix(in srgb, var(--vscode-charts-blue) 28%, var(--vscode-editor-background));
@@ -1384,11 +1384,11 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         font-weight: 700;
       }
       .node-problem rect {
-        fill: color-mix(in srgb, var(--vscode-textLink-foreground) 16%, var(--vscode-editor-background));
-        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 62%, transparent);
+        fill: color-mix(in srgb, var(--vscode-charts-red) 18%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-red) 68%, transparent);
       }
       .legend-problem {
-        color: var(--vscode-textLink-foreground);
+        color: var(--vscode-charts-red);
       }
       .node-premise rect {
         fill: color-mix(in srgb, var(--vscode-charts-blue) 18%, var(--vscode-editor-background));

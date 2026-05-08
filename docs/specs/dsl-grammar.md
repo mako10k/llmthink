@@ -161,6 +161,7 @@ Literal         = String | Number | Boolean | "null" ;
 ## 6. 構文制約
 
 - decision は based_on なしでも構文上は許可する
+- based_on の参照先 Identifier は declared problem id または statement id を取れる
 - ただし based_on なしの decision は監査で contract_violation 候補になる
 - partition の Others は構文上は通常の Identifier として扱う
 - ただし意味論上は補集合扱いの特別ルールを持つ

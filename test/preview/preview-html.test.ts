@@ -163,6 +163,7 @@ test("preview:html renders problem references as problem nodes instead of unreso
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /node-problem/);
     assert.match(html, /問題/);
+    assert.match(html, /node-problem rect \{[\s\S]*vscode-charts-red/);
     assert.doesNotMatch(html, /P4:[^\n]*参照先が未定義です/);
 
     const browser = await chromium.launch();

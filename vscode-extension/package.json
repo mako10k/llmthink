@@ -2,10 +2,10 @@
   "name": "llmthink-vscode-extension",
   "displayName": "LLMThink",
   "description": "Thought-audit tools for the LLMThink DSL.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "mako10k",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MPL-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/mako10k/llmthink.git"

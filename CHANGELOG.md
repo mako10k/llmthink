@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- root package、MCP server、VSIX extension のライセンス表記を MPL-2.0 へ切り替え、LICENSE と README 群を更新
+- `decision based_on` が declared problem id と statement id の両方を参照できることを audit/help/spec に明記
+- preview graph の problem node を premise と見分けやすい暖色系へ調整
+
 ## 0.4.0
 
 - sample registry を追加し、DSL help と example verification を配布形態に依存しない解決へ統一
