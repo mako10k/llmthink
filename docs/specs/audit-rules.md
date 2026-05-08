@@ -213,6 +213,37 @@
 - category = query_result
 - severity = hint
 
+### R009 comparison_unresolved_reference
+
+対象:
+
+- comparison
+
+条件:
+
+- problem、viewpoint、または左右の decision 参照が解決できない
+
+結果:
+
+- category = contract_violation
+- severity = fatal
+
+### R010 comparison_scope_conflict
+
+対象:
+
+- comparison
+
+条件:
+
+- 同一 problem / viewpoint scope 内で incomparable と preference が同じ decision 組に併存する
+- または preference relation に cycle がある
+
+結果:
+
+- category = contradiction_candidate
+- severity = warning
+
 ---
 
 ## 5. 判定順序

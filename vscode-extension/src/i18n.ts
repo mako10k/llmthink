@@ -30,10 +30,12 @@ interface PreviewStrings {
     domains: string;
     problems: string;
     steps: string;
+    comparisons: string;
     queries: string;
     references: string;
   };
   noBasedOnEdges: string;
+  noComparisons: string;
   unresolvedReference: string;
   annotationLabel: string;
   previewError: string;
@@ -68,10 +70,12 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       domains: "Domains",
       problems: "Problems",
       steps: "Steps",
+      comparisons: "Comparisons",
       queries: "Queries",
       references: "References",
     },
     noBasedOnEdges: "明示的な based_on edge はありません。",
+    noComparisons: "comparison はまだありません。",
     unresolvedReference: "参照先が未定義です",
     annotationLabel: "注記",
     previewError: "DSL をプレビューできませんでした。",
@@ -82,6 +86,7 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       viewpoint: "観点",
       partition: "分割",
       decision: "判断",
+      comparison: "比較",
       pending: "保留",
       external: "未解決参照",
     },
@@ -113,10 +118,12 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       domains: "Domains",
       problems: "Problems",
       steps: "Steps",
+      comparisons: "Comparisons",
       queries: "Queries",
       references: "References",
     },
     noBasedOnEdges: "No explicit based_on edges.",
+    noComparisons: "No comparisons yet.",
     unresolvedReference: "Referenced but not declared",
     annotationLabel: "Annotation",
     previewError: "The DSL preview could not be rendered.",
@@ -127,6 +134,7 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       viewpoint: "Viewpoints",
       partition: "Partitions",
       decision: "Decisions",
+      comparison: "Comparisons",
       pending: "Pending",
       external: "Unresolved refs",
     },

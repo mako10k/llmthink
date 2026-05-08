@@ -201,3 +201,58 @@ evidence EV1:
     ].join("\n"),
   );
 });
+
+test("parseDocument accepts scoped comparison statements", () => {
+  const document = parseDocument(`
+problem P1:
+  "Compare decisions in one scope"
+
+step S1:
+  viewpoint VP1:
+    axis cost
+
+step S2:
+  decision D1 based_on P1:
+    "Choose hosted option"
+
+step S3:
+  decision D2 based_on P1:
+    "Choose self-hosted option"
+
+step S4:
+  comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:
+    "Cost favors hosted option"
+`);
+
+  assert.equal(document.steps[3]?.statement.role, "comparison");
+  assert.equal(
+    document.steps[3]?.statement.role === "comparison"
+      ? document.steps[3].statement.relation
+      : undefined,
+    "preferred_over",
+  );
+});
+
+test("formatDslText preserves comparison syntax", () => {
+  const formatted = formatDslText(`
+problem P1:
+  "Compare decisions in one scope"
+
+viewpoint VP1:
+  axis cost
+
+decision D1 based_on P1:
+  "Choose hosted option"
+
+decision D2 based_on P1:
+  "Choose self-hosted option"
+
+comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:
+  "Cost favors hosted option"
+`);
+
+  assert.match(
+    formatted,
+    /comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:/,
+  );
+});

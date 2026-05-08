@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 
 import type {
+  ComparisonStatement,
   DecisionStatement,
   DocumentAst,
   PartitionStatement,
@@ -139,6 +140,18 @@ function findDecisions(
     }
   }
   return decisions;
+}
+
+function findComparisons(
+  document: DocumentAst,
+): Array<{ stepId: string; statement: ComparisonStatement }> {
+  const comparisons: Array<{ stepId: string; statement: ComparisonStatement }> = [];
+  for (const step of document.steps) {
+    if (step.statement.role === "comparison") {
+      comparisons.push({ stepId: step.id, statement: step.statement });
+    }
+  }
+  return comparisons;
 }
 
 function findPending(
@@ -307,6 +320,189 @@ function auditDecisionStep(
   }
 }
 
+function auditComparisonStep(
+  issues: AuditIssue[],
+  document: DocumentAst,
+  step: { id: string; statement: StepStatement },
+): void {
+  if (step.statement.role !== "comparison") {
+    return;
+  }
+
+  const comparison = step.statement;
+  const checks = [
+    {
+      ok: document.problems.some((problem) => problem.name === comparison.problemId),
+      ref: comparison.problemId,
+      message: `comparison ${comparison.id} の problem ${comparison.problemId} を解決できない。`,
+    },
+    {
+      ok: document.steps.some(
+        (candidate) =>
+          candidate.statement.role === "viewpoint" &&
+          candidate.statement.id === comparison.viewpointId,
+      ),
+      ref: comparison.viewpointId,
+      message: `comparison ${comparison.id} の viewpoint ${comparison.viewpointId} を解決できない。`,
+    },
+    {
+      ok: document.steps.some(
+        (candidate) =>
+          candidate.statement.role === "decision" &&
+          candidate.statement.id === comparison.leftDecisionId,
+      ),
+      ref: comparison.leftDecisionId,
+      message: `comparison ${comparison.id} の decision ${comparison.leftDecisionId} を解決できない。`,
+    },
+    {
+      ok: document.steps.some(
+        (candidate) =>
+          candidate.statement.role === "decision" &&
+          candidate.statement.id === comparison.rightDecisionId,
+      ),
+      ref: comparison.rightDecisionId,
+      message: `comparison ${comparison.id} の decision ${comparison.rightDecisionId} を解決できない。`,
+    },
+  ];
+
+  for (const check of checks) {
+    if (check.ok) {
+      continue;
+    }
+    createIssue(issues, {
+      category: "contract_violation",
+      severity: "fatal",
+      target_refs: [statementReference(comparison, step.id)],
+      message: check.message,
+      rationale: "comparison は problem、viewpoint、左右の decision を明示参照で解決できる必要がある。",
+      metadata: {
+        line: comparison.span.line,
+        column: statementIdentifierColumn(comparison),
+        end_column: statementIdentifierEndColumn(comparison),
+        unresolved_ref: check.ref,
+      },
+    });
+  }
+}
+
+function addComparisonConsistencyIssues(
+  issues: AuditIssue[],
+  comparisons: Array<{ stepId: string; statement: ComparisonStatement }>,
+): void {
+  const scopedComparisons = new Map<
+    string,
+    Array<{ stepId: string; statement: ComparisonStatement }>
+  >();
+  for (const comparison of comparisons) {
+    const scopeKey = `${comparison.statement.problemId}::${comparison.statement.viewpointId}`;
+    const current = scopedComparisons.get(scopeKey) ?? [];
+    current.push(comparison);
+    scopedComparisons.set(scopeKey, current);
+  }
+
+  for (const scopeComparisons of scopedComparisons.values()) {
+    const preferredEdges = new Map<string, Set<string>>();
+    const incomparablePairs = new Set<string>();
+
+    const addPreferredEdge = (from: string, to: string): void => {
+      const current = preferredEdges.get(from) ?? new Set<string>();
+      current.add(to);
+      preferredEdges.set(from, current);
+    };
+
+    for (const comparison of scopeComparisons) {
+      if (comparison.statement.relation === "preferred_over") {
+        addPreferredEdge(
+          comparison.statement.leftDecisionId,
+          comparison.statement.rightDecisionId,
+        );
+      }
+      if (comparison.statement.relation === "weaker_than") {
+        addPreferredEdge(
+          comparison.statement.rightDecisionId,
+          comparison.statement.leftDecisionId,
+        );
+      }
+      if (comparison.statement.relation === "incomparable") {
+        incomparablePairs.add(
+          [comparison.statement.leftDecisionId, comparison.statement.rightDecisionId]
+            .sort()
+            .join("::"),
+        );
+      }
+    }
+
+    for (const comparison of scopeComparisons) {
+      const pairKey = [comparison.statement.leftDecisionId, comparison.statement.rightDecisionId]
+        .sort()
+        .join("::");
+      if (
+        comparison.statement.relation !== "incomparable" &&
+        incomparablePairs.has(pairKey)
+      ) {
+        createIssue(issues, {
+          category: "contradiction_candidate",
+          severity: "warning",
+          target_refs: [statementReference(comparison.statement, comparison.stepId)],
+          message: `comparison ${comparison.statement.id} は incomparable と preference の両方を同じ decision 組に与えている。`,
+          rationale: "同じ problem / viewpoint scope で incomparable と優先関係が同居すると比較関係が不整合になる。",
+          metadata: {
+            line: comparison.statement.span.line,
+            column: statementIdentifierColumn(comparison.statement),
+            end_column: statementIdentifierEndColumn(comparison.statement),
+          },
+        });
+      }
+    }
+
+    const hasPath = (origin: string, current: string, seen: Set<string>): boolean => {
+      const next = preferredEdges.get(current);
+      if (!next) {
+        return false;
+      }
+      for (const candidate of next) {
+        if (candidate === origin) {
+          return true;
+        }
+        if (seen.has(candidate)) {
+          continue;
+        }
+        seen.add(candidate);
+        if (hasPath(origin, candidate, seen)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    for (const comparison of scopeComparisons) {
+      if (comparison.statement.relation === "incomparable") {
+        continue;
+      }
+      const from = comparison.statement.relation === "preferred_over"
+        ? comparison.statement.leftDecisionId
+        : comparison.statement.rightDecisionId;
+      const to = comparison.statement.relation === "preferred_over"
+        ? comparison.statement.rightDecisionId
+        : comparison.statement.leftDecisionId;
+      if (hasPath(from, to, new Set([to]))) {
+        createIssue(issues, {
+          category: "contradiction_candidate",
+          severity: "warning",
+          target_refs: [statementReference(comparison.statement, comparison.stepId)],
+          message: `comparison ${comparison.statement.id} が preference cycle を形成している可能性がある。`,
+          rationale: "preferred_over / weaker_than を正規化した優先関係に循環があると partial order として解釈しにくい。",
+          metadata: {
+            line: comparison.statement.span.line,
+            column: statementIdentifierColumn(comparison.statement),
+            end_column: statementIdentifierEndColumn(comparison.statement),
+          },
+        });
+      }
+    }
+  }
+}
+
 function auditStepContracts(
   issues: AuditIssue[],
   document: DocumentAst,
@@ -314,6 +510,7 @@ function auditStepContracts(
 ): void {
   for (const step of document.steps) {
     auditDecisionStep(issues, ids, step);
+    auditComparisonStep(issues, document, step);
     if (step.statement.role === "partition") {
       auditPartition(issues, step.statement, document);
     }
@@ -473,11 +670,13 @@ async function auditDocument(
   const ids = collectDeclaredIds(document);
   const pendingSteps = findPending(document);
   const decisions = findDecisions(document);
+  const comparisons = findComparisons(document);
 
   auditFrameworkRequirements(issues, document);
   auditStepContracts(issues, document, ids);
   auditQueryReferences(issues, document, ids);
   addContradictionCandidateIssues(issues, decisions);
+  addComparisonConsistencyIssues(issues, comparisons);
   addPendingHintIssue(issues, pendingSteps, decisions);
 
   const semanticContext = await createSemanticContext(
@@ -589,6 +788,15 @@ function normalizeStepStatement(step: DocumentAst["steps"][number]): DslqlValue 
     id: step.statement.id,
     text: "text" in step.statement ? step.statement.text : null,
     based_on: step.statement.role === "decision" ? step.statement.basedOn : [],
+    ...(step.statement.role === "comparison"
+      ? {
+          problem_id: step.statement.problemId,
+          viewpoint_id: step.statement.viewpointId,
+          relation: step.statement.relation,
+          left_decision_id: step.statement.leftDecisionId,
+          right_decision_id: step.statement.rightDecisionId,
+        }
+      : {}),
     span: {
       line: step.statement.span.line,
       column: step.statement.span.column,

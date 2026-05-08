@@ -20,6 +20,11 @@ const candidateRoots = (() => {
 
 export const DSL_EXAMPLES: DslExampleEntry[] = [
   {
+    id: "decision-comparison",
+    path: "docs/examples/decision-comparison.dsl",
+    summary: "同一 problem / viewpoint 内の decision comparison 例",
+  },
+  {
     id: "framework-requires-and",
     path: "docs/examples/framework-requires-and.dsl",
     summary: "framework の requires and/or を含む最小例",

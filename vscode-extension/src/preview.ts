@@ -69,6 +69,7 @@ const DIAGRAM_ROLE_ORDER: DiagramRole[] = [
   "viewpoint",
   "partition",
   "decision",
+  "comparison",
   "pending",
   "external",
 ];
@@ -113,6 +114,8 @@ function formatStatementSummary(statement: StepStatement): string {
       return statement.text;
     case "decision":
       return statement.text;
+    case "comparison":
+      return `${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId} on ${statement.problemId} @ ${statement.viewpointId}`;
     case "viewpoint":
       return `axis: ${statement.axis}`;
     case "partition":
@@ -131,10 +134,16 @@ function formatStep(step: StepDecl, annotationLabel: string): string[] {
     lines.push(`- based_on: ${statement.basedOn.join(", ")}`);
   }
 
+  if (statement.role === "comparison") {
+    lines.push(`- scope: ${statement.problemId} / ${statement.viewpointId}`);
+    lines.push(`- relation: ${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId}`);
+  }
+
   if (
     statement.role === "premise" ||
     statement.role === "evidence" ||
     statement.role === "decision" ||
+    statement.role === "comparison" ||
     statement.role === "pending"
   ) {
     lines.push(
@@ -161,6 +170,23 @@ function buildReferenceSection(document: DocumentAst, title: string, emptyLabel:
   }
 
   return [`## ${title}`, "", ...edges, ""];
+}
+
+function buildComparisonSection(document: DocumentAst, title: string, emptyLabel: string): string[] {
+  const lines = document.steps.flatMap((step) => {
+    if (step.statement.role !== "comparison") {
+      return [];
+    }
+    return [
+      `- ${step.statement.problemId} / ${step.statement.viewpointId}: ${step.statement.relation} ${step.statement.leftDecisionId}, ${step.statement.rightDecisionId}`,
+    ];
+  });
+
+  if (lines.length === 0) {
+    return [`## ${title}`, "", emptyLabel, ""];
+  }
+
+  return [`## ${title}`, "", ...lines, ""];
 }
 
 function truncateSvgText(value: string, maxLength: number): string {
@@ -614,6 +640,14 @@ function buildPreviewMarkdown(document: DocumentAst, title: string, locale: Prev
       ...document.steps.flatMap((step) => formatStep(step, strings.annotationLabel)),
     );
   }
+
+  lines.push(
+    ...buildComparisonSection(
+      document,
+      strings.sections.comparisons,
+      strings.noComparisons,
+    ),
+  );
 
   if (document.queries.length > 0) {
     lines.push(`## ${strings.sections.queries}`, "");
@@ -1302,6 +1336,10 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         fill: color-mix(in srgb, var(--vscode-charts-purple) 28%, var(--vscode-editor-background));
         stroke: color-mix(in srgb, var(--vscode-charts-purple) 72%, transparent);
       }
+      .minimap-node-comparison rect {
+        fill: color-mix(in srgb, var(--vscode-textLink-foreground) 24%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 72%, transparent);
+      }
       .minimap-node-pending rect {
         fill: color-mix(in srgb, var(--vscode-editorWarning-foreground) 24%, var(--vscode-editor-background));
         stroke: color-mix(in srgb, var(--vscode-editorWarning-foreground) 68%, transparent);
@@ -1424,6 +1462,13 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .legend-decision {
         color: var(--vscode-charts-purple);
+      }
+      .node-comparison rect {
+        fill: color-mix(in srgb, var(--vscode-textLink-foreground) 14%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 72%, transparent);
+      }
+      .legend-comparison {
+        color: var(--vscode-textLink-foreground);
       }
       .node-pending rect {
         fill: color-mix(in srgb, var(--vscode-editorWarning-foreground) 16%, var(--vscode-editor-background));
