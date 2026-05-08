@@ -1,5 +1,13 @@
 import type { AuditIssue, AuditReport } from "../model/diagnostics.js";
 
+export interface AuditReportFormatOptions {
+  maxIssues?: number;
+  maxQueryItemsPerResult?: number;
+}
+
+const DEFAULT_MAX_AUDIT_ISSUES = 50;
+const DEFAULT_MAX_QUERY_ITEMS_PER_RESULT = 20;
+
 function issueLine(issue: AuditIssue): string {
   const refs = issue.target_refs.map((ref) => ref.ref_id).join(", ");
   return `- [${issue.severity}] ${issue.category}: ${issue.message} (${refs})`;
@@ -47,7 +55,13 @@ function appendOptionalLine(
   }
 }
 
-export function formatAuditReportText(report: AuditReport): string {
+export function formatAuditReportText(
+  report: AuditReport,
+  options: AuditReportFormatOptions = {},
+): string {
+  const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
+  const maxQueryItemsPerResult =
+    options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
   const lines: string[] = [];
   lines.push(`document: ${report.document_id}`);
   lines.push(`engine: ${report.engine_version}`);
@@ -58,9 +72,13 @@ export function formatAuditReportText(report: AuditReport): string {
   if (report.results.length > 0) {
     lines.push("");
     lines.push("issues:");
-    for (const issue of report.results) {
+    for (const issue of report.results.slice(0, maxIssues)) {
       lines.push(issueLine(issue));
       appendIssueDetails(lines, issue);
+    }
+    const omittedIssues = report.results.length - Math.min(report.results.length, maxIssues);
+    if (omittedIssues > 0) {
+      lines.push(`- ... ${omittedIssues} more issues omitted`);
     }
   }
 
@@ -69,11 +87,17 @@ export function formatAuditReportText(report: AuditReport): string {
     lines.push("query_results:");
     for (const queryResult of report.query_results) {
       lines.push(`- ${queryResult.query_id} [${queryResult.severity}]`);
-      for (const item of queryResult.items) {
+      for (const item of queryResult.items.slice(0, maxQueryItemsPerResult)) {
         const scoreText =
           item.score !== undefined ? ` score=${item.score}` : "";
         const explanation = item.explanation ? ` ${item.explanation}` : "";
         lines.push(`  - ${item.ref_id}${scoreText}${explanation}`);
+      }
+      const omittedItems =
+        queryResult.items.length -
+        Math.min(queryResult.items.length, maxQueryItemsPerResult);
+      if (omittedItems > 0) {
+        lines.push(`  - ... ${omittedItems} more query items omitted`);
       }
     }
   }
@@ -132,8 +156,16 @@ function issueDetailsHtml(issue: AuditIssue): string {
   return parts.join("");
 }
 
-export function formatAuditReportHtml(report: AuditReport): string {
-  const issueRows = report.results
+export function formatAuditReportHtml(
+  report: AuditReport,
+  options: AuditReportFormatOptions = {},
+): string {
+  const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
+  const maxQueryItemsPerResult =
+    options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
+  const visibleIssues = report.results.slice(0, maxIssues);
+  const omittedIssues = report.results.length - visibleIssues.length;
+  const issueRows = visibleIssues
     .map(
       (issue) => `
         <tr>
@@ -149,12 +181,13 @@ export function formatAuditReportHtml(report: AuditReport): string {
     .map(
       (queryResult) => `
         <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${queryResult.items
+          .slice(0, maxQueryItemsPerResult)
           .map((item) => {
             const scoreText =
               item.score !== undefined ? ` (${item.score})` : "";
             return `${escapeHtml(item.ref_id)}${scoreText}`;
           })
-          .join(", ")}</li>`,
+          .join(", ")}${queryResult.items.length > maxQueryItemsPerResult ? `, ... ${queryResult.items.length - maxQueryItemsPerResult} more` : ""}</li>`,
     )
     .join("");
 
@@ -246,6 +279,7 @@ export function formatAuditReportHtml(report: AuditReport): string {
     </section>
     <section class="card">
       <h2>Issues</h2>
+      ${omittedIssues > 0 ? `<p>Showing first ${visibleIssues.length} of ${report.results.length} issues.</p>` : ""}
       <table>
         <thead>
           <tr><th>Severity</th><th>Category</th><th>Refs</th><th>Message</th></tr>
