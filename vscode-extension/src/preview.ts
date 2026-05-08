@@ -301,6 +301,21 @@ function roleSortIndex(role: DiagramRole): number {
   return index === -1 ? DIAGRAM_ROLE_ORDER.length : index;
 }
 
+function renderDiagramIcon(action: string): string {
+  switch (action) {
+    case "zoom-out":
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 12h12" /></svg>';
+    case "zoom-in":
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 6v12M6 12h12" /></svg>';
+    case "reset":
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12a7 7 0 1 0 2.05-4.95" /><path d="M5 5v4h4" /></svg>';
+    case "fit":
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5H5v3" /><path d="M16 5h3v3" /><path d="M8 19H5v-3" /><path d="M16 19h3v-3" /><path d="M9 9h6v6H9z" /></svg>';
+    default:
+      return "";
+  }
+}
+
 function portId(nodeId: string, side: "in" | "out", index: number): string {
   return `${nodeId}__${side}_${index}`;
 }
@@ -514,16 +529,6 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         </div>
         <p class="section-meta">${escapeHtml(strings.nodesAndEdges(nodes.length, edges.length))}</p>
       </div>
-      <div class="diagram-toolbar">
-        <div class="diagram-controls" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
-          <button type="button" class="diagram-button" data-action="zoom-out">${escapeHtml(strings.diagramControls.zoomOut)}</button>
-          <button type="button" class="diagram-button" data-action="zoom-in">${escapeHtml(strings.diagramControls.zoomIn)}</button>
-          <button type="button" class="diagram-button" data-action="reset">${escapeHtml(strings.diagramControls.reset)}</button>
-          <button type="button" class="diagram-button" data-action="fit">${escapeHtml(strings.diagramControls.fit)}</button>
-          <output class="diagram-zoom-level" aria-live="polite">${escapeHtml(strings.diagramControls.zoomLevel(100))}</output>
-        </div>
-        <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
-      </div>
       <div class="diagram-shell">
         <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
           <div class="diagram-stage">
@@ -539,7 +544,10 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
           </div>
         </div>
         <aside class="diagram-minimap-card" aria-label="${escapeHtml(strings.minimap.title)}">
-          <div class="diagram-minimap-title">${escapeHtml(strings.minimap.title)}</div>
+          <div class="diagram-minimap-header" data-drag-handle="true">
+            <div class="diagram-minimap-title">${escapeHtml(strings.minimap.title)}</div>
+            <output class="diagram-zoom-level" aria-live="polite">${escapeHtml(strings.diagramControls.zoomLevel(100))}</output>
+          </div>
           <svg class="diagram-minimap" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(strings.minimap.title)}">
             <g class="minimap-edges">${edgeMarkup}</g>
             <g class="minimap-nodes">${minimapNodeMarkup}</g>
@@ -547,6 +555,15 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
               <title>${escapeHtml(strings.minimap.viewport)}</title>
             </rect>
           </svg>
+          <div class="diagram-hud">
+            <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
+            <div class="diagram-controls" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
+              <button type="button" class="diagram-button" data-action="zoom-out" aria-label="${escapeHtml(strings.diagramControls.zoomOut)}">${renderDiagramIcon("zoom-out")}</button>
+              <button type="button" class="diagram-button" data-action="zoom-in" aria-label="${escapeHtml(strings.diagramControls.zoomIn)}">${renderDiagramIcon("zoom-in")}</button>
+              <button type="button" class="diagram-button" data-action="reset" aria-label="${escapeHtml(strings.diagramControls.reset)}">${renderDiagramIcon("reset")}</button>
+              <button type="button" class="diagram-button" data-action="fit" aria-label="${escapeHtml(strings.diagramControls.fit)}">${renderDiagramIcon("fit")}</button>
+            </div>
+          </div>
         </aside>
       </div>
     </section>
@@ -767,6 +784,9 @@ function buildPreviewScript(): string {
         const zoomLevel = card.querySelector(".diagram-zoom-level");
         const minimap = card.querySelector(".diagram-minimap");
         const minimapViewport = card.querySelector(".minimap-viewport");
+        const minimapCard = card.querySelector(".diagram-minimap-card");
+        const minimapHandle = card.querySelector("[data-drag-handle='true']");
+        const shell = card.querySelector(".diagram-shell");
         if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
           return;
         }
@@ -775,7 +795,30 @@ function buildPreviewScript(): string {
         const baseHeight = Number(scroll.dataset.baseHeight || 0);
         let zoom = 1;
         let dragState = undefined;
+        let minimapDragState = undefined;
         let selectedNode = undefined;
+
+        const clampMinimapPosition = (left, top) => {
+          if (!(minimapCard instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+            return { left, top };
+          }
+          const maxLeft = Math.max(shell.clientWidth - minimapCard.offsetWidth - 8, 8);
+          const maxTop = Math.max(shell.clientHeight - minimapCard.offsetHeight - 8, 8);
+          return {
+            left: Math.min(Math.max(left, 8), maxLeft),
+            top: Math.min(Math.max(top, 8), maxTop),
+          };
+        };
+
+        const placeMinimap = (left, top) => {
+          if (!(minimapCard instanceof HTMLElement)) {
+            return;
+          }
+          const next = clampMinimapPosition(left, top);
+          minimapCard.style.left = String(next.left) + "px";
+          minimapCard.style.top = String(next.top) + "px";
+          minimapCard.style.right = "auto";
+        };
 
         const selectNode = (nodeKey) => {
           selectedNode = nodeKey;
@@ -854,9 +897,17 @@ function buildPreviewScript(): string {
         };
 
         const fitToViewport = () => {
-          const horizontal = (scroll.clientWidth - 24) / baseWidth;
-          const vertical = (scroll.clientHeight - 24) / baseHeight;
+          const horizontal = (scroll.clientWidth - 10) / baseWidth;
+          const vertical = (scroll.clientHeight - 10) / baseHeight;
           applyZoom(Math.min(horizontal, vertical), { center: true });
+        };
+
+        const initializeMinimapPosition = () => {
+          if (!(minimapCard instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+            return;
+          }
+          const left = shell.clientWidth - minimapCard.offsetWidth - 12;
+          placeMinimap(left, 12);
         };
 
         scroll.addEventListener("scroll", () => {
@@ -922,6 +973,58 @@ function buildPreviewScript(): string {
         scroll.addEventListener("pointercancel", stopDragging);
         scroll.addEventListener("dblclick", () => fitToViewport());
 
+        const stopMinimapDragging = (event) => {
+          if (!minimapDragState || minimapDragState.pointerId !== event.pointerId) {
+            return;
+          }
+          minimapDragState = undefined;
+          minimapCard?.classList.remove("dragging");
+          if (minimapHandle instanceof HTMLElement && minimapHandle.hasPointerCapture(event.pointerId)) {
+            minimapHandle.releasePointerCapture(event.pointerId);
+          }
+        };
+
+        if (minimapHandle instanceof HTMLElement && minimapCard instanceof HTMLElement) {
+          minimapHandle.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0) {
+              return;
+            }
+            const cardRect = minimapCard.getBoundingClientRect();
+            const shellRect = shell instanceof HTMLElement ? shell.getBoundingClientRect() : { left: 0, top: 0 };
+            minimapDragState = {
+              pointerId: event.pointerId,
+              offsetX: event.clientX - cardRect.left,
+              offsetY: event.clientY - cardRect.top,
+              shellLeft: shellRect.left,
+              shellTop: shellRect.top,
+            };
+            minimapHandle.setPointerCapture(event.pointerId);
+            minimapCard.classList.add("dragging");
+            event.preventDefault();
+          });
+
+          minimapHandle.addEventListener("pointermove", (event) => {
+            if (!minimapDragState || minimapDragState.pointerId !== event.pointerId) {
+              return;
+            }
+            placeMinimap(
+              event.clientX - minimapDragState.shellLeft - minimapDragState.offsetX,
+              event.clientY - minimapDragState.shellTop - minimapDragState.offsetY,
+            );
+          });
+
+          minimapHandle.addEventListener("pointerup", stopMinimapDragging);
+          minimapHandle.addEventListener("pointercancel", stopMinimapDragging);
+        }
+
+        window.addEventListener("resize", () => {
+          if (!(minimapCard instanceof HTMLElement)) {
+            return;
+          }
+          placeMinimap(minimapCard.offsetLeft, minimapCard.offsetTop);
+          requestAnimationFrame(updateMinimapViewport);
+        });
+
         card.querySelectorAll(".node[data-line]").forEach((node) => {
           node.addEventListener("click", () => {
             const nodeKey = node.getAttribute("data-node-key") || undefined;
@@ -949,6 +1052,7 @@ function buildPreviewScript(): string {
         }
 
         applyZoom(1, { center: false });
+        requestAnimationFrame(initializeMinimapPosition);
         requestAnimationFrame(fitToViewport);
       });
     </script>
@@ -968,7 +1072,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       body {
         margin: 0;
-        padding: 32px;
+        padding: 18px;
         font-family: var(--vscode-font-family);
         color: var(--vscode-editor-foreground);
         background:
@@ -976,10 +1080,10 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
           linear-gradient(180deg, color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%), var(--vscode-editor-background));
       }
       .layout {
-        max-width: 920px;
+        max-width: min(1480px, calc(100vw - 24px));
         margin: 0 auto;
         display: grid;
-        gap: 20px;
+        gap: 14px;
       }
       .hero,
       .diagram-card,
@@ -990,11 +1094,11 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
       }
       .hero {
-        padding: 24px;
+        padding: 20px 22px;
       }
       .diagram-card,
       .markdown {
-        padding: 28px;
+        padding: 18px;
       }
       .eyebrow {
         font-size: 12px;
@@ -1012,7 +1116,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         justify-content: space-between;
         gap: 16px;
         align-items: flex-end;
-        margin-bottom: 18px;
+        margin-bottom: 10px;
       }
       .section-kicker {
         margin: 0;
@@ -1029,46 +1133,60 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         color: var(--vscode-descriptionForeground);
         white-space: nowrap;
       }
-      .diagram-toolbar {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        align-items: center;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
-      }
       .diagram-controls {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         align-items: center;
-        flex-wrap: wrap;
       }
       .diagram-button {
-        border: 1px solid color-mix(in srgb, var(--vscode-button-border, var(--vscode-panel-border)) 72%, transparent);
-        background: color-mix(in srgb, var(--vscode-button-secondaryBackground, var(--vscode-button-background)) 82%, transparent);
-        color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
-        border-radius: 10px;
-        padding: 7px 12px;
+        width: 28px;
+        height: 28px;
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 28%, transparent);
+        background: color-mix(in srgb, var(--vscode-editor-background) 54%, transparent);
+        color: color-mix(in srgb, var(--vscode-editor-foreground) 52%, transparent);
+        border-radius: 999px;
+        padding: 0;
         font: inherit;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.22;
+        transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease, transform 120ms ease;
       }
-      .diagram-button:hover {
-        filter: brightness(1.06);
+      .diagram-button:hover,
+      .diagram-button:focus-visible,
+      .diagram-minimap-card:hover .diagram-button {
+        opacity: 0.58;
+        background: color-mix(in srgb, var(--vscode-editor-background) 76%, transparent);
+        border-color: color-mix(in srgb, var(--vscode-focusBorder) 36%, transparent);
+      }
+      .diagram-button svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
       .diagram-zoom-level {
-        min-width: 72px;
-        color: var(--vscode-descriptionForeground);
+        min-width: 56px;
+        color: color-mix(in srgb, var(--vscode-descriptionForeground) 82%, transparent);
+        text-align: right;
+        font-size: 11px;
       }
       .diagram-hint {
         margin: 0;
-        color: var(--vscode-descriptionForeground);
-        font-size: 12px;
+        color: color-mix(in srgb, var(--vscode-descriptionForeground) 72%, transparent);
+        font-size: 10px;
+        opacity: 0.18;
+        transition: opacity 120ms ease;
       }
       .diagram-scroll {
         overflow: auto;
-        padding-bottom: 8px;
-        max-height: min(70vh, 780px);
-        min-height: 320px;
+        max-height: min(78vh, 920px);
+        min-height: min(72vh, 720px);
         border-radius: 14px;
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
         background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
@@ -1078,10 +1196,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         cursor: grabbing;
       }
       .diagram-shell {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 180px;
-        gap: 14px;
-        align-items: start;
+        position: relative;
       }
       .diagram-stage {
         min-width: 100%;
@@ -1089,7 +1204,7 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding: 12px;
+        padding: 4px;
       }
       .diagram {
         display: block;
@@ -1097,22 +1212,48 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-minimap-card {
         border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
         border-radius: 14px;
-        background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
-        padding: 10px;
-        position: sticky;
+        background: color-mix(in srgb, var(--vscode-editor-background) 72%, transparent);
+        backdrop-filter: blur(10px);
+        padding: 8px 8px 10px;
+        position: absolute;
         top: 12px;
+        right: 12px;
+        width: min(148px, 24vw);
+        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
+        opacity: 0.76;
+        transition: opacity 120ms ease, box-shadow 120ms ease;
+        z-index: 2;
+      }
+      .diagram-minimap-card:hover,
+      .diagram-minimap-card:focus-within,
+      .diagram-minimap-card.dragging {
+        opacity: 0.94;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.26);
+      }
+      .diagram-minimap-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+        cursor: grab;
+        user-select: none;
+      }
+      .diagram-minimap-card.dragging .diagram-minimap-header {
+        cursor: grabbing;
       }
       .diagram-minimap-title {
-        font-size: 12px;
+        font-size: 10px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--vscode-descriptionForeground);
-        margin-bottom: 8px;
+        color: color-mix(in srgb, var(--vscode-descriptionForeground) 88%, transparent);
       }
       .diagram-minimap {
         width: 100%;
         height: auto;
         display: block;
+        border-radius: 10px;
+        overflow: hidden;
       }
       .minimap-node rect {
         stroke-width: 1;
@@ -1148,8 +1289,18 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .minimap-viewport {
         fill: color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
         stroke: var(--vscode-focusBorder);
-        stroke-width: 6;
+        stroke-width: 5;
         pointer-events: none;
+      }
+      .diagram-hud {
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .diagram-minimap-card:hover .diagram-hint,
+      .diagram-minimap-card:focus-within .diagram-hint {
+        opacity: 0.42;
       }
       .node.selected rect,
       .minimap-node.selected rect {
@@ -1274,11 +1425,8 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         color: var(--vscode-disabledForeground);
       }
       @media (max-width: 960px) {
-        .diagram-shell {
-          grid-template-columns: 1fr;
-        }
         .diagram-minimap-card {
-          position: static;
+          width: min(132px, 38vw);
         }
       }
       .empty-state p {
