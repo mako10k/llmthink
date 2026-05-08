@@ -500,16 +500,28 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         </div>
         <p class="section-meta">${escapeHtml(strings.nodesAndEdges(nodes.length, edges.length))}</p>
       </div>
-      <div class="diagram-scroll">
-        <svg class="diagram" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-              <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
-            </marker>
-          </defs>
-          <g class="edges">${edgeMarkup}</g>
-          <g class="nodes">${nodeMarkup}</g>
-        </svg>
+      <div class="diagram-toolbar">
+        <div class="diagram-controls" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
+          <button type="button" class="diagram-button" data-action="zoom-out">${escapeHtml(strings.diagramControls.zoomOut)}</button>
+          <button type="button" class="diagram-button" data-action="zoom-in">${escapeHtml(strings.diagramControls.zoomIn)}</button>
+          <button type="button" class="diagram-button" data-action="reset">${escapeHtml(strings.diagramControls.reset)}</button>
+          <button type="button" class="diagram-button" data-action="fit">${escapeHtml(strings.diagramControls.fit)}</button>
+          <output class="diagram-zoom-level" aria-live="polite">${escapeHtml(strings.diagramControls.zoomLevel(100))}</output>
+        </div>
+        <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
+      </div>
+      <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
+        <div class="diagram-stage">
+          <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
+              </marker>
+            </defs>
+            <g class="edges">${edgeMarkup}</g>
+            <g class="nodes">${nodeMarkup}</g>
+          </svg>
+        </div>
       </div>
     </section>
   `;
@@ -720,6 +732,114 @@ function buildPreviewScript(): string {
           revealNode(node);
         }
       });
+
+      const clampZoom = (value) => Math.min(2.5, Math.max(0.35, Number(value.toFixed(2))));
+
+      document.querySelectorAll(".diagram-card").forEach((card) => {
+        const scroll = card.querySelector(".diagram-scroll");
+        const svg = card.querySelector(".diagram");
+        const zoomLevel = card.querySelector(".diagram-zoom-level");
+        if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
+          return;
+        }
+
+        const baseWidth = Number(scroll.dataset.baseWidth || 0);
+        const baseHeight = Number(scroll.dataset.baseHeight || 0);
+        let zoom = 1;
+        let dragState = undefined;
+
+        const updateZoomLabel = () => {
+          if (zoomLevel instanceof HTMLOutputElement) {
+            zoomLevel.value = String(Math.round(zoom * 100)) + "%";
+            zoomLevel.textContent = zoomLevel.value;
+          }
+        };
+
+        const centerViewport = () => {
+          const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
+          const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
+          scroll.scrollLeft = maxLeft / 2;
+          scroll.scrollTop = maxTop / 2;
+        };
+
+        const applyZoom = (nextZoom, { center = true } = {}) => {
+          zoom = clampZoom(nextZoom);
+          svg.style.width = String(baseWidth * zoom) + "px";
+          svg.style.height = String(baseHeight * zoom) + "px";
+          updateZoomLabel();
+          if (center) {
+            requestAnimationFrame(centerViewport);
+          }
+        };
+
+        const fitToViewport = () => {
+          const horizontal = (scroll.clientWidth - 24) / baseWidth;
+          const vertical = (scroll.clientHeight - 24) / baseHeight;
+          applyZoom(Math.min(horizontal, vertical), { center: true });
+        };
+
+        card.querySelectorAll(".diagram-button").forEach((button) => {
+          button.addEventListener("click", () => {
+            const action = button.dataset.action;
+            if (action === "zoom-in") {
+              applyZoom(zoom + 0.15);
+              return;
+            }
+            if (action === "zoom-out") {
+              applyZoom(zoom - 0.15);
+              return;
+            }
+            if (action === "reset") {
+              applyZoom(1);
+              return;
+            }
+            if (action === "fit") {
+              fitToViewport();
+            }
+          });
+        });
+
+        scroll.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0 || event.target.closest(".node[data-line]")) {
+            return;
+          }
+          dragState = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            scrollLeft: scroll.scrollLeft,
+            scrollTop: scroll.scrollTop,
+          };
+          scroll.setPointerCapture(event.pointerId);
+          scroll.classList.add("dragging");
+        });
+
+        scroll.addEventListener("pointermove", (event) => {
+          if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+          }
+          scroll.scrollLeft = dragState.scrollLeft - (event.clientX - dragState.startX);
+          scroll.scrollTop = dragState.scrollTop - (event.clientY - dragState.startY);
+        });
+
+        const stopDragging = (event) => {
+          if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+          }
+          dragState = undefined;
+          scroll.classList.remove("dragging");
+          if (scroll.hasPointerCapture(event.pointerId)) {
+            scroll.releasePointerCapture(event.pointerId);
+          }
+        };
+
+        scroll.addEventListener("pointerup", stopDragging);
+        scroll.addEventListener("pointercancel", stopDragging);
+        scroll.addEventListener("dblclick", () => fitToViewport());
+
+        applyZoom(1, { center: false });
+        requestAnimationFrame(fitToViewport);
+      });
     </script>
   `;
 }
@@ -798,14 +918,64 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         color: var(--vscode-descriptionForeground);
         white-space: nowrap;
       }
+      .diagram-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .diagram-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .diagram-button {
+        border: 1px solid color-mix(in srgb, var(--vscode-button-border, var(--vscode-panel-border)) 72%, transparent);
+        background: color-mix(in srgb, var(--vscode-button-secondaryBackground, var(--vscode-button-background)) 82%, transparent);
+        color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+        border-radius: 10px;
+        padding: 7px 12px;
+        font: inherit;
+        cursor: pointer;
+      }
+      .diagram-button:hover {
+        filter: brightness(1.06);
+      }
+      .diagram-zoom-level {
+        min-width: 72px;
+        color: var(--vscode-descriptionForeground);
+      }
+      .diagram-hint {
+        margin: 0;
+        color: var(--vscode-descriptionForeground);
+        font-size: 12px;
+      }
       .diagram-scroll {
-        overflow-x: auto;
+        overflow: auto;
         padding-bottom: 8px;
+        max-height: min(70vh, 780px);
+        min-height: 320px;
+        border-radius: 14px;
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+        background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
+        cursor: grab;
+      }
+      .diagram-scroll.dragging {
+        cursor: grabbing;
+      }
+      .diagram-stage {
+        min-width: 100%;
+        width: max-content;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 12px;
       }
       .diagram {
-        width: 100%;
-        min-width: 760px;
-        height: auto;
+        display: block;
       }
       .diagram-legend {
         display: flex;

@@ -13,6 +13,14 @@ interface PreviewStrings {
   diagramTitle: string;
   diagramEmpty: string;
   nodesAndEdges: (nodes: number, edges: number) => string;
+  diagramControls: {
+    zoomIn: string;
+    zoomOut: string;
+    reset: string;
+    fit: string;
+    dragHint: string;
+    zoomLevel: (percent: number) => string;
+  };
   sections: {
     framework: string;
     domains: string;
@@ -39,6 +47,14 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
     diagramTitle: "ステップマップ",
     diagramEmpty: "構造化された step がまだないため、SVG 図は表示されません。",
     nodesAndEdges: (nodes, edges) => `${nodes} ノード / ${edges} エッジ`,
+    diagramControls: {
+      zoomIn: "拡大",
+      zoomOut: "縮小",
+      reset: "100%",
+      fit: "フィット",
+      dragHint: "ドラッグで移動、スクロールで表示位置を調整できます。",
+      zoomLevel: (percent) => `ズーム ${percent}%`,
+    },
     sections: {
       framework: "Framework",
       domains: "Domains",
@@ -71,6 +87,14 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
     diagramTitle: "Step Map",
     diagramEmpty: "No structured steps are available yet, so the SVG graph cannot be shown.",
     nodesAndEdges: (nodes, edges) => `${nodes} nodes / ${edges} edges`,
+    diagramControls: {
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      reset: "100%",
+      fit: "Fit",
+      dragHint: "Drag to pan, or scroll in either direction to move around the map.",
+      zoomLevel: (percent) => `Zoom ${percent}%`,
+    },
     sections: {
       framework: "Framework",
       domains: "Domains",
