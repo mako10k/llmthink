@@ -530,41 +530,43 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         <p class="section-meta">${escapeHtml(strings.nodesAndEdges(nodes.length, edges.length))}</p>
       </div>
       <div class="diagram-shell">
-        <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
-          <div class="diagram-stage">
-            <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-                  <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
-                </marker>
-              </defs>
-              <g class="edges">${edgeMarkup}</g>
-              <g class="nodes">${nodeMarkup}</g>
-            </svg>
-          </div>
-        </div>
-        <aside class="diagram-minimap-card" aria-label="${escapeHtml(strings.minimap.title)}">
-          <div class="diagram-minimap-header" data-drag-handle="true">
-            <div class="diagram-minimap-title">${escapeHtml(strings.minimap.title)}</div>
-            <output class="diagram-zoom-level" aria-live="polite">${escapeHtml(strings.diagramControls.zoomLevel(100))}</output>
-          </div>
-          <svg class="diagram-minimap" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(strings.minimap.title)}">
-            <g class="minimap-edges">${edgeMarkup}</g>
-            <g class="minimap-nodes">${minimapNodeMarkup}</g>
-            <rect class="minimap-viewport" x="0" y="0" width="0" height="0">
-              <title>${escapeHtml(strings.minimap.viewport)}</title>
-            </rect>
-          </svg>
-          <div class="diagram-hud">
-            <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
-            <div class="diagram-controls" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
-              <button type="button" class="diagram-button" data-action="zoom-out" aria-label="${escapeHtml(strings.diagramControls.zoomOut)}">${renderDiagramIcon("zoom-out")}</button>
-              <button type="button" class="diagram-button" data-action="zoom-in" aria-label="${escapeHtml(strings.diagramControls.zoomIn)}">${renderDiagramIcon("zoom-in")}</button>
-              <button type="button" class="diagram-button" data-action="reset" aria-label="${escapeHtml(strings.diagramControls.reset)}">${renderDiagramIcon("reset")}</button>
-              <button type="button" class="diagram-button" data-action="fit" aria-label="${escapeHtml(strings.diagramControls.fit)}">${renderDiagramIcon("fit")}</button>
+        <div class="diagram-viewport">
+          <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
+            <div class="diagram-stage">
+              <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                    <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
+                  </marker>
+                </defs>
+                <g class="edges">${edgeMarkup}</g>
+                <g class="nodes">${nodeMarkup}</g>
+              </svg>
             </div>
           </div>
-        </aside>
+          <aside class="diagram-minimap-card" aria-label="${escapeHtml(strings.minimap.title)}">
+            <div class="diagram-minimap-header" data-drag-handle="true">
+              <div class="diagram-minimap-title">${escapeHtml(strings.minimap.title)}</div>
+              <output class="diagram-zoom-level" aria-live="polite">${escapeHtml(strings.diagramControls.zoomLevel(100))}</output>
+            </div>
+            <svg class="diagram-minimap" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(strings.minimap.title)}">
+              <g class="minimap-edges">${edgeMarkup}</g>
+              <g class="minimap-nodes">${minimapNodeMarkup}</g>
+              <rect class="minimap-viewport" x="0" y="0" width="0" height="0">
+                <title>${escapeHtml(strings.minimap.viewport)}</title>
+              </rect>
+            </svg>
+            <div class="diagram-hud">
+              <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
+              <div class="diagram-controls" role="toolbar" aria-label="${escapeHtml(strings.diagramTitle)} controls">
+                <button type="button" class="diagram-button" data-action="zoom-out" aria-label="${escapeHtml(strings.diagramControls.zoomOut)}">${renderDiagramIcon("zoom-out")}</button>
+                <button type="button" class="diagram-button" data-action="zoom-in" aria-label="${escapeHtml(strings.diagramControls.zoomIn)}">${renderDiagramIcon("zoom-in")}</button>
+                <button type="button" class="diagram-button" data-action="reset" aria-label="${escapeHtml(strings.diagramControls.reset)}">${renderDiagramIcon("reset")}</button>
+                <button type="button" class="diagram-button" data-action="fit" aria-label="${escapeHtml(strings.diagramControls.fit)}">${renderDiagramIcon("fit")}</button>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
   `;
@@ -786,7 +788,7 @@ function buildPreviewScript(): string {
         const minimapViewport = card.querySelector(".minimap-viewport");
         const minimapCard = card.querySelector(".diagram-minimap-card");
         const minimapHandle = card.querySelector("[data-drag-handle='true']");
-        const shell = card.querySelector(".diagram-shell");
+        const viewport = card.querySelector(".diagram-viewport");
         if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
           return;
         }
@@ -799,11 +801,11 @@ function buildPreviewScript(): string {
         let selectedNode = undefined;
 
         const clampMinimapPosition = (left, top) => {
-          if (!(minimapCard instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+          if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
             return { left, top };
           }
-          const maxLeft = Math.max(shell.clientWidth - minimapCard.offsetWidth - 8, 8);
-          const maxTop = Math.max(shell.clientHeight - minimapCard.offsetHeight - 8, 8);
+          const maxLeft = Math.max(viewport.clientWidth - minimapCard.offsetWidth - 8, 8);
+          const maxTop = Math.max(viewport.clientHeight - minimapCard.offsetHeight - 8, 8);
           return {
             left: Math.min(Math.max(left, 8), maxLeft),
             top: Math.min(Math.max(top, 8), maxTop),
@@ -903,10 +905,10 @@ function buildPreviewScript(): string {
         };
 
         const initializeMinimapPosition = () => {
-          if (!(minimapCard instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+          if (!(minimapCard instanceof HTMLElement) || !(viewport instanceof HTMLElement)) {
             return;
           }
-          const left = shell.clientWidth - minimapCard.offsetWidth - 12;
+          const left = viewport.clientWidth - minimapCard.offsetWidth - 12;
           placeMinimap(left, 12);
         };
 
@@ -990,13 +992,13 @@ function buildPreviewScript(): string {
               return;
             }
             const cardRect = minimapCard.getBoundingClientRect();
-            const shellRect = shell instanceof HTMLElement ? shell.getBoundingClientRect() : { left: 0, top: 0 };
+            const viewportRect = viewport instanceof HTMLElement ? viewport.getBoundingClientRect() : { left: 0, top: 0 };
             minimapDragState = {
               pointerId: event.pointerId,
               offsetX: event.clientX - cardRect.left,
               offsetY: event.clientY - cardRect.top,
-              shellLeft: shellRect.left,
-              shellTop: shellRect.top,
+              shellLeft: viewportRect.left,
+              shellTop: viewportRect.top,
             };
             minimapHandle.setPointerCapture(event.pointerId);
             minimapCard.classList.add("dragging");
@@ -1196,6 +1198,9 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
         cursor: grabbing;
       }
       .diagram-shell {
+        position: relative;
+      }
+      .diagram-viewport {
         position: relative;
       }
       .diagram-stage {
