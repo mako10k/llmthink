@@ -234,3 +234,77 @@ step S51:
 step S52:
   pending PD7:
     "semantic-audits/ 配下に置く派生履歴を append-only DSL にするか、timestamp ごとの snapshot DSL にするかは merge 競合と追跡性を見て調整が必要である"
+
+problem P11:
+  "semantic-audit.dsl の文法が曖昧だと、sidecar を DSL にした利点が薄れ、CLI 自動追記と人手修正の両方が不安定になる"
+
+problem P12:
+  "意味監査の要約を annotation、thought show、preview のどこへ出すかを混在させると、同じ情報が複数面で重複し、どこが正本に近い表示か分かりにくくなる"
+
+step S53:
+  premise PR9:
+    "sidecar DSL の最小文法は、pair id、decision id、supporting statement id、verdict、reason を機械的に読めることを優先するべきである"
+
+step S54:
+  premise PR10:
+    "表示面は保存責務を持たず、annotation は静的な本文要約、thought show は運用一覧、preview は局所探索に寄せて分担したほうが説明しやすい"
+
+step S55:
+  evidence EV10:
+    "既存の thought show は summary、draft、final、audit、reflections の view 切替を持ち、運用向けのテキスト断面を出す責務に近い"
+
+step S56:
+  evidence EV11:
+    "既存 preview は document AST をもとに markdown と graph を生成する面であり、保存済み本文の置き換えよりも生成ビューの追加に向いている"
+
+step S57:
+  evidence EV12:
+    "annotation は本文に残るため discoverability は高いが、pair 単位の長い理由列を常設すると本体 DSL の可読性を崩しやすい"
+
+step S58:
+  decision D22 based_on P11, PR9, D15, D16:
+    "semantic-audit.dsl には annotation 拡張ではなく dedicated statement role として semantic_audit を導入する方向で設計する"
+
+step S59:
+  decision D23 based_on PR9, D22:
+    "semantic_audit の最小 header は 'semantic_audit <audit-id> on <decision-id> support <statement-id> verdict <verdict>:' の形とし、body の先頭文字列を reason として扱う"
+
+step S60:
+  decision D24 based_on PR3, PR9, D3, D22:
+    "<audit-id> は locale 非依存の stable id とし、pair 自体の識別は decision id と support id の組で機械的に復元できるようにする"
+
+step S61:
+  decision D25 based_on PR9, D23:
+    "verdict の初期集合は supported、unsupported、mixed、unknown の閉じた 4 値とし、二値化は CLI 表示や運用プロファイル側で必要に応じて縮約する"
+
+step S62:
+  decision D26 based_on PR4, PR9, D17, D22:
+    "reviewer、model、audited_at、source_thought などの補助メタデータは semantic_audit statement の下に限定された annotation kind または fixed metadata line として後続設計し、MVP では必須にしない"
+
+step S63:
+  decision D27 based_on P12, PR8, PR10, EV10, D18:
+    "日常運用の既定表示は thought show に寄せ、document_summary と pair_summary のどちらでも CLI から一覧取得できるようにする"
+
+step S64:
+  decision D28 based_on P12, PR8, PR10, EV11, D20:
+    "preview は pair_summary 相当の詳細表示と未監査 pair の局所探索を担い、本体 DSL の annotation を増やさなくても意味監査状態へ到達できる面にする"
+
+step S65:
+  decision D29 based_on P12, PR8, PR10, EV12, D19, D21:
+    "annotation は document_summary の短い静的要約だけに限定し、pair_summary の詳細や長い reason は thought show と preview の生成ビューへ寄せる"
+
+step S66:
+  decision D30 based_on D23, D25:
+    "semantic-audit.dsl の最小サンプルは 'semantic_audit SA1 on D1 support E1 verdict supported:' の header と、1 行の reason body を基本形とする"
+
+step S67:
+  pending PD8:
+    "semantic_audit statement の補助メタデータを annotation kind で表すか、metadata line で表すかは parser の単純さと将来 query を見て再判断が必要である"
+
+step S68:
+  pending PD9:
+    "thought show の view 名を semantic-audit、semantic-audit-summary、semantic-audit-pairs のどこへ寄せるかは既存 show UI の一貫性を見て決める必要がある"
+
+step S69:
+  pending PD10:
+    "preview で pair_summary を常時表示するか、トグルで開くかは graph の情報密度とモバイル幅を見て調整が必要である"
