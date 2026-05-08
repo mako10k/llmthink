@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
-import { formatAuditReportText } from "./presentation/report.js";
+import { formatAuditReportText, limitAuditReport } from "./presentation/report.js";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,
@@ -206,12 +206,12 @@ function printUsage(): void {
   process.stdout.write(
     [
       "Usage:",
-      "  llmthink dsl audit <file> [--pretty]",
-      '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty]',
+      "  llmthink dsl audit <file> [--pretty] [--limit 50]",
+      '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty] [--limit 50]',
       "  llmthink dsl help [topic] [subtopic] [index|quick|detail]",
       '  llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]',
       "  llmthink thought relate --id <thought-id> --from source-thought-id",
-      '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]',
+      '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty] [--limit 50]',
       '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
       '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
       '  llmthink thought semantic-audit --id <thought-id> --decision D1 --support E1 --verdict supported --reason "..." [--reviewer name] [--model name]',
@@ -311,14 +311,19 @@ async function handleDslCommand(options: CliOptions): Promise<void> {
 
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
-    process.stdout.write(formatAuditReportText(persisted.report));
+    process.stdout.write(
+      formatAuditReportText(persisted.report, { maxIssues: options.limit }),
+    );
   } else {
+    const outputReport = limitAuditReport(persisted.report, {
+      maxIssues: options.limit,
+    });
     process.stdout.write(
       `${JSON.stringify(
         {
           thought_id: persisted.thoughtId,
           id_source: persisted.idSource,
-          report: persisted.report,
+          report: outputReport,
         },
         null,
         2,
@@ -390,15 +395,20 @@ async function handleThoughtAudit(
   });
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
-    process.stdout.write(formatAuditReportText(persisted.report));
+    process.stdout.write(
+      formatAuditReportText(persisted.report, { maxIssues: options.limit }),
+    );
     return;
   }
+  const outputReport = limitAuditReport(persisted.report, {
+    maxIssues: options.limit,
+  });
   process.stdout.write(
     `${JSON.stringify(
       {
         thought_id: persisted.thoughtId,
         id_source: persisted.idSource,
-        report: persisted.report,
+        report: outputReport,
       },
       null,
       2,

@@ -7,6 +7,94 @@ export interface AuditReportFormatOptions {
 
 const DEFAULT_MAX_AUDIT_ISSUES = 50;
 const DEFAULT_MAX_QUERY_ITEMS_PER_RESULT = 20;
+const SEVERITY_PRIORITY = {
+  fatal: 0,
+  error: 1,
+  warning: 2,
+  info: 3,
+  hint: 4,
+} as const;
+
+function summarizeIssues(issues: AuditIssue[]): AuditReport["summary"] {
+  return {
+    fatal_count: issues.filter((issue) => issue.severity === "fatal").length,
+    error_count: issues.filter((issue) => issue.severity === "error").length,
+    warning_count: issues.filter((issue) => issue.severity === "warning").length,
+    info_count: issues.filter((issue) => issue.severity === "info").length,
+    hint_count: issues.filter((issue) => issue.severity === "hint").length,
+  };
+}
+
+function sortIssuesBySeverity(issues: AuditIssue[]): AuditIssue[] {
+  return issues
+    .map((issue, index) => ({ issue, index }))
+    .sort((left, right) => {
+      const severityDiff =
+        SEVERITY_PRIORITY[left.issue.severity] -
+        SEVERITY_PRIORITY[right.issue.severity];
+      return severityDiff !== 0 ? severityDiff : left.index - right.index;
+    })
+    .map(({ issue }) => issue);
+}
+
+function buildOverflowIssue(
+  report: AuditReport,
+  appliedLimit: number,
+  omittedIssueCount: number,
+): AuditIssue {
+  return {
+    issue_id: "ISSUE-OUTPUT-LIMIT",
+    category: "output_limit",
+    severity: "error",
+    target_refs: [{ ref_id: report.document_id, role: "document" }],
+    message: `監査結果が多すぎるため、上位 ${Math.max(appliedLimit - 1, 0)} 件のみを出力した。`,
+    rationale:
+      "件数上限に達したため、低優先度の issue は出力から省略された。重大度の高い issue を優先して表示している。",
+    suggestion: "--limit を増やすか、対象を分割して再監査する。",
+    metadata: {
+      applied_limit: appliedLimit,
+      omitted_issue_count: omittedIssueCount,
+      original_issue_count: report.results.length,
+    },
+  };
+}
+
+export function limitAuditReport(
+  report: AuditReport,
+  options: AuditReportFormatOptions = {},
+): AuditReport {
+  const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
+  const maxQueryItemsPerResult =
+    options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
+
+  const limitedQueryResults = report.query_results.map((queryResult) => ({
+    ...queryResult,
+    items: queryResult.items.slice(0, maxQueryItemsPerResult),
+  }));
+
+  if (report.results.length <= maxIssues) {
+    return {
+      ...report,
+      query_results: limitedQueryResults,
+    };
+  }
+
+  const sortedIssues = sortIssuesBySeverity(report.results);
+  const visibleIssueCount = Math.max(maxIssues - 1, 0);
+  const visibleIssues = sortedIssues.slice(0, visibleIssueCount);
+  const omittedIssueCount = sortedIssues.length - visibleIssues.length;
+  const overflowIssue = buildOverflowIssue(report, maxIssues, omittedIssueCount);
+  const limitedIssues = maxIssues > 0
+    ? [...visibleIssues, overflowIssue]
+    : [overflowIssue];
+
+  return {
+    ...report,
+    summary: summarizeIssues(limitedIssues),
+    results: limitedIssues,
+    query_results: limitedQueryResults,
+  };
+}
 
 function issueLine(issue: AuditIssue): string {
   const refs = issue.target_refs.map((ref) => ref.ref_id).join(", ");
@@ -59,43 +147,40 @@ export function formatAuditReportText(
   report: AuditReport,
   options: AuditReportFormatOptions = {},
 ): string {
-  const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
-  const maxQueryItemsPerResult =
-    options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
+  const limitedReport = limitAuditReport(report, options);
   const lines: string[] = [];
-  lines.push(`document: ${report.document_id}`);
-  lines.push(`engine: ${report.engine_version}`);
+  lines.push(`document: ${limitedReport.document_id}`);
+  lines.push(`engine: ${limitedReport.engine_version}`);
   lines.push(
-    `summary: fatal=${report.summary.fatal_count} error=${report.summary.error_count} warning=${report.summary.warning_count} info=${report.summary.info_count} hint=${report.summary.hint_count}`,
+    `summary: fatal=${limitedReport.summary.fatal_count} error=${limitedReport.summary.error_count} warning=${limitedReport.summary.warning_count} info=${limitedReport.summary.info_count} hint=${limitedReport.summary.hint_count}`,
   );
 
-  if (report.results.length > 0) {
+  if (limitedReport.results.length > 0) {
     lines.push("");
     lines.push("issues:");
-    for (const issue of report.results.slice(0, maxIssues)) {
+    for (const issue of limitedReport.results) {
       lines.push(issueLine(issue));
       appendIssueDetails(lines, issue);
     }
-    const omittedIssues = report.results.length - Math.min(report.results.length, maxIssues);
-    if (omittedIssues > 0) {
-      lines.push(`- ... ${omittedIssues} more issues omitted`);
-    }
   }
 
-  if (report.query_results.length > 0) {
+  if (limitedReport.query_results.length > 0) {
     lines.push("");
     lines.push("query_results:");
-    for (const queryResult of report.query_results) {
+    for (const queryResult of limitedReport.query_results) {
       lines.push(`- ${queryResult.query_id} [${queryResult.severity}]`);
-      for (const item of queryResult.items.slice(0, maxQueryItemsPerResult)) {
+      for (const item of queryResult.items) {
         const scoreText =
           item.score !== undefined ? ` score=${item.score}` : "";
         const explanation = item.explanation ? ` ${item.explanation}` : "";
         lines.push(`  - ${item.ref_id}${scoreText}${explanation}`);
       }
+      const originalQueryResult = report.query_results.find(
+        (candidate) => candidate.query_id === queryResult.query_id,
+      );
       const omittedItems =
-        queryResult.items.length -
-        Math.min(queryResult.items.length, maxQueryItemsPerResult);
+        (originalQueryResult?.items.length ?? queryResult.items.length) -
+        queryResult.items.length;
       if (omittedItems > 0) {
         lines.push(`  - ... ${omittedItems} more query items omitted`);
       }
@@ -160,12 +245,8 @@ export function formatAuditReportHtml(
   report: AuditReport,
   options: AuditReportFormatOptions = {},
 ): string {
-  const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
-  const maxQueryItemsPerResult =
-    options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
-  const visibleIssues = report.results.slice(0, maxIssues);
-  const omittedIssues = report.results.length - visibleIssues.length;
-  const issueRows = visibleIssues
+  const limitedReport = limitAuditReport(report, options);
+  const issueRows = limitedReport.results
     .map(
       (issue) => `
         <tr>
@@ -177,17 +258,24 @@ export function formatAuditReportHtml(
     )
     .join("");
 
-  const queryRows = report.query_results
+  const queryRows = limitedReport.query_results
     .map(
-      (queryResult) => `
+      (queryResult) => {
+        const originalQueryResult = report.query_results.find(
+          (candidate) => candidate.query_id === queryResult.query_id,
+        );
+        const omittedItems =
+          (originalQueryResult?.items.length ?? queryResult.items.length) -
+          queryResult.items.length;
+        return `
         <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${queryResult.items
-          .slice(0, maxQueryItemsPerResult)
           .map((item) => {
             const scoreText =
               item.score !== undefined ? ` (${item.score})` : "";
             return `${escapeHtml(item.ref_id)}${scoreText}`;
           })
-          .join(", ")}${queryResult.items.length > maxQueryItemsPerResult ? `, ... ${queryResult.items.length - maxQueryItemsPerResult} more` : ""}</li>`,
+          .join(", ")}${omittedItems > 0 ? `, ... ${omittedItems} more` : ""}</li>`;
+      },
     )
     .join("");
 
@@ -279,7 +367,6 @@ export function formatAuditReportHtml(
     </section>
     <section class="card">
       <h2>Issues</h2>
-      ${omittedIssues > 0 ? `<p>Showing first ${visibleIssues.length} of ${report.results.length} issues.</p>` : ""}
       <table>
         <thead>
           <tr><th>Severity</th><th>Category</th><th>Refs</th><th>Message</th></tr>

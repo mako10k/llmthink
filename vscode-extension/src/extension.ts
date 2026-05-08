@@ -23,6 +23,7 @@ import {
   formatThoughtSummary,
   getDslSyntaxGuidanceText,
   isDslHelpRequest,
+  limitAuditReport,
   parseDslHelpRequest,
   loadThought,
   listThoughts,
@@ -179,6 +180,7 @@ function defaultThoughtIdForDocument(document: vscode.TextDocument): string {
 function renderToolResult(
   persisted: PersistedThoughtAudit,
 ): vscode.LanguageModelToolResult {
+  const outputReport = limitAuditReport(persisted.report);
   return new vscode.LanguageModelToolResult([
     new vscode.LanguageModelTextPart(
       `${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`,
@@ -186,7 +188,7 @@ function renderToolResult(
     vscode.LanguageModelDataPart.json({
       thought_id: persisted.thoughtId,
       id_source: persisted.idSource,
-      report: persisted.report,
+      report: outputReport,
     }),
   ]);
 }
@@ -312,7 +314,7 @@ async function auditThoughtFromActiveDocument(
       {
         thought_id: persisted.thoughtId,
         id_source: persisted.idSource,
-        report: persisted.report,
+        report: limitAuditReport(persisted.report),
       },
       null,
       2,
@@ -799,7 +801,7 @@ export function activate(context: vscode.ExtensionContext): void {
           {
             thought_id: persisted.thoughtId,
             id_source: persisted.idSource,
-            report: persisted.report,
+            report: limitAuditReport(persisted.report),
           },
           null,
           2,
