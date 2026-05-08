@@ -477,7 +477,7 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         ? strings.unresolvedReference
         : node.subtitle;
       const dataAttributes = node.line && node.column
-        ? `data-line="${node.line}" data-column="${node.column}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
+        ? `data-line="${node.line}" data-column="${node.column}" data-node-key="${escapeHtml(node.key)}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
         : "";
       return `
         <g class="node node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" ${dataAttributes}>
@@ -485,6 +485,20 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
           <foreignObject x="16" y="14" width="${layoutNode.width - 32}" height="${layoutNode.height - 28}" class="node-copy-wrap">
             <div xmlns="http://www.w3.org/1999/xhtml" class="node-copy"><span class="node-copy-key">${escapeHtml(node.title)}:</span> ${escapeHtml(subtitle)}</div>
           </foreignObject>
+        </g>
+      `;
+    })
+    .join("\n");
+
+  const minimapNodeMarkup = nodes
+    .map((node) => {
+      const layoutNode = nodePositions.get(node.key);
+      if (!layoutNode) {
+        return "";
+      }
+      return `
+        <g class="minimap-node minimap-node-${node.role}" transform="translate(${layoutNode.x}, ${layoutNode.y})" data-target-node="${escapeHtml(node.key)}">
+          <rect width="${layoutNode.width}" height="${layoutNode.height}" rx="10" ry="10" />
         </g>
       `;
     })
@@ -510,18 +524,30 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
         </div>
         <p class="diagram-hint">${escapeHtml(strings.diagramControls.dragHint)}</p>
       </div>
-      <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
-        <div class="diagram-stage">
-          <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-                <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
-              </marker>
-            </defs>
-            <g class="edges">${edgeMarkup}</g>
-            <g class="nodes">${nodeMarkup}</g>
-          </svg>
+      <div class="diagram-shell">
+        <div class="diagram-scroll" data-base-width="${width}" data-base-height="${height}">
+          <div class="diagram-stage">
+            <svg class="diagram" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="LLMThink step relationship graph">
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                  <path d="M 0 0 L 10 4 L 0 8 z" class="arrowhead" />
+                </marker>
+              </defs>
+              <g class="edges">${edgeMarkup}</g>
+              <g class="nodes">${nodeMarkup}</g>
+            </svg>
+          </div>
         </div>
+        <aside class="diagram-minimap-card" aria-label="${escapeHtml(strings.minimap.title)}">
+          <div class="diagram-minimap-title">${escapeHtml(strings.minimap.title)}</div>
+          <svg class="diagram-minimap" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(strings.minimap.title)}">
+            <g class="minimap-edges">${edgeMarkup}</g>
+            <g class="minimap-nodes">${minimapNodeMarkup}</g>
+            <rect class="minimap-viewport" x="0" y="0" width="0" height="0">
+              <title>${escapeHtml(strings.minimap.viewport)}</title>
+            </rect>
+          </svg>
+        </aside>
       </div>
     </section>
   `;
@@ -739,6 +765,8 @@ function buildPreviewScript(): string {
         const scroll = card.querySelector(".diagram-scroll");
         const svg = card.querySelector(".diagram");
         const zoomLevel = card.querySelector(".diagram-zoom-level");
+        const minimap = card.querySelector(".diagram-minimap");
+        const minimapViewport = card.querySelector(".minimap-viewport");
         if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGElement)) {
           return;
         }
@@ -747,6 +775,21 @@ function buildPreviewScript(): string {
         const baseHeight = Number(scroll.dataset.baseHeight || 0);
         let zoom = 1;
         let dragState = undefined;
+        let selectedNode = undefined;
+
+        const selectNode = (nodeKey) => {
+          selectedNode = nodeKey;
+          card.querySelectorAll(".node.selected, .minimap-node.selected").forEach((element) => {
+            element.classList.remove("selected");
+          });
+          if (!nodeKey) {
+            return;
+          }
+          const escapedKey = CSS.escape(nodeKey);
+          card.querySelectorAll('.node[data-node-key="' + escapedKey + '"] , .minimap-node[data-target-node="' + escapedKey + '"]').forEach((element) => {
+            element.classList.add("selected");
+          });
+        };
 
         const updateZoomLabel = () => {
           if (zoomLevel instanceof HTMLOutputElement) {
@@ -755,11 +798,47 @@ function buildPreviewScript(): string {
           }
         };
 
+        const updateMinimapViewport = () => {
+          if (!(minimap instanceof SVGElement) || !(minimapViewport instanceof SVGRectElement)) {
+            return;
+          }
+
+          const scrollRect = scroll.getBoundingClientRect();
+          const svgRect = svg.getBoundingClientRect();
+          const visibleLeft = Math.max(scrollRect.left, svgRect.left);
+          const visibleTop = Math.max(scrollRect.top, svgRect.top);
+          const visibleRight = Math.min(scrollRect.right, svgRect.right);
+          const visibleBottom = Math.min(scrollRect.bottom, svgRect.bottom);
+          const visibleWidth = Math.max(visibleRight - visibleLeft, 0);
+          const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
+          const offsetX = Math.max(visibleLeft - svgRect.left, 0);
+          const offsetY = Math.max(visibleTop - svgRect.top, 0);
+
+          minimapViewport.setAttribute("x", String(offsetX / zoom));
+          minimapViewport.setAttribute("y", String(offsetY / zoom));
+          minimapViewport.setAttribute("width", String(visibleWidth / zoom));
+          minimapViewport.setAttribute("height", String(visibleHeight / zoom));
+        };
+
+        const centerNodeInViewport = (nodeElement) => {
+          if (!(nodeElement instanceof SVGGElement)) {
+            return;
+          }
+          const svgRect = svg.getBoundingClientRect();
+          const nodeRect = nodeElement.getBoundingClientRect();
+          const nodeCenterX = nodeRect.left - svgRect.left + nodeRect.width / 2;
+          const nodeCenterY = nodeRect.top - svgRect.top + nodeRect.height / 2;
+          scroll.scrollLeft = Math.max(nodeCenterX - scroll.clientWidth / 2, 0);
+          scroll.scrollTop = Math.max(nodeCenterY - scroll.clientHeight / 2, 0);
+          requestAnimationFrame(updateMinimapViewport);
+        };
+
         const centerViewport = () => {
           const maxLeft = Math.max(svg.clientWidth - scroll.clientWidth, 0);
           const maxTop = Math.max(svg.clientHeight - scroll.clientHeight, 0);
           scroll.scrollLeft = maxLeft / 2;
           scroll.scrollTop = maxTop / 2;
+          requestAnimationFrame(updateMinimapViewport);
         };
 
         const applyZoom = (nextZoom, { center = true } = {}) => {
@@ -769,6 +848,8 @@ function buildPreviewScript(): string {
           updateZoomLabel();
           if (center) {
             requestAnimationFrame(centerViewport);
+          } else {
+            requestAnimationFrame(updateMinimapViewport);
           }
         };
 
@@ -777,6 +858,10 @@ function buildPreviewScript(): string {
           const vertical = (scroll.clientHeight - 24) / baseHeight;
           applyZoom(Math.min(horizontal, vertical), { center: true });
         };
+
+        scroll.addEventListener("scroll", () => {
+          requestAnimationFrame(updateMinimapViewport);
+        });
 
         card.querySelectorAll(".diagram-button").forEach((button) => {
           button.addEventListener("click", () => {
@@ -836,6 +921,32 @@ function buildPreviewScript(): string {
         scroll.addEventListener("pointerup", stopDragging);
         scroll.addEventListener("pointercancel", stopDragging);
         scroll.addEventListener("dblclick", () => fitToViewport());
+
+        card.querySelectorAll(".node[data-line]").forEach((node) => {
+          node.addEventListener("click", () => {
+            const nodeKey = node.getAttribute("data-node-key") || undefined;
+            selectNode(nodeKey);
+            centerNodeInViewport(node);
+          });
+        });
+
+        if (minimap instanceof SVGElement) {
+          minimap.addEventListener("click", (event) => {
+            const target = event.target.closest(".minimap-node");
+            if (!(target instanceof SVGGElement)) {
+              return;
+            }
+            const nodeKey = target.getAttribute("data-target-node") || undefined;
+            if (!nodeKey) {
+              return;
+            }
+            selectNode(nodeKey);
+            const mainNode = card.querySelector('.node[data-node-key="' + CSS.escape(nodeKey) + '"]');
+            if (mainNode instanceof SVGGElement) {
+              centerNodeInViewport(mainNode);
+            }
+          });
+        }
 
         applyZoom(1, { center: false });
         requestAnimationFrame(fitToViewport);
@@ -966,6 +1077,12 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       .diagram-scroll.dragging {
         cursor: grabbing;
       }
+      .diagram-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 180px;
+        gap: 14px;
+        align-items: start;
+      }
       .diagram-stage {
         min-width: 100%;
         width: max-content;
@@ -976,6 +1093,68 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .diagram {
         display: block;
+      }
+      .diagram-minimap-card {
+        border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--vscode-editor-background) 94%, black 6%);
+        padding: 10px;
+        position: sticky;
+        top: 12px;
+      }
+      .diagram-minimap-title {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: 8px;
+      }
+      .diagram-minimap {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .minimap-node rect {
+        stroke-width: 1;
+      }
+      .minimap-node-premise rect {
+        fill: color-mix(in srgb, var(--vscode-charts-blue) 28%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-blue) 72%, transparent);
+      }
+      .minimap-node-evidence rect {
+        fill: color-mix(in srgb, var(--vscode-charts-green) 28%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-green) 72%, transparent);
+      }
+      .minimap-node-viewpoint rect {
+        fill: color-mix(in srgb, var(--vscode-charts-yellow) 28%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-yellow) 72%, transparent);
+      }
+      .minimap-node-partition rect {
+        fill: color-mix(in srgb, var(--vscode-charts-orange) 28%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-orange) 72%, transparent);
+      }
+      .minimap-node-decision rect {
+        fill: color-mix(in srgb, var(--vscode-charts-purple) 28%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-charts-purple) 72%, transparent);
+      }
+      .minimap-node-pending rect {
+        fill: color-mix(in srgb, var(--vscode-editorWarning-foreground) 24%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-editorWarning-foreground) 68%, transparent);
+      }
+      .minimap-node-external rect {
+        fill: color-mix(in srgb, var(--vscode-disabledForeground) 18%, var(--vscode-editor-background));
+        stroke: color-mix(in srgb, var(--vscode-disabledForeground) 68%, transparent);
+      }
+      .minimap-viewport {
+        fill: color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
+        stroke: var(--vscode-focusBorder);
+        stroke-width: 6;
+        pointer-events: none;
+      }
+      .node.selected rect,
+      .minimap-node.selected rect {
+        stroke: var(--vscode-focusBorder);
+        stroke-width: 2.4;
       }
       .diagram-legend {
         display: flex;
@@ -1093,6 +1272,14 @@ function buildPreviewHtml(markdown: string, title: string, svgOverview: string, 
       }
       .legend-external {
         color: var(--vscode-disabledForeground);
+      }
+      @media (max-width: 960px) {
+        .diagram-shell {
+          grid-template-columns: 1fr;
+        }
+        .diagram-minimap-card {
+          position: static;
+        }
       }
       .empty-state p {
         margin: 0;

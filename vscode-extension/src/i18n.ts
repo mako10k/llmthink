@@ -21,6 +21,10 @@ interface PreviewStrings {
     dragHint: string;
     zoomLevel: (percent: number) => string;
   };
+  minimap: {
+    title: string;
+    viewport: string;
+  };
   sections: {
     framework: string;
     domains: string;
@@ -54,6 +58,10 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       fit: "フィット",
       dragHint: "ドラッグで移動、スクロールで表示位置を調整できます。",
       zoomLevel: (percent) => `ズーム ${percent}%`,
+    },
+    minimap: {
+      title: "ミニマップ",
+      viewport: "現在の表示範囲",
     },
     sections: {
       framework: "Framework",
@@ -94,6 +102,10 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       fit: "Fit",
       dragHint: "Drag to pan, or scroll in either direction to move around the map.",
       zoomLevel: (percent) => `Zoom ${percent}%`,
+    },
+    minimap: {
+      title: "Mini-map",
+      viewport: "Visible viewport",
     },
     sections: {
       framework: "Framework",
