@@ -29,7 +29,7 @@
 1. npm run typecheck
 2. npm test
 3. npm run build
-4. npm run build:extension
+4. npm run build:extension で bundled LSP の shebang 重複と Node syntax check も通ることを確認する
 5. npm run package:vsix
 
 ## 配布物

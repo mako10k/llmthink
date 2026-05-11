@@ -10,7 +10,7 @@ import { addThoughtReflection, deleteThought, relateThought, finalizeThought, li
 import { auditAndPersistThought } from "../thought/workflow.js";
 const server = new McpServer({
     name: "llmthink",
-    version: "0.5.0",
+    version: "0.5.1",
 });
 function thoughtLocation(filePath) {
     return {
