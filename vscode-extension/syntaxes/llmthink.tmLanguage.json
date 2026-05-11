@@ -75,7 +75,7 @@
         "2": { "name": "keyword.control.llmthink" },
         "4": { "name": "punctuation.definition.block.llmthink" }
       },
-      "end": "^(?!\\1\\s{2,}\\S)",
+      "while": "^(\\1\\s{2,}.*|\\s*)$",
       "patterns": [
         {
           "name": "string.unquoted.block.llmthink",
@@ -88,7 +88,7 @@
       "beginCaptures": {
         "2": { "name": "punctuation.definition.block.llmthink" }
       },
-      "end": "^(?!\\1\\s{2,}\\S)",
+      "while": "^(\\1\\s{2,}.*|\\s*)$",
       "patterns": [
         {
           "name": "string.unquoted.block.llmthink",
