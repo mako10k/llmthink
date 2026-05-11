@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- VS Code 拡張の thought 永続化で保存基底ディレクトリをワークスペースまたは extension storage から解決するようにし、Windows + WSL Remote で `process.cwd()` 由来の EACCES を回避
+
 ## 0.4.1
 
 - root package、MCP server、VSIX extension のライセンス表記を MPL-2.0 へ切り替え、LICENSE と README 群を更新

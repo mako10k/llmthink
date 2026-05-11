@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 0.4.1。
+現行 release version は 0.4.2。
 
 ## 構成
 
@@ -206,6 +206,7 @@ hostAddressLoopback=true
 - main へ入る公開差分ごとに version を bump する
 - 0.4.0 は preview HTML CLI、Playwright 回帰テスト、sample registry、DSL help 導線整理、VSIX preview UX 改善をまとめた minor release とする
 - 0.4.1 は MPL-2.0 への切替、`based_on` 文言明確化、preview の problem node 表示と配色調整をまとめた patch release とする
+- 0.4.2 は VS Code 拡張の thought 永続化先を workspace / extension storage 起点へ修正し、Windows + WSL Remote での EACCES を解消する patch release とする
 
 ## ライセンス
 

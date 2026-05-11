@@ -38,6 +38,7 @@ import type { AuditReport } from "../../dist/index.js";
 
 const DSL_TOOL_NAME = "llmthink-dsl";
 const THOUGHT_TOOL_NAME = "llmthink-thought";
+let extensionContext: vscode.ExtensionContext | undefined;
 
 interface DslToolInput {
   action?: "audit" | "help";
@@ -177,6 +178,21 @@ function defaultThoughtIdForDocument(document: vscode.TextDocument): string {
   return deriveThoughtIdFromDocumentId(toDocumentId(document));
 }
 
+function resolveThoughtBaseDir(document?: vscode.TextDocument): string | undefined {
+  const workspaceFolder = document
+    ? vscode.workspace.getWorkspaceFolder(document.uri)
+    : vscode.window.activeTextEditor
+      ? vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)
+      : undefined;
+
+  return (
+    workspaceFolder?.uri.fsPath ??
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
+    extensionContext?.storageUri?.fsPath ??
+    extensionContext?.globalStorageUri?.fsPath
+  );
+}
+
 function renderToolResult(
   persisted: PersistedThoughtAudit,
 ): vscode.LanguageModelToolResult {
@@ -278,11 +294,12 @@ async function saveActiveDocumentAsDraft(
   if (!thoughtId) {
     return;
   }
-  draftThought(thoughtId, editor.document.getText());
+  const baseDir = resolveThoughtBaseDir(editor.document);
+  draftThought(thoughtId, editor.document.getText(), baseDir);
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Draft: ${thoughtId}`,
-    formatThoughtSummary(loadThought(thoughtId)),
+    formatThoughtSummary(loadThought(thoughtId, baseDir)),
   );
   vscode.window.showInformationMessage(`LLMThink draft 保存完了: ${thoughtId}`);
 }
@@ -341,12 +358,13 @@ async function finalizeThoughtFromActiveDocument(
   if (!thoughtId) {
     return;
   }
-  draftThought(thoughtId, editor.document.getText());
-  finalizeThought(thoughtId, editor.document.getText());
+  const baseDir = resolveThoughtBaseDir(editor.document);
+  draftThought(thoughtId, editor.document.getText(), baseDir);
+  finalizeThought(thoughtId, editor.document.getText(), baseDir);
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Finalized: ${thoughtId}`,
-    formatThoughtSummary(loadThought(thoughtId)),
+    formatThoughtSummary(loadThought(thoughtId, baseDir)),
   );
   vscode.window.showInformationMessage(`LLMThink final 保存完了: ${thoughtId}`);
 }
@@ -358,7 +376,7 @@ async function showThoughtHistoryInOutput(
   if (!thoughtId) {
     return;
   }
-  const snapshot = loadThought(thoughtId);
+  const snapshot = loadThought(thoughtId, resolveThoughtBaseDir());
   showTextInOutput(
     outputChannel,
     `LLMThink Thought History: ${thoughtId}`,
@@ -374,7 +392,7 @@ async function searchThoughtsInOutput(
     return;
   }
   const includeReflections = await promptIncludeReflections();
-  const results = await searchThoughtRecords(query, undefined, {
+  const results = await searchThoughtRecords(query, resolveThoughtBaseDir(), {
     includeReflections,
   });
   showTextInOutput(
@@ -390,7 +408,7 @@ async function listThoughtsInOutput(
   showTextInOutput(
     outputChannel,
     "LLMThink Thought List",
-    formatThoughtList(listThoughts()),
+    formatThoughtList(listThoughts(resolveThoughtBaseDir())),
   );
 }
 
@@ -408,11 +426,12 @@ async function createRelatedThoughtFromPrompt(
   if (!newThoughtId) {
     return;
   }
-  relateThought(newThoughtId, sourceThoughtId);
+  const baseDir = resolveThoughtBaseDir();
+  relateThought(newThoughtId, sourceThoughtId, baseDir);
   showTextInOutput(
     outputChannel,
     `LLMThink Related Thought: ${newThoughtId}`,
-    formatThoughtSummary(loadThought(newThoughtId)),
+    formatThoughtSummary(loadThought(newThoughtId, baseDir)),
   );
   vscode.window.showInformationMessage(
     `LLMThink related thought 作成完了: ${newThoughtId}`,
@@ -422,6 +441,7 @@ async function createRelatedThoughtFromPrompt(
 async function addThoughtReflectionFromPrompt(
   outputChannel: vscode.OutputChannel,
 ): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
   const thoughtId = await promptThoughtId();
   if (!thoughtId) {
     return;
@@ -437,11 +457,12 @@ async function addThoughtReflectionFromPrompt(
   if (!text) {
     return;
   }
-  addThoughtReflection(thoughtId, text, kind);
+  const baseDir = resolveThoughtBaseDir(editor?.document);
+  addThoughtReflection(thoughtId, text, kind, baseDir);
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Reflect: ${thoughtId}`,
-    formatThoughtSummary(loadThought(thoughtId)),
+    formatThoughtSummary(loadThought(thoughtId, baseDir)),
   );
   vscode.window.showInformationMessage(
     `LLMThink reflect 保存完了: ${thoughtId}`,
@@ -455,7 +476,7 @@ async function showThoughtReflectionsInOutput(
   if (!thoughtId) {
     return;
   }
-  const snapshot = loadThought(thoughtId);
+  const snapshot = loadThought(thoughtId, resolveThoughtBaseDir());
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Reflections: ${thoughtId}`,
@@ -506,6 +527,7 @@ async function saveThoughtSemanticAuditFromPrompt(
     ignoreFocusOut: true,
   });
 
+  const baseDir = resolveThoughtBaseDir(editor?.document);
   saveThoughtSemanticAudit(thoughtId, {
     decisionId,
     supportId,
@@ -513,8 +535,8 @@ async function saveThoughtSemanticAuditFromPrompt(
     reason,
     reviewer: reviewer?.trim() || undefined,
     model: model?.trim() || undefined,
-  });
-  const snapshot = loadThought(thoughtId);
+  }, baseDir);
+  const snapshot = loadThought(thoughtId, baseDir);
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Semantic Audit: ${thoughtId}`,
@@ -538,7 +560,7 @@ async function deleteThoughtFromPrompt(
   if (confirmed !== "Delete") {
     return;
   }
-  if (!deleteThought(thoughtId)) {
+  if (!deleteThought(thoughtId, resolveThoughtBaseDir())) {
     vscode.window.showWarningMessage(`thought が見つかりません: ${thoughtId}`);
     return;
   }
@@ -548,13 +570,14 @@ async function deleteThoughtFromPrompt(
 
 async function runRegisteredAudit(
   text: string,
-  input: { thoughtId?: string; documentId?: string },
+  input: { thoughtId?: string; documentId?: string; document?: vscode.TextDocument },
 ) {
+  const baseDir = resolveThoughtBaseDir(input.document);
   const persisted = await auditAndPersistThought({
     dslText: text,
     thoughtId: input.thoughtId,
     documentId: input.documentId,
-  });
+  }, baseDir);
   lastReport = persisted.report;
   return persisted;
 }
@@ -594,6 +617,7 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
       const persisted = await runRegisteredAudit(providedText, {
         thoughtId: options.input.thoughtId?.trim(),
         documentId: options.input.documentId?.trim(),
+        document: vscode.window.activeTextEditor?.document,
       });
       return renderToolResult(persisted);
     }
@@ -611,6 +635,7 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
       thoughtId:
         options.input.thoughtId?.trim() || defaultThoughtIdForDocument(editor.document),
       documentId: options.input.documentId?.trim() || toDocumentId(editor.document),
+      document: editor.document,
     });
     return renderToolResult(persisted);
   }
@@ -665,8 +690,8 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
         model: options.input.model?.trim(),
         auditedAt: options.input.auditedAt?.trim(),
         sourceThoughtId: options.input.sourceThoughtId?.trim(),
-      });
-      const savedSnapshot = loadThought(thoughtId);
+      }, resolveThoughtBaseDir(editor?.document));
+      const savedSnapshot = loadThought(thoughtId, resolveThoughtBaseDir(editor?.document));
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
           `${formatThoughtSemanticAuditSummary(savedSnapshot)}\n${formatThoughtSemanticAuditPairs(savedSnapshot)}`,
@@ -680,7 +705,7 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
       ]);
     }
 
-    const snapshot = loadThought(thoughtId);
+    const snapshot = loadThought(thoughtId, resolveThoughtBaseDir(editor?.document));
     const view = options.input.view ?? "semantic-audit";
     const text = view === "draft"
       ? snapshot.draftText ?? ""
@@ -722,6 +747,7 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  extensionContext = context;
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
   const subscriptions: vscode.Disposable[] = [outputChannel];
   const previewStrings = getPreviewStrings(resolvePreviewLocale(vscode.env.language));
@@ -791,6 +817,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const persisted = await runRegisteredAudit(document.getText(), {
         thoughtId: defaultThoughtIdForDocument(document),
         documentId: toDocumentId(document),
+        document,
       });
 
       outputChannel.clear();

@@ -1,0 +1,10 @@
+import type { ThoughtEvent, ThoughtReflection, ThoughtRecord, ThoughtSearchResult, ThoughtSnapshot } from "../thought/store.js";
+import type { PersistedThoughtAudit } from "../thought/workflow.js";
+export declare function formatPersistedThoughtAudit(persisted: PersistedThoughtAudit): string;
+export declare function formatThoughtSummary(snapshot: ThoughtSnapshot): string;
+export declare function formatThoughtHistory(history: ThoughtEvent[]): string;
+export declare function formatThoughtList(records: ThoughtRecord[]): string;
+export declare function formatThoughtReflections(reflections: ThoughtReflection[]): string;
+export declare function formatThoughtSemanticAuditSummary(snapshot: ThoughtSnapshot): string;
+export declare function formatThoughtSemanticAuditPairs(snapshot: ThoughtSnapshot): string;
+export declare function formatThoughtSearchResults(results: ThoughtSearchResult[]): string;
