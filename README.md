@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 0.4.3。
+現行 release version は 0.5.0。
 
 ## 構成
 
@@ -267,6 +267,7 @@ secret は次の形式で指定できます。
 - 0.4.1 は MPL-2.0 への切替、`based_on` 文言明確化、preview の problem node 表示と配色調整をまとめた patch release とする
 - 0.4.2 は VS Code 拡張の thought 永続化先を workspace / extension storage 起点へ修正し、Windows + WSL Remote での EACCES を解消する patch release とする
 - 0.4.3 は annotation / comparison の help 導線強化、LSP completion の文脈依存化、grammar spec 同期をまとめた patch release とする
+- 0.5.0 は multiline block text、long quoted lint と修正導線、block text highlight 修正をまとめた minor release とする
 
 ## ライセンス
 

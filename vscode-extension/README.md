@@ -2,7 +2,7 @@
 
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
-現行 release version は 0.4.3。
+現行 release version は 0.5.0。
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- DSL の text-bearing field に multiline block text を導入し、parser、formatter、help/spec、VSIX preview を対応
+- block text / long quoted text 向けの lint と修正導線を追加し、sample DSL 群を新ルールへ追従
+- VSIX の syntax highlight を block text の文脈復帰と scope 維持に対応させ、dedent 後の復帰と本文内キーワード漏れを修正
+
 ## 0.4.3
 
 - annotation kind 向けの専用 syntax help と parse error 導線を追加し、未知の kind で文法説明へ辿りやすく改善
