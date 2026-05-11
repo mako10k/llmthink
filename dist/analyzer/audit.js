@@ -110,6 +110,25 @@ function collectDirectDecisionRefs(document) {
     return refs;
 }
 const LONG_QUOTED_TEXT_HINT_LENGTH = 85;
+const TEXT_SYNTAX_HELP_COMMAND = "llmthink dsl help syntax detail";
+function quotedTextSyntaxGuidance() {
+    return [
+        '短い本文は quoted line を使う。',
+        '例:',
+        'problem P1:',
+        '  "短い本文"',
+    ].join("\n");
+}
+function blockTextSyntaxGuidance() {
+    return [
+        '長い本文は block text を使い、意味の切れ目で改行する。',
+        '例:',
+        'problem P1:',
+        '  |',
+        '    1 行目の説明',
+        '    2 行目の説明',
+    ].join("\n");
+}
 function collectTextLintTargets(document) {
     const targets = document.domains.map((domain) => ({
         label: `domain ${domain.name} の description`,
@@ -169,6 +188,8 @@ function addTextBodyLintIssues(issues, document) {
                     column: target.body.span.column,
                     text: target.text,
                     threshold: LONG_QUOTED_TEXT_HINT_LENGTH,
+                    syntax_help: TEXT_SYNTAX_HELP_COMMAND,
+                    syntax_guidance: blockTextSyntaxGuidance(),
                 },
             });
         }
@@ -187,6 +208,8 @@ function addTextBodyLintIssues(issues, document) {
                 column: target.body.span.column,
                 end_column: target.body.span.column + 1,
                 text: target.text,
+                syntax_help: TEXT_SYNTAX_HELP_COMMAND,
+                syntax_guidance: quotedTextSyntaxGuidance(),
             },
         });
     }

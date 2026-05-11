@@ -123,6 +123,10 @@ step:
     report.results.some((issue) => issue.message.includes("block text が 1 行のみ") && issue.severity === "hint"),
     true,
   );
+
+  const issue = report.results.find((candidate) => candidate.message.includes("block text が 1 行のみ"));
+  assert.equal(issue?.metadata?.syntax_help, "llmthink dsl help syntax detail");
+  assert.match(String(issue?.metadata?.syntax_guidance), /quoted line/);
 });
 
 test("auditDslText suggests converting long single-line quoted text to block text", async () => {
@@ -141,6 +145,12 @@ step:
     ),
     true,
   );
+
+  const issue = report.results.find((candidate) =>
+    candidate.message.includes("1 行の quoted text が長いため、block text に変えると読みやすい")
+  );
+  assert.equal(issue?.metadata?.syntax_help, "llmthink dsl help syntax detail");
+  assert.match(String(issue?.metadata?.syntax_guidance), /block text/);
 });
 
 test("auditDslText rejects multiline status annotations", async () => {
