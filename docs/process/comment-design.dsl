@@ -36,7 +36,9 @@ step S5:
 
 step S6:
   evidence EV5:
-    "annotation kind を explanation、rationale、caveat、todo の閉じた集合にすると、role 競合を抑えつつ editor 補完と監査規則を設計しやすい"
+    |
+      annotation kind を explanation、rationale、caveat、todo の閉じた集合にすると、
+      role 競合を抑えつつ editor 補完と監査規則を設計しやすい
 
 step S7:
   pending PD1:

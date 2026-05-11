@@ -24,7 +24,9 @@ step S3:
 
 step S4:
   evidence EV2:
-    "parser と AST は query expression を string として保持しているため、top-level 構造を変えずに evaluator 側で DSLQL を導入できる"
+    |
+      parser と AST は query expression を string として保持しているため、
+      top-level 構造を変えずに evaluator 側で DSLQL を導入できる
 
 step S5:
   evidence EV3:
@@ -32,7 +34,9 @@ step S5:
 
 step S6:
   decision D1 based_on PR1, PR2, EV1, EV3:
-    "DSLQL は jq 互換を目指すのではなく、thought graph と audit result に対する jq 風の query language として定義する"
+    |
+      DSLQL は jq 互換を目指すのではなく、
+      thought graph と audit result に対する jq 風の query language として定義する
 
 step S7:
   decision D2 based_on EV2:
@@ -40,7 +44,9 @@ step S7:
 
 step S8:
   decision D3 based_on PR2, EV1, EV2:
-    "DSLQL の MVP は field access、stream 展開、pipe、select、projection、関連参照関数に絞り、重い集約や再帰探索は後回しにする"
+    |
+      DSLQL の MVP は field access、stream 展開、pipe、select、projection、関連参照関数に絞り、
+      重い集約や再帰探索は後回しにする
 
 step S9:
   pending PD1:
@@ -48,4 +54,6 @@ step S9:
 
 step S10:
   pending PD2:
-    "search result、audit result、persisted thought metadata の統一 root schema は evaluator 設計時にさらに固定する必要がある"
+    |
+      search result、audit result、persisted thought metadata の統一 root schema は
+      evaluator 設計時にさらに固定する必要がある

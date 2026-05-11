@@ -22,13 +22,26 @@ function indent(line: string): string {
   return `  ${line}`;
 }
 
+function formatBlockTextLines(text: string): string[] {
+  return text.split("\n").map(indent);
+}
+
 function formatTextBody(text: string, body?: TextBody): string[] {
   const useBlock = body?.syntax === "block" || text.includes("\n");
   if (!useBlock) {
     return [quote(text)];
   }
 
-  return ["|", ...text.split("\n").map(indent)];
+  return ["|", ...formatBlockTextLines(text)];
+}
+
+function formatLabeledTextBody(label: string, text: string, body?: TextBody): string[] {
+  const useBlock = body?.syntax === "block" || text.includes("\n");
+  if (!useBlock) {
+    return [`${label} ${quote(text)}`];
+  }
+
+  return [`${label} |`, ...formatBlockTextLines(text)];
 }
 
 function formatAnnotations(annotations: Annotation[]): string[] {
@@ -133,12 +146,7 @@ export function formatDocument(document: DocumentAst): string {
     ...document.domains.map((domain) =>
       [
         `domain ${domain.name}:`,
-        ...(() => {
-          if (domain.descriptionBody.syntax === "block" || domain.description.includes("\n")) {
-            return [indent("description |"), ...domain.description.split("\n").map((line) => indent(indent(line)))];
-          }
-          return [indent(`description ${quote(domain.description)}`)];
-        })(),
+        ...formatLabeledTextBody("description", domain.description, domain.descriptionBody).map(indent),
       ].join("\n"),
     ),
   );

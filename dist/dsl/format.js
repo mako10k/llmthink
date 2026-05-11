@@ -5,12 +5,22 @@ function quote(value) {
 function indent(line) {
     return `  ${line}`;
 }
+function formatBlockTextLines(text) {
+    return text.split("\n").map(indent);
+}
 function formatTextBody(text, body) {
     const useBlock = body?.syntax === "block" || text.includes("\n");
     if (!useBlock) {
         return [quote(text)];
     }
-    return ["|", ...text.split("\n").map(indent)];
+    return ["|", ...formatBlockTextLines(text)];
+}
+function formatLabeledTextBody(label, text, body) {
+    const useBlock = body?.syntax === "block" || text.includes("\n");
+    if (!useBlock) {
+        return [`${label} ${quote(text)}`];
+    }
+    return [`${label} |`, ...formatBlockTextLines(text)];
 }
 function formatAnnotations(annotations) {
     return annotations.flatMap((annotation) => [
@@ -93,12 +103,7 @@ export function formatDocument(document) {
     }
     sections.push(...document.domains.map((domain) => [
         `domain ${domain.name}:`,
-        ...(() => {
-            if (domain.descriptionBody.syntax === "block" || domain.description.includes("\n")) {
-                return [indent("description |"), ...domain.description.split("\n").map((line) => indent(indent(line)))];
-            }
-            return [indent(`description ${quote(domain.description)}`)];
-        })(),
+        ...formatLabeledTextBody("description", domain.description, domain.descriptionBody).map(indent),
     ].join("\n")));
     sections.push(...document.problems.map((problem) => [
         `problem ${problem.name}:`,

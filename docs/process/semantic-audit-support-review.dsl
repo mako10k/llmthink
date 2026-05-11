@@ -319,7 +319,9 @@ step S60:
 
 step S61:
   decision D25 based_on PR9, D23:
-    "verdict の初期集合は supported、unsupported、mixed、unknown の閉じた 4 値とし、二値化は CLI 表示や運用プロファイル側で必要に応じて縮約する"
+    |
+      verdict の初期集合は supported、unsupported、mixed、unknown の閉じた 4 値とし、
+      二値化は CLI 表示や運用プロファイル側で必要に応じて縮約する
 
 step S62:
   decision D26 based_on PR4, PR9, D17, D22:
@@ -329,7 +331,9 @@ step S62:
 
 step S63:
   decision D27 based_on P12, PR8, PR10, EV10, D18:
-    "日常運用の既定表示は thought show に寄せ、document_summary と pair_summary のどちらでも CLI から一覧取得できるようにする"
+    |
+      日常運用の既定表示は thought show に寄せ、
+      document_summary と pair_summary のどちらでも CLI から一覧取得できるようにする
 
 step S64:
   decision D28 based_on P12, PR8, PR10, EV11, D20:
@@ -345,7 +349,9 @@ step S65:
 
 step S66:
   decision D30 based_on D23, D25:
-    "semantic-audit.dsl の最小サンプルは 'semantic_audit SA1 on D1 support E1 verdict supported:' の header と、1 行の reason body を基本形とする"
+    |
+      semantic-audit.dsl の最小サンプルは 'semantic_audit SA1 on D1 support E1 verdict supported:' の header と、
+      1 行の reason body を基本形とする
 
 step S67:
   decision D31 based_on PR9, D22, D23, D26:
@@ -361,7 +367,9 @@ step S68:
 
 step S69:
   decision D33 based_on PR10, EV11, D28, D29:
-    "preview の pair_summary は既定で折りたたみ、明示トグルで開く方式とし、通常表示では document_summary と未監査件数だけを見せて情報密度を抑える"
+    |
+      preview の pair_summary は既定で折りたたみ、明示トグルで開く方式とし、
+      通常表示では document_summary と未監査件数だけを見せて情報密度を抑える
 
 problem P13:
   |
@@ -442,7 +450,9 @@ step S81:
 
 step S82:
   decision D40 based_on P15, PR11, EV16, D39:
-    "MVP の metadata line では key ごとの専用 escaping を持たず、Identifier 相当の bare token か、通常 string のどちらかに限定する"
+    |
+      MVP の metadata line では key ごとの専用 escaping を持たず、
+      Identifier 相当の bare token か、通常 string のどちらかに限定する
 
 step S83:
   decision D41 based_on D23, D25, D35, D39, D40, EV17:
@@ -452,7 +462,9 @@ step S83:
 
 step S84:
   evidence EV17:
-    "想定サンプル: semantic_audit SA1 on D1 support E1 verdict supported: reviewer \"QA reviewer\" / model gpt-5.4 / audited_at 2026-05-08T07:00:00Z / source_thought contradiction-pending / body reason"
+    |
+      想定サンプル: semantic_audit SA1 on D1 support E1 verdict supported:
+      reviewer \"QA reviewer\" / model gpt-5.4 / audited_at 2026-05-08T07:00:00Z / source_thought contradiction-pending / body reason
 
 problem P16:
   |
@@ -460,7 +472,9 @@ problem P16:
     完全自動だと運用ごとの好みやスクリプト利用に合わせにくい
 
 problem P17:
-  "preview の pair_summary disclosure 粒度が粗すぎると特定 decision 周辺だけを追いにくく、細かすぎるとトグル操作が増えすぎる"
+  |
+    preview の pair_summary disclosure 粒度が粗すぎると特定 decision 周辺だけを追いにくく、
+    細かすぎるとトグル操作が増えすぎる
 
 step S85:
   premise PR13:
@@ -490,7 +504,9 @@ step S89:
 
 step S90:
   decision D44 based_on D38, D42, D43:
-    "表示用語はそのまま document_summary、pair_summary、unreviewed_pairs を使い、CLI option と preview group の両方で同じ概念名を再利用する"
+    |
+      表示用語はそのまま document_summary、pair_summary、unreviewed_pairs を使い、
+      CLI option と preview group の両方で同じ概念名を再利用する
 
 step S91:
   pending PD9:

@@ -33,7 +33,9 @@ step S2:
 
 step S3:
   evidence EV1:
-    "現行実装では applyZoom が svg width/height 更新後に centerViewport を呼び、zoom 操作でも fit/reset と同じ再配置を行っている"
+    |
+      現行実装では applyZoom が svg width/height 更新後に centerViewport を呼び、
+      zoom 操作でも fit/reset と同じ再配置を行っている
 
 step S4:
   evidence EV2:
@@ -75,4 +77,6 @@ step S10:
 
 step S11:
   pending PD1:
-    "将来 pointer-centered zoom や trackpad zoom を入れる場合、viewport center preserve ではなく pointer anchor preserve へ一般化する余地がある"
+    |
+      将来 pointer-centered zoom や trackpad zoom を入れる場合、
+      viewport center preserve ではなく pointer anchor preserve へ一般化する余地がある

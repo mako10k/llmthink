@@ -3,6 +3,8 @@
   "name": "LLMThink DSL",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#blockTextDescription" },
+    { "include": "#blockTextBody" },
     { "include": "#keywords" },
     { "include": "#declHeaders" },
     { "include": "#dslqlFunctions" },
@@ -67,6 +69,33 @@
         }
       ]
     },
+    "blockTextDescription": {
+      "begin": "^(\\s*)(description)(\\s+)(\\|)\\s*$",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.llmthink" },
+        "4": { "name": "punctuation.definition.block.llmthink" }
+      },
+      "end": "^(?!\\1\\s{2,}\\S)",
+      "patterns": [
+        {
+          "name": "string.unquoted.block.llmthink",
+          "match": "^\\1\\s{2,}.*$"
+        }
+      ]
+    },
+    "blockTextBody": {
+      "begin": "^(\\s*)(\\|)\\s*$",
+      "beginCaptures": {
+        "2": { "name": "punctuation.definition.block.llmthink" }
+      },
+      "end": "^(?!\\1\\s{2,}\\S)",
+      "patterns": [
+        {
+          "name": "string.unquoted.block.llmthink",
+          "match": "^\\1\\s{2,}.*$"
+        }
+      ]
+    },
     "operators": {
       "patterns": [
         {
@@ -83,7 +112,7 @@
         },
         {
           "name": "keyword.operator.pipe.dslql.llmthink",
-          "match": "\\|"
+          "match": "\\|(?=.*\\S)"
         },
         {
           "name": "meta.path-access.dslql.llmthink",

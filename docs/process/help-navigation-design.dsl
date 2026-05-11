@@ -38,7 +38,9 @@ step S3:
 
 step S4:
   evidence EV2:
-    "docs/specs/dslql.md は詳細仕様を持つが、CLI の dsl help や parse error guidance からそこへ到達する索引と短い要約がない"
+    |
+      docs/specs/dslql.md は詳細仕様を持つが、
+      CLI の dsl help や parse error guidance からそこへ到達する索引と短い要約がない
 
 step S5:
   evidence EV3:
@@ -58,7 +60,9 @@ step S7:
 
 step S8:
   decision D2 based_on EV2, EV3, D1:
-    "query と DSLQL には専用 index を設け、roots、operators、conditions、functions、projection、examples、errors の各入口から段階的に詳細へ辿れるようにする"
+    |
+      query と DSLQL には専用 index を設け、roots、operators、conditions、functions、projection、examples、errors の各入口から
+      段階的に詳細へ辿れるようにする
 
 step S9:
   decision D3 based_on PR2, EV4, D1, D2:
@@ -86,7 +90,9 @@ step S12:
 
 step S13:
   decision D7 based_on D1, D2, D3, D4:
-    "関連 index は各 help node に `see_also` を持たせ、query operator を見た利用者が root schema、relation functions、代表例、エラー回復へ横断できるようにする"
+    |
+      関連 index は各 help node に `see_also` を持たせ、
+      query operator を見た利用者が root schema、relation functions、代表例、エラー回復へ横断できるようにする
 
 step S14:
   pending PD1:

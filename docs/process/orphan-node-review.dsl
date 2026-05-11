@@ -60,15 +60,21 @@ step S3D:
 
 step S4:
   evidence EV1:
-    "現在の AST と parser には annotation があり、problem と text-bearing statement に閉じた kind を持つ注釈を付けられる"
+    |
+      現在の AST と parser には annotation があり、
+      problem と text-bearing statement に閉じた kind を持つ注釈を付けられる
 
 step S5:
   evidence EV2:
-    "decision without based_on はすでに contract_violation error として扱われているため、orphan decision の最小形は既存ルールで捕捉済みである"
+    |
+      decision without based_on はすでに contract_violation error として扱われているため、
+      orphan decision の最小形は既存ルールで捕捉済みである
 
 step S6:
   evidence EV3:
-    "preview graph も based_on を主な explicit edge として描いているため、orphan 判定を同じ explicit graph に揃えると UI と audit が一致する"
+    |
+      preview graph も based_on を主な explicit edge として描いているため、
+      orphan 判定を同じ explicit graph に揃えると UI と audit が一致する
 
 step S7:
   evidence EV4:
@@ -78,23 +84,30 @@ step S7:
 
 step S8:
   decision D1 based_on PR1, PR2, EV2, EV3:
-    "orphan node 監査は、まず explicit based_on graph に対する局所判定として導入する"
+    |
+      orphan node 監査は、まず explicit based_on graph に対する局所判定として導入する
 
 step S9:
   decision D2 based_on PR4, EV2:
-    "decision は based_on が空なら既存の decision_without_reference を orphan decision 相当として扱い、別ルールを増やさない"
+    |
+      decision は based_on が空なら既存の decision_without_reference を orphan decision 相当として扱い、
+      別ルールを増やさない
 
 step S10:
   decision D3 based_on PR1, PR2, EV3:
-    "problem orphan は、どの decision からも直接 based_on 参照されていない problem と定義する"
+    |
+      problem orphan は、どの decision からも直接 based_on 参照されていない problem と定義する
 
 step S11:
   decision D4 based_on PR1, PR2, EV3:
-    "premise orphan と evidence orphan は、どの decision からも直接 based_on 参照されていない statement と定義する"
+    |
+      premise orphan と evidence orphan は、どの decision からも直接 based_on 参照されていない statement と定義する
 
 step S12:
   decision D5 based_on PR5, D3, D4:
-    "problem orphan は warning、premise orphan と evidence orphan はまず hint とし、運用でノイズが低いことを確認してから severity を再調整する"
+    |
+      problem orphan は warning、premise orphan と evidence orphan はまず hint とし、
+      運用でノイズが低いことを確認してから severity を再調整する
 
 step S13:
   decision D6 based_on PR3, PR6, EV1, EV4:
@@ -112,7 +125,9 @@ step S15:
 
 step S16:
   decision D9 based_on PR7, D5, D8:
-    "suppress された orphan node はエラーを消すだけでなく、preview と report では intentional orphan と分かる弱い表示を残す"
+    |
+      suppress された orphan node はエラーを消すだけでなく、
+      preview と report では intentional orphan と分かる弱い表示を残す
 
 step S17:
   pending PD1:
