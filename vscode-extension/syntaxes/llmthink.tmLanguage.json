@@ -75,26 +75,18 @@
         "2": { "name": "keyword.control.llmthink" },
         "4": { "name": "punctuation.definition.block.llmthink" }
       },
-      "while": "^(\\1\\s{2,}.*|\\s*)$",
-      "patterns": [
-        {
-          "name": "string.unquoted.block.llmthink",
-          "match": "^\\1\\s{2,}.*$"
-        }
-      ]
+      "contentName": "string.unquoted.block.llmthink",
+      "while": "^(?:\\1\\s{2,}.*|\\s*)$",
+      "patterns": []
     },
     "blockTextBody": {
       "begin": "^(\\s*)(\\|)\\s*$",
       "beginCaptures": {
         "2": { "name": "punctuation.definition.block.llmthink" }
       },
-      "while": "^(\\1\\s{2,}.*|\\s*)$",
-      "patterns": [
-        {
-          "name": "string.unquoted.block.llmthink",
-          "match": "^\\1\\s{2,}.*$"
-        }
-      ]
+      "contentName": "string.unquoted.block.llmthink",
+      "while": "^(?:\\1\\s{2,}.*|\\s*)$",
+      "patterns": []
     },
     "operators": {
       "patterns": [
