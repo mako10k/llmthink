@@ -125,6 +125,24 @@ step:
   );
 });
 
+test("auditDslText suggests converting long single-line quoted text to block text", async () => {
+  const report = await auditDslText(`
+problem P1:
+  "長すぎる 1 行 quoted text を block text へ寄せるべきかを確認するために、十分に長い本文をここへまとめて書き、さらに説明を足して監査の hint を確実に発火させる"
+
+step:
+  decision D1 based_on P1:
+    "short line"
+`);
+
+  assert.equal(
+    report.results.some(
+      (issue) => issue.message.includes("1 行の quoted text が長いため、block text に変えると読みやすい") && issue.severity === "hint",
+    ),
+    true,
+  );
+});
+
 test("auditDslText rejects multiline status annotations", async () => {
   const report = await auditDslText(`
 problem P1:

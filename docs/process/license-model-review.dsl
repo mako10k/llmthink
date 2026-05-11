@@ -52,7 +52,9 @@ step S3:
 
 step S4:
   evidence EV2:
-    "VSIX extension の direct dependency には elkjs の EPL-2.0 があり、他は MIT または Apache-2.0 が中心である"
+    |
+      VSIX extension の direct dependency には elkjs の EPL-2.0 があり、
+      他は MIT または Apache-2.0 が中心である
 
 step S5:
   evidence EV3:
@@ -60,7 +62,9 @@ step S5:
 
 step S6:
   evidence EV4:
-    "MPL-2.0 は file-level copyleft であり、既存ファイルを改変して再配布する場合には当該ファイルの公開を求めつつ、独立した周辺コード全体までは巻き込みにくい"
+    |
+      MPL-2.0 は file-level copyleft であり、既存ファイルを改変して再配布する場合には当該ファイルの公開を求めつつ、
+      独立した周辺コード全体までは巻き込みにくい
 
 step S7:
   evidence EV5:
@@ -90,7 +94,9 @@ step S11:
 
 step S12:
   pending PD1:
-    "将来 npm package publish や VS Code Marketplace publish を始める場合、NOTICE や source offer の補足が必要かを再確認する"
+    |
+      将来 npm package publish や VS Code Marketplace publish を始める場合、
+      NOTICE や source offer の補足が必要かを再確認する
 
 step S13:
   pending PD2:

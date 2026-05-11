@@ -41,7 +41,9 @@ step S3:
 
 step S4:
   evidence EV2:
-    "現行 script は revealLocation 投稿のために acquireVsCodeApi を呼んでいるが、zoom/scroll/minimap の本体ロジックは VS Code API 非依存である"
+    |
+      現行 script は revealLocation 投稿のために acquireVsCodeApi を呼んでいるが、
+      zoom/scroll/minimap の本体ロジックは VS Code API 非依存である
 
 step S5:
   evidence EV3:
@@ -51,11 +53,15 @@ step S5:
 
 step S6:
   decision D1 based_on PR1, EV1:
-    "CLI に preview html 出力コマンドを追加し、renderDslPreview が返す HTML をそのまま stdout またはファイルへ書けるようにする"
+    |
+      CLI に preview html 出力コマンドを追加し、
+      renderDslPreview が返す HTML をそのまま stdout またはファイルへ書けるようにする
 
 step S7:
   decision D2 based_on EV2, D1:
-    "preview script は VS Code 依存を optional にし、acquireVsCodeApi が存在しない環境では no-op bridge を使って通常ブラウザでも動作させる"
+    |
+      preview script は VS Code 依存を optional にし、
+      acquireVsCodeApi が存在しない環境では no-op bridge を使って通常ブラウザでも動作させる
 
 step S8:
   decision D3 based_on PR2, EV3, D1, D2:
@@ -65,8 +71,12 @@ step S8:
 
 step S9:
   decision D4 based_on D1, D2, D3:
-    "preview の不具合修正は、まず HTML artifact と browser test に落とし込んでから script/CSS を直す順に統一する"
+    |
+      preview の不具合修正は、まず HTML artifact と browser test に落とし込んでから
+      script/CSS を直す順に統一する
 
 step S10:
   pending PD1:
-    "将来 screenshot regression まで入れるか、当面は DOM metric と scroll position assertion に留めるかは運用コストを見て調整が必要である"
+    |
+      将来 screenshot regression まで入れるか、
+      当面は DOM metric と scroll position assertion に留めるかは運用コストを見て調整が必要である

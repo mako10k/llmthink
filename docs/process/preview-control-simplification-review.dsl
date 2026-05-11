@@ -45,7 +45,9 @@ step S4:
 
 step S5:
   evidence EV3:
-    "diagram-stage のような中間 wrapper と centered max-content layout は zoom 後の reflow を複雑にし、map area drift の原因になる"
+    |
+      diagram-stage のような中間 wrapper と centered max-content layout は zoom 後の reflow を複雑にし、
+      map area drift の原因になる
 
 step S6:
   decision D1 based_on PR1, EV2, EV3:
@@ -61,7 +63,9 @@ step S7:
 
 step S8:
   decision D3 based_on PR2, EV1:
-    "zoom in/out/reset/fit controls は main viewport の下端 overlay に集約し、低 opacity の icon strip として表示する"
+    |
+      zoom in/out/reset/fit controls は main viewport の下端 overlay に集約し、
+      低 opacity の icon strip として表示する
 
 step S9:
   decision D4 based_on PR1, EV2, D1:

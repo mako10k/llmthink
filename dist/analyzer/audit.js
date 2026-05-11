@@ -109,6 +109,7 @@ function collectDirectDecisionRefs(document) {
     }
     return refs;
 }
+const LONG_QUOTED_TEXT_HINT_LENGTH = 85;
 function collectTextLintTargets(document) {
     const targets = document.domains.map((domain) => ({
         label: `domain ${domain.name} の description`,
@@ -153,6 +154,24 @@ function collectTextLintTargets(document) {
 }
 function addTextBodyLintIssues(issues, document) {
     for (const target of collectTextLintTargets(document)) {
+        if (target.body.syntax === "quoted" &&
+            target.body.lineCount === 1 &&
+            target.text.length >= LONG_QUOTED_TEXT_HINT_LENGTH) {
+            createIssue(issues, {
+                category: "semantic_hint",
+                severity: "hint",
+                target_refs: [target.target],
+                message: `${target.label} は 1 行の quoted text が長いため、block text に変えると読みやすい。`,
+                rationale: "長い本文は block text に寄せると、折り返し位置を意図的に表現でき、複数行本文との読み分けも安定する。",
+                suggestion: "長い 1 行本文を block text へ分割し、意味の切れ目で改行する。",
+                metadata: {
+                    line: target.body.span.line,
+                    column: target.body.span.column,
+                    text: target.text,
+                    threshold: LONG_QUOTED_TEXT_HINT_LENGTH,
+                },
+            });
+        }
         if (target.body.syntax !== "block" || target.body.lineCount !== 1) {
             continue;
         }
