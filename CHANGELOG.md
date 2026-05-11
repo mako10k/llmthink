@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- VSIX 同梱の bundled LSP で shebang が二重化して起動時に SyntaxError になる不具合を修正
+- block text highlight の scope 維持と dedent 復帰修正を含む 0.5.0 系の VSIX を patch release として再パッケージ
+
 ## 0.5.0
 
 - DSL の text-bearing field に multiline block text を導入し、parser、formatter、help/spec、VSIX preview を対応

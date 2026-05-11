@@ -25,7 +25,4 @@ await build({
   legalComments: "none",
   sourcemap: false,
   logLevel: "info",
-  banner: {
-    js: "#!/usr/bin/env node",
-  },
 });
