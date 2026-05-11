@@ -4,10 +4,17 @@ export interface SourceSpan {
     line: number;
     column: number;
 }
+export type TextSyntax = "quoted" | "block";
+export interface TextBody {
+    syntax: TextSyntax;
+    span: SourceSpan;
+    lineCount: number;
+}
 export type AnnotationKind = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference";
 export interface Annotation {
     kind: AnnotationKind;
     text: string;
+    body: TextBody;
     span: SourceSpan;
 }
 export interface FrameworkRule {
@@ -23,11 +30,13 @@ export interface FrameworkDecl {
 export interface DomainDecl {
     name: string;
     description: string;
+    descriptionBody: TextBody;
     span: SourceSpan;
 }
 export interface ProblemDecl {
     name: string;
     text: string;
+    textBody: TextBody;
     annotations: Annotation[];
     span: SourceSpan;
 }
@@ -35,6 +44,7 @@ export interface PremiseStatement {
     role: "premise";
     id: string;
     text: string;
+    textBody: TextBody;
     annotations: Annotation[];
     span: SourceSpan;
 }
@@ -60,6 +70,7 @@ export interface EvidenceStatement {
     role: "evidence";
     id: string;
     text: string;
+    textBody: TextBody;
     annotations: Annotation[];
     span: SourceSpan;
 }
@@ -68,6 +79,7 @@ export interface DecisionStatement {
     id: string;
     basedOn: string[];
     text: string;
+    textBody: TextBody;
     annotations: Annotation[];
     span: SourceSpan;
 }
@@ -80,6 +92,7 @@ export interface ComparisonStatement {
     leftDecisionId: string;
     rightDecisionId: string;
     text: string;
+    textBody: TextBody;
     annotations: Annotation[];
     span: SourceSpan;
 }
@@ -87,6 +100,7 @@ export interface PendingStatement {
     role: "pending";
     id: string;
     text: string;
+    textBody: TextBody;
     annotations: Annotation[];
     span: SourceSpan;
 }

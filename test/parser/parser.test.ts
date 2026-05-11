@@ -90,6 +90,96 @@ step S1:
       : [],
     ["caveat", "todo", "orphan_future"],
   );
+  assert.equal(document.problems[0]?.textBody.syntax, "quoted");
+  assert.equal(document.problems[0]?.annotations[0]?.body.syntax, "quoted");
+});
+
+test("parseDocument accepts block text for descriptions, problem text, and annotations", () => {
+  const document = parseDocument(`
+domain Review:
+  description |
+    First line
+    Second line
+
+problem P1:
+  |
+    Decide multiline text syntax
+    without escaped quotes
+  annotation rationale:
+    |
+      Block text keeps
+      indentation-based structure
+
+decision D1 based_on P1:
+  |
+    Prefer a block marker
+    over ad-hoc escaping
+`);
+
+  assert.equal(document.domains[0]?.description, "First line\nSecond line");
+  assert.equal(document.domains[0]?.descriptionBody.syntax, "block");
+  assert.equal(document.problems[0]?.text, "Decide multiline text syntax\nwithout escaped quotes");
+  assert.equal(document.problems[0]?.textBody.syntax, "block");
+  assert.equal(document.problems[0]?.annotations[0]?.text, "Block text keeps\nindentation-based structure");
+  assert.equal(document.problems[0]?.annotations[0]?.body.syntax, "block");
+  assert.equal(
+    document.steps[0]?.statement.role === "decision"
+      ? document.steps[0].statement.textBody.syntax
+      : undefined,
+    "block",
+  );
+});
+
+test("formatDslText preserves multiline text as block text", () => {
+  const formatted = formatDslText(`
+domain Review:
+  description |
+    First line
+    Second line
+
+problem P1:
+  |
+    Decide multiline text syntax
+    without escaped quotes
+  annotation rationale:
+    |
+      Block text keeps
+      indentation-based structure
+`);
+
+  assert.equal(
+    formatted,
+    [
+      "domain Review:",
+      "  description |",
+      "    First line",
+      "    Second line",
+      "",
+      "problem P1:",
+      "  |",
+      "    Decide multiline text syntax",
+      "    without escaped quotes",
+      "  annotation rationale:",
+      "    |",
+      "      Block text keeps",
+      "      indentation-based structure",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("parseDocument rejects empty block text", () => {
+  assert.throws(
+    () =>
+      parseDocument(`
+problem P1:
+  |
+
+decision D1 based_on P1:
+  "Fallback"
+`),
+    /Problem text is required/,
+  );
 });
 
 test("formatDslText preserves annotations in normalized output", () => {

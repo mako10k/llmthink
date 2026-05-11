@@ -62,10 +62,12 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
     const update = async () => {
       const currentVersion = ++renderVersion;
       webviewPanel.title = strings.previewTitle(previewTitle(document));
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
       const html = await renderDslPreview(
         document.getText(),
         previewTitle(document),
         locale,
+        workspaceFolder?.uri.fsPath,
       );
       if (currentVersion !== renderVersion || webviewPanel.visible === false) {
         return;

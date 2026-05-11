@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { loadLlmthinkCore } from "./core-runtime";
 import { getPreviewStrings, resolvePreviewLocale } from "./i18n";
 import { restartLspClient, startLspClient, stopLspClient } from "./lsp";
 import { DSL_PREVIEW_VIEW_TYPE, DslPreviewEditorProvider } from "./preview-editor";
@@ -583,7 +584,8 @@ async function runRegisteredAudit(
   input: { thoughtId?: string; documentId?: string; document?: vscode.TextDocument },
 ) {
   const baseDir = resolveThoughtBaseDir(input.document);
-  const persisted = await auditAndPersistThought({
+  const core = await loadLlmthinkCore(baseDir);
+  const persisted = await core.auditAndPersistThought({
     dslText: text,
     thoughtId: input.thoughtId,
     documentId: input.documentId,
@@ -599,10 +601,13 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<DslToolInput>,
   ): Promise<vscode.LanguageModelToolResult> {
+    const activeDocument = vscode.window.activeTextEditor?.document;
+    const core = await loadLlmthinkCore(resolveThoughtBaseDir(activeDocument));
+
     if (options.input.action === "help") {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          getDslSyntaxGuidanceText({
+          core.getDslSyntaxGuidanceText({
             topic: options.input.topic?.trim(),
             subtopic: options.input.subtopic?.trim(),
             detail: options.input.detail,
@@ -614,11 +619,11 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
 
     const providedText = options.input.dslText?.trim();
     if (providedText) {
-      if (isDslHelpRequest(providedText)) {
-        const request = parseDslHelpRequest(providedText);
+      if (core.isDslHelpRequest(providedText)) {
+        const request = core.parseDslHelpRequest(providedText);
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            getDslSyntaxGuidanceText({
+            core.getDslSyntaxGuidanceText({
               topic: request?.topic,
               subtopic: request?.subtopic,
               detail: request?.detail,
@@ -630,7 +635,7 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
       const persisted = await runRegisteredAudit(providedText, {
         thoughtId: options.input.thoughtId?.trim(),
         documentId: options.input.documentId?.trim(),
-        document: vscode.window.activeTextEditor?.document,
+        document: activeDocument,
       });
       return renderToolResult(persisted);
     }

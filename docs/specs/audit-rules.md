@@ -271,6 +271,48 @@
 
 ### R012 comparison_scope_conflict
 
+### R013 block_text_single_line
+
+対象:
+
+- domain description
+- problem text
+- premise / evidence / decision / comparison / pending text
+- annotation text
+
+条件:
+
+- block text を使っている
+- ただし実際の本文は 1 行のみである
+
+結果:
+
+- category = semantic_hint
+- severity = hint
+
+注記:
+
+- block text は複数行本文や quote 回避が必要な場合へ寄せ、短文は quoted line を基本形とする
+
+### R014 multiline_status_annotation
+
+対象:
+
+- annotation status
+
+条件:
+
+- status annotation の本文が複数行である
+
+結果:
+
+- category = contract_violation
+- severity = error
+
+注記:
+
+- status は機械解釈する列挙値なので単一行 scalar として書く
+
 対象:
 
 - comparison

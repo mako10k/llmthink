@@ -27,7 +27,8 @@
 ### 3.2 文字列
 
 - String := 二重引用符で囲う
-- 改行をまたぐ自由文字列は MVP では扱わない
+- TextBody := 1 行 String または block text
+- block text は `|` marker の次に、より深いインデントの複数行を置く
 
 ### 3.3 キーワード
 
@@ -93,14 +94,19 @@ RequirementExpr = Identifier { ("or" | "and") Identifier } ;
 
 ```ebnf
 DomainDecl      = "domain" Identifier ":" Newline Indent DescriptionLine Dedent ;
-DescriptionLine = "description" String Newline ;
+DescriptionLine = "description" (String | BlockMarker Newline Indent TextLine { TextLine | BlankLine } Dedent) ;
 ```
 
 ### 5.3 problem 宣言
 
 ```ebnf
-ProblemDecl     = "problem" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+ProblemDecl     = "problem" Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
+TextBody        = StringLine | BlockText ;
 StringLine      = String Newline ;
+BlockText       = BlockMarker Newline Indent TextLine { TextLine | BlankLine } Dedent ;
+BlockMarker     = "|" ;
+TextLine        = { AnyCharExceptNewline } Newline ;
+BlankLine       = Newline ;
 ```
 
 ### 5.4 step 宣言
@@ -114,7 +120,7 @@ StepBody        = PremiseDecl | ViewpointDecl | PartitionDecl | EvidenceDecl | D
 ### 5.5 premise 宣言
 
 ```ebnf
-PremiseDecl     = "premise" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+PremiseDecl     = "premise" Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
 ```
 
 ### 5.6 viewpoint 宣言
@@ -135,29 +141,29 @@ PredicateExpr   = Identifier | "not" Identifier | Identifier { ("and" | "or") Id
 ### 5.8 evidence 宣言
 
 ```ebnf
-EvidenceDecl    = "evidence" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+EvidenceDecl    = "evidence" Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
 ```
 
 ### 5.9 decision 宣言
 
 ```ebnf
-DecisionDecl    = "decision" Identifier ["based_on" ReferenceList] ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+DecisionDecl    = "decision" Identifier ["based_on" ReferenceList] ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
 ReferenceList   = Identifier { "," Identifier } ;
 ```
 
 ### 5.10 pending 宣言
 
 ```ebnf
-PendingDecl     = "pending" Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+PendingDecl     = "pending" Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
 
-AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
+AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent TextBody Dedent ;
 AnnotationKind  = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
 ```
 
 ### 5.11 comparison 宣言
 
 ```ebnf
-ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier "relation" ComparisonRelation Identifier "," Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
+ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier "relation" ComparisonRelation Identifier "," Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
 ComparisonRelation = "preferred_over" | "weaker_than" | "incomparable" | "counterexample_to" ;
 ```
 
@@ -206,11 +212,18 @@ Literal         = String | Number | Boolean | "null" ;
 
 ## 8. 既知の未確定事項
 
-- 文字列の複数行対応
+- block text の末尾改行保持規則
 - predicate 式のネスト優先順位
 - comments の正式導入
 
-### 8.1 comments 導入方針
+### 8.1 複数行 text の方針
+
+- text-bearing field は 1 行 quoted text か block text のどちらかを取る
+- block text は `|` marker の次行以降を共通インデント除去して `\n` 連結する
+- formatter は改行を含む text を block text、1 行 text を quoted text に正規化する
+- annotation status は機械解釈対象なので複数行 block text を使わない
+
+### 8.2 comments 導入方針
 
 - comments は 2 段階で導入する
 - 第一段階では parser が読み飛ばせる自由コメントを導入する
@@ -219,7 +232,7 @@ Literal         = String | Number | Boolean | "null" ;
 - 注釈は自由文字列ラベルではなく kind を持つ構造化要素として設計する
 - 詳細な設計判断は docs/process/comment-design.dsl を参照する
 
-### 8.2 自由コメントの予定構文
+### 8.3 自由コメントの予定構文
 
 - 第一段階の自由コメントは行頭インデントの後に `#` を置く独立行コメントとする
 - 自由コメントは空行と同じ位置に出現でき、parser は意味解析せず読み飛ばす
@@ -244,7 +257,7 @@ step S1:
 		"自由コメントは第一段階では AST へ載せない"
 ```
 
-### 8.3 注釈構文
+### 8.4 注釈構文
 
 - 意味付き記述は comment ではなく annotation として導入する
 - annotation kind は explanation、rationale、status、caveat、todo、orphan_future、orphan_reference の閉じた集合とする

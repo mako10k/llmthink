@@ -17,6 +17,7 @@ import {
   type SourceSpan,
   type StepDecl,
   type StepStatement,
+  type TextBody,
   type ViewpointStatement,
 } from "../model/ast.js";
 
@@ -36,6 +37,21 @@ function tokenColumn(line: string, token: string): number {
 
 function stripQuotes(value: string): string {
   return value.replace(/^"/, "").replace(/"$/, "");
+}
+
+function trimBlankLines(lines: string[]): string[] {
+  let start = 0;
+  let end = lines.length;
+
+  while (start < end && lines[start]?.trim() === "") {
+    start += 1;
+  }
+
+  while (end > start && lines[end - 1]?.trim() === "") {
+    end -= 1;
+  }
+
+  return lines.slice(start, end);
 }
 
 function currentIndent(line: string): number {
@@ -181,24 +197,19 @@ function parseAnnotations(
     }
 
     const textIndex = nextSignificantLineIndex(lines, index + 1);
-    const rawTextLine = lines[textIndex] ?? "";
-    const textIndent = currentIndent(rawTextLine);
-    const textLine = rawTextLine.trim() ?? "";
-    if (!textLine.startsWith('"') || textIndent <= expectedIndent) {
-      throw new ParseError(
-        "Annotation text is required",
-        textIndex + 1,
-        firstNonWhitespaceColumn(rawTextLine),
-        rawTextLine.length + 1,
-      );
-    }
+    const { text, body, nextIndex } = parseIndentedTextBody(
+      lines,
+      index,
+      "Annotation text is required",
+    );
 
     annotations.push({
       kind,
-      text: stripQuotes(textLine),
+      text,
+      body,
       span: span(index + 1, firstNonWhitespaceColumn(rawHeader)),
     });
-    index = textIndex + 1;
+    index = nextIndex;
   }
 
   return { annotations, nextIndex: index };
@@ -403,6 +414,142 @@ function parseFramework(
   ];
 }
 
+function parseBlockText(
+  lines: string[],
+  markerIndex: number,
+  markerIndent: number,
+  errorMessage: string,
+): { text: string; body: TextBody; nextIndex: number } {
+  const collected: string[] = [];
+  let contentIndent: number | undefined;
+  let index = markerIndex + 1;
+
+  while (index < lines.length) {
+    const rawLine = lines[index] ?? "";
+    const trimmedLine = rawLine.trim();
+    const indent = currentIndent(rawLine);
+
+    if (trimmedLine && indent <= markerIndent) {
+      break;
+    }
+
+    if (!trimmedLine) {
+      collected.push("");
+      index += 1;
+      continue;
+    }
+
+    contentIndent =
+      contentIndent === undefined ? indent : Math.min(contentIndent, indent);
+    collected.push(rawLine);
+    index += 1;
+  }
+
+  const normalizedLines = trimBlankLines(
+    collected.map((rawLine) => {
+      if (!rawLine.trim()) {
+        return "";
+      }
+      return rawLine.slice(contentIndent ?? 0);
+    }),
+  );
+
+  if (normalizedLines.length === 0) {
+    const rawMarkerLine = lines[markerIndex] ?? "";
+    throw new ParseError(
+      errorMessage,
+      markerIndex + 1,
+      tokenColumn(rawMarkerLine, "|"),
+      rawMarkerLine.length + 1,
+    );
+  }
+
+  return {
+    text: normalizedLines.join("\n"),
+    body: {
+      syntax: "block",
+      span: span(markerIndex + 1, tokenColumn(lines[markerIndex] ?? "", "|")),
+      lineCount: normalizedLines.length,
+    },
+    nextIndex: index,
+  };
+}
+
+function parseIndentedTextBody(
+  lines: string[],
+  headerIndex: number,
+  errorMessage: string,
+): { text: string; body: TextBody; nextIndex: number } {
+  const valueIndex = nextSignificantLineIndex(lines, headerIndex + 1);
+  const rawValueLine = lines[valueIndex] ?? "";
+  const valueIndent = currentIndent(rawValueLine);
+  const valueLine = rawValueLine.trim() ?? "";
+  const headerIndent = currentIndent(lines[headerIndex] ?? "");
+
+  if (valueIndent <= headerIndent) {
+    throw new ParseError(
+      errorMessage,
+      valueIndex + 1,
+      firstNonWhitespaceColumn(rawValueLine),
+      rawValueLine.length + 1,
+    );
+  }
+
+  if (valueLine.startsWith('"')) {
+    return {
+      text: stripQuotes(valueLine),
+      body: {
+        syntax: "quoted",
+        span: span(valueIndex + 1, firstNonWhitespaceColumn(rawValueLine)),
+        lineCount: 1,
+      },
+      nextIndex: valueIndex + 1,
+    };
+  }
+
+  if (valueLine === "|") {
+    return parseBlockText(lines, valueIndex, valueIndent, errorMessage);
+  }
+
+  throw new ParseError(
+    errorMessage,
+    valueIndex + 1,
+    firstNonWhitespaceColumn(rawValueLine),
+    rawValueLine.length + 1,
+  );
+}
+
+function parseDescriptionBody(
+  lines: string[],
+  lineIndex: number,
+): { text: string; body: TextBody; nextIndex: number } {
+  const rawLine = lines[lineIndex] ?? "";
+  const line = rawLine.trim() ?? "";
+  const quotedMatch = /^description\s+(".*")$/.exec(line);
+  if (quotedMatch) {
+    return {
+      text: stripQuotes(quotedMatch[1]),
+      body: {
+        syntax: "quoted",
+        span: span(lineIndex + 1, tokenColumn(rawLine, "description")),
+        lineCount: 1,
+      },
+      nextIndex: lineIndex + 1,
+    };
+  }
+
+  if (line === "description |") {
+    return parseBlockText(lines, lineIndex, currentIndent(rawLine), "Domain description is required");
+  }
+
+  throw new ParseError(
+    "Domain description is required",
+    lineIndex + 1,
+    firstNonWhitespaceColumn(rawLine),
+    rawLine.length + 1,
+  );
+}
+
 function parseDomain(
   lines: string[],
   startIndex: number,
@@ -419,24 +566,15 @@ function parseDomain(
     );
   }
   const descriptionIndex = nextSignificantLineIndex(lines, startIndex + 1);
-  const rawDescriptionLine = lines[descriptionIndex] ?? "";
-  const descriptionLine = rawDescriptionLine.trim() ?? "";
-  const descriptionMatch = /^description\s+"(.+)"$/.exec(descriptionLine);
-  if (!descriptionMatch) {
-    throw new ParseError(
-      "Domain description is required",
-      descriptionIndex + 1,
-      firstNonWhitespaceColumn(rawDescriptionLine),
-      rawDescriptionLine.length + 1,
-    );
-  }
+  const { text, body, nextIndex } = parseDescriptionBody(lines, descriptionIndex);
   return [
     {
       name: match[1],
-      description: descriptionMatch[1],
+      description: text,
+      descriptionBody: body,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },
-    descriptionIndex + 1,
+    nextIndex,
   ];
 }
 
@@ -455,26 +593,21 @@ function parseProblem(
       rawHeader.length + 1,
     );
   }
-  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
-  const rawTextLine = lines[textIndex] ?? "";
-  const textLine = rawTextLine.trim() ?? "";
-  if (!textLine.startsWith('"')) {
-    throw new ParseError(
-      "Problem text is required",
-      textIndex + 1,
-      firstNonWhitespaceColumn(rawTextLine),
-      rawTextLine.length + 1,
-    );
-  }
+  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
+    lines,
+    startIndex,
+    "Problem text is required",
+  );
   const { annotations, nextIndex } = parseAnnotations(
     lines,
-    textIndex + 1,
-    currentIndent(rawTextLine),
+    textNextIndex,
+    body.span.column - 1,
   );
   return [
     {
       name: match[1],
-      text: stripQuotes(textLine),
+      text,
+      textBody: body,
       annotations,
       span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     },
@@ -562,7 +695,7 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
   role: T,
   lines: string[],
   startIndex: number,
-): { role: T; id: string; text: string; annotations: Annotation[]; span: SourceSpan } & {
+): { role: T; id: string; text: string; textBody: TextBody; annotations: Annotation[]; span: SourceSpan } & {
   nextIndex: number;
 } {
   const header = lines[startIndex]?.trim() ?? "";
@@ -576,26 +709,21 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
       rawHeader.length + 1,
     );
   }
-  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
-  const rawTextLine = lines[textIndex] ?? "";
-  const textLine = rawTextLine.trim() ?? "";
-  if (!textLine.startsWith('"')) {
-    throw new ParseError(
-      `${role} text is required`,
-      textIndex + 1,
-      firstNonWhitespaceColumn(rawTextLine),
-      rawTextLine.length + 1,
-    );
-  }
+  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
+    lines,
+    startIndex,
+    `${role} text is required`,
+  );
   const { annotations, nextIndex } = parseAnnotations(
     lines,
-    textIndex + 1,
-    currentIndent(rawTextLine),
+    textNextIndex,
+    body.span.column - 1,
   );
   return {
     role,
     id,
-    text: stripQuotes(textLine),
+    text,
+    textBody: body,
     annotations,
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex,
@@ -705,27 +833,22 @@ function parseDecision(
       rawHeader.length + 1,
     );
   }
-  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
-  const rawTextLine = lines[textIndex] ?? "";
-  const textLine = rawTextLine.trim() ?? "";
-  if (!textLine.startsWith('"')) {
-    throw new ParseError(
-      "Decision text is required",
-      textIndex + 1,
-      firstNonWhitespaceColumn(rawTextLine),
-      rawTextLine.length + 1,
-    );
-  }
+  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
+    lines,
+    startIndex,
+    "Decision text is required",
+  );
   const { annotations, nextIndex } = parseAnnotations(
     lines,
-    textIndex + 1,
-    currentIndent(rawTextLine),
+    textNextIndex,
+    body.span.column - 1,
   );
   return {
     role: "decision",
     id: parsedHeader.id,
     basedOn: parsedHeader.basedOn,
-    text: stripQuotes(textLine),
+    text,
+    textBody: body,
     annotations,
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex,
@@ -747,21 +870,15 @@ function parseComparison(
       rawHeader.length + 1,
     );
   }
-  const textIndex = nextSignificantLineIndex(lines, startIndex + 1);
-  const rawTextLine = lines[textIndex] ?? "";
-  const textLine = rawTextLine.trim() ?? "";
-  if (!textLine.startsWith('"')) {
-    throw new ParseError(
-      "Comparison text is required",
-      textIndex + 1,
-      firstNonWhitespaceColumn(rawTextLine),
-      rawTextLine.length + 1,
-    );
-  }
+  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
+    lines,
+    startIndex,
+    "Comparison text is required",
+  );
   const { annotations, nextIndex } = parseAnnotations(
     lines,
-    textIndex + 1,
-    currentIndent(rawTextLine),
+    textNextIndex,
+    body.span.column - 1,
   );
   return {
     role: "comparison",
@@ -771,7 +888,8 @@ function parseComparison(
     relation: parsedHeader.relation,
     leftDecisionId: parsedHeader.leftDecisionId,
     rightDecisionId: parsedHeader.rightDecisionId,
-    text: stripQuotes(textLine),
+    text,
+    textBody: body,
     annotations,
     span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
     nextIndex,

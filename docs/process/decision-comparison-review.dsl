@@ -32,7 +32,9 @@ step S3:
 
 step S4:
   evidence EV2:
-    "requirements の監査サンプルでも cost viewpoint 上で D1 と D2 の緊張関係を読む前提になっており、比較は無文脈ではなく観点付きで解釈されている"
+    |
+      requirements の監査サンプルでも cost viewpoint 上で D1 と D2 の緊張関係を読む前提になっており、
+      比較は無文脈ではなく観点付きで解釈されている
 
 step S5:
   evidence EV3:
@@ -44,7 +46,9 @@ step S6:
 
 step S7:
   evidence EV5:
-    "global weight は preview や audit で一見便利でも、異なる problem をまたぐ比較可能性を暗黙に匂わせるため、DSL の本来意図から外れやすい"
+    |
+      global weight は preview や audit で一見便利でも、
+      異なる problem をまたぐ比較可能性を暗黙に匂わせるため、DSL の本来意図から外れやすい
 
 step S8:
   decision D1 based_on PR1, PR2, EV1, EV3, EV5:
@@ -60,16 +64,24 @@ step S10:
 
 step S11:
   decision D4 based_on D2, D3:
-    "比較構文は decision 自体の本文へ weight を埋め込むより、comparison のような別要素で left decision、right decision、problem、viewpoint、relation を明示する方向がよい"
+    |
+      比較構文は decision 自体の本文へ weight を埋め込むより、comparison のような別要素で
+      left decision、right decision、problem、viewpoint、relation を明示する方向がよい
 
 step S12:
   decision D5 based_on D4:
-    "audit は同じ problem / viewpoint 内で comparison cycle、incomparable と preferred_over の矛盾、片側 decision 不在を検査対象にできる"
+    |
+      audit は同じ problem / viewpoint 内で comparison cycle、incomparable と preferred_over の矛盾、
+      片側 decision 不在を検査対象にできる
 
 step S13:
   pending PD1:
-    "comparison を新しい statement role にするか query / annotation 拡張で済ませるかは、parser 差分と preview 表示コストを見て再判断が必要である"
+    |
+      comparison を新しい statement role にするか query / annotation 拡張で済ませるかは、
+      parser 差分と preview 表示コストを見て再判断が必要である
 
 step S14:
   pending PD2:
-    "preferred_over などの relation 集合を total order に寄せるか partial order に留めるかは、実際のユースケースを見て再判断が必要である"
+    |
+      preferred_over などの relation 集合を total order に寄せるか partial order に留めるかは、
+      実際のユースケースを見て再判断が必要である

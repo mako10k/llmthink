@@ -24,7 +24,9 @@ step S2:
 
 step S3:
   evidence EV3:
-    "再利用可能な thought-id が返れば list search show history reflect delete と接続しやすい"
+    |
+      再利用可能な thought-id が返れば、
+      list search show history reflect delete と接続しやすい
 
 step S4:
   decision D1 based_on EV1, EV2:
@@ -32,11 +34,15 @@ step S4:
 
 step S5:
   decision D2 based_on EV3:
-    "dsl audit は thought-id を明示されなければ入力ソースから安定した id を導出し、結果テキストに thought-id を返す"
+    |
+      dsl audit は thought-id を明示されなければ入力ソースから安定した id を導出し、
+      結果テキストに thought-id を返す
 
 step S6:
   decision D3 based_on EV3:
-    "thought draft finalize reflect relate は明示操作として残し、再監査 修正 削除は thought-id 指定で行う"
+    |
+      thought draft finalize reflect relate は明示操作として残し、
+      再監査 修正 削除は thought-id 指定で行う
 
 step S7:
   decision D4 based_on EV1, EV2, EV3:

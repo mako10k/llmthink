@@ -73,10 +73,11 @@ const HELP_NODES: HelpNode[] = [
     quick: [
       "top-level では framework / domain / problem / step / query に加え、statement role を直接置く flatten 記法も使える。",
       "step は `step S1:`、`step:`、`evidence EV1:` の 3 形を受理する。",
+      "text-bearing field は 1 行 quoted text か block text を使い分ける。",
       "query block の body は DSLQL 1 行式。",
     ],
     detail: [
-      "problem は top-level の quoted text block。",
+      "problem や decision などの text-bearing field は quoted text か `|` marker 付き block text を取れる。",
       "statement role は premise / evidence / decision / comparison / pending / viewpoint / partition。",
       "decision based_on は任意だが、未指定 decision は監査対象になりうる。",
     ],
@@ -103,7 +104,7 @@ const HELP_NODES: HelpNode[] = [
     ],
     detail: [
       "framework は `requires / forbids / warns` rule を持てる。",
-      "domain は description 行を 1 つ持つ。",
+      "domain は `description \"...\"` または `description |` の block text を 1 つ持つ。",
       "query は 1 行の DSLQL expression を body に持つ。",
     ],
     examples: [
@@ -113,6 +114,10 @@ const HELP_NODES: HelpNode[] = [
       '  description "設計レビュー"',
       "problem P1:",
       '  "監査したい問題"',
+      "problem P2:",
+      "  |",
+      "    長い説明を",
+      "    複数行で書ける",
     ],
     exampleSamples: ["framework-requires-and"],
     related: ["syntax.step", "syntax.query-block"],
@@ -151,13 +156,14 @@ const HELP_NODES: HelpNode[] = [
     title: "Annotation Syntax",
     summary: "annotation kind の閉じた集合と、problem / text-bearing statement への付与方法。",
     quick: [
-      "annotation は `annotation kind:` の header と、その次行の quoted text で書く。",
+      "annotation は `annotation kind:` の header と、その次行の quoted text か block text で書く。",
       "kind は explanation / rationale / status / caveat / todo / orphan_future / orphan_reference の閉じた集合。",
       "annotation は problem と premise / evidence / decision / comparison / pending に付けられる。",
     ],
     detail: [
       "explanation は補足説明、rationale は理由、status は rejected / negated / superseded のような状態タグ、caveat は制約、todo は後続作業に使う。",
       "orphan_future と orphan_reference は intentional orphan を明示するための kind で、preview や review で孤立ノードを意図的に残すときに使う。",
+      "status は機械解釈する列挙値なので 1 行で保ち、複数行補足は rationale など別 annotation へ分ける。",
       "kind 名は自由入力ではない。未知の kind は parse error になるので、この topic で閉じた集合を確認してから選ぶ。",
     ],
     examples: [
@@ -184,7 +190,7 @@ const HELP_NODES: HelpNode[] = [
     quick: [
       "`decision D1:` は構文上は有効。",
       "`decision D1 based_on PR1, EV1:` のように based_on を comma 区切りで書ける。",
-      "次行は quoted text。",
+      "次行は quoted text か block text。",
     ],
     detail: [
       "based_on は declared problem id または statement id の列を参照する。",
@@ -211,7 +217,7 @@ const HELP_NODES: HelpNode[] = [
     quick: [
       "`comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:` の形を使う。",
       "relation は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合。",
-      "次行は quoted text で、比較理由や読み筋を補足する。",
+      "次行は quoted text か block text で、比較理由や読み筋を補足する。",
     ],
     detail: [
       "comparison は global weight ではなく、problem と viewpoint を明示した局所比較として扱う。",
@@ -923,15 +929,15 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
       startsWithAny(message, ["Invalid domain declaration", "Domain description is required"]),
     help: {
       rationale: "domain は header 行の次に description 行を持つ。",
-      expectedSyntax: ["domain DesignReview:", '  description "設計レビュー論点"'].join("\n"),
+      expectedSyntax: ["domain DesignReview:", '  description "設計レビュー論点"', "  description |", "    複数行の説明"].join("\n"),
     },
   },
   {
     matches: (message) =>
       startsWithAny(message, ["Invalid problem declaration", "Problem text is required"]),
     help: {
-      rationale: "problem は header 行の次に quoted text を持つ。",
-      expectedSyntax: ["problem P1:", '  "監査したい問題文"'].join("\n"),
+      rationale: "problem は header 行の次に quoted text または `|` marker 付き block text を持つ。",
+      expectedSyntax: ["problem P1:", '  "監査したい問題文"', "problem P2:", "  |", "    複数行の問題文"].join("\n"),
     },
   },
   {
@@ -954,24 +960,24 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
     matches: (message) =>
       startsWithAny(message, ["Invalid premise declaration", "premise text is required"]),
     help: {
-      rationale: "premise は 'premise Id:' の次に quoted text を持つ。",
-      expectedSyntax: ["step S1:", "  premise PR1:", '    "現在の前提"'].join("\n"),
+      rationale: "premise は 'premise Id:' の次に quoted text または block text を持つ。",
+      expectedSyntax: ["step S1:", "  premise PR1:", '    "現在の前提"', "  premise PR2:", "    |", "      複数行の前提"].join("\n"),
     },
   },
   {
     matches: (message) =>
       startsWithAny(message, ["Invalid evidence declaration", "evidence text is required"]),
     help: {
-      rationale: "evidence は 'evidence Id:' の次に quoted text を持つ。",
-      expectedSyntax: ["step S1:", "  evidence EV1:", '    "観測事実"'].join("\n"),
+      rationale: "evidence は 'evidence Id:' の次に quoted text または block text を持つ。",
+      expectedSyntax: ["step S1:", "  evidence EV1:", '    "観測事実"', "  evidence EV2:", "    |", "      複数行の観測"].join("\n"),
     },
   },
   {
     matches: (message) =>
       startsWithAny(message, ["Invalid pending declaration", "pending text is required"]),
     help: {
-      rationale: "pending は 'pending Id:' の次に quoted text を持つ。",
-      expectedSyntax: ["step S1:", "  pending PD1:", '    "未確定事項"'].join("\n"),
+      rationale: "pending は 'pending Id:' の次に quoted text または block text を持つ。",
+      expectedSyntax: ["step S1:", "  pending PD1:", '    "未確定事項"', "  pending PD2:", "    |", "      複数行の未確定事項"].join("\n"),
     },
   },
   {
@@ -1001,12 +1007,15 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
       startsWithAny(message, ["Invalid annotation declaration", "Annotation text is required"]),
     help: {
       rationale:
-        "annotation は閉じた kind 集合を持ち、header 行の次に quoted text を置く。kind 名が未知だったり本文が無い場合は annotation 自体の構文を見直す。",
+        "annotation は閉じた kind 集合を持ち、header 行の次に quoted text または block text を置く。kind 名が未知だったり本文が無い場合は annotation 自体の構文を見直す。",
       expectedSyntax: [
         "problem P1:",
         '  "監査したい問題文"',
         "  annotation rationale:",
         '    "背景と判断理由"',
+        "  annotation explanation:",
+        "    |",
+        "      複数行の補足説明",
       ].join("\n"),
     },
   },
@@ -1015,11 +1024,14 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
       startsWithAny(message, ["Invalid decision declaration", "Decision text is required"]),
     help: {
       rationale:
-        "decision は 'decision Id based_on Ref1, Ref2:' の形式で、次行に quoted text を持つ。",
+        "decision は 'decision Id based_on Ref1, Ref2:' の形式で、次行に quoted text または block text を持つ。",
       expectedSyntax: [
         "step S1:",
         "  decision D1 based_on PR1, EV1:",
         '    "ADR を先に確定する"',
+        "  decision D2 based_on PR1:",
+        "    |",
+        "      複数行の判断文",
       ].join("\n"),
     },
   },

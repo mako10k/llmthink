@@ -1,19 +1,24 @@
 import ELK from "elkjs/lib/elk.bundled.js";
-import {
-  ParseError,
-  parseDocument,
-  type Annotation,
-  type DocumentAst,
-  type FrameworkRule,
-  type ProblemDecl,
-  type StepDecl,
-  type StepStatement,
+import type {
+  Annotation,
+  DocumentAst,
+  FrameworkRule,
+  ProblemDecl,
+  StepDecl,
+  StepStatement,
 } from "../../dist/index.js";
+import { loadLlmthinkCore } from "./core-runtime";
 import {
   getPreviewStrings,
   type DiagramRole,
   type PreviewLocale,
 } from "./i18n";
+
+interface ParseErrorLike {
+  message: string;
+  line: number;
+  column: number;
+}
 
 interface DiagramNode {
   key: string;
@@ -117,6 +122,16 @@ function toStatusClass(status: string | undefined): string {
   return status
     ? `status-${status.toLowerCase().replaceAll(/[^a-z0-9_-]+/g, "-")}`
     : "";
+}
+
+function isParseErrorLike(error: unknown): error is ParseErrorLike {
+  return typeof error === "object" && error !== null
+    && "message" in error
+    && "line" in error
+    && "column" in error
+    && typeof (error as ParseErrorLike).message === "string"
+    && typeof (error as ParseErrorLike).line === "number"
+    && typeof (error as ParseErrorLike).column === "number";
 }
 
 function formatFrameworkRule(rule: FrameworkRule): string {
@@ -814,9 +829,9 @@ function buildPreviewMarkdown(document: DocumentAst, title: string, locale: Prev
   return lines.join("\n");
 }
 
-function buildErrorHtml(error: ParseError | Error, title: string, locale: PreviewLocale): string {
+function buildErrorHtml(error: ParseErrorLike | Error, title: string, locale: PreviewLocale): string {
   const strings = getPreviewStrings(locale);
-  const message = error instanceof ParseError
+  const message = isParseErrorLike(error)
     ? `${error.message} (line ${error.line}, column ${error.column})`
     : error.message;
   return `<!DOCTYPE html>
@@ -2157,9 +2172,11 @@ export async function renderDslPreview(
   text: string,
   title: string,
   locale: PreviewLocale,
+  baseDir?: string,
 ): Promise<string> {
   try {
-    const document = parseDocument(text);
+    const core = await loadLlmthinkCore(baseDir);
+    const document = core.parseDocument(text);
     const strings = getPreviewStrings(locale);
     for (const node of document.steps) {
       if (node.statement.role === "decision") {
@@ -2171,7 +2188,7 @@ export async function renderDslPreview(
     const localizedMarkdown = markdown.replaceAll("__UNRESOLVED_REFERENCE__", strings.unresolvedReference);
     return buildPreviewHtml(localizedMarkdown, title, svgOverview, locale);
   } catch (error) {
-    if (error instanceof ParseError || error instanceof Error) {
+    if (isParseErrorLike(error) || error instanceof Error) {
       return buildErrorHtml(error, title, locale);
     }
     return buildErrorHtml(new Error(String(error)), title, locale);

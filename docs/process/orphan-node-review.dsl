@@ -4,19 +4,27 @@ framework OrphanNodeReview:
   warns pending
 
 domain OrphanNodeAudit:
-  description "思考グラフ内で他ノードとつながらない problem / premise / evidence / decision を監査し、意図的な孤立だけを機械可読に許可する方針を整理する"
+  description |
+    思考グラフ内で他ノードとつながらない problem / premise / evidence / decision を監査し、
+    意図的な孤立だけを機械可読に許可する方針を整理する
 
 problem P1:
-  "現行 audit は unresolved reference や decision without based_on は見るが、宣言されているのにどこにもつながらない orphan node は見ていない"
+  |
+    現行 audit は unresolved reference や decision without based_on は見るが、
+    宣言されているのにどこにもつながらない orphan node は見ていない
 
 problem P2:
-  "孤立した problem は解決や保留との関係が示されておらず、孤立した premise / evidence は何のために記載されているのか読み手に伝わりにくい"
+  |
+    孤立した problem は解決や保留との関係が示されておらず、
+    孤立した premise / evidence は何のために記載されているのか読み手に伝わりにくい
 
 problem P3:
   "すべての孤立を一律に error にすると、将来用メモや参考資料のような意図的な孤立までノイズ扱いになりうる"
 
 problem P4:
-  "意図的孤立を単なる自由文コメントで表すと、audit が suppress 条件として安定して読めず、preview や LSP でも意味を共有しにくい"
+  |
+    意図的孤立を単なる自由文コメントで表すと、
+    audit が suppress 条件として安定して読めず、preview や LSP でも意味を共有しにくい
 
 step S1:
   premise PR1:
@@ -24,11 +32,15 @@ step S1:
 
 step S2:
   premise PR2:
-    "first pass の orphan 判定は、推測的な意味解析ではなく明示された based_on 辺だけで決めたほうが実装と説明が単純である"
+    |
+      first pass の orphan 判定は、推測的な意味解析ではなく
+      明示された based_on 辺だけで決めたほうが実装と説明が単純である
 
 step S3:
   premise PR3:
-    "意図的な例外は free text ではなく閉じた理由集合を持つ機械可読な構文で表したほうが、audit suppress と editor support を一貫させやすい"
+    |
+      意図的な例外は free text ではなく閉じた理由集合を持つ機械可読な構文で表したほうが、
+      audit suppress と editor support を一貫させやすい
 
 step S3A:
   premise PR4:
@@ -60,7 +72,9 @@ step S6:
 
 step S7:
   evidence EV4:
-    "annotation kind は現状 explanation / rationale / caveat / todo の閉じた集合であり、ここに orphan 用 kind を追加するなら parser / AST / formatter の拡張差分が比較的小さい"
+    |
+      annotation kind は現状 explanation / rationale / caveat / todo の閉じた集合であり、
+      ここに orphan 用 kind を追加するなら parser / AST / formatter の拡張差分が比較的小さい
 
 step S8:
   decision D1 based_on PR1, PR2, EV2, EV3:
@@ -92,7 +106,9 @@ step S14:
 
 step S15:
   decision D8 based_on D6, D7:
-    "orphan_future と orphan_reference は problem、premise、evidence、decision、pending のような text-bearing node に付与でき、対応する orphan 監査だけを suppress する"
+    |
+      orphan_future と orphan_reference は problem、premise、evidence、decision、pending のような
+      text-bearing node に付与でき、対応する orphan 監査だけを suppress する
 
 step S16:
   decision D9 based_on PR7, D5, D8:
@@ -100,8 +116,12 @@ step S16:
 
 step S17:
   pending PD1:
-    "problem を直接 based_on 参照しないが、premise / evidence を介して実質的に解いている文書を orphan とみなすかは、将来 transitive graph を導入するかと合わせて再判断が必要である"
+    |
+      problem を直接 based_on 参照しないが、premise / evidence を介して実質的に解いている文書を orphan とみなすかは、
+      将来 transitive graph を導入するかと合わせて再判断が必要である
 
 step S18:
   pending PD2:
-    "orphan_reference を evidence だけに限定するか、problem / premise にも許可するかは実運用のノイズを見て再判断が必要である"
+    |
+      orphan_reference を evidence だけに限定するか、problem / premise にも許可するかは
+      実運用のノイズを見て再判断が必要である

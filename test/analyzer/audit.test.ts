@@ -107,3 +107,40 @@ step:
     true,
   );
 });
+
+test("auditDslText suggests simplifying single-line block text", async () => {
+  const report = await auditDslText(`
+problem P1:
+  |
+    single line only
+
+step:
+  decision D1 based_on P1:
+    "keep one quoted line here"
+`);
+
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("block text が 1 行のみ") && issue.severity === "hint"),
+    true,
+  );
+});
+
+test("auditDslText rejects multiline status annotations", async () => {
+  const report = await auditDslText(`
+problem P1:
+  "Track multiline status"
+
+step:
+  decision D1 based_on P1:
+    "Option A"
+    annotation status:
+      |
+        rejected
+        with note
+`);
+
+  assert.equal(
+    report.results.some((issue) => issue.message.includes("annotation status は複数行を取れない") && issue.severity === "error"),
+    true,
+  );
+});

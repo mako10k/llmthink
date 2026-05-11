@@ -4,23 +4,33 @@ framework LicenseModelReview:
   warns pending
 
 domain PublicRepositoryLicense:
-  description "llmthink を public repository として公開するにあたり、変な横取りや独自囲い込みを抑止しつつ、CLI/MCP/VSIX の配布と依存ライブラリ整合性を保てるライセンスを決める"
+  description |
+    llmthink を public repository として公開するにあたり、変な横取りや独自囲い込みを抑止しつつ、
+    CLI/MCP/VSIX の配布と依存ライブラリ整合性を保てるライセンスを決める
 
 problem P1:
-  "現状の LICENSE は proprietary / all rights reserved であり、public repository として公開しても第三者がどこまで利用、改変、再配布できるかが不明瞭である"
+  |
+    現状の LICENSE は proprietary / all rights reserved であり、public repository として公開しても
+    第三者がどこまで利用、改変、再配布できるかが不明瞭である
 
 problem P2:
   "利用者の意図は permissive な全面許可ではなく、横取りや独自派生の囲い込みを抑止したいことであり、copyleft の強さを適切に選ぶ必要がある"
 
 problem P3:
-  "このリポジトリは CLI、MCP server、LSP、VSIX extension を同時に配布しており、強すぎる copyleft は VSIX 導入や企業内利用の障壁になりうる"
+  |
+    このリポジトリは CLI、MCP server、LSP、VSIX extension を同時に配布しており、
+    強すぎる copyleft は VSIX 導入や企業内利用の障壁になりうる
 
 problem P4:
-  "選ぶライセンスは direct dependency の Apache-2.0、EPL-2.0、MIT、ISC、BSD と整合し、再配布時に不用意な衝突を起こしにくい必要がある"
+  |
+    選ぶライセンスは direct dependency の Apache-2.0、EPL-2.0、MIT、ISC、BSD と整合し、
+    再配布時に不用意な衝突を起こしにくい必要がある
 
 step S1:
   premise PR1:
-    "利用者の主目的が source contribution の完全自由化ではなく、改変した本体コードを閉じたまま横取りされにくくすることなら、全面的な strong copyleft より file-level copyleft のほうが意図に近い"
+    |
+      利用者の主目的が source contribution の完全自由化ではなく、改変した本体コードを閉じたまま横取りされにくくすることなら、
+      全面的な strong copyleft より file-level copyleft のほうが意図に近い
 
 step S2:
   premise PR2:
@@ -36,7 +46,9 @@ step S2B:
 
 step S3:
   evidence EV1:
-    "root package の direct dependency は @modelcontextprotocol/sdk、vscode-languageserver、vscode-languageserver-textdocument、zod など MIT 中心で、TypeScript と Playwright は Apache-2.0 である"
+    |
+      root package の direct dependency は @modelcontextprotocol/sdk、vscode-languageserver、vscode-languageserver-textdocument、
+      zod など MIT 中心で、TypeScript と Playwright は Apache-2.0 である
 
 step S4:
   evidence EV2:
@@ -56,7 +68,9 @@ step S7:
 
 step S8:
   decision D1 based_on PR1, PR2, PR3, EV1, EV2, EV4:
-    "llmthink の公開ライセンスは MPL-2.0 を第一候補として採用する"
+    |
+      llmthink の公開ライセンスは MPL-2.0 を
+      第一候補として採用する
 
 step S9:
   decision D2 based_on P4, EV3:
@@ -64,11 +78,15 @@ step S9:
 
 step S10:
   decision D3 based_on PR3, EV4:
-    "MPL-2.0 採用時は、repo 全体を MPL-2.0 で公開しつつ、第三者が既存ソースファイルを改変して再配布する場合には当該変更ファイルを開示する前提で運用する"
+    |
+      MPL-2.0 採用時は、repo 全体を MPL-2.0 で公開しつつ、
+      第三者が既存ソースファイルを改変して再配布する場合には当該変更ファイルを開示する前提で運用する
 
 step S11:
   decision D4 based_on PR4:
-    "README と VSIX README には public repository であっても MPL-2.0 が適用されること、依存ライブラリは各自のライセンスに従うことを明記する"
+    |
+      README と VSIX README には public repository であっても MPL-2.0 が適用されること、
+      依存ライブラリは各自のライセンスに従うことを明記する
 
 step S12:
   pending PD1:

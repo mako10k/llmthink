@@ -9,6 +9,7 @@ import type {
   PremiseStatement,
   QueryDecl,
   StepDecl,
+  TextBody,
   ViewpointStatement,
 } from "../model/ast.js";
 import { parseDocument } from "../parser/parser.js";
@@ -21,10 +22,19 @@ function indent(line: string): string {
   return `  ${line}`;
 }
 
+function formatTextBody(text: string, body?: TextBody): string[] {
+  const useBlock = body?.syntax === "block" || text.includes("\n");
+  if (!useBlock) {
+    return [quote(text)];
+  }
+
+  return ["|", ...text.split("\n").map(indent)];
+}
+
 function formatAnnotations(annotations: Annotation[]): string[] {
   return annotations.flatMap((annotation) => [
     `annotation ${annotation.kind}:`,
-    indent(quote(annotation.text)),
+    ...formatTextBody(annotation.text, annotation.body).map(indent),
   ]);
 }
 
@@ -44,7 +54,7 @@ function formatQuotedStepBody(
 ): string[] {
   return [
     `${keyword} ${statement.id}:`,
-    indent(quote(statement.text)),
+    ...formatTextBody(statement.text, statement.textBody).map(indent),
     ...formatAnnotations(statement.annotations).map(indent),
   ];
 }
@@ -56,7 +66,7 @@ function formatDecision(statement: DecisionStatement): string[] {
       : "";
   return [
     `decision ${statement.id}${basedOn}:`,
-    indent(quote(statement.text)),
+    ...formatTextBody(statement.text, statement.textBody).map(indent),
     ...formatAnnotations(statement.annotations).map(indent),
   ];
 }
@@ -64,7 +74,7 @@ function formatDecision(statement: DecisionStatement): string[] {
 function formatComparison(statement: ComparisonStatement): string[] {
   return [
     `comparison ${statement.id} on ${statement.problemId} viewpoint ${statement.viewpointId} relation ${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId}:`,
-    indent(quote(statement.text)),
+    ...formatTextBody(statement.text, statement.textBody).map(indent),
     ...formatAnnotations(statement.annotations).map(indent),
   ];
 }
@@ -123,7 +133,12 @@ export function formatDocument(document: DocumentAst): string {
     ...document.domains.map((domain) =>
       [
         `domain ${domain.name}:`,
-        indent(`description ${quote(domain.description)}`),
+        ...(() => {
+          if (domain.descriptionBody.syntax === "block" || domain.description.includes("\n")) {
+            return [indent("description |"), ...domain.description.split("\n").map((line) => indent(indent(line)))];
+          }
+          return [indent(`description ${quote(domain.description)}`)];
+        })(),
       ].join("\n"),
     ),
   );
@@ -132,7 +147,7 @@ export function formatDocument(document: DocumentAst): string {
     ...document.problems.map((problem) =>
       [
         `problem ${problem.name}:`,
-        indent(quote(problem.text)),
+        ...formatTextBody(problem.text, problem.textBody).map(indent),
         ...formatAnnotations(problem.annotations).map(indent),
       ].join("\n"),
     ),

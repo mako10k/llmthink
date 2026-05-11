@@ -109,6 +109,69 @@ function collectDirectDecisionRefs(document) {
     }
     return refs;
 }
+function collectTextLintTargets(document) {
+    const targets = document.domains.map((domain) => ({
+        label: `domain ${domain.name} の description`,
+        target: { ref_id: domain.name, role: "domain" },
+        body: domain.descriptionBody,
+        text: domain.description,
+    }));
+    targets.push(...document.problems.map((problem) => ({
+        label: `problem ${problem.name}`,
+        target: { ref_id: problem.name, role: "problem" },
+        body: problem.textBody,
+        text: problem.text,
+    })));
+    for (const problem of document.problems) {
+        targets.push(...problem.annotations.map((annotation) => ({
+            label: `problem ${problem.name} の annotation ${annotation.kind}`,
+            target: { ref_id: problem.name, role: "problem" },
+            body: annotation.body,
+            text: annotation.text,
+        })));
+    }
+    for (const step of document.steps) {
+        if ("textBody" in step.statement) {
+            targets.push({
+                label: `${step.statement.role} ${step.statement.id}`,
+                target: statementReference(step.statement, step.id),
+                body: step.statement.textBody,
+                text: step.statement.text,
+            });
+        }
+        if (!("annotations" in step.statement)) {
+            continue;
+        }
+        targets.push(...step.statement.annotations.map((annotation) => ({
+            label: `${step.statement.role} ${step.statement.id} の annotation ${annotation.kind}`,
+            target: statementReference(step.statement, step.id),
+            body: annotation.body,
+            text: annotation.text,
+        })));
+    }
+    return targets;
+}
+function addTextBodyLintIssues(issues, document) {
+    for (const target of collectTextLintTargets(document)) {
+        if (target.body.syntax !== "block" || target.body.lineCount !== 1) {
+            continue;
+        }
+        createIssue(issues, {
+            category: "semantic_hint",
+            severity: "hint",
+            target_refs: [target.target],
+            message: `${target.label} は block text が 1 行のみであり、quoted line に簡略化できる。`,
+            rationale: "block text は複数行本文や quote を避けたい本文に寄せると、短文との読み分けが安定する。",
+            suggestion: "1 行本文で足りるなら quoted line を使う。",
+            metadata: {
+                line: target.body.span.line,
+                column: target.body.span.column,
+                end_column: target.body.span.column + 1,
+                text: target.text,
+            },
+        });
+    }
+}
 function findDecisions(document) {
     const decisions = [];
     for (const step of document.steps) {
@@ -446,6 +509,22 @@ function addStatusAnnotationIssues(issues, document, decisions, comparisons) {
             continue;
         }
         for (const { annotation, value } of statuses) {
+            if (annotation.text.includes("\n")) {
+                createIssue(issues, {
+                    category: "contract_violation",
+                    severity: "error",
+                    target_refs: [annotationTargetReference(target)],
+                    message: `${target.role} ${target.id} の annotation status は複数行を取れない。`,
+                    rationale: "status は機械解釈する列挙値であり、単一行の scalar として扱う。",
+                    suggestion: "status を 1 行 quoted text にし、補足説明は rationale など別 annotation へ分ける。",
+                    metadata: {
+                        line: annotation.body.span.line,
+                        column: annotation.body.span.column,
+                        end_column: annotation.body.span.column + 1,
+                    },
+                });
+                continue;
+            }
             if (STATUS_VALUE_SET.has(value)) {
                 continue;
             }
@@ -710,6 +789,7 @@ async function auditDocument(document, documentId, options) {
     addOrphanNodeIssues(issues, document, directDecisionRefs);
     addContradictionCandidateIssues(issues, decisions);
     addComparisonConsistencyIssues(issues, comparisons);
+    addTextBodyLintIssues(issues, document);
     addStatusAnnotationIssues(issues, document, decisions, comparisons);
     addPendingHintIssue(issues, pendingSteps, decisions);
     const semanticContext = await createSemanticContext(decisions, document.queries.map((query) => buildQuerySemanticText(document, query.expression)), options);

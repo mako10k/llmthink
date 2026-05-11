@@ -4,28 +4,40 @@ framework PreviewHtmlTestabilityReview:
   warns pending
 
 domain PreviewHtmlTestability:
-  description "VSIX preview を CLI からも同じ HTML artifact として出力し、Playwright で zoom/scroll/minimap の回帰を再現できる構造へ整理する"
+  description |
+    VSIX preview を CLI からも同じ HTML artifact として出力し、
+    Playwright で zoom/scroll/minimap の回帰を再現できる構造へ整理する
 
 problem P1:
-  "現在の preview 挙動は VS Code webview 内でしか確認しづらく、zoom/scroll の不具合を再現・固定する回帰試験がない"
+  |
+    現在の preview 挙動は VS Code webview 内でしか確認しづらく、
+    zoom/scroll の不具合を再現・固定する回帰試験がない
 
 problem P2:
-  "preview の HTML/CSS/script は renderDslPreview に集約されているが、CLI から同じ artifact を生成する公的導線がない"
+  |
+    preview の HTML/CSS/script は renderDslPreview に集約されているが、
+    CLI から同じ artifact を生成する公的導線がない
 
 problem P3:
   "preview script は acquireVsCodeApi を前提にしており、VS Code 外のブラウザでそのまま検証しづらい"
 
 step S1:
   premise PR1:
-    "UI 回帰を根本から詰めるには、エディタ内で見えている artifact と同一の HTML を headless browser で開けることが重要である"
+    |
+      UI 回帰を根本から詰めるには、
+      エディタ内で見えている artifact と同一の HTML を headless browser で開けることが重要である
 
 step S2:
   premise PR2:
-    "zoom/fit/reset/minimap/scrollbar の不具合は DOM と script の結合問題なので、unit test より browser automation で固定するほうが再発防止に向く"
+    |
+      zoom/fit/reset/minimap/scrollbar の不具合は DOM と script の結合問題なので、
+      unit test より browser automation で固定するほうが再発防止に向く
 
 step S3:
   evidence EV1:
-    "renderDslPreview は DSL text、title、locale を受けて preview HTML 全体を返すため、CLI 出力と VSIX custom editor の共通 artifact として再利用できる"
+    |
+      renderDslPreview は DSL text、title、locale を受けて preview HTML 全体を返すため、
+      CLI 出力と VSIX custom editor の共通 artifact として再利用できる
 
 step S4:
   evidence EV2:
@@ -33,7 +45,9 @@ step S4:
 
 step S5:
   evidence EV3:
-    "zoom in/out の位置ずれのような不具合は、HTML を headless browser で開いて button click 後の scrollLeft/scrollTop と minimap viewport を検査すれば再現できる"
+    |
+      zoom in/out の位置ずれのような不具合は、HTML を headless browser で開いて
+      button click 後の scrollLeft/scrollTop と minimap viewport を検査すれば再現できる
 
 step S6:
   decision D1 based_on PR1, EV1:
@@ -45,7 +59,9 @@ step S7:
 
 step S8:
   decision D3 based_on PR2, EV3, D1, D2:
-    "Playwright test は CLI で生成した HTML artifact を browser で開き、zoom in/out、fit、reset、scrollbar 位置、minimap viewport の主要回帰を検査する"
+    |
+      Playwright test は CLI で生成した HTML artifact を browser で開き、
+      zoom in/out、fit、reset、scrollbar 位置、minimap viewport の主要回帰を検査する
 
 step S9:
   decision D4 based_on D1, D2, D3:

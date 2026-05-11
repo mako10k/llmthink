@@ -2,7 +2,9 @@ domain SemanticAuditSupport:
   description "思考の意味監査補助機能について、annotation、対象列挙、CLI 追記の責務分離をゼロベースで整理する"
 
 problem P1:
-  "現在の audit は構文・参照・局所整合性を確認できるが、evidence E1 が decision D1 の根拠として妥当かのような意味レベルの確認は支援していない"
+  |
+    現在の audit は構文・参照・局所整合性を確認できるが、
+    evidence E1 が decision D1 の根拠として妥当かのような意味レベルの確認は支援していない
 
 problem P2:
   "意味監査を人手や LLM で実施しても、その結果が DSL 本体に残らなければ、どの根拠関係を確認済みかを再読時に判別しにくい"
@@ -34,7 +36,9 @@ step S4:
 
 step S5:
   evidence EV1:
-    "既存 DSL では decision が based_on で problem、premise、evidence、viewpoint を参照しており、少なくとも explicit support pair は抽出できる"
+    |
+      既存 DSL では decision が based_on で problem、premise、evidence、viewpoint を参照しており、
+      少なくとも explicit support pair は抽出できる
 
 step S6:
   evidence EV2:
@@ -54,7 +58,9 @@ step S9:
 
 step S10:
   decision D2 based_on P3, D1, PR2, EV1:
-    "第一段階で列挙する監査対象は、decision の based_on に含まれる evidence と premise を優先し、problem に対しては別種の問いとして後続検討に分ける"
+    |
+      第一段階で列挙する監査対象は、decision の based_on に含まれる evidence と premise を優先し、
+      problem に対しては別種の問いとして後続検討に分ける
 
 step S11:
   decision D3 based_on P5, D1, PR3, EV3:
@@ -62,11 +68,15 @@ step S11:
 
 step S12:
   decision D4 based_on P3, PR1, PR3, EV4, D2, D3:
-    "CLI はまず未監査 pair の列挙と prompt 生成を担い、その次に pair id、verdict、reason を受けて DSL へ結果を追記する二段階フローに分ける"
+    |
+      CLI はまず未監査 pair の列挙と prompt 生成を担い、その次に pair id、verdict、reason を受けて
+      DSL へ結果を追記する二段階フローに分ける
 
 step S13:
   decision D5 based_on P2, P4, PR1, PR4, EV2:
-    "意味監査の正式な保存形式は annotation 単独ではなく、pair id、verdict、reason、timestamp などを持てる専用 statement または同等の第一級構造として設計する"
+    |
+      意味監査の正式な保存形式は annotation 単独ではなく、pair id、verdict、reason、timestamp などを持てる
+      専用 statement または同等の第一級構造として設計する
 
 step S14:
   decision D6 based_on P2, P4, D5:
@@ -74,11 +84,15 @@ step S14:
 
 step S15:
   decision D7 based_on P5, D2, D3, D4:
-    "locale-aware な質問文の初期形は、pair id、判断 text、根拠 text を埋めた定型文テンプレートとして実装し、意味監査ロジック自体は locale に依存させない"
+    |
+      locale-aware な質問文の初期形は、pair id、判断 text、根拠 text を埋めた定型文テンプレートとして実装し、
+      意味監査ロジック自体は locale に依存させない
 
 step S16:
   pending PD1:
-    "pair に対する保存構造を新しい statement role にするか、annotation を拡張して半構造化 payload を持たせるかは、parser 差分と query 性能を見て再判断が必要である"
+    |
+      pair に対する保存構造を新しい statement role にするか、annotation を拡張して半構造化 payload を持たせるかは、
+      parser 差分と query 性能を見て再判断が必要である
 
 step S17:
   pending PD2:
@@ -182,7 +196,9 @@ step S38:
 
 step S39:
   decision D14 based_on P2, P6, PR4, PR5, D6, D12, D13:
-    "運用方針としては sidecar file を意味監査結果の正本とし、本体 DSL には要約 annotation または生成ビューだけを置く hybrid を第一候補にする"
+    |
+      運用方針としては sidecar file を意味監査結果の正本とし、
+      本体 DSL には要約 annotation または生成ビューだけを置く hybrid を第一候補にする
 
 step S40:
   decision D15 based_on PR4, PR5, EV7, D12:
@@ -190,11 +206,15 @@ step S40:
 
 step S41:
   decision D16 based_on PR5, PR7, EV7, D12, D15:
-    "sidecar DSL の正本配置は .llmthink/thoughts/<thought-id>/semantic-audit.dsl を第一候補とし、draft.dsl や final.dsl に隣接させて discoverability を上げる"
+    |
+      sidecar DSL の正本配置は .llmthink/thoughts/<thought-id>/semantic-audit.dsl を第一候補とし、
+      draft.dsl や final.dsl に隣接させて discoverability を上げる
 
 step S42:
   decision D17 based_on PR4, PR6, PR7, D14, D16:
-    "時系列の再監査履歴や実行ログが必要な場合は、semantic-audit.dsl を正本としつつ、派生履歴を .llmthink/thoughts/<thought-id>/semantic-audits/ 配下へ追加保存する構成にする"
+    |
+      時系列の再監査履歴や実行ログが必要な場合は、semantic-audit.dsl を正本としつつ、
+      派生履歴を .llmthink/thoughts/<thought-id>/semantic-audits/ 配下へ追加保存する構成にする
 
 problem P10:
   "本体 DSL に出す要約は、常時固定だと運用ごとのノイズ許容量に合わず、軽い確認と厳密な追跡の両方を満たしにくい"
@@ -213,11 +233,15 @@ step S46:
 
 step S47:
   decision D19 based_on PR8, EV9, D18:
-    "既定値は document_summary とし、本文には『この thought に意味監査記録がある』ことと最新更新時刻、未解決件数など document 単位の短い要約だけを出す"
+    |
+      既定値は document_summary とし、本文には『この thought に意味監査記録がある』ことと
+      最新更新時刻、未解決件数など document 単位の短い要約だけを出す
 
 step S48:
   decision D20 based_on PR8, D18:
-    "pair_summary はレビューや集中的な検証で使う運用モードとし、対象 pair id、最新 verdict、短い reason を本文または生成ビューへ展開できるようにする"
+    |
+      pair_summary はレビューや集中的な検証で使う運用モードとし、
+      対象 pair id、最新 verdict、短い reason を本文または生成ビューへ展開できるようにする
 
 step S49:
   decision D21 based_on PR8, D18:
@@ -225,25 +249,35 @@ step S49:
 
 step S50:
   pending PD5:
-    "semantic-audit.dsl の具体文法を既存 statement role の組み合わせで表すか、semantic_audit のような専用 role を導入するかは parser 差分を見て再判断が必要である"
+    |
+      semantic-audit.dsl の具体文法を既存 statement role の組み合わせで表すか、
+      semantic_audit のような専用 role を導入するかは parser 差分を見て再判断が必要である
 
 step S51:
   pending PD6:
-    "document_summary と pair_summary の切替を annotation 生成で行うか、preview や thought show の生成ビューで行うかは UI 面と diff 面を見て決める必要がある"
+    |
+      document_summary と pair_summary の切替を annotation 生成で行うか、preview や thought show の生成ビューで行うかは、
+      UI 面と diff 面を見て決める必要がある
 
 step S52:
   pending PD7:
-    "semantic-audits/ 配下に置く派生履歴を append-only DSL にするか、timestamp ごとの snapshot DSL にするかは merge 競合と追跡性を見て調整が必要である"
+    |
+      semantic-audits/ 配下に置く派生履歴を append-only DSL にするか、timestamp ごとの snapshot DSL にするかは、
+      merge 競合と追跡性を見て調整が必要である
 
 problem P11:
   "semantic-audit.dsl の文法が曖昧だと、sidecar を DSL にした利点が薄れ、CLI 自動追記と人手修正の両方が不安定になる"
 
 problem P12:
-  "意味監査の要約を annotation、thought show、preview のどこへ出すかを混在させると、同じ情報が複数面で重複し、どこが正本に近い表示か分かりにくくなる"
+  |
+    意味監査の要約を annotation、thought show、preview のどこへ出すかを混在させると、
+    同じ情報が複数面で重複し、どこが正本に近い表示か分かりにくくなる
 
 step S53:
   premise PR9:
-    "sidecar DSL の最小文法は、pair id、decision id、supporting statement id、verdict、reason を機械的に読めることを優先するべきである"
+    |
+      sidecar DSL の最小文法は、pair id、decision id、supporting statement id、verdict、reason を
+      機械的に読めることを優先するべきである
 
 step S54:
   premise PR10:
@@ -251,11 +285,15 @@ step S54:
 
 step S55:
   evidence EV10:
-    "既存の thought show は summary、draft、final、audit、reflections の view 切替を持ち、運用向けのテキスト断面を出す責務に近い"
+    |
+      既存の thought show は summary、draft、final、audit、reflections の view 切替を持ち、
+      運用向けのテキスト断面を出す責務に近い
 
 step S56:
   evidence EV11:
-    "既存 preview は document AST をもとに markdown と graph を生成する面であり、保存済み本文の置き換えよりも生成ビューの追加に向いている"
+    |
+      既存 preview は document AST をもとに markdown と graph を生成する面であり、
+      保存済み本文の置き換えよりも生成ビューの追加に向いている
 
 step S57:
   evidence EV12:
@@ -263,15 +301,21 @@ step S57:
 
 step S58:
   decision D22 based_on P11, PR9, D15, D16:
-    "semantic-audit.dsl には annotation 拡張ではなく dedicated statement role として semantic_audit を導入する方向で設計する"
+    |
+      semantic-audit.dsl には annotation 拡張ではなく dedicated statement role として
+      semantic_audit を導入する方向で設計する
 
 step S59:
   decision D23 based_on PR9, D22:
-    "semantic_audit の最小 header は 'semantic_audit <audit-id> on <decision-id> support <statement-id> verdict <verdict>:' の形とし、body の先頭文字列を reason として扱う"
+    |
+      semantic_audit の最小 header は 'semantic_audit <audit-id> on <decision-id> support <statement-id> verdict <verdict>:' の形とし、
+      body の先頭文字列を reason として扱う
 
 step S60:
   decision D24 based_on PR3, PR9, D3, D22:
-    "<audit-id> は locale 非依存の stable id とし、pair 自体の識別は decision id と support id の組で機械的に復元できるようにする"
+    |
+      <audit-id> は locale 非依存の stable id とし、
+      pair 自体の識別は decision id と support id の組で機械的に復元できるようにする
 
 step S61:
   decision D25 based_on PR9, D23:
@@ -279,7 +323,9 @@ step S61:
 
 step S62:
   decision D26 based_on PR4, PR9, D17, D22:
-    "reviewer、model、audited_at、source_thought などの補助メタデータは semantic_audit statement の下に限定された annotation kind または fixed metadata line として後続設計し、MVP では必須にしない"
+    |
+      reviewer、model、audited_at、source_thought などの補助メタデータは
+      semantic_audit statement の下に限定された annotation kind または fixed metadata line として後続設計し、MVP では必須にしない
 
 step S63:
   decision D27 based_on P12, PR8, PR10, EV10, D18:
@@ -287,11 +333,15 @@ step S63:
 
 step S64:
   decision D28 based_on P12, PR8, PR10, EV11, D20:
-    "preview は pair_summary 相当の詳細表示と未監査 pair の局所探索を担い、本体 DSL の annotation を増やさなくても意味監査状態へ到達できる面にする"
+    |
+      preview は pair_summary 相当の詳細表示と未監査 pair の局所探索を担い、
+      本体 DSL の annotation を増やさなくても意味監査状態へ到達できる面にする
 
 step S65:
   decision D29 based_on P12, PR8, PR10, EV12, D19, D21:
-    "annotation は document_summary の短い静的要約だけに限定し、pair_summary の詳細や長い reason は thought show と preview の生成ビューへ寄せる"
+    |
+      annotation は document_summary の短い静的要約だけに限定し、
+      pair_summary の詳細や長い reason は thought show と preview の生成ビューへ寄せる
 
 step S66:
   decision D30 based_on D23, D25:
@@ -299,21 +349,29 @@ step S66:
 
 step S67:
   decision D31 based_on PR9, D22, D23, D26:
-    "semantic_audit statement の補助メタデータは annotation kind 追加ではなく fixed metadata line で表し、reviewer、model、audited_at、source_thought などを key-value 的に機械抽出しやすくする"
+    |
+      semantic_audit statement の補助メタデータは annotation kind 追加ではなく fixed metadata line で表し、
+      reviewer、model、audited_at、source_thought などを key-value 的に機械抽出しやすくする
 
 step S68:
   decision D32 based_on PR10, EV10, D27, D29:
-    "thought show の view 名は 'semantic-audit' を document_summary 相当、'semantic-audit-pairs' を pair_summary 相当として追加し、既存の短い view 名スタイルに寄せる"
+    |
+      thought show の view 名は 'semantic-audit' を document_summary 相当、
+      'semantic-audit-pairs' を pair_summary 相当として追加し、既存の短い view 名スタイルに寄せる
 
 step S69:
   decision D33 based_on PR10, EV11, D28, D29:
     "preview の pair_summary は既定で折りたたみ、明示トグルで開く方式とし、通常表示では document_summary と未監査件数だけを見せて情報密度を抑える"
 
 problem P13:
-  "semantic_audit の補助メタデータを annotation kind に寄せると、構造化値の読み出しと将来 query での抽出が awkward になりやすい"
+  |
+    semantic_audit の補助メタデータを annotation kind に寄せると、
+    構造化値の読み出しと将来 query での抽出が awkward になりやすい
 
 problem P14:
-  "thought show と preview の view 名や既定表示が曖昧だと、document_summary と pair_summary のどちらをどこで見るべきか利用者が予測しにくい"
+  |
+    thought show と preview の view 名や既定表示が曖昧だと、
+    document_summary と pair_summary のどちらをどこで見るべきか利用者が予測しにくい
 
 step S70:
   premise PR11:
@@ -337,34 +395,50 @@ step S74:
 
 step S75:
   decision D34 based_on P13, PR11, EV13, D31:
-    "fixed metadata line の初期集合は reviewer、model、audited_at、source_thought とし、必要なら locale 非依存 key を追加する方式で拡張する"
+    |
+      fixed metadata line の初期集合は reviewer、model、audited_at、source_thought とし、
+      必要なら locale 非依存 key を追加する方式で拡張する
 
 step S76:
   decision D35 based_on PR11, D31, D34:
-    "metadata line の基本形は 'reviewer <value>' や 'audited_at <iso8601>' のような単純行とし、annotation の入れ子ではなく semantic_audit body の先頭に並べる"
+    |
+      metadata line の基本形は 'reviewer <value>' や 'audited_at <iso8601>' のような単純行とし、
+      annotation の入れ子ではなく semantic_audit body の先頭に並べる
 
 step S77:
   decision D36 based_on P14, PR12, EV10, EV14, D32:
-    "thought show の既定 summary には semantic audit の document_summary を 1 行要約で含め、詳細が必要なときだけ 'semantic-audit' または 'semantic-audit-pairs' view へ降りる構成にする"
+    |
+      thought show の既定 summary には semantic audit の document_summary を 1 行要約で含め、
+      詳細が必要なときだけ 'semantic-audit' または 'semantic-audit-pairs' view へ降りる構成にする
 
 step S78:
   decision D37 based_on P14, PR12, EV11, EV15, D33:
-    "preview は document_summary を固定表示し、pair_summary はセクション単位の disclosure トグルで開く。未監査 pair がある場合は閉じた状態でも件数だけ明示する"
+    |
+      preview は document_summary を固定表示し、pair_summary はセクション単位の disclosure トグルで開く。
+      未監査 pair がある場合は閉じた状態でも件数だけ明示する
 
 step S79:
   decision D38 based_on D32, D36, D37:
-    "用語は CLI と preview でそろえ、document_summary、pair_summary、unreviewed_pairs の 3 語を内部・表示の共通概念として扱う"
+    |
+      用語は CLI と preview でそろえ、document_summary、pair_summary、unreviewed_pairs の 3 語を
+      内部・表示の共通概念として扱う
 
 step S80:
   decision D39 based_on PR11, D31, D35:
-    "metadata line の value は空白を含まない単純値だけを bare token で許可し、空白、引用符、記号を含む値は DSL の通常 string と同じ二重引用符で必ず囲う"
+    |
+      metadata line の value は空白を含まない単純値だけを bare token で許可し、
+      空白、引用符、記号を含む値は DSL の通常 string と同じ二重引用符で必ず囲う
 
 problem P15:
-  "metadata line の escaping 規則が曖昧だと、CLI 自動追記と手編集が衝突し、reviewer 名や model 名のような空白入り値で parser の解釈がぶれやすい"
+  |
+    metadata line の escaping 規則が曖昧だと、CLI 自動追記と手編集が衝突し、
+    reviewer 名や model 名のような空白入り値で parser の解釈がぶれやすい
 
 step S81:
   evidence EV16:
-    "reviewer や model には空白を含む値が現れやすく、bare token と quoted string の境界を固定しないと formatter と parser の往復が不安定になる"
+    |
+      reviewer や model には空白を含む値が現れやすく、
+      bare token と quoted string の境界を固定しないと formatter と parser の往復が不安定になる
 
 step S82:
   decision D40 based_on P15, PR11, EV16, D39:
@@ -372,14 +446,18 @@ step S82:
 
 step S83:
   decision D41 based_on D23, D25, D35, D39, D40, EV17:
-    "semantic-audit.dsl の具体サンプルは、header、quoted metadata line、bare token metadata line、reason body を 1 つずつ含む形で guidance と test の基準例にする"
+    |
+      semantic-audit.dsl の具体サンプルは、header、quoted metadata line、bare token metadata line、
+      reason body を 1 つずつ含む形で guidance と test の基準例にする
 
 step S84:
   evidence EV17:
     "想定サンプル: semantic_audit SA1 on D1 support E1 verdict supported: reviewer \"QA reviewer\" / model gpt-5.4 / audited_at 2026-05-08T07:00:00Z / source_thought contradiction-pending / body reason"
 
 problem P16:
-  "thought show summary の semantic audit 1 行要約は、常時表示固定だと簡潔さを損ねる一方、完全自動だと運用ごとの好みやスクリプト利用に合わせにくい"
+  |
+    thought show summary の semantic audit 1 行要約は、常時表示固定だと簡潔さを損ねる一方、
+    完全自動だと運用ごとの好みやスクリプト利用に合わせにくい
 
 problem P17:
   "preview の pair_summary disclosure 粒度が粗すぎると特定 decision 周辺だけを追いにくく、細かすぎるとトグル操作が増えすぎる"
@@ -394,15 +472,21 @@ step S86:
 
 step S87:
   evidence EV19:
-    "preview で利用者が最初に追いたい単位は文書全体より decision 周辺であることが多く、support pair も decision に束ねて見えるほうが局所探索しやすい"
+    |
+      preview で利用者が最初に追いたい単位は文書全体より decision 周辺であることが多く、
+      support pair も decision に束ねて見えるほうが局所探索しやすい
 
 step S88:
   decision D42 based_on P16, PR13, EV10, EV18, D36:
-    "thought show summary の semantic audit 1 行要約は option で制御し、既定では存在時のみ表示、--with-semantic-audit-summary のような明示指定で常時表示を許可する"
+    |
+      thought show summary の semantic audit 1 行要約は option で制御し、既定では存在時のみ表示、
+      --with-semantic-audit-summary のような明示指定で常時表示を許可する
 
 step S89:
   decision D43 based_on P17, PR12, EV11, EV15, EV19, D37:
-    "preview の disclosure トグルは decision ごとの pair group を第一候補とし、各 decision 配下で reviewed pair と unreviewed_pairs をまとめて開閉できる形にする"
+    |
+      preview の disclosure トグルは decision ごとの pair group を第一候補とし、
+      各 decision 配下で reviewed pair と unreviewed_pairs をまとめて開閉できる形にする
 
 step S90:
   decision D44 based_on D38, D42, D43:
@@ -410,8 +494,12 @@ step S90:
 
 step S91:
   pending PD9:
-    "CLI option 名を --with-semantic-audit-summary、--semantic-audit-summary=always|auto|never のどちらへ寄せるかは既存 option 命名規則と整合を見て決める必要がある"
+    |
+      CLI option 名を --with-semantic-audit-summary、--semantic-audit-summary=always|auto|never のどちらへ寄せるかは、
+      既存 option 命名規則と整合を見て決める必要がある
 
 step S92:
   pending PD10:
-    "decision ごとの pair group 内で reviewed と unreviewed をさらに分けるか、単一 list に verdict badge だけ付けるかは preview の実装モックを見て調整が必要である"
+    |
+      decision ごとの pair group 内で reviewed と unreviewed をさらに分けるか、
+      単一 list に verdict badge だけ付けるかは preview の実装モックを見て調整が必要である
