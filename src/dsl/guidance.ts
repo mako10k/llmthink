@@ -84,6 +84,7 @@ const HELP_NODES: HelpNode[] = [
       { key: "syntax.top-level", label: "top-level", summary: "framework / domain / problem / step / query の入口" },
       { key: "syntax.step", label: "step", summary: "explicit step、step:、flatten 記法" },
       { key: "syntax.decision", label: "decision", summary: "based_on を含む decision 文法" },
+      { key: "syntax.annotations", label: "annotations", summary: "annotation kind と付与位置の使い分け" },
       { key: "syntax.comparison", label: "comparison", summary: "problem / viewpoint scope を持つ decision 比較文法" },
       { key: "syntax.query-block", label: "query-block", summary: "query 宣言と DSLQL body" },
     ],
@@ -146,6 +147,37 @@ const HELP_NODES: HelpNode[] = [
     related: ["syntax.decision", "query"],
   },
   {
+    key: "syntax.annotations",
+    title: "Annotation Syntax",
+    summary: "annotation kind の閉じた集合と、problem / text-bearing statement への付与方法。",
+    quick: [
+      "annotation は `annotation kind:` の header と、その次行の quoted text で書く。",
+      "kind は explanation / rationale / status / caveat / todo / orphan_future / orphan_reference の閉じた集合。",
+      "annotation は problem と premise / evidence / decision / comparison / pending に付けられる。",
+    ],
+    detail: [
+      "explanation は補足説明、rationale は理由、status は rejected / negated / superseded のような状態タグ、caveat は制約、todo は後続作業に使う。",
+      "orphan_future と orphan_reference は intentional orphan を明示するための kind で、preview や review で孤立ノードを意図的に残すときに使う。",
+      "kind 名は自由入力ではない。未知の kind は parse error になるので、この topic で閉じた集合を確認してから選ぶ。",
+    ],
+    examples: [
+      "problem P1:",
+      '  "コメント導入方針を決める"',
+      "  annotation rationale:",
+      '    "自由コメントと意味付き注釈を分ける"',
+      "",
+      "step S1:",
+      "  decision D1 based_on P1:",
+      '    "annotation を第一級要素として採用する"',
+      "    annotation status:",
+      '      "superseded"',
+      "    annotation orphan_reference:",
+      '      "旧方針を参照用に残す"',
+    ],
+    exampleSamples: ["framework-contract", "contradiction-pending"],
+    related: ["syntax.decision", "syntax.step", "samples"],
+  },
+  {
     key: "syntax.decision",
     title: "Decision Syntax",
     summary: "decision と based_on の基本構文。",
@@ -159,6 +191,7 @@ const HELP_NODES: HelpNode[] = [
       "根拠なし decision は parse error ではなく、監査で contract_violation 候補になる。",
       "decision text の後に annotation を並べられる。",
       "annotation status は rejected / negated / superseded のような状態タグを付ける用途に使える。",
+      "annotation kind 全体の一覧と使い分けは `dsl help syntax annotations` を辿る。",
     ],
     examples: [
       "decision D1 based_on PR1, EV1:",
@@ -169,7 +202,7 @@ const HELP_NODES: HelpNode[] = [
       '    "根拠を明示する"',
     ],
     exampleSamples: ["decision-minimal", "contradiction-pending"],
-    related: ["syntax.step", "query.functions", "usecases.decision-without-basis"],
+    related: ["syntax.annotations", "syntax.step", "query.functions", "usecases.decision-without-basis"],
   },
   {
     key: "syntax.comparison",
@@ -960,6 +993,20 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
         "  partition PT1 on ReviewDomain axis cost:",
         "    Cheap := cost < 100",
         "    Others := not Cheap",
+      ].join("\n"),
+    },
+  },
+  {
+    matches: (message) =>
+      startsWithAny(message, ["Invalid annotation declaration", "Annotation text is required"]),
+    help: {
+      rationale:
+        "annotation は閉じた kind 集合を持ち、header 行の次に quoted text を置く。kind 名が未知だったり本文が無い場合は annotation 自体の構文を見直す。",
+      expectedSyntax: [
+        "problem P1:",
+        '  "監査したい問題文"',
+        "  annotation rationale:",
+        '    "背景と判断理由"',
       ].join("\n"),
     },
   },

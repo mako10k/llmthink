@@ -169,6 +169,14 @@ function parseAnnotations(
 
     const kind = parseAnnotationKind(rawHeader.trim());
     if (!kind) {
+      if (rawHeader.trim().startsWith("annotation ")) {
+        throw new ParseError(
+          "Invalid annotation declaration",
+          index + 1,
+          firstNonWhitespaceColumn(rawHeader),
+          rawHeader.length + 1,
+        );
+      }
       break;
     }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3
+
+- annotation kind 向けの専用 syntax help と parse error 導線を追加し、未知の kind で文法説明へ辿りやすく改善
+- LSP completion を annotation kind と comparison relation の文脈依存候補に対応し、関連 keyword docs を補強
+- DSL grammar spec を現行実装に同期し、comparison annotation と annotation kind / owner 一覧の記述漏れを修正
+
 ## 0.4.2
 
 - VS Code 拡張の thought 永続化で保存基底ディレクトリをワークスペースまたは extension storage から解決するようにし、Windows + WSL Remote で `process.cwd()` 由来の EACCES を回避

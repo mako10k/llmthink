@@ -10,11 +10,26 @@ import { ParseError, parseDocument } from "../parser/parser.js";
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
+const ANNOTATION_KINDS = [
+    "explanation",
+    "rationale",
+    "status",
+    "caveat",
+    "todo",
+    "orphan_future",
+    "orphan_reference",
+];
+const COMPARISON_RELATIONS = [
+    "preferred_over",
+    "weaker_than",
+    "incomparable",
+    "counterexample_to",
+];
 const KEYWORD_DOCS = {
     framework: "文書全体の制約や期待役割を宣言します。",
     domain: "評価対象の分類軸や対象領域を定義します。",
     problem: "検討対象の問題文を定義します。",
-    annotation: "problem や text-bearing statement に付く構造化注釈を宣言します。",
+    annotation: "problem と premise / evidence / decision / comparison / pending に付く構造化注釈を宣言します。kind は閉じた集合で、詳細は `dsl help syntax annotations` を辿れます。",
     explanation: "annotation kind です。補足説明を表します。",
     rationale: "annotation kind です。判断理由や背景説明を表します。",
     status: "annotation kind です。要素の状態を表します。rejected、negated、superseded などを使います。",
@@ -30,8 +45,8 @@ const KEYWORD_DOCS = {
     evidence: "根拠を表す step body です。",
     decision: "判断を表す step body です。",
     comparison: "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
-    based_on: "decision の参照根拠を列挙します。",
-    relation: "comparison の比較関係を表します。",
+    based_on: "decision の参照根拠を列挙します。declared problem id と statement id を参照できます。",
+    relation: "comparison header で使う比較関係です。値は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合です。",
     preferred_over: "comparison relation です。左側 decision を右側より優先します。",
     weaker_than: "comparison relation です。左側 decision が右側より弱いことを表します。",
     incomparable: "comparison relation です。2 つの decision を同一軸では順序付けしないことを表します。",
@@ -198,6 +213,63 @@ function lineTextAt(document, line) {
         start: Position.create(line, 0),
         end: Position.create(line + 1, 0),
     });
+}
+function linePrefixAt(document, position) {
+    return document.getText({
+        start: Position.create(position.line, 0),
+        end: position,
+    });
+}
+function previousSignificantLineText(document, line) {
+    for (let currentLine = line - 1; currentLine >= 0; currentLine -= 1) {
+        const text = lineTextAt(document, currentLine);
+        const trimmed = text.trim();
+        if (!trimmed || trimmed.startsWith("#")) {
+            continue;
+        }
+        return text;
+    }
+    return undefined;
+}
+function buildKeywordCompletionItems(labels, detail, options) {
+    return labels.map((label) => ({
+        label,
+        kind: options?.kind ?? CompletionItemKind.Keyword,
+        detail,
+        documentation: KEYWORD_DOCS[label],
+        insertText: `${label}${options?.insertTextSuffix ?? ""}`,
+    }));
+}
+function buildAnnotationHeaderCompletionItems() {
+    return ANNOTATION_KINDS.map((label) => ({
+        label: `annotation ${label}`,
+        kind: CompletionItemKind.Snippet,
+        detail: "annotation snippet",
+        documentation: KEYWORD_DOCS[label],
+        insertText: `annotation ${label}:`,
+    }));
+}
+function contextualDslCompletions(document, position) {
+    const prefix = linePrefixAt(document, position);
+    const trimmedPrefix = prefix.trim();
+    if (/^annotation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+        return buildKeywordCompletionItems(ANNOTATION_KINDS, "annotation kind", {
+            kind: CompletionItemKind.EnumMember,
+            insertTextSuffix: ":",
+        });
+    }
+    if (/^comparison\b.*\brelation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+        return buildKeywordCompletionItems(COMPARISON_RELATIONS, "comparison relation", {
+            kind: CompletionItemKind.EnumMember,
+        });
+    }
+    if (!trimmedPrefix) {
+        const previousLine = previousSignificantLineText(document, position.line);
+        if (previousLine?.trim().startsWith('"')) {
+            return buildAnnotationHeaderCompletionItems();
+        }
+    }
+    return undefined;
 }
 function identifierRangeOnLine(lineText, line, identifier, startCharacter = 0) {
     const pattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "g");
@@ -830,6 +902,12 @@ connection.onCompletion((params) => {
     }));
     if (document && isDslqlQueryPosition(document, params.position)) {
         return [...buildDslqlCompletionItems(), ...queryItems];
+    }
+    if (document) {
+        const contextualItems = contextualDslCompletions(document, params.position);
+        if (contextualItems?.length) {
+            return contextualItems;
+        }
     }
     return [...keywordItems, ...queryItems];
 });

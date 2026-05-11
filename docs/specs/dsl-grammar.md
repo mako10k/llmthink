@@ -154,14 +154,14 @@ AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent StringLine Dede
 AnnotationKind  = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
 ```
 
-### 5.10 comparison 宣言
+### 5.11 comparison 宣言
 
 ```ebnf
-ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier "relation" ComparisonRelation Identifier "," Identifier ":" Newline Indent StringLine Dedent ;
+ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier "relation" ComparisonRelation Identifier "," Identifier ":" Newline Indent StringLine { AnnotationDecl } Dedent ;
 ComparisonRelation = "preferred_over" | "weaker_than" | "incomparable" | "counterexample_to" ;
 ```
 
-### 5.11 query 宣言
+### 5.12 query 宣言
 
 ```ebnf
 QueryDecl       = "query" Identifier ":" Newline Indent QueryExprLine Dedent ;
@@ -244,15 +244,15 @@ step S1:
 		"自由コメントは第一段階では AST へ載せない"
 ```
 
-### 8.3 注釈の予定構文
+### 8.3 注釈構文
 
-- 第二段階の意味付き記述は comment ではなく annotation として導入する
-- annotation kind の初期集合は explanation、rationale、caveat、todo とする
-- annotation の初期所有先は problem と premise、evidence、decision、pending とする
+- 意味付き記述は comment ではなく annotation として導入する
+- annotation kind は explanation、rationale、status、caveat、todo、orphan_future、orphan_reference の閉じた集合とする
+- annotation の現行所有先は problem と premise、evidence、decision、comparison、pending とする
 - viewpoint、partition、framework rule、query への annotation 付与は後続課題とする
 
 ```ebnf
-AnnotationKind = "explanation" | "rationale" | "caveat" | "todo" ;
+AnnotationKind = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
 AnnotationDecl = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
 ```
 
@@ -267,8 +267,12 @@ problem P1:
 step S1:
 	decision D1 based_on EV1:
 		"第一段階では # 行コメントのみを導入する"
+		annotation status:
+			"superseded"
 		annotation caveat:
 			"format document は自由コメントを保持しない"
+		annotation orphan_reference:
+			"旧案を参照用に残す"
 ```
 
 ### 8.4 parser と formatter の最小差分方針

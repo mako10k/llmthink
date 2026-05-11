@@ -124,6 +124,19 @@ step S1:
   );
 });
 
+test("parseDocument rejects unknown annotation kinds with a targeted error", () => {
+  assert.throws(
+    () =>
+      parseDocument(`
+problem P1:
+  "Decide comment syntax"
+  annotation note:
+    "Unknown annotation kind"
+`),
+    /Invalid annotation declaration/,
+  );
+});
+
 test("parseDocument accepts step headers without explicit step ids", () => {
   const document = parseDocument(`
 problem P1:

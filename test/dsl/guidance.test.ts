@@ -96,6 +96,17 @@ test("getDslSyntaxGuidanceText exposes status annotations in decision guidance",
   assert.match(text, /rejected/);
 });
 
+test("getDslSyntaxGuidanceText exposes dedicated annotation guidance", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "syntax",
+    subtopic: "annotations",
+    detail: "detail",
+  });
+  assert.match(text, /Topic: syntax.annotations/);
+  assert.match(text, /explanation \/ rationale \/ status \/ caveat \/ todo \/ orphan_future \/ orphan_reference/);
+  assert.match(text, /intentional orphan/);
+});
+
 test("getDslSyntaxGuidanceText lists use-case profiles for ideation and problem solving", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "usecases",
