@@ -1,3 +1,5 @@
+import { resolveEmbeddingConfig } from "../config/runtime.js";
+
 export type EmbeddingProviderName = "none" | "ollama" | "openai";
 
 export interface EmbeddingRequestOptions {
@@ -136,21 +138,17 @@ function createProvider(
     return undefined;
   }
 
-  const timeoutMs = parseTimeout(
-    process.env.LLMTHINK_EMBEDDING_TIMEOUT_MS,
-    3000,
-  );
+  const config = resolveEmbeddingConfig({ cwd: process.cwd() });
+  const timeoutMs = parseTimeout(String(config.timeoutMs), 3000);
   if (provider === "ollama") {
     return new OllamaEmbeddingProvider(
-      trimTrailingSlash(
-        process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434",
-      ),
-      process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text",
+      trimTrailingSlash(config.ollamaBaseUrl),
+      config.ollamaModel,
       timeoutMs,
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = config.openaiApiKey;
   if (!apiKey) {
     throw new Error(
       "OPENAI_API_KEY is required when LLMTHINK_EMBEDDING_PROVIDER=openai",
@@ -158,11 +156,9 @@ function createProvider(
   }
 
   return new OpenAIEmbeddingProvider(
-    trimTrailingSlash(
-      process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-    ),
+    trimTrailingSlash(config.openaiBaseUrl),
     apiKey,
-    process.env.OPENAI_EMBED_MODEL ?? "text-embedding-3-small",
+    config.openaiModel,
     timeoutMs,
   );
 }

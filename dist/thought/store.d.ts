@@ -58,14 +58,20 @@ export type ThoughtSearchSource = "draft" | "final" | "reflection" | "draft+fina
 export interface ThoughtSearchOptions extends EmbeddingRequestOptions {
     includeReflections?: boolean;
 }
-export declare function ensureThoughtRecord(id: string, baseDir?: string): ThoughtRecord;
-export declare function draftThought(id: string, text: string, baseDir?: string): ThoughtRecord;
-export declare function relateThought(id: string, fromThoughtId: string, baseDir?: string): ThoughtRecord;
-export declare function finalizeThought(id: string, text: string, baseDir?: string): ThoughtRecord;
-export declare function addThoughtReflection(id: string, text: string, kind?: ThoughtReflectionKind, baseDir?: string): ThoughtRecord;
-export declare function recordThoughtAudit(id: string, report: AuditReport, baseDir?: string): ThoughtRecord;
-export declare function saveThoughtSemanticAudit(id: string, input: ThoughtSemanticAuditInput, baseDir?: string): ThoughtRecord;
-export declare function loadThought(id: string, baseDir?: string): ThoughtSnapshot;
-export declare function deleteThought(id: string, baseDir?: string): boolean;
-export declare function listThoughts(baseDir?: string): ThoughtRecord[];
-export declare function searchThoughtRecords(query: string, baseDir?: string, options?: ThoughtSearchOptions): Promise<ThoughtSearchResult[]>;
+export interface ThoughtStoreLocation {
+    storageRoot?: string;
+    baseDir?: string;
+}
+type ThoughtStoreLocationLike = string | ThoughtStoreLocation | undefined;
+export declare function ensureThoughtRecord(id: string, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function draftThought(id: string, text: string, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function relateThought(id: string, fromThoughtId: string, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function finalizeThought(id: string, text: string, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function addThoughtReflection(id: string, text: string, kind?: ThoughtReflectionKind, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function recordThoughtAudit(id: string, report: AuditReport, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function saveThoughtSemanticAudit(id: string, input: ThoughtSemanticAuditInput, location?: ThoughtStoreLocationLike): ThoughtRecord;
+export declare function loadThought(id: string, location?: ThoughtStoreLocationLike): ThoughtSnapshot;
+export declare function deleteThought(id: string, location?: ThoughtStoreLocationLike): boolean;
+export declare function listThoughts(location?: ThoughtStoreLocationLike): ThoughtRecord[];
+export declare function searchThoughtRecords(query: string, location?: ThoughtStoreLocationLike, options?: ThoughtSearchOptions): Promise<ThoughtSearchResult[]>;
+export {};

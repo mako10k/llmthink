@@ -3,6 +3,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import {
+  type ConfigDomain,
+  resolveRuntimeConfig,
+  resolveThoughtStorageRoot,
+} from "./config/runtime.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText, limitAuditReport } from "./presentation/report.js";
 import {
@@ -50,6 +55,9 @@ interface CliOptions {
   model?: string;
   auditedAt?: string;
   sourceThoughtId?: string;
+  configFilePath?: string;
+  storageDomain?: ConfigDomain;
+  storagePath?: string;
   positionals: string[];
   pretty: boolean;
 }
@@ -108,6 +116,18 @@ const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
   },
   "--source-thought": (options, remainingArgs) => {
     options.sourceThoughtId = remainingArgs.shift();
+  },
+  "--config": (options, remainingArgs) => {
+    options.configFilePath = remainingArgs.shift();
+  },
+  "--storage-domain": (options, remainingArgs) => {
+    const value = remainingArgs.shift();
+    if (value === "workspace" || value === "user" || value === "system") {
+      options.storageDomain = value;
+    }
+  },
+  "--storage-path": (options, remainingArgs) => {
+    options.storagePath = remainingArgs.shift();
   },
 };
 
@@ -220,31 +240,87 @@ function printUsage(): void {
       "  llmthink thought history --id <thought-id>",
       "  llmthink thought search <query> [--limit 5] [--with-reflections]",
       "  llmthink thought list",
+      "  llmthink config show [<file>]",
+      "  global options: [--config path/to/.llmthinkrc] [--storage-domain workspace|user|system] [--storage-path path/to/storage-root]",
     ].join("\n") + "\n",
   );
 }
 
-function printThoughtSummary(id: string): void {
-  process.stdout.write(formatThoughtSummary(loadThought(id)));
+function maskSecret(secret: string | undefined): string | undefined {
+  if (!secret) {
+    return undefined;
+  }
+  if (secret.length <= 8) {
+    return `${secret.slice(0, 1)}***${secret.slice(-1)}`;
+  }
+  return `${secret.slice(0, 4)}***${secret.slice(-4)}`;
 }
 
-function printThoughtHistory(id: string): void {
-  process.stdout.write(formatThoughtHistory(loadThought(id).history));
+function printResolvedConfig(options: CliOptions): void {
+  const filePath = options.positionals[0];
+  const runtimeConfig = resolveRuntimeConfig({
+    cwd: process.cwd(),
+    filePath,
+    configFilePath: options.configFilePath,
+    storageDomain: options.storageDomain,
+    storagePath: options.storagePath,
+  });
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        config_paths: runtimeConfig.configPaths,
+        storage: runtimeConfig.storage,
+        sources: runtimeConfig.sources,
+        embeddings: {
+          ...runtimeConfig.embeddings,
+          openaiApiKey: maskSecret(runtimeConfig.embeddings.openaiApiKey),
+          openaiApiKeyConfigured: Boolean(runtimeConfig.embeddings.openaiApiKey),
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+function resolveCliStorageRoot(options: CliOptions, filePath?: string): string {
+  return resolveThoughtStorageRoot({
+    cwd: process.cwd(),
+    filePath,
+    configFilePath: options.configFilePath,
+    storageDomain: options.storageDomain,
+    storagePath: options.storagePath,
+  });
+}
+
+function thoughtLocation(options: CliOptions, filePath?: string) {
+  return { storageRoot: resolveCliStorageRoot(options, filePath) };
+}
+
+function printThoughtSummary(id: string, options: CliOptions): void {
+  process.stdout.write(formatThoughtSummary(loadThought(id, thoughtLocation(options))));
+}
+
+function printThoughtHistory(id: string, options: CliOptions): void {
+  process.stdout.write(
+    formatThoughtHistory(loadThought(id, thoughtLocation(options)).history),
+  );
 }
 
 async function printThoughtSearch(
   query: string,
+  options: CliOptions,
   limit = 5,
   includeReflections = false,
 ): Promise<void> {
   const results = (
-    await searchThoughtRecords(query, undefined, { includeReflections })
+    await searchThoughtRecords(query, thoughtLocation(options), { includeReflections })
   ).slice(0, limit);
   process.stdout.write(formatThoughtSearchResults(results));
 }
 
-function printThoughtList(): void {
-  process.stdout.write(formatThoughtList(listThoughts()));
+function printThoughtList(options: CliOptions): void {
+  process.stdout.write(formatThoughtList(listThoughts(thoughtLocation(options))));
 }
 
 function readTextFromSource(options: CliOptions): string | undefined {
@@ -258,14 +334,14 @@ function readTextFromSource(options: CliOptions): string | undefined {
     );
   }
   if (options.fromThoughtId) {
-    const source = loadThought(options.fromThoughtId);
+    const source = loadThought(options.fromThoughtId, thoughtLocation(options));
     return source.finalText ?? source.draftText;
   }
   return undefined;
 }
 
-function readCurrentThoughtDraft(id: string): string {
-  const snapshot = loadThought(id);
+function readCurrentThoughtDraft(id: string, options: CliOptions): string {
+  const snapshot = loadThought(id, thoughtLocation(options));
   const text = snapshot.draftText ?? snapshot.finalText;
   if (!text) {
     throw new Error(`Thought ${id} does not have a draft or final text yet.`);
@@ -307,6 +383,9 @@ async function handleDslCommand(options: CliOptions): Promise<void> {
     filePath,
     thoughtId: options.thoughtId,
     documentId: options.documentId,
+  }, {
+    fileBaseDir: process.cwd(),
+    storageRoot: resolveCliStorageRoot(options, filePath),
   });
 
   if (options.pretty) {
@@ -352,15 +431,15 @@ async function handleThoughtCommand(options: CliOptions): Promise<void> {
     case "reflect":
       return handleThoughtReflect(thoughtId!, options);
     case "delete":
-      return handleThoughtDelete(thoughtId!);
+      return handleThoughtDelete(thoughtId!, options);
     case "show":
       return handleThoughtShow(thoughtId!, options);
     case "history":
-      return handleThoughtHistory(thoughtId!);
+      return handleThoughtHistory(thoughtId!, options);
     case "search":
       return handleThoughtSearch(options);
     case "list":
-      return handleThoughtList();
+      return handleThoughtList(options);
     default:
       printUsage();
       process.exit(1);
@@ -372,16 +451,16 @@ function handleThoughtDraft(thoughtId: string, options: CliOptions): void {
   if (!text) {
     throw new Error("draft requires <file>, --text, or --from <thought-id>.");
   }
-  draftThought(thoughtId, text);
-  printThoughtSummary(thoughtId);
+  draftThought(thoughtId, text, thoughtLocation(options));
+  printThoughtSummary(thoughtId, options);
 }
 
 function handleThoughtRelate(thoughtId: string, options: CliOptions): void {
   if (!options.fromThoughtId) {
     throw new Error("relate requires --from <source-thought-id>.");
   }
-  relateThought(thoughtId, options.fromThoughtId);
-  printThoughtSummary(thoughtId);
+  relateThought(thoughtId, options.fromThoughtId, thoughtLocation(options));
+  printThoughtSummary(thoughtId, options);
 }
 
 async function handleThoughtAudit(
@@ -390,8 +469,11 @@ async function handleThoughtAudit(
 ): Promise<void> {
   const text = readTextFromSource(options);
   const persisted = await auditAndPersistThought({
-    dslText: text ?? readCurrentThoughtDraft(thoughtId),
+    dslText: text ?? readCurrentThoughtDraft(thoughtId, options),
     thoughtId,
+  }, {
+    fileBaseDir: process.cwd(),
+    storageRoot: resolveCliStorageRoot(options),
   });
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
@@ -418,9 +500,9 @@ async function handleThoughtAudit(
 
 function handleThoughtFinalize(thoughtId: string, options: CliOptions): void {
   const text =
-    readTextFromSource(options) ?? readCurrentThoughtDraft(thoughtId);
-  finalizeThought(thoughtId, text);
-  printThoughtSummary(thoughtId);
+    readTextFromSource(options) ?? readCurrentThoughtDraft(thoughtId, options);
+  finalizeThought(thoughtId, text, thoughtLocation(options));
+  printThoughtSummary(thoughtId, options);
 }
 
 function handleThoughtReflect(thoughtId: string, options: CliOptions): void {
@@ -428,8 +510,13 @@ function handleThoughtReflect(thoughtId: string, options: CliOptions): void {
   if (!text) {
     throw new Error("reflect requires --text or trailing text.");
   }
-  addThoughtReflection(thoughtId, text, resolveReflectionKind(options.kind));
-  printThoughtSummary(thoughtId);
+  addThoughtReflection(
+    thoughtId,
+    text,
+    resolveReflectionKind(options.kind),
+    thoughtLocation(options),
+  );
+  printThoughtSummary(thoughtId, options);
 }
 
 function handleThoughtSemanticAudit(thoughtId: string, options: CliOptions): void {
@@ -450,19 +537,19 @@ function handleThoughtSemanticAudit(thoughtId: string, options: CliOptions): voi
     model: options.model,
     auditedAt: options.auditedAt,
     sourceThoughtId: options.sourceThoughtId,
-  });
-  printThoughtSummary(thoughtId);
+  }, thoughtLocation(options));
+  printThoughtSummary(thoughtId, options);
 }
 
-function handleThoughtDelete(thoughtId: string): void {
-  if (!deleteThought(thoughtId)) {
+function handleThoughtDelete(thoughtId: string, options: CliOptions): void {
+  if (!deleteThought(thoughtId, thoughtLocation(options))) {
     throw new Error(`Thought ${thoughtId} was not found.`);
   }
   process.stdout.write(`Deleted thought: ${thoughtId}\n`);
 }
 
 function handleThoughtShow(thoughtId: string, options: CliOptions): void {
-  const snapshot = loadThought(thoughtId);
+  const snapshot = loadThought(thoughtId, thoughtLocation(options));
   const view = options.view ?? "summary";
   let viewText: string | undefined;
   if (view === "draft") {
@@ -484,11 +571,11 @@ function handleThoughtShow(thoughtId: string, options: CliOptions): void {
     process.stdout.write(viewText);
     return;
   }
-  printThoughtSummary(thoughtId);
+  printThoughtSummary(thoughtId, options);
 }
 
-function handleThoughtHistory(thoughtId: string): void {
-  printThoughtHistory(thoughtId);
+function handleThoughtHistory(thoughtId: string, options: CliOptions): void {
+  printThoughtHistory(thoughtId, options);
 }
 
 async function handleThoughtSearch(options: CliOptions): Promise<void> {
@@ -498,17 +585,23 @@ async function handleThoughtSearch(options: CliOptions): Promise<void> {
   }
   await printThoughtSearch(
     query,
+    options,
     options.limit ?? 5,
     options.includeReflections,
   );
 }
 
-function handleThoughtList(): void {
-  printThoughtList();
+function handleThoughtList(options: CliOptions): void {
+  printThoughtList(options);
 }
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
+
+  if (options.command === "config" && options.subcommand === "show") {
+    printResolvedConfig(options);
+    return;
+  }
 
   if (options.command === "dsl") {
     await handleDslCommand(options);

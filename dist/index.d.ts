@@ -7,7 +7,9 @@ export { formatAuditReportHtml, formatAuditReportText, limitAuditReport, } from 
 export { formatPersistedThoughtAudit, formatThoughtReflections, formatThoughtHistory, formatThoughtList, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "./presentation/thought.js";
 export { addThoughtReflection, deleteThought, relateThought, ensureThoughtRecord, finalizeThought, listThoughts, loadThought, recordThoughtAudit, saveThoughtSemanticAudit, draftThought, searchThoughtRecords, } from "./thought/store.js";
 export { auditAndPersistThought, deriveThoughtIdFromDocumentId, deriveThoughtIdFromFilePath, normalizeThoughtId, } from "./thought/workflow.js";
+export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
+export type { ConfigDomain, ResolveRuntimeConfigOptions, ResolvedRuntimeConfig, ResolvedValueSource, ResolvedEmbeddingConfig, } from "./config/runtime.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
-export type { ThoughtReflection, ThoughtReflectionKind, ThoughtSemanticAuditInput, ThoughtSemanticAuditVerdict, ThoughtSnapshot, } from "./thought/store.js";
+export type { ThoughtStoreLocation, ThoughtReflection, ThoughtReflectionKind, ThoughtSemanticAuditInput, ThoughtSemanticAuditVerdict, ThoughtSnapshot, } from "./thought/store.js";
 export type { PersistedThoughtAudit, ThoughtIdSource } from "./thought/workflow.js";

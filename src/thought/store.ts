@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { resolveThoughtStorageRoot } from "../config/runtime.js";
 import type { AuditReport } from "../model/diagnostics.js";
 import {
   cosineSimilarity,
@@ -124,6 +125,26 @@ interface ThoughtPaths {
   finalPath: string;
 }
 
+export interface ThoughtStoreLocation {
+  storageRoot?: string;
+  baseDir?: string;
+}
+
+type ThoughtStoreLocationLike = string | ThoughtStoreLocation | undefined;
+
+function resolveStoreRoot(location?: ThoughtStoreLocationLike): string {
+  if (typeof location === "string") {
+    return resolve(location, ".llmthink");
+  }
+  if (location?.storageRoot) {
+    return resolve(location.storageRoot);
+  }
+  if (location?.baseDir) {
+    return resolve(location.baseDir, ".llmthink");
+  }
+  return resolveThoughtStorageRoot({ cwd: process.cwd() });
+}
+
 const SEMANTIC_AUDIT_HEADER =
   /^semantic_audit\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+support\s+([A-Za-z][A-Za-z0-9_-]*)\s+verdict\s+(supported|unsupported|mixed|unknown):$/;
 
@@ -131,8 +152,8 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function thoughtPaths(id: string, baseDir?: string): ThoughtPaths {
-  const rootDir = resolve(baseDir ?? process.cwd(), ".llmthink");
+function thoughtPaths(id: string, location?: ThoughtStoreLocationLike): ThoughtPaths {
+  const rootDir = resolveStoreRoot(location);
   const thoughtsDir = join(rootDir, "thoughts");
   const thoughtDir = join(thoughtsDir, id);
   return {
@@ -149,8 +170,8 @@ function thoughtPaths(id: string, baseDir?: string): ThoughtPaths {
   };
 }
 
-function ensureThoughtDir(id: string, baseDir?: string): ThoughtPaths {
-  const paths = thoughtPaths(id, baseDir);
+function ensureThoughtDir(id: string, location?: ThoughtStoreLocationLike): ThoughtPaths {
+  const paths = thoughtPaths(id, location);
   mkdirSync(paths.auditsDir, { recursive: true });
   return paths;
 }
@@ -247,8 +268,8 @@ function readTextIfExists(filePath: string): string | undefined {
   return readFileSync(filePath, "utf8");
 }
 
-function relativeToRoot(absolutePath: string, baseDir?: string): string {
-  const root = resolve(baseDir ?? process.cwd());
+function relativeToRoot(absolutePath: string, location?: ThoughtStoreLocationLike): string {
+  const root = resolveStoreRoot(location);
   return absolutePath.startsWith(root)
     ? absolutePath.slice(root.length + 1)
     : absolutePath;
@@ -256,9 +277,9 @@ function relativeToRoot(absolutePath: string, baseDir?: string): string {
 
 export function ensureThoughtRecord(
   id: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const paths = ensureThoughtDir(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
   const existing = readJsonFile<ThoughtRecord | undefined>(
     paths.recordPath,
     undefined,
@@ -279,17 +300,17 @@ export function ensureThoughtRecord(
   return record;
 }
 
-function writeThoughtRecord(record: ThoughtRecord, baseDir?: string): void {
-  const paths = ensureThoughtDir(record.id, baseDir);
+function writeThoughtRecord(record: ThoughtRecord, location?: ThoughtStoreLocationLike): void {
+  const paths = ensureThoughtDir(record.id, location);
   writeJsonFile(paths.recordPath, record);
 }
 
 function appendThoughtEvent(
   id: string,
   event: ThoughtEvent,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): void {
-  const paths = ensureThoughtDir(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
   const history = readJsonFile<ThoughtEvent[]>(paths.historyPath, []);
   history.push(event);
   writeJsonFile(paths.historyPath, history);
@@ -297,18 +318,18 @@ function appendThoughtEvent(
 
 function readThoughtReflections(
   id: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtReflection[] {
-  const paths = ensureThoughtDir(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
   return readJsonFile<ThoughtReflection[]>(paths.reflectionsPath, []);
 }
 
 function writeThoughtReflections(
   id: string,
   reflections: ThoughtReflection[],
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): void {
-  const paths = ensureThoughtDir(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
   writeJsonFile(paths.reflectionsPath, reflections);
 }
 
@@ -319,18 +340,18 @@ function createReflectionId(reflectedAt: string): string {
 export function draftThought(
   id: string,
   text: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const paths = ensureThoughtDir(id, baseDir);
-  const record = ensureThoughtRecord(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
+  const record = ensureThoughtRecord(id, location);
   writeFileSync(paths.draftPath, text, "utf8");
   const updated: ThoughtRecord = {
     ...record,
     updated_at: nowIso(),
     status: record.status === "finalized" ? "finalized" : "draft",
-    current_draft_path: relativeToRoot(paths.draftPath, baseDir),
+    current_draft_path: relativeToRoot(paths.draftPath, location),
   };
-  writeThoughtRecord(updated, baseDir);
+  writeThoughtRecord(updated, location);
   appendThoughtEvent(
     id,
     {
@@ -339,7 +360,7 @@ export function draftThought(
       summary: "draft を保存した。",
       path: updated.current_draft_path,
     },
-    baseDir,
+    location,
   );
   return updated;
 }
@@ -347,9 +368,9 @@ export function draftThought(
 export function relateThought(
   id: string,
   fromThoughtId: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const source = loadThought(fromThoughtId, baseDir);
+  const source = loadThought(fromThoughtId, location);
   const text = source.finalText ?? source.draftText;
   if (!text) {
     throw new Error(
@@ -357,17 +378,17 @@ export function relateThought(
     );
   }
 
-  const paths = ensureThoughtDir(id, baseDir);
-  const existing = ensureThoughtRecord(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
+  const existing = ensureThoughtRecord(id, location);
   writeFileSync(paths.draftPath, text, "utf8");
   const updatedAt = nowIso();
   const updated: ThoughtRecord = {
     ...existing,
     updated_at: updatedAt,
     derived_from: fromThoughtId,
-    current_draft_path: relativeToRoot(paths.draftPath, baseDir),
+    current_draft_path: relativeToRoot(paths.draftPath, location),
   };
-  writeThoughtRecord(updated, baseDir);
+  writeThoughtRecord(updated, location);
   appendThoughtEvent(
     id,
     {
@@ -376,7 +397,7 @@ export function relateThought(
       summary: `related thought を ${fromThoughtId} から作成した。`,
       path: updated.current_draft_path,
     },
-    baseDir,
+    location,
   );
   return updated;
 }
@@ -384,19 +405,19 @@ export function relateThought(
 export function finalizeThought(
   id: string,
   text: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const paths = ensureThoughtDir(id, baseDir);
-  const record = ensureThoughtRecord(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
+  const record = ensureThoughtRecord(id, location);
   writeFileSync(paths.finalPath, text, "utf8");
   const updatedAt = nowIso();
   const updated: ThoughtRecord = {
     ...record,
     updated_at: updatedAt,
     status: "finalized",
-    final_path: relativeToRoot(paths.finalPath, baseDir),
+    final_path: relativeToRoot(paths.finalPath, location),
   };
-  writeThoughtRecord(updated, baseDir);
+  writeThoughtRecord(updated, location);
   appendThoughtEvent(
     id,
     {
@@ -405,7 +426,7 @@ export function finalizeThought(
       summary: "final を保存した。",
       path: updated.final_path,
     },
-    baseDir,
+    location,
   );
   return updated;
 }
@@ -414,24 +435,24 @@ export function addThoughtReflection(
   id: string,
   text: string,
   kind: ThoughtReflectionKind = "note",
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const record = ensureThoughtRecord(id, baseDir);
+  const record = ensureThoughtRecord(id, location);
   const reflectedAt = nowIso();
-  const reflections = readThoughtReflections(id, baseDir);
+  const reflections = readThoughtReflections(id, location);
   reflections.push({
     id: createReflectionId(reflectedAt),
     at: reflectedAt,
     kind,
     text,
   });
-  writeThoughtReflections(id, reflections, baseDir);
+  writeThoughtReflections(id, reflections, location);
 
   const updated: ThoughtRecord = {
     ...record,
     updated_at: reflectedAt,
   };
-  writeThoughtRecord(updated, baseDir);
+  writeThoughtRecord(updated, location);
   appendThoughtEvent(
     id,
     {
@@ -439,7 +460,7 @@ export function addThoughtReflection(
       kind: "reflect_recorded",
       summary: `reflect を追加した。kind=${kind}`,
     },
-    baseDir,
+    location,
   );
   return updated;
 }
@@ -447,10 +468,10 @@ export function addThoughtReflection(
 export function recordThoughtAudit(
   id: string,
   report: AuditReport,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const paths = ensureThoughtDir(id, baseDir);
-  const record = ensureThoughtRecord(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
+  const record = ensureThoughtRecord(id, location);
   const fileName = `${report.generated_at.replaceAll(":", "-")}.json`;
   const auditPath = join(paths.auditsDir, fileName);
   writeJsonFile(auditPath, report);
@@ -458,9 +479,9 @@ export function recordThoughtAudit(
   const updated: ThoughtRecord = {
     ...record,
     updated_at: updatedAt,
-    latest_audit_path: relativeToRoot(auditPath, baseDir),
+    latest_audit_path: relativeToRoot(auditPath, location),
   };
-  writeThoughtRecord(updated, baseDir);
+  writeThoughtRecord(updated, location);
   appendThoughtEvent(
     id,
     {
@@ -469,7 +490,7 @@ export function recordThoughtAudit(
       summary: `audit を保存した。fatal=${report.summary.fatal_count} error=${report.summary.error_count} warning=${report.summary.warning_count}`,
       path: updated.latest_audit_path,
     },
-    baseDir,
+    location,
   );
   return updated;
 }
@@ -477,10 +498,10 @@ export function recordThoughtAudit(
 export function saveThoughtSemanticAudit(
   id: string,
   input: ThoughtSemanticAuditInput,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtRecord {
-  const paths = ensureThoughtDir(id, baseDir);
-  const record = ensureThoughtRecord(id, baseDir);
+  const paths = ensureThoughtDir(id, location);
+  const record = ensureThoughtRecord(id, location);
   const nextText = upsertSemanticAuditText(
     readTextIfExists(paths.semanticAuditPath),
     input,
@@ -491,33 +512,33 @@ export function saveThoughtSemanticAudit(
     ...record,
     updated_at: updatedAt,
   };
-  writeThoughtRecord(updated, baseDir);
+  writeThoughtRecord(updated, location);
   appendThoughtEvent(
     id,
     {
       at: updatedAt,
       kind: "semantic_audit_saved",
       summary: `semantic audit を保存した。${input.supportId}->${input.decisionId} verdict=${input.verdict}`,
-      path: relativeToRoot(paths.semanticAuditPath, baseDir),
+      path: relativeToRoot(paths.semanticAuditPath, location),
     },
-    baseDir,
+    location,
   );
   return updated;
 }
 
-export function loadThought(id: string, baseDir?: string): ThoughtSnapshot {
-  const paths = thoughtPaths(id, baseDir);
+export function loadThought(id: string, location?: ThoughtStoreLocationLike): ThoughtSnapshot {
+  const paths = thoughtPaths(id, location);
   if (!existsSync(paths.recordPath)) {
     throw new Error(`Thought ${id} was not found.`);
   }
   const record = readJsonFile<ThoughtRecord>(
     paths.recordPath,
-    ensureThoughtRecord(id, baseDir),
+    ensureThoughtRecord(id, location),
   );
   const history = readJsonFile<ThoughtEvent[]>(paths.historyPath, []);
   const latestAudit = record.latest_audit_path
     ? readJsonFile<AuditReport | undefined>(
-        resolve(baseDir ?? process.cwd(), record.latest_audit_path),
+        resolve(paths.rootDir, record.latest_audit_path),
         undefined,
       )
     : undefined;
@@ -528,12 +549,12 @@ export function loadThought(id: string, baseDir?: string): ThoughtSnapshot {
     semanticAuditText: readTextIfExists(paths.semanticAuditPath),
     latestAudit,
     history,
-    reflections: readThoughtReflections(id, baseDir),
+    reflections: readThoughtReflections(id, location),
   };
 }
 
-export function deleteThought(id: string, baseDir?: string): boolean {
-  const paths = thoughtPaths(id, baseDir);
+export function deleteThought(id: string, location?: ThoughtStoreLocationLike): boolean {
+  const paths = thoughtPaths(id, location);
   if (!existsSync(paths.recordPath)) {
     return false;
   }
@@ -541,8 +562,8 @@ export function deleteThought(id: string, baseDir?: string): boolean {
   return true;
 }
 
-export function listThoughts(baseDir?: string): ThoughtRecord[] {
-  const root = resolve(baseDir ?? process.cwd(), ".llmthink", "thoughts");
+export function listThoughts(location?: ThoughtStoreLocationLike): ThoughtRecord[] {
+  const root = join(resolveStoreRoot(location), "thoughts");
   if (!existsSync(root)) {
     return [];
   }
@@ -585,10 +606,10 @@ function scoreText(text: string, query: string): number {
 
 function collectThoughtSearchCandidates(
   options?: ThoughtSearchOptions,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
 ): ThoughtSearchCandidate[] {
-  return listThoughts(baseDir).flatMap((record) => {
-    const snapshot = loadThought(record.id, baseDir);
+  return listThoughts(location).flatMap((record) => {
+    const snapshot = loadThought(record.id, location);
     const candidates: ThoughtSearchCandidate[] = [];
     if (snapshot.finalText) {
       candidates.push({
@@ -622,11 +643,11 @@ function collectThoughtSearchCandidates(
 
 function lexicalSearchThoughts(
   query: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
   options?: ThoughtSearchOptions,
 ): ThoughtSearchResult[] {
   return collapseSearchResults(
-    collectThoughtSearchCandidates(options, baseDir)
+    collectThoughtSearchCandidates(options, location)
       .map((candidate) => ({
         id: candidate.id,
         status: candidate.status,
@@ -680,10 +701,10 @@ function collapseSearchResults(
 
 export async function searchThoughtRecords(
   query: string,
-  baseDir?: string,
+  location?: ThoughtStoreLocationLike,
   options?: ThoughtSearchOptions,
 ): Promise<ThoughtSearchResult[]> {
-  const candidates = collectThoughtSearchCandidates(options, baseDir);
+  const candidates = collectThoughtSearchCandidates(options, location);
   if (!query.trim() || candidates.length === 0) {
     return [];
   }
@@ -694,7 +715,7 @@ export async function searchThoughtRecords(
       options,
     );
     if (!result) {
-      return lexicalSearchThoughts(query, baseDir, options);
+      return lexicalSearchThoughts(query, location, options);
     }
 
     const queryEmbedding = result.embeddings[0] ?? [];
@@ -719,6 +740,6 @@ export async function searchThoughtRecords(
         .filter((candidate) => candidate.score > 0),
     );
   } catch {
-    return lexicalSearchThoughts(query, baseDir, options);
+    return lexicalSearchThoughts(query, location, options);
   }
 }

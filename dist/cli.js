@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { resolveRuntimeConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
 import { formatAuditReportText, limitAuditReport } from "./presentation/report.js";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "./presentation/thought.js";
@@ -58,6 +59,18 @@ const OPTION_MUTATORS = {
     },
     "--source-thought": (options, remainingArgs) => {
         options.sourceThoughtId = remainingArgs.shift();
+    },
+    "--config": (options, remainingArgs) => {
+        options.configFilePath = remainingArgs.shift();
+    },
+    "--storage-domain": (options, remainingArgs) => {
+        const value = remainingArgs.shift();
+        if (value === "workspace" || value === "user" || value === "system") {
+            options.storageDomain = value;
+        }
+    },
+    "--storage-path": (options, remainingArgs) => {
+        options.storagePath = remainingArgs.shift();
     },
 };
 function isThoughtIdRequired(subcommand) {
@@ -150,20 +163,63 @@ function printUsage() {
         "  llmthink thought history --id <thought-id>",
         "  llmthink thought search <query> [--limit 5] [--with-reflections]",
         "  llmthink thought list",
+        "  llmthink config show [<file>]",
+        "  global options: [--config path/to/.llmthinkrc] [--storage-domain workspace|user|system] [--storage-path path/to/storage-root]",
     ].join("\n") + "\n");
 }
-function printThoughtSummary(id) {
-    process.stdout.write(formatThoughtSummary(loadThought(id)));
+function maskSecret(secret) {
+    if (!secret) {
+        return undefined;
+    }
+    if (secret.length <= 8) {
+        return `${secret.slice(0, 1)}***${secret.slice(-1)}`;
+    }
+    return `${secret.slice(0, 4)}***${secret.slice(-4)}`;
 }
-function printThoughtHistory(id) {
-    process.stdout.write(formatThoughtHistory(loadThought(id).history));
+function printResolvedConfig(options) {
+    const filePath = options.positionals[0];
+    const runtimeConfig = resolveRuntimeConfig({
+        cwd: process.cwd(),
+        filePath,
+        configFilePath: options.configFilePath,
+        storageDomain: options.storageDomain,
+        storagePath: options.storagePath,
+    });
+    process.stdout.write(`${JSON.stringify({
+        config_paths: runtimeConfig.configPaths,
+        storage: runtimeConfig.storage,
+        sources: runtimeConfig.sources,
+        embeddings: {
+            ...runtimeConfig.embeddings,
+            openaiApiKey: maskSecret(runtimeConfig.embeddings.openaiApiKey),
+            openaiApiKeyConfigured: Boolean(runtimeConfig.embeddings.openaiApiKey),
+        },
+    }, null, 2)}\n`);
 }
-async function printThoughtSearch(query, limit = 5, includeReflections = false) {
-    const results = (await searchThoughtRecords(query, undefined, { includeReflections })).slice(0, limit);
+function resolveCliStorageRoot(options, filePath) {
+    return resolveThoughtStorageRoot({
+        cwd: process.cwd(),
+        filePath,
+        configFilePath: options.configFilePath,
+        storageDomain: options.storageDomain,
+        storagePath: options.storagePath,
+    });
+}
+function thoughtLocation(options, filePath) {
+    return { storageRoot: resolveCliStorageRoot(options, filePath) };
+}
+function printThoughtSummary(id, options) {
+    process.stdout.write(formatThoughtSummary(loadThought(id, thoughtLocation(options))));
+}
+function printThoughtHistory(id, options) {
+    process.stdout.write(formatThoughtHistory(loadThought(id, thoughtLocation(options)).history));
+}
+async function printThoughtSearch(query, options, limit = 5, includeReflections = false) {
+    const results = (await searchThoughtRecords(query, thoughtLocation(options), { includeReflections })).slice(0, limit);
     process.stdout.write(formatThoughtSearchResults(results));
 }
-function printThoughtList() {
-    process.stdout.write(formatThoughtList(listThoughts()));
+function printThoughtList(options) {
+    process.stdout.write(formatThoughtList(listThoughts(thoughtLocation(options))));
 }
 function readTextFromSource(options) {
     if (options.text) {
@@ -173,13 +229,13 @@ function readTextFromSource(options) {
         return readFileSync(resolve(process.cwd(), options.positionals[0] ?? ""), "utf8");
     }
     if (options.fromThoughtId) {
-        const source = loadThought(options.fromThoughtId);
+        const source = loadThought(options.fromThoughtId, thoughtLocation(options));
         return source.finalText ?? source.draftText;
     }
     return undefined;
 }
-function readCurrentThoughtDraft(id) {
-    const snapshot = loadThought(id);
+function readCurrentThoughtDraft(id, options) {
+    const snapshot = loadThought(id, thoughtLocation(options));
     const text = snapshot.draftText ?? snapshot.finalText;
     if (!text) {
         throw new Error(`Thought ${id} does not have a draft or final text yet.`);
@@ -214,6 +270,9 @@ async function handleDslCommand(options) {
         filePath,
         thoughtId: options.thoughtId,
         documentId: options.documentId,
+    }, {
+        fileBaseDir: process.cwd(),
+        storageRoot: resolveCliStorageRoot(options, filePath),
     });
     if (options.pretty) {
         process.stdout.write(formatPersistedThoughtAudit(persisted));
@@ -249,15 +308,15 @@ async function handleThoughtCommand(options) {
         case "reflect":
             return handleThoughtReflect(thoughtId, options);
         case "delete":
-            return handleThoughtDelete(thoughtId);
+            return handleThoughtDelete(thoughtId, options);
         case "show":
             return handleThoughtShow(thoughtId, options);
         case "history":
-            return handleThoughtHistory(thoughtId);
+            return handleThoughtHistory(thoughtId, options);
         case "search":
             return handleThoughtSearch(options);
         case "list":
-            return handleThoughtList();
+            return handleThoughtList(options);
         default:
             printUsage();
             process.exit(1);
@@ -268,21 +327,24 @@ function handleThoughtDraft(thoughtId, options) {
     if (!text) {
         throw new Error("draft requires <file>, --text, or --from <thought-id>.");
     }
-    draftThought(thoughtId, text);
-    printThoughtSummary(thoughtId);
+    draftThought(thoughtId, text, thoughtLocation(options));
+    printThoughtSummary(thoughtId, options);
 }
 function handleThoughtRelate(thoughtId, options) {
     if (!options.fromThoughtId) {
         throw new Error("relate requires --from <source-thought-id>.");
     }
-    relateThought(thoughtId, options.fromThoughtId);
-    printThoughtSummary(thoughtId);
+    relateThought(thoughtId, options.fromThoughtId, thoughtLocation(options));
+    printThoughtSummary(thoughtId, options);
 }
 async function handleThoughtAudit(thoughtId, options) {
     const text = readTextFromSource(options);
     const persisted = await auditAndPersistThought({
-        dslText: text ?? readCurrentThoughtDraft(thoughtId),
+        dslText: text ?? readCurrentThoughtDraft(thoughtId, options),
         thoughtId,
+    }, {
+        fileBaseDir: process.cwd(),
+        storageRoot: resolveCliStorageRoot(options),
     });
     if (options.pretty) {
         process.stdout.write(formatPersistedThoughtAudit(persisted));
@@ -299,17 +361,17 @@ async function handleThoughtAudit(thoughtId, options) {
     }, null, 2)}\n`);
 }
 function handleThoughtFinalize(thoughtId, options) {
-    const text = readTextFromSource(options) ?? readCurrentThoughtDraft(thoughtId);
-    finalizeThought(thoughtId, text);
-    printThoughtSummary(thoughtId);
+    const text = readTextFromSource(options) ?? readCurrentThoughtDraft(thoughtId, options);
+    finalizeThought(thoughtId, text, thoughtLocation(options));
+    printThoughtSummary(thoughtId, options);
 }
 function handleThoughtReflect(thoughtId, options) {
     const text = options.text ?? options.positionals.join(" ");
     if (!text) {
         throw new Error("reflect requires --text or trailing text.");
     }
-    addThoughtReflection(thoughtId, text, resolveReflectionKind(options.kind));
-    printThoughtSummary(thoughtId);
+    addThoughtReflection(thoughtId, text, resolveReflectionKind(options.kind), thoughtLocation(options));
+    printThoughtSummary(thoughtId, options);
 }
 function handleThoughtSemanticAudit(thoughtId, options) {
     if (!options.decisionId || !options.supportId) {
@@ -328,17 +390,17 @@ function handleThoughtSemanticAudit(thoughtId, options) {
         model: options.model,
         auditedAt: options.auditedAt,
         sourceThoughtId: options.sourceThoughtId,
-    });
-    printThoughtSummary(thoughtId);
+    }, thoughtLocation(options));
+    printThoughtSummary(thoughtId, options);
 }
-function handleThoughtDelete(thoughtId) {
-    if (!deleteThought(thoughtId)) {
+function handleThoughtDelete(thoughtId, options) {
+    if (!deleteThought(thoughtId, thoughtLocation(options))) {
         throw new Error(`Thought ${thoughtId} was not found.`);
     }
     process.stdout.write(`Deleted thought: ${thoughtId}\n`);
 }
 function handleThoughtShow(thoughtId, options) {
-    const snapshot = loadThought(thoughtId);
+    const snapshot = loadThought(thoughtId, thoughtLocation(options));
     const view = options.view ?? "summary";
     let viewText;
     if (view === "draft") {
@@ -365,23 +427,27 @@ function handleThoughtShow(thoughtId, options) {
         process.stdout.write(viewText);
         return;
     }
-    printThoughtSummary(thoughtId);
+    printThoughtSummary(thoughtId, options);
 }
-function handleThoughtHistory(thoughtId) {
-    printThoughtHistory(thoughtId);
+function handleThoughtHistory(thoughtId, options) {
+    printThoughtHistory(thoughtId, options);
 }
 async function handleThoughtSearch(options) {
     const query = options.text ?? options.positionals.join(" ");
     if (!query) {
         throw new Error("thought search requires a query string.");
     }
-    await printThoughtSearch(query, options.limit ?? 5, options.includeReflections);
+    await printThoughtSearch(query, options, options.limit ?? 5, options.includeReflections);
 }
-function handleThoughtList() {
-    printThoughtList();
+function handleThoughtList(options) {
+    printThoughtList(options);
 }
 async function main() {
     const options = parseArgs(process.argv.slice(2));
+    if (options.command === "config" && options.subcommand === "show") {
+        printResolvedConfig(options);
+        return;
+    }
     if (options.command === "dsl") {
         await handleDslCommand(options);
         return;

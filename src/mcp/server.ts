@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+import { resolveThoughtStorageRoot } from "../config/runtime.js";
 import {
   getDslSyntaxGuidanceText,
   isDslHelpRequest,
@@ -40,6 +41,15 @@ const server = new McpServer({
   version: "0.4.3",
 });
 
+function thoughtLocation(filePath?: string) {
+  return {
+    storageRoot: resolveThoughtStorageRoot({
+      cwd: process.cwd(),
+      filePath,
+    }),
+  };
+}
+
 function textContent(text: string) {
   return { type: "text" as const, text };
 }
@@ -55,12 +65,12 @@ function loadThoughtSourceText(
   if (!fromThoughtId) {
     return undefined;
   }
-  const source = loadThought(fromThoughtId);
+  const source = loadThought(fromThoughtId, thoughtLocation());
   return source.finalText ?? source.draftText;
 }
 
 function getStoredThoughtText(thoughtId: string): string | undefined {
-  const thought = loadThought(thoughtId);
+  const thought = loadThought(thoughtId, thoughtLocation());
   return thought.draftText ?? thought.finalText;
 }
 
@@ -75,7 +85,7 @@ function showThoughtView(
     | "semantic-audit"
     | "semantic-audit-pairs",
 ) {
-  const snapshot = loadThought(thoughtId);
+  const snapshot = loadThought(thoughtId, thoughtLocation());
   if (view === "draft") {
     return { content: [textContent(snapshot.draftText ?? "")] };
   }
@@ -113,7 +123,7 @@ function showThoughtView(
 
 function summarizeThought(thoughtId: string) {
   return {
-    content: [textContent(formatThoughtSummary(loadThought(thoughtId)))],
+    content: [textContent(formatThoughtSummary(loadThought(thoughtId, thoughtLocation())))],
   };
 }
 
@@ -126,7 +136,7 @@ async function handleThoughtSearch(
     throw new Error("query is required when action=search");
   }
   const results = (
-    await searchThoughtRecords(query, undefined, { includeReflections })
+    await searchThoughtRecords(query, thoughtLocation(), { includeReflections })
   ).slice(0, limit ?? 5);
   return { content: [textContent(formatThoughtSearchResults(results))] };
 }
@@ -156,7 +166,7 @@ function handleThoughtDraftAction(
   if (!sourceText) {
     throw new Error("dslText or fromThoughtId is required when action=draft");
   }
-  draftThought(thoughtId, sourceText);
+  draftThought(thoughtId, sourceText, thoughtLocation());
   return summarizeThought(thoughtId);
 }
 
@@ -167,7 +177,7 @@ function handleThoughtRelateAction(
   if (!fromThoughtId) {
     throw new Error("fromThoughtId is required when action=relate");
   }
-  relateThought(thoughtId, fromThoughtId);
+  relateThought(thoughtId, fromThoughtId, thoughtLocation());
   return summarizeThought(thoughtId);
 }
 
@@ -178,6 +188,9 @@ async function handleThoughtAuditAction(
   const persisted = await auditAndPersistThought({
     dslText: requireThoughtText(thoughtId, sourceText),
     thoughtId,
+  }, {
+    fileBaseDir: process.cwd(),
+    storageRoot: resolveThoughtStorageRoot({ cwd: process.cwd() }),
   });
   return {
     content: [
@@ -207,20 +220,20 @@ function handleThoughtFinalizeAction(
   sourceText: string | undefined,
 ) {
   const currentText = requireThoughtText(thoughtId, sourceText);
-  finalizeThought(thoughtId, currentText);
+  finalizeThought(thoughtId, currentText, thoughtLocation());
   return summarizeThought(thoughtId);
 }
 
 function handleThoughtHistoryAction(thoughtId: string) {
   return {
     content: [
-      textContent(formatThoughtHistory(loadThought(thoughtId).history)),
+      textContent(formatThoughtHistory(loadThought(thoughtId, thoughtLocation()).history)),
     ],
   };
 }
 
 function handleThoughtDeleteAction(thoughtId: string) {
-  if (!deleteThought(thoughtId)) {
+  if (!deleteThought(thoughtId, thoughtLocation())) {
     throw new Error(`Thought ${thoughtId} was not found.`);
   }
   return {
@@ -251,7 +264,7 @@ function handleThoughtReflectAction(
   if (!text) {
     throw new Error("text is required when action=reflect");
   }
-  addThoughtReflection(thoughtId, text, kind);
+  addThoughtReflection(thoughtId, text, kind, thoughtLocation());
   return summarizeThought(thoughtId);
 }
 
@@ -287,7 +300,7 @@ function handleThoughtSemanticAuditAction(
     model,
     auditedAt,
     sourceThoughtId,
-  });
+  }, thoughtLocation());
   return summarizeThought(thoughtId);
 }
 
@@ -332,7 +345,7 @@ async function handleThoughtAction(
     | undefined,
 ) {
   if (action === "list") {
-    return { content: [textContent(formatThoughtList(listThoughts()))] };
+    return { content: [textContent(formatThoughtList(listThoughts(thoughtLocation())))] };
   }
   if (action === "search") {
     return handleThoughtSearch(query, limit, includeReflections);
@@ -418,6 +431,9 @@ server.tool(
       filePath,
       documentId,
       thoughtId,
+    }, {
+      fileBaseDir: process.cwd(),
+      storageRoot: resolveThoughtStorageRoot({ cwd: process.cwd(), filePath }),
     });
     return {
       content: [

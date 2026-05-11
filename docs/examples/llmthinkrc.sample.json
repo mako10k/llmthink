@@ -1,0 +1,21 @@
+{
+  "thought": {
+    "storageDomain": "workspace",
+    "storagePath": ".llmthink"
+  },
+  "embeddings": {
+    "provider": "openai",
+    "timeoutMs": 5000,
+    "ollama": {
+      "baseUrl": "http://127.0.0.1:11434",
+      "model": "nomic-embed-text"
+    },
+    "openai": {
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "text-embedding-3-small",
+      "apiKey": {
+        "env": "OPENAI_API_KEY"
+      }
+    }
+  }
+}

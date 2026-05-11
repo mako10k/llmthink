@@ -21,6 +21,11 @@ export interface PersistedThoughtAuditRequest {
   documentId?: string;
 }
 
+export interface PersistedThoughtContext {
+  fileBaseDir?: string;
+  storageRoot?: string;
+}
+
 function generatedThoughtId(): string {
   return `thought-${new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")}`;
 }
@@ -95,13 +100,20 @@ function loadDslText(
 
 export async function auditAndPersistThought(
   request: PersistedThoughtAuditRequest,
-  baseDir?: string,
+  contextOrBaseDir?: PersistedThoughtContext | string,
+  legacyStorageRoot?: string,
 ): Promise<PersistedThoughtAudit> {
-  const { thoughtId, idSource } = resolveThoughtId(request, baseDir);
-  const text = loadDslText(request, baseDir);
-  draftThought(thoughtId, text, baseDir);
+  const context: PersistedThoughtContext =
+    typeof contextOrBaseDir === "string"
+      ? { fileBaseDir: contextOrBaseDir, storageRoot: legacyStorageRoot }
+      : (contextOrBaseDir ?? {});
+  const { thoughtId, idSource } = resolveThoughtId(request, context.fileBaseDir);
+  const text = loadDslText(request, context.fileBaseDir);
+  draftThought(thoughtId, text, { storageRoot: context.storageRoot });
   const report = await auditDslText(text, thoughtId);
-  const record = recordThoughtAudit(thoughtId, report, baseDir);
+  const record = recordThoughtAudit(thoughtId, report, {
+    storageRoot: context.storageRoot,
+  });
   return {
     thoughtId,
     idSource,

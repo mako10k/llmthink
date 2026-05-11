@@ -45,9 +45,22 @@ export {
   deriveThoughtIdFromFilePath,
   normalizeThoughtId,
 } from "./thought/workflow.js";
+export {
+  resolveRuntimeConfig,
+  resolveEmbeddingConfig,
+  resolveThoughtStorageRoot,
+} from "./config/runtime.js";
+export type {
+  ConfigDomain,
+  ResolveRuntimeConfigOptions,
+  ResolvedRuntimeConfig,
+  ResolvedValueSource,
+  ResolvedEmbeddingConfig,
+} from "./config/runtime.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
 export type {
+  ThoughtStoreLocation,
   ThoughtReflection,
   ThoughtReflectionKind,
   ThoughtSemanticAuditInput,

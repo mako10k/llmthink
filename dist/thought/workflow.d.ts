@@ -13,7 +13,11 @@ export interface PersistedThoughtAuditRequest {
     thoughtId?: string;
     documentId?: string;
 }
+export interface PersistedThoughtContext {
+    fileBaseDir?: string;
+    storageRoot?: string;
+}
 export declare function normalizeThoughtId(value: string): string;
 export declare function deriveThoughtIdFromDocumentId(documentId: string): string;
 export declare function deriveThoughtIdFromFilePath(filePath: string, baseDir?: string): string;
-export declare function auditAndPersistThought(request: PersistedThoughtAuditRequest, baseDir?: string): Promise<PersistedThoughtAudit>;
+export declare function auditAndPersistThought(request: PersistedThoughtAuditRequest, contextOrBaseDir?: PersistedThoughtContext | string, legacyStorageRoot?: string): Promise<PersistedThoughtAudit>;

@@ -58,12 +58,17 @@ function loadDslText(request, baseDir) {
     }
     throw new Error("dslText or filePath is required to persist an audit.");
 }
-export async function auditAndPersistThought(request, baseDir) {
-    const { thoughtId, idSource } = resolveThoughtId(request, baseDir);
-    const text = loadDslText(request, baseDir);
-    draftThought(thoughtId, text, baseDir);
+export async function auditAndPersistThought(request, contextOrBaseDir, legacyStorageRoot) {
+    const context = typeof contextOrBaseDir === "string"
+        ? { fileBaseDir: contextOrBaseDir, storageRoot: legacyStorageRoot }
+        : (contextOrBaseDir ?? {});
+    const { thoughtId, idSource } = resolveThoughtId(request, context.fileBaseDir);
+    const text = loadDslText(request, context.fileBaseDir);
+    draftThought(thoughtId, text, { storageRoot: context.storageRoot });
     const report = await auditDslText(text, thoughtId);
-    const record = recordThoughtAudit(thoughtId, report, baseDir);
+    const record = recordThoughtAudit(thoughtId, report, {
+        storageRoot: context.storageRoot,
+    });
     return {
         thoughtId,
         idSource,

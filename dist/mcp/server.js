@@ -2,6 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { resolveThoughtStorageRoot } from "../config/runtime.js";
 import { getDslSyntaxGuidanceText, isDslHelpRequest, parseDslHelpRequest, } from "../dsl/guidance.js";
 import { formatAuditReportText, limitAuditReport } from "../presentation/report.js";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "../presentation/thought.js";
@@ -11,6 +12,14 @@ const server = new McpServer({
     name: "llmthink",
     version: "0.4.3",
 });
+function thoughtLocation(filePath) {
+    return {
+        storageRoot: resolveThoughtStorageRoot({
+            cwd: process.cwd(),
+            filePath,
+        }),
+    };
+}
 function textContent(text) {
     return { type: "text", text };
 }
@@ -21,15 +30,15 @@ function loadThoughtSourceText(thoughtId, dslText, fromThoughtId) {
     if (!fromThoughtId) {
         return undefined;
     }
-    const source = loadThought(fromThoughtId);
+    const source = loadThought(fromThoughtId, thoughtLocation());
     return source.finalText ?? source.draftText;
 }
 function getStoredThoughtText(thoughtId) {
-    const thought = loadThought(thoughtId);
+    const thought = loadThought(thoughtId, thoughtLocation());
     return thought.draftText ?? thought.finalText;
 }
 function showThoughtView(thoughtId, view) {
-    const snapshot = loadThought(thoughtId);
+    const snapshot = loadThought(thoughtId, thoughtLocation());
     if (view === "draft") {
         return { content: [textContent(snapshot.draftText ?? "")] };
     }
@@ -64,14 +73,14 @@ function showThoughtView(thoughtId, view) {
 }
 function summarizeThought(thoughtId) {
     return {
-        content: [textContent(formatThoughtSummary(loadThought(thoughtId)))],
+        content: [textContent(formatThoughtSummary(loadThought(thoughtId, thoughtLocation())))],
     };
 }
 async function handleThoughtSearch(query, limit, includeReflections) {
     if (!query) {
         throw new Error("query is required when action=search");
     }
-    const results = (await searchThoughtRecords(query, undefined, { includeReflections })).slice(0, limit ?? 5);
+    const results = (await searchThoughtRecords(query, thoughtLocation(), { includeReflections })).slice(0, limit ?? 5);
     return { content: [textContent(formatThoughtSearchResults(results))] };
 }
 function requireThoughtId(thoughtId) {
@@ -91,20 +100,23 @@ function handleThoughtDraftAction(thoughtId, sourceText) {
     if (!sourceText) {
         throw new Error("dslText or fromThoughtId is required when action=draft");
     }
-    draftThought(thoughtId, sourceText);
+    draftThought(thoughtId, sourceText, thoughtLocation());
     return summarizeThought(thoughtId);
 }
 function handleThoughtRelateAction(thoughtId, fromThoughtId) {
     if (!fromThoughtId) {
         throw new Error("fromThoughtId is required when action=relate");
     }
-    relateThought(thoughtId, fromThoughtId);
+    relateThought(thoughtId, fromThoughtId, thoughtLocation());
     return summarizeThought(thoughtId);
 }
 async function handleThoughtAuditAction(thoughtId, sourceText) {
     const persisted = await auditAndPersistThought({
         dslText: requireThoughtText(thoughtId, sourceText),
         thoughtId,
+    }, {
+        fileBaseDir: process.cwd(),
+        storageRoot: resolveThoughtStorageRoot({ cwd: process.cwd() }),
     });
     return {
         content: [
@@ -122,18 +134,18 @@ async function handleThoughtAuditAction(thoughtId, sourceText) {
 }
 function handleThoughtFinalizeAction(thoughtId, sourceText) {
     const currentText = requireThoughtText(thoughtId, sourceText);
-    finalizeThought(thoughtId, currentText);
+    finalizeThought(thoughtId, currentText, thoughtLocation());
     return summarizeThought(thoughtId);
 }
 function handleThoughtHistoryAction(thoughtId) {
     return {
         content: [
-            textContent(formatThoughtHistory(loadThought(thoughtId).history)),
+            textContent(formatThoughtHistory(loadThought(thoughtId, thoughtLocation()).history)),
         ],
     };
 }
 function handleThoughtDeleteAction(thoughtId) {
-    if (!deleteThought(thoughtId)) {
+    if (!deleteThought(thoughtId, thoughtLocation())) {
         throw new Error(`Thought ${thoughtId} was not found.`);
     }
     return {
@@ -157,7 +169,7 @@ function handleThoughtReflectAction(thoughtId, text, kind) {
     if (!text) {
         throw new Error("text is required when action=reflect");
     }
-    addThoughtReflection(thoughtId, text, kind);
+    addThoughtReflection(thoughtId, text, kind, thoughtLocation());
     return summarizeThought(thoughtId);
 }
 function handleThoughtSemanticAuditAction(thoughtId, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId) {
@@ -180,12 +192,12 @@ function handleThoughtSemanticAuditAction(thoughtId, decisionId, supportId, verd
         model,
         auditedAt,
         sourceThoughtId,
-    });
+    }, thoughtLocation());
     return summarizeThought(thoughtId);
 }
 async function handleThoughtAction(action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view) {
     if (action === "list") {
-        return { content: [textContent(formatThoughtList(listThoughts()))] };
+        return { content: [textContent(formatThoughtList(listThoughts(thoughtLocation())))] };
     }
     if (action === "search") {
         return handleThoughtSearch(query, limit, includeReflections);
@@ -246,6 +258,9 @@ server.tool("dsl", "LLMThink DSL operations. Use action=audit to audit and auto-
         filePath,
         documentId,
         thoughtId,
+    }, {
+        fileBaseDir: process.cwd(),
+        storageRoot: resolveThoughtStorageRoot({ cwd: process.cwd(), filePath }),
     });
     return {
         content: [
