@@ -28,19 +28,6 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-function workspaceFoldersByPriority(): vscode.WorkspaceFolder[] {
-  const activeDocument = vscode.window.activeTextEditor?.document;
-  const activeFolder = activeDocument
-    ? vscode.workspace.getWorkspaceFolder(activeDocument.uri)
-    : undefined;
-  const folders = [...(vscode.workspace.workspaceFolders ?? [])];
-  if (!activeFolder) {
-    return folders;
-  }
-
-  return [activeFolder, ...folders.filter((folder) => folder.uri.toString() !== activeFolder.uri.toString())];
-}
-
 async function commandExists(command: string): Promise<boolean> {
   const resolver = process.platform === "win32" ? "where" : "which";
   try {
@@ -70,31 +57,6 @@ async function resolveServerCandidates(
   const candidates: ResolvedServerOption[] = [];
   const configuration = vscode.workspace.getConfiguration("llmthink");
   const configuredPath = configuration.get<string>("languageServer.path")?.trim();
-  for (const folder of workspaceFoldersByPriority()) {
-    const candidate = path.join(folder.uri.fsPath, "build", "llmthink-lsp.js");
-    if (await fileExists(candidate)) {
-      candidates.push({
-        label: `workspace build (${folder.name})`,
-        serverOptions: {
-          command: process.execPath,
-          args: [candidate, "--stdio"],
-          transport: TransportKind.stdio,
-        },
-      });
-      break;
-    }
-  }
-
-  if (await commandExists("llmthink-lsp")) {
-    candidates.push({
-      label: "PATH command (llmthink-lsp)",
-      serverOptions: {
-        command: "llmthink-lsp",
-        args: ["--stdio"],
-        transport: TransportKind.stdio,
-      },
-    });
-  }
 
   if (configuredPath) {
     if (path.isAbsolute(configuredPath)) {
@@ -112,10 +74,21 @@ async function resolveServerCandidates(
     }
   }
 
+  if (await commandExists("llmthink-lsp")) {
+    candidates.push({
+      label: "PATH command (llmthink-lsp)",
+      serverOptions: {
+        command: "llmthink-lsp",
+        args: ["--stdio"],
+        transport: TransportKind.stdio,
+      },
+    });
+  }
+
   const bundledPath = bundledServerPath(context);
   if (await fileExists(bundledPath)) {
     candidates.push({
-      label: "bundled fallback",
+      label: "bundled server",
       serverOptions: {
         command: process.execPath,
         args: [bundledPath, "--stdio"],

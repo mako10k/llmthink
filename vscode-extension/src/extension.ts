@@ -816,7 +816,7 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel.appendLine(`Failed to start LLMThink language server: ${String(error)}`);
     outputChannel.show(true);
     void vscode.window.showWarningMessage(
-      "LLMThink language server を開始できませんでした。build/llmthink-lsp.js または PATH 上の llmthink-lsp を確認してください。",
+      "LLMThink language server を開始できませんでした。llmthink.languageServer.path の設定、PATH 上の llmthink-lsp、または拡張機能同梱サーバを確認してください。",
     );
   });
 

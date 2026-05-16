@@ -279,7 +279,7 @@
         "llmthink.languageServer.path": {
           "type": "string",
           "default": "",
-          "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス、または PATH 上のコマンド名。未指定または解決不可のときは workspace の build/llmthink-lsp.js、PATH 上の llmthink-lsp、最後に拡張機能同梱の fallback を順に試します。"
+          "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス、または PATH 上のコマンド名。設定が未指定または解決不可のときは、まず PATH 上の llmthink-lsp を使い、その後に拡張機能同梱サーバを試します。"
         }
       }
     },
