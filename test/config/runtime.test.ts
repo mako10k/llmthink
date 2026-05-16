@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
@@ -29,13 +30,29 @@ function writeExecutable(filePath: string, body: string): void {
   chmodSync(filePath, 0o755);
 }
 
+function workspaceDomainId(dir: string): string {
+  const name = dir.split(/[/\\]/).filter(Boolean).at(-1) ?? "workspace";
+  const sanitized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "workspace";
+  const digest = createHash("sha256").update(dir).digest("hex").slice(0, 12);
+  return `${sanitized}-${digest}`;
+}
+
+function expectedWorkspaceStorageRoot(xdgStateHome: string, workspaceDir: string): string {
+  return join(xdgStateHome, "llmthink", "workspace", workspaceDomainId(workspaceDir));
+}
+
 test("resolveThoughtStorageRoot prefers workspace config over user XDG config", () => {
   withTempDir((dir) => {
     const workspaceDir = join(dir, "workspace", "nested");
+    const workspaceRoot = join(dir, "workspace");
     const xdgConfigHome = join(dir, "xdg-config");
     const xdgStateHome = join(dir, "xdg-state");
 
     mkdirSync(workspaceDir, { recursive: true });
+    mkdirSync(join(workspaceRoot, ".git"), { recursive: true });
     writeJson(join(dir, "workspace", ".llmthinkrc"), {
       thought: { storageDomain: "workspace" },
     });
@@ -52,7 +69,7 @@ test("resolveThoughtStorageRoot prefers workspace config over user XDG config", 
       },
     });
 
-    assert.equal(storageRoot, join(dir, "workspace", ".llmthink"));
+    assert.equal(storageRoot, expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot));
   });
 });
 
@@ -76,7 +93,31 @@ test("resolveThoughtStorageRoot uses XDG user defaults when no workspace config 
       },
     });
 
-    assert.equal(storageRoot, join(xdgStateHome, "llmthink"));
+    assert.equal(storageRoot, join(xdgStateHome, "llmthink", "user"));
+  });
+});
+
+test("resolveThoughtStorageRoot derives workspace domain from the nearest marked workspace root", () => {
+  withTempDir((dir) => {
+    const workspaceRoot = join(dir, "workspace");
+    const nestedDir = join(workspaceRoot, "apps", "api");
+    const xdgStateHome = join(dir, "xdg-state");
+
+    mkdirSync(join(workspaceRoot, ".git"), { recursive: true });
+    mkdirSync(nestedDir, { recursive: true });
+    writeJson(join(nestedDir, ".llmthinkrc"), {
+      thought: { storageDomain: "workspace" },
+    });
+
+    const storageRoot = resolveThoughtStorageRoot({
+      cwd: nestedDir,
+      env: {
+        ...process.env,
+        XDG_STATE_HOME: xdgStateHome,
+      },
+    });
+
+    assert.equal(storageRoot, expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot));
   });
 });
 
@@ -161,10 +202,12 @@ test("resolveEmbeddingConfig loads api key via secdat", () => {
 test("resolveRuntimeConfig reports discovered config paths and selected storage domain", () => {
   withTempDir((dir) => {
     const workspaceDir = join(dir, "workspace", "nested");
+    const workspaceRoot = join(dir, "workspace");
     const xdgConfigHome = join(dir, "xdg-config");
     const xdgStateHome = join(dir, "xdg-state");
 
     mkdirSync(workspaceDir, { recursive: true });
+    mkdirSync(join(workspaceRoot, ".git"), { recursive: true });
     writeJson(join(dir, "workspace", ".llmthinkrc"), {
       thought: { storageDomain: "workspace" },
     });
@@ -184,7 +227,10 @@ test("resolveRuntimeConfig reports discovered config paths and selected storage 
     assert.equal(runtimeConfig.configPaths.workspace, join(dir, "workspace", ".llmthinkrc"));
     assert.equal(runtimeConfig.configPaths.user, join(xdgConfigHome, "llmthink", "config.json"));
     assert.equal(runtimeConfig.storage.domain, "workspace");
-    assert.equal(runtimeConfig.storage.root, join(dir, "workspace", ".llmthink"));
+    assert.equal(
+      runtimeConfig.storage.root,
+      expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot),
+    );
     assert.equal(runtimeConfig.sources.storage.root.layer, "workspace");
     assert.equal(runtimeConfig.sources.storage.root.key, "thought.storageDomain");
     assert.equal(runtimeConfig.sources.storage.domain.layer, "workspace");

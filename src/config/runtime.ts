@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 export type ConfigDomain = "workspace" | "user" | "system";
 export type ConfigEmbeddingProvider = "none" | "ollama" | "openai";
@@ -98,6 +99,18 @@ interface ResolvedCandidate<T> {
   value: T;
   source: ResolvedValueSource;
 }
+
+const WORKSPACE_MARKERS = [
+  ".git",
+  ".hg",
+  ".svn",
+  "package.json",
+  "pnpm-workspace.yaml",
+  "tsconfig.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "go.mod",
+] as const;
 
 function normalizeString(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
@@ -258,6 +271,55 @@ function resolveSystemConfigPath(): string | undefined {
   return existsSync(candidate) ? candidate : undefined;
 }
 
+function stateHome(env: NodeJS.ProcessEnv): string {
+  const xdgStateHome = normalizeString(env.XDG_STATE_HOME);
+  if (xdgStateHome) {
+    return resolve(xdgStateHome);
+  }
+  return join(homedir(), ".local", "state");
+}
+
+function datastoreBaseRoot(env: NodeJS.ProcessEnv): string {
+  return join(stateHome(env), "llmthink");
+}
+
+function hasWorkspaceMarker(dir: string): boolean {
+  return WORKSPACE_MARKERS.some((marker) => existsSync(join(dir, marker)));
+}
+
+function findWorkspaceDomainRoot(startDir: string): string | undefined {
+  let current = resolve(startDir);
+  while (true) {
+    if (hasWorkspaceMarker(current)) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+  }
+}
+
+function sanitizeWorkspaceName(dir: string): string {
+  const name = basename(dir).trim() || "workspace";
+  const sanitized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return sanitized || "workspace";
+}
+
+function workspaceDomainId(dir: string): string {
+  const digest = createHash("sha256").update(dir).digest("hex").slice(0, 12);
+  return `${sanitizeWorkspaceName(dir)}-${digest}`;
+}
+
+function resolveWorkspaceDomainDir(options: ResolveRuntimeConfigOptions): string {
+  const searchDir = resolveWorkspaceSearchDir(options);
+  return findWorkspaceDomainRoot(searchDir) ?? searchDir;
+}
+
 function loadConfigLayers(options: ResolveRuntimeConfigOptions): {
   workspace: ConfigLayer;
   user: ConfigLayer;
@@ -276,25 +338,17 @@ function loadConfigLayers(options: ResolveRuntimeConfigOptions): {
 }
 
 function userStorageRoot(env: NodeJS.ProcessEnv): string {
-  const xdgStateHome = normalizeString(env.XDG_STATE_HOME);
-  if (xdgStateHome) {
-    return join(resolve(xdgStateHome), "llmthink");
-  }
-  return join(homedir(), ".llmthink");
+  return join(datastoreBaseRoot(env), "user");
 }
 
 function systemStorageRoot(): string {
-  return "/var/lib/llmthink";
+  return "/var/lib/llmthink/system";
 }
 
 function defaultWorkspaceStorageRoot(options: ResolveRuntimeConfigOptions): string {
-  const workspacePath = options.configFilePath
-    ? resolveFrom(resolve(options.cwd ?? process.cwd()), options.configFilePath)
-    : findWorkspaceConfigPath(resolveWorkspaceSearchDir(options));
-  if (workspacePath) {
-    return join(dirname(workspacePath), ".llmthink");
-  }
-  return join(resolveWorkspaceSearchDir(options), ".llmthink");
+  const env = options.env ?? process.env;
+  const workspaceDir = resolveWorkspaceDomainDir(options);
+  return join(datastoreBaseRoot(env), "workspace", workspaceDomainId(workspaceDir));
 }
 
 function defaultStorageRootForDomain(

@@ -180,9 +180,9 @@ hostAddressLoopback=true
 
 thought の保存先も同じ優先順で決まります。既定値は次のとおりです。
 
-- workspace: `.llmthinkrc` が見つかったディレクトリ直下の `.llmthink/`。設定ファイルがない場合は実行ディレクトリ直下の `.llmthink/`
-- user: `XDG_STATE_HOME/llmthink`、なければ `~/.llmthink`
-- system: `/var/lib/llmthink`
+- workspace: `XDG_STATE_HOME/llmthink/workspace/<workspace-id>`。`<workspace-id>` は、カレントディレクトリまたは対象ファイルから親方向に探索して見つかった有効なワークスペース root（`.git/`、`package.json`、`tsconfig.json` など）から導出されます。見つからない場合は実行ディレクトリ系の解決結果を使います。
+- user: `XDG_STATE_HOME/llmthink/user`、なければ `~/.local/state/llmthink/user`
+- system: `/var/lib/llmthink/system`
 
 CLI では保存先を直接上書きできます。
 
