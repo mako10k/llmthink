@@ -230,6 +230,8 @@ secret は次の形式で指定できます。
 
 埋め込みの組み込みプロバイダーは `ollama`、`openai`、`none` です。設定ファイルがない場合は従来どおり環境変数も使えます。
 
+- `LLMTHINK_STORAGE_DOMAIN`: `workspace` | `user` | `system`
+- `LLMTHINK_STORAGE_PATH`: thought storage root の絶対 path または実行ディレクトリ基準の相対 path
 - `LLMTHINK_EMBEDDING_PROVIDER`: `ollama` | `openai` | `none`
 - `LLMTHINK_EMBEDDING_TIMEOUT_MS`: 埋め込み API のタイムアウトミリ秒。既定は `3000`
 - `OLLAMA_BASE_URL`: Ollama API のベース URL。既定は `http://127.0.0.1:11434`
@@ -241,6 +243,8 @@ secret は次の形式で指定できます。
 例:
 
 - `npm run cli -- thought list --storage-domain user`
+- `LLMTHINK_STORAGE_DOMAIN=user npm run cli -- thought list`
+- `LLMTHINK_STORAGE_PATH=/srv/llmthink/shared npm run cli -- thought list`
 - `npm run cli -- dsl audit docs/examples/query-assist.dsl --config ./.llmthinkrc --pretty`
 - `LLMTHINK_EMBEDDING_PROVIDER=openai OPENAI_API_KEY=... npm run cli -- dsl audit docs/examples/query-assist.dsl --pretty`
 - `LLMTHINK_EMBEDDING_PROVIDER=none npm run verify-examples`
