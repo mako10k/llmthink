@@ -9,7 +9,17 @@ import {
   resolveThoughtStorageRoot,
 } from "./config/runtime.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
-import { formatAuditReportText, limitAuditReport } from "./presentation/report.js";
+import {
+  AUDIT_RESULT_CATEGORIES,
+  AUDIT_SEVERITIES,
+  type AuditResultCategory,
+  type AuditSeverity,
+} from "./model/diagnostics.js";
+import {
+  formatAuditReportText,
+  limitAuditReport,
+  type AuditReportFormatOptions,
+} from "./presentation/report.js";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,
@@ -45,6 +55,8 @@ interface CliOptions {
   kind?: string;
   includeReflections: boolean;
   limit?: number;
+  minSeverity?: AuditSeverity;
+  suppressedCategories?: AuditResultCategory[];
   view?: string;
   auditId?: string;
   decisionId?: string;
@@ -63,6 +75,51 @@ interface CliOptions {
 }
 
 type CliOptionMutator = (options: CliOptions, remainingArgs: string[]) => void;
+
+function readRequiredOptionValue(
+  optionName: string,
+  remainingArgs: string[],
+): string {
+  const value = remainingArgs.shift();
+  if (!value || value.startsWith("--")) {
+    throw new Error(`${optionName} requires a value.`);
+  }
+  return value;
+}
+
+function parseMinSeverity(remainingArgs: string[]): AuditSeverity {
+  const rawValue = readRequiredOptionValue("--min-severity", remainingArgs);
+  const severity = AUDIT_SEVERITIES.find((candidate) => candidate === rawValue);
+  if (!severity) {
+    throw new Error(
+      `Invalid --min-severity value: ${rawValue}. Use one of ${AUDIT_SEVERITIES.join(", ")}.`,
+    );
+  }
+  return severity;
+}
+
+function appendSuppressedCategories(
+  options: CliOptions,
+  remainingArgs: string[],
+): void {
+  const rawValue = readRequiredOptionValue("--suppress-category", remainingArgs);
+  const rawCategories = rawValue.split(",").map((category) => category.trim());
+  const categories = rawCategories.map((rawCategory) => {
+    const category = AUDIT_RESULT_CATEGORIES.find(
+      (candidate) => candidate === rawCategory,
+    );
+    if (!category) {
+      throw new Error(
+        `Invalid --suppress-category value: ${rawCategory}. Use one of ${AUDIT_RESULT_CATEGORIES.join(", ")}.`,
+      );
+    }
+    return category;
+  });
+  options.suppressedCategories = [
+    ...(options.suppressedCategories ?? []),
+    ...categories,
+  ];
+}
 
 const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
   "--pretty": (options) => {
@@ -90,6 +147,11 @@ const OPTION_MUTATORS: Record<string, CliOptionMutator> = {
     const parsed = Number(rawValue);
     options.limit = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   },
+  "--min-severity": (options, remainingArgs) => {
+    options.minSeverity = parseMinSeverity(remainingArgs);
+  },
+  "--suppress-category": appendSuppressedCategories,
+  "--suppress-tag": appendSuppressedCategories,
   "--audit-id": (options, remainingArgs) => {
     options.auditId = remainingArgs.shift();
   },
@@ -226,12 +288,12 @@ function printUsage(): void {
   process.stdout.write(
     [
       "Usage:",
-      "  llmthink dsl audit <file> [--pretty] [--limit 50]",
-      '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty] [--limit 50]',
+      "  llmthink dsl audit <file> [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]",
+      '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]',
       "  llmthink dsl help [topic] [subtopic] [index|quick|detail]",
       '  llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]',
       "  llmthink thought relate --id <thought-id> --from source-thought-id",
-      '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty] [--limit 50]',
+      '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]',
       '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
       '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
       '  llmthink thought semantic-audit --id <thought-id> --decision D1 --support E1 --verdict supported --reason "..." [--reviewer name] [--model name]',
@@ -244,6 +306,14 @@ function printUsage(): void {
       "  global options: [--config path/to/.llmthinkrc] [--storage-domain workspace|user|system] [--storage-path path/to/storage-root]",
     ].join("\n") + "\n",
   );
+}
+
+function auditOutputOptions(options: CliOptions): AuditReportFormatOptions {
+  return {
+    maxIssues: options.limit,
+    minSeverity: options.minSeverity,
+    suppressedCategories: options.suppressedCategories,
+  };
 }
 
 function maskSecret(secret: string | undefined): string | undefined {
@@ -391,12 +461,13 @@ async function handleDslCommand(options: CliOptions): Promise<void> {
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
     process.stdout.write(
-      formatAuditReportText(persisted.report, { maxIssues: options.limit }),
+      formatAuditReportText(persisted.report, auditOutputOptions(options)),
     );
   } else {
-    const outputReport = limitAuditReport(persisted.report, {
-      maxIssues: options.limit,
-    });
+    const outputReport = limitAuditReport(
+      persisted.report,
+      auditOutputOptions(options),
+    );
     process.stdout.write(
       `${JSON.stringify(
         {
@@ -478,13 +549,14 @@ async function handleThoughtAudit(
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
     process.stdout.write(
-      formatAuditReportText(persisted.report, { maxIssues: options.limit }),
+      formatAuditReportText(persisted.report, auditOutputOptions(options)),
     );
     return;
   }
-  const outputReport = limitAuditReport(persisted.report, {
-    maxIssues: options.limit,
-  });
+  const outputReport = limitAuditReport(
+    persisted.report,
+    auditOutputOptions(options),
+  );
   process.stdout.write(
     `${JSON.stringify(
       {

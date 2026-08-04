@@ -9,6 +9,7 @@ export { addThoughtReflection, deleteThought, relateThought, ensureThoughtRecord
 export { auditAndPersistThought, deriveThoughtIdFromDocumentId, deriveThoughtIdFromFilePath, normalizeThoughtId, } from "./thought/workflow.js";
 export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
 export type { ConfigDomain, ResolveRuntimeConfigOptions, ResolvedRuntimeConfig, ResolvedValueSource, ResolvedEmbeddingConfig, } from "./config/runtime.js";
+export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
 export type { ThoughtStoreLocation, ThoughtReflection, ThoughtReflectionKind, ThoughtSemanticAuditInput, ThoughtSemanticAuditVerdict, ThoughtSnapshot, } from "./thought/store.js";

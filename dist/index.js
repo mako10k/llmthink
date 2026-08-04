@@ -7,4 +7,5 @@ export { formatPersistedThoughtAudit, formatThoughtReflections, formatThoughtHis
 export { addThoughtReflection, deleteThought, relateThought, ensureThoughtRecord, finalizeThought, listThoughts, loadThought, recordThoughtAudit, saveThoughtSemanticAudit, draftThought, searchThoughtRecords, } from "./thought/store.js";
 export { auditAndPersistThought, deriveThoughtIdFromDocumentId, deriveThoughtIdFromFilePath, normalizeThoughtId, } from "./thought/workflow.js";
 export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
+export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
 //# sourceMappingURL=index.js.map

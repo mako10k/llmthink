@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- 監査出力へ最低 severity と category 抑制を追加し、ノイズ除外後の件数に対して出力上限を適用
+- CLI の `--min-severity` / `--suppress-category` と MCP の対応する監査出力オプションを追加
+
 ## 0.5.1
 
 - VSIX 同梱の bundled LSP で shebang が二重化して起動時に SyntaxError になる不具合を修正

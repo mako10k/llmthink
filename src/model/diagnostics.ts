@@ -1,13 +1,24 @@
-export type AuditCategory =
-  | "contradiction"
-  | "contradiction_candidate"
-  | "contract_violation"
-  | "mece_assessment"
-  | "semantic_hint"
-  | "output_limit"
-  | "query_result";
+export const AUDIT_RESULT_CATEGORIES = [
+  "contradiction",
+  "contradiction_candidate",
+  "contract_violation",
+  "mece_assessment",
+  "semantic_hint",
+  "query_result",
+] as const;
 
-export type AuditSeverity = "fatal" | "error" | "warning" | "info" | "hint";
+export type AuditResultCategory = (typeof AUDIT_RESULT_CATEGORIES)[number];
+export type AuditCategory = AuditResultCategory | "output_limit";
+
+export const AUDIT_SEVERITIES = [
+  "fatal",
+  "error",
+  "warning",
+  "info",
+  "hint",
+] as const;
+
+export type AuditSeverity = (typeof AUDIT_SEVERITIES)[number];
 
 export interface AuditReference {
   ref_id: string;

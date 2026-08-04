@@ -1,5 +1,8 @@
-export type AuditCategory = "contradiction" | "contradiction_candidate" | "contract_violation" | "mece_assessment" | "semantic_hint" | "output_limit" | "query_result";
-export type AuditSeverity = "fatal" | "error" | "warning" | "info" | "hint";
+export declare const AUDIT_RESULT_CATEGORIES: readonly ["contradiction", "contradiction_candidate", "contract_violation", "mece_assessment", "semantic_hint", "query_result"];
+export type AuditResultCategory = (typeof AUDIT_RESULT_CATEGORIES)[number];
+export type AuditCategory = AuditResultCategory | "output_limit";
+export declare const AUDIT_SEVERITIES: readonly ["fatal", "error", "warning", "info", "hint"];
+export type AuditSeverity = (typeof AUDIT_SEVERITIES)[number];
 export interface AuditReference {
     ref_id: string;
     role?: string;

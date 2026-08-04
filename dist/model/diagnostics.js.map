@@ -1,1 +1,1 @@
-{"version":3,"file":"diagnostics.js","sourceRoot":"","sources":["../../src/model/diagnostics.ts"],"names":[],"mappings":""}
+{"version":3,"file":"diagnostics.js","sourceRoot":"","sources":["../../src/model/diagnostics.ts"],"names":[],"mappings":"AAAA,MAAM,CAAC,MAAM,uBAAuB,GAAG;IACrC,eAAe;IACf,yBAAyB;IACzB,oBAAoB;IACpB,iBAAiB;IACjB,eAAe;IACf,cAAc;CACN,CAAC;AAKX,MAAM,CAAC,MAAM,gBAAgB,GAAG;IAC9B,OAAO;IACP,OAAO;IACP,SAAS;IACT,MAAM;IACN,MAAM;CACE,CAAC"}

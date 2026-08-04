@@ -4,7 +4,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { resolveThoughtStorageRoot } from "../config/runtime.js";
 import { getDslSyntaxGuidanceText, isDslHelpRequest, parseDslHelpRequest, } from "../dsl/guidance.js";
-import { formatAuditReportText, limitAuditReport } from "../presentation/report.js";
+import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "../model/diagnostics.js";
+import { formatAuditReportText, limitAuditReport, } from "../presentation/report.js";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "../presentation/thought.js";
 import { addThoughtReflection, deleteThought, relateThought, finalizeThought, listThoughts, loadThought, draftThought, saveThoughtSemanticAudit, searchThoughtRecords, } from "../thought/store.js";
 import { auditAndPersistThought } from "../thought/workflow.js";
@@ -12,6 +13,16 @@ const server = new McpServer({
     name: "llmthink",
     version: "0.5.1",
 });
+function auditOutputOptions(options) {
+    return {
+        maxIssues: options.maxIssues,
+        minSeverity: options.minSeverity,
+        suppressedCategories: options.suppressCategories,
+    };
+}
+function isDslHelpAction(action, dslText) {
+    return action === "help" || Boolean(dslText && isDslHelpRequest(dslText));
+}
 function thoughtLocation(filePath) {
     return {
         storageRoot: resolveThoughtStorageRoot({
@@ -37,7 +48,7 @@ function getStoredThoughtText(thoughtId) {
     const thought = loadThought(thoughtId, thoughtLocation());
     return thought.draftText ?? thought.finalText;
 }
-function showThoughtView(thoughtId, view) {
+function showThoughtView(thoughtId, view, outputOptions = {}) {
     const snapshot = loadThought(thoughtId, thoughtLocation());
     if (view === "draft") {
         return { content: [textContent(snapshot.draftText ?? "")] };
@@ -49,7 +60,7 @@ function showThoughtView(thoughtId, view) {
         return {
             content: [
                 textContent(snapshot.latestAudit
-                    ? formatAuditReportText(snapshot.latestAudit)
+                    ? formatAuditReportText(snapshot.latestAudit, outputOptions)
                     : "No audit yet.\n"),
             ],
         };
@@ -110,7 +121,7 @@ function handleThoughtRelateAction(thoughtId, fromThoughtId) {
     relateThought(thoughtId, fromThoughtId, thoughtLocation());
     return summarizeThought(thoughtId);
 }
-async function handleThoughtAuditAction(thoughtId, sourceText) {
+async function handleThoughtAuditAction(thoughtId, sourceText, outputOptions) {
     const persisted = await auditAndPersistThought({
         dslText: requireThoughtText(thoughtId, sourceText),
         thoughtId,
@@ -120,9 +131,9 @@ async function handleThoughtAuditAction(thoughtId, sourceText) {
     });
     return {
         content: [
-            textContent(`${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`),
+            textContent(`${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report, outputOptions)}`),
             textContent((() => {
-                const outputReport = limitAuditReport(persisted.report);
+                const outputReport = limitAuditReport(persisted.report, outputOptions);
                 return JSON.stringify({
                     thought_id: persisted.thoughtId,
                     id_source: persisted.idSource,
@@ -165,6 +176,8 @@ const SEMANTIC_AUDIT_VERDICT_SCHEMA = z.enum([
     "mixed",
     "unknown",
 ]);
+const AUDIT_SEVERITY_SCHEMA = z.enum(AUDIT_SEVERITIES);
+const AUDIT_RESULT_CATEGORY_SCHEMA = z.enum(AUDIT_RESULT_CATEGORIES);
 function handleThoughtReflectAction(thoughtId, text, kind) {
     if (!text) {
         throw new Error("text is required when action=reflect");
@@ -195,7 +208,7 @@ function handleThoughtSemanticAuditAction(thoughtId, decisionId, supportId, verd
     }, thoughtLocation());
     return summarizeThought(thoughtId);
 }
-async function handleThoughtAction(action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view) {
+async function handleThoughtAction(action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view, outputOptions) {
     if (action === "list") {
         return { content: [textContent(formatThoughtList(listThoughts(thoughtLocation())))] };
     }
@@ -210,7 +223,7 @@ async function handleThoughtAction(action, thoughtId, dslText, fromThoughtId, te
         case "relate":
             return handleThoughtRelateAction(resolvedThoughtId, fromThoughtId);
         case "audit":
-            return handleThoughtAuditAction(resolvedThoughtId, sourceText);
+            return handleThoughtAuditAction(resolvedThoughtId, sourceText, outputOptions);
         case "finalize":
             return handleThoughtFinalizeAction(resolvedThoughtId, sourceText);
         case "reflect":
@@ -222,7 +235,7 @@ async function handleThoughtAction(action, thoughtId, dslText, fromThoughtId, te
         case "history":
             return handleThoughtHistoryAction(resolvedThoughtId);
         case "show":
-            return showThoughtView(resolvedThoughtId, view);
+            return showThoughtView(resolvedThoughtId, view, outputOptions);
         default:
             throw new Error(`Unsupported action: ${action}`);
     }
@@ -236,8 +249,11 @@ server.tool("dsl", "LLMThink DSL operations. Use action=audit to audit and auto-
     topic: z.string().optional(),
     subtopic: z.string().optional(),
     detail: z.enum(["index", "quick", "detail"]).optional(),
-}, async ({ action, dslText, filePath, documentId, thoughtId, topic, subtopic, detail }) => {
-    if (action === "help" || (dslText && isDslHelpRequest(dslText))) {
+    maxIssues: z.number().int().positive().max(1000).optional().describe("Maximum number of audit issues to return after output filtering."),
+    minSeverity: AUDIT_SEVERITY_SCHEMA.optional().describe("Minimum audit severity to return, inclusive."),
+    suppressCategories: z.array(AUDIT_RESULT_CATEGORY_SCHEMA).optional().describe("Audit result categories to omit from output."),
+}, async ({ action, dslText, filePath, documentId, thoughtId, topic, subtopic, detail, maxIssues, minSeverity, suppressCategories, }) => {
+    if (isDslHelpAction(action, dslText)) {
         const parsedRequest = dslText ? parseDslHelpRequest(dslText) : undefined;
         return {
             content: [
@@ -262,13 +278,19 @@ server.tool("dsl", "LLMThink DSL operations. Use action=audit to audit and auto-
         fileBaseDir: process.cwd(),
         storageRoot: resolveThoughtStorageRoot({ cwd: process.cwd(), filePath }),
     });
+    const outputOptions = auditOutputOptions({
+        maxIssues,
+        minSeverity,
+        suppressCategories,
+    });
+    const outputReport = limitAuditReport(persisted.report, outputOptions);
     return {
         content: [
-            textContent(`${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report)}`),
+            textContent(`${formatPersistedThoughtAudit(persisted)}${formatAuditReportText(persisted.report, outputOptions)}`),
             textContent(JSON.stringify({
                 thought_id: persisted.thoughtId,
                 id_source: persisted.idSource,
-                report: persisted.report,
+                report: outputReport,
             }, null, 2)),
         ],
     };
@@ -294,6 +316,9 @@ server.tool("thought", "LLMThink thought lifecycle operations. Use action=draft|
     kind: REFLECTION_KIND_SCHEMA.default("note"),
     query: z.string().optional(),
     limit: z.number().int().positive().max(20).optional(),
+    maxIssues: z.number().int().positive().max(1000).optional().describe("Maximum number of audit issues for audit output or view=audit."),
+    minSeverity: AUDIT_SEVERITY_SCHEMA.optional().describe("Minimum audit severity for audit output or view=audit, inclusive."),
+    suppressCategories: z.array(AUDIT_RESULT_CATEGORY_SCHEMA).optional().describe("Audit result categories to omit from audit output or view=audit."),
     includeReflections: z.boolean().default(false),
     decisionId: z.string().optional(),
     supportId: z.string().optional(),
@@ -315,8 +340,12 @@ server.tool("thought", "LLMThink thought lifecycle operations. Use action=draft|
         "semantic-audit-pairs",
     ])
         .optional(),
-}, async ({ action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view, }) => {
-    return handleThoughtAction(action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view);
+}, async ({ action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, maxIssues, minSeverity, suppressCategories, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view, }) => {
+    return handleThoughtAction(action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view, auditOutputOptions({
+        maxIssues,
+        minSeverity,
+        suppressCategories,
+    }));
 });
 const transport = new StdioServerTransport();
 await server.connect(transport);

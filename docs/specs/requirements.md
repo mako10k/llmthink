@@ -616,6 +616,24 @@ Should:
 - rationale optional
 - suggestion optional
 
+### 17.4 出力フィルタ
+
+監査原本と出力表示を分離し、CLI や MCP の利用者が大量の補助情報を出力時に抑制できること。
+
+Must:
+
+- 最低 severity を指定した場合、その severity 以上の結果だけを出力すること
+- 抑制 category を指定した場合、該当 category を出力しないこと
+- severity と category のフィルタを件数上限より先に適用すること
+- フィルタ後の件数が上限以下であれば `output_limit` error を生成しないこと
+- フィルタは永続化する監査原本を変更しないこと
+- 出力 summary はフィルタ後に実際に表示する結果から再計算すること
+
+Should:
+
+- `query_result` は hint として最低 severity の対象に含めること
+- フィルタ後も件数上限を超える場合は、従来どおり重大度順に制限し、`output_limit` を表示すること
+
 ---
 
 ## 18. 監査サンプル

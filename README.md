@@ -64,11 +64,11 @@
 
 CLI は resource-first に `dsl` と `thought` の 2 系統へ寄せる。
 
-- `llmthink dsl audit ...`: 自動登録込みの DSL 監査。thought-id を返す
+- `llmthink dsl audit ...`: 自動登録込みの DSL 監査。thought-id を返す。`--min-severity` と `--suppress-category` で表示だけを絞り込める
 - `llmthink dsl help`: DSL 全体文法の表示
 - `llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]`: draft の作成・更新
 - `llmthink thought relate --id <thought-id> --from source-thought-id`: 既存 thought から関連 thought を作成
-- `llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]`: current draft を監査し、監査結果を保存
+- `llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty]`: current draft を監査し、監査結果を保存。出力フィルタは `dsl audit` と共通
 - `llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]`: 最終結果を保存
 - `llmthink thought delete --id <thought-id>`: 保存済み thought を削除
 - `llmthink thought show --id <thought-id> [summary|draft|final|audit]`: 現在状態の確認
@@ -82,6 +82,24 @@ CLI は resource-first に `dsl` と `thought` の 2 系統へ寄せる。
 - 網羅性: 作成、修正、監査、保存、参照、履歴、検索を一通り CLI で閉じる
 - 一貫性: resource-first の語順で `dsl <action>` / `thought <action>` に統一する
 - 単純性: top-level resource は 2 個に限定する
+
+### 監査出力の絞り込み
+
+大量の `info` / `hint` が件数上限を占有する場合は、監査原本を保持したまま表示だけを絞り込める。
+
+```bash
+# fatal / error / warning だけを表示
+llmthink dsl audit input.dsl --pretty --min-severity warning
+
+# semantic_hint と query_result を表示しない
+llmthink dsl audit input.dsl --suppress-category semantic_hint,query_result
+```
+
+- `--min-severity fatal|error|warning|info|hint`: 指定値以上の severity を表示する
+- `--suppress-category <category[,category...]>`: 指定 category を表示しない。複数回指定も可能
+- `--suppress-tag` は `--suppress-category` の別名
+- フィルタは `--limit` より先に適用する。フィルタ後の件数が上限以下なら `output_limit` は生成しない
+- 保存される `audits/*.json` は常に未フィルタの監査原本であり、再表示時に別のフィルタを選べる
 
 ### Semantic Thought Search
 
@@ -143,6 +161,7 @@ llmthink thought audit --id review-002 --pretty
 - language model tool は `llmthink-dsl` に統一し、DSL 監査と文法ガイダンスに集中させる
 - Copilot 向けの開発運用ルールは `.github/copilot-instructions.md` を正とする
 - 利用者としては、必要に応じて `#llmthink-dsl` で `action=audit` や `action=help` を使って DSL を確認できる
+- MCP の `dsl action=audit` と `thought action=audit|show` では、`minSeverity`、`suppressCategories`、`maxIssues` を監査出力へ指定できる
 
 ## 埋め込み設定
 

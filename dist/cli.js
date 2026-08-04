@@ -3,10 +3,41 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveRuntimeConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
 import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
-import { formatAuditReportText, limitAuditReport } from "./presentation/report.js";
+import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
+import { formatAuditReportText, limitAuditReport, } from "./presentation/report.js";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "./presentation/thought.js";
 import { addThoughtReflection, deleteThought, relateThought, finalizeThought, listThoughts, loadThought, draftThought, saveThoughtSemanticAudit, searchThoughtRecords, } from "./thought/store.js";
 import { auditAndPersistThought } from "./thought/workflow.js";
+function readRequiredOptionValue(optionName, remainingArgs) {
+    const value = remainingArgs.shift();
+    if (!value || value.startsWith("--")) {
+        throw new Error(`${optionName} requires a value.`);
+    }
+    return value;
+}
+function parseMinSeverity(remainingArgs) {
+    const rawValue = readRequiredOptionValue("--min-severity", remainingArgs);
+    const severity = AUDIT_SEVERITIES.find((candidate) => candidate === rawValue);
+    if (!severity) {
+        throw new Error(`Invalid --min-severity value: ${rawValue}. Use one of ${AUDIT_SEVERITIES.join(", ")}.`);
+    }
+    return severity;
+}
+function appendSuppressedCategories(options, remainingArgs) {
+    const rawValue = readRequiredOptionValue("--suppress-category", remainingArgs);
+    const rawCategories = rawValue.split(",").map((category) => category.trim());
+    const categories = rawCategories.map((rawCategory) => {
+        const category = AUDIT_RESULT_CATEGORIES.find((candidate) => candidate === rawCategory);
+        if (!category) {
+            throw new Error(`Invalid --suppress-category value: ${rawCategory}. Use one of ${AUDIT_RESULT_CATEGORIES.join(", ")}.`);
+        }
+        return category;
+    });
+    options.suppressedCategories = [
+        ...(options.suppressedCategories ?? []),
+        ...categories,
+    ];
+}
 const OPTION_MUTATORS = {
     "--pretty": (options) => {
         options.pretty = true;
@@ -33,6 +64,11 @@ const OPTION_MUTATORS = {
         const parsed = Number(rawValue);
         options.limit = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
     },
+    "--min-severity": (options, remainingArgs) => {
+        options.minSeverity = parseMinSeverity(remainingArgs);
+    },
+    "--suppress-category": appendSuppressedCategories,
+    "--suppress-tag": appendSuppressedCategories,
     "--audit-id": (options, remainingArgs) => {
         options.auditId = remainingArgs.shift();
     },
@@ -149,12 +185,12 @@ function parseArgs(argv) {
 function printUsage() {
     process.stdout.write([
         "Usage:",
-        "  llmthink dsl audit <file> [--pretty] [--limit 50]",
-        '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty] [--limit 50]',
+        "  llmthink dsl audit <file> [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]",
+        '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]',
         "  llmthink dsl help [topic] [subtopic] [index|quick|detail]",
         '  llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]',
         "  llmthink thought relate --id <thought-id> --from source-thought-id",
-        '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty] [--limit 50]',
+        '  llmthink thought audit --id <thought-id> [<file> | --text "...dsl..."] [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]',
         '  llmthink thought finalize --id <thought-id> [<file> | --text "...dsl..."]',
         '  llmthink thought reflect --id <thought-id> --text "...comment..." [--kind note]',
         '  llmthink thought semantic-audit --id <thought-id> --decision D1 --support E1 --verdict supported --reason "..." [--reviewer name] [--model name]',
@@ -166,6 +202,13 @@ function printUsage() {
         "  llmthink config show [<file>]",
         "  global options: [--config path/to/.llmthinkrc] [--storage-domain workspace|user|system] [--storage-path path/to/storage-root]",
     ].join("\n") + "\n");
+}
+function auditOutputOptions(options) {
+    return {
+        maxIssues: options.limit,
+        minSeverity: options.minSeverity,
+        suppressedCategories: options.suppressedCategories,
+    };
 }
 function maskSecret(secret) {
     if (!secret) {
@@ -276,12 +319,10 @@ async function handleDslCommand(options) {
     });
     if (options.pretty) {
         process.stdout.write(formatPersistedThoughtAudit(persisted));
-        process.stdout.write(formatAuditReportText(persisted.report, { maxIssues: options.limit }));
+        process.stdout.write(formatAuditReportText(persisted.report, auditOutputOptions(options)));
     }
     else {
-        const outputReport = limitAuditReport(persisted.report, {
-            maxIssues: options.limit,
-        });
+        const outputReport = limitAuditReport(persisted.report, auditOutputOptions(options));
         process.stdout.write(`${JSON.stringify({
             thought_id: persisted.thoughtId,
             id_source: persisted.idSource,
@@ -348,12 +389,10 @@ async function handleThoughtAudit(thoughtId, options) {
     });
     if (options.pretty) {
         process.stdout.write(formatPersistedThoughtAudit(persisted));
-        process.stdout.write(formatAuditReportText(persisted.report, { maxIssues: options.limit }));
+        process.stdout.write(formatAuditReportText(persisted.report, auditOutputOptions(options)));
         return;
     }
-    const outputReport = limitAuditReport(persisted.report, {
-        maxIssues: options.limit,
-    });
+    const outputReport = limitAuditReport(persisted.report, auditOutputOptions(options));
     process.stdout.write(`${JSON.stringify({
         thought_id: persisted.thoughtId,
         id_source: persisted.idSource,

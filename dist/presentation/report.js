@@ -7,6 +7,19 @@ const SEVERITY_PRIORITY = {
     info: 3,
     hint: 4,
 };
+function includesSeverity(severity, minSeverity) {
+    return (minSeverity === undefined ||
+        SEVERITY_PRIORITY[severity] <= SEVERITY_PRIORITY[minSeverity]);
+}
+function filterIssues(issues, options) {
+    const suppressedCategories = new Set(options.suppressedCategories ?? []);
+    return issues.filter((issue) => includesSeverity(issue.severity, options.minSeverity) &&
+        !suppressedCategories.has(issue.category));
+}
+function includesQueryResults(options) {
+    return (includesSeverity("hint", options.minSeverity) &&
+        !options.suppressedCategories?.includes("query_result"));
+}
 function summarizeIssues(issues) {
     return {
         fatal_count: issues.filter((issue) => issue.severity === "fatal").length,
@@ -26,18 +39,19 @@ function sortIssuesBySeverity(issues) {
     })
         .map(({ issue }) => issue);
 }
-function buildOverflowIssue(report, appliedLimit, omittedIssueCount) {
+function buildOverflowIssue(report, appliedLimit, omittedIssueCount, filteredIssueCount) {
     return {
         issue_id: "ISSUE-OUTPUT-LIMIT",
         category: "output_limit",
         severity: "error",
         target_refs: [{ ref_id: report.document_id, role: "document" }],
         message: `監査結果が多すぎるため、上位 ${Math.max(appliedLimit - 1, 0)} 件のみを出力した。`,
-        rationale: "件数上限に達したため、低優先度の issue は出力から省略された。重大度の高い issue を優先して表示している。",
-        suggestion: "--limit を増やすか、対象を分割して再監査する。",
+        rationale: "出力フィルタ適用後も件数上限に達したため、低優先度の issue は出力から省略された。重大度の高い issue を優先して表示している。",
+        suggestion: "--min-severity または --suppress-category で絞り込むか、--limit を増やすか、対象を分割して再監査する。",
         metadata: {
             applied_limit: appliedLimit,
             omitted_issue_count: omittedIssueCount,
+            filtered_issue_count: filteredIssueCount,
             original_issue_count: report.results.length,
         },
     };
@@ -45,21 +59,26 @@ function buildOverflowIssue(report, appliedLimit, omittedIssueCount) {
 export function limitAuditReport(report, options = {}) {
     const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
     const maxQueryItemsPerResult = options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
-    const limitedQueryResults = report.query_results.map((queryResult) => ({
-        ...queryResult,
-        items: queryResult.items.slice(0, maxQueryItemsPerResult),
-    }));
-    if (report.results.length <= maxIssues) {
+    const filteredIssues = filterIssues(report.results, options);
+    const limitedQueryResults = includesQueryResults(options)
+        ? report.query_results.map((queryResult) => ({
+            ...queryResult,
+            items: queryResult.items.slice(0, maxQueryItemsPerResult),
+        }))
+        : [];
+    if (filteredIssues.length <= maxIssues) {
         return {
             ...report,
+            summary: summarizeIssues(filteredIssues),
+            results: filteredIssues,
             query_results: limitedQueryResults,
         };
     }
-    const sortedIssues = sortIssuesBySeverity(report.results);
+    const sortedIssues = sortIssuesBySeverity(filteredIssues);
     const visibleIssueCount = Math.max(maxIssues - 1, 0);
     const visibleIssues = sortedIssues.slice(0, visibleIssueCount);
     const omittedIssueCount = sortedIssues.length - visibleIssues.length;
-    const overflowIssue = buildOverflowIssue(report, maxIssues, omittedIssueCount);
+    const overflowIssue = buildOverflowIssue(report, maxIssues, omittedIssueCount, filteredIssues.length);
     const limitedIssues = maxIssues > 0
         ? [...visibleIssues, overflowIssue]
         : [overflowIssue];
@@ -281,11 +300,11 @@ export function formatAuditReportHtml(report, options = {}) {
       <h1>${escapeHtml(report.document_id)}</h1>
       <p>engine <code>${escapeHtml(report.engine_version)}</code></p>
       <div class="summary">
-        <div class="metric"><span>fatal</span><strong>${report.summary.fatal_count}</strong></div>
-        <div class="metric"><span>error</span><strong>${report.summary.error_count}</strong></div>
-        <div class="metric"><span>warning</span><strong>${report.summary.warning_count}</strong></div>
-        <div class="metric"><span>info</span><strong>${report.summary.info_count}</strong></div>
-        <div class="metric"><span>hint</span><strong>${report.summary.hint_count}</strong></div>
+        <div class="metric"><span>fatal</span><strong>${limitedReport.summary.fatal_count}</strong></div>
+        <div class="metric"><span>error</span><strong>${limitedReport.summary.error_count}</strong></div>
+        <div class="metric"><span>warning</span><strong>${limitedReport.summary.warning_count}</strong></div>
+        <div class="metric"><span>info</span><strong>${limitedReport.summary.info_count}</strong></div>
+        <div class="metric"><span>hint</span><strong>${limitedReport.summary.hint_count}</strong></div>
       </div>
     </section>
     <section class="card">

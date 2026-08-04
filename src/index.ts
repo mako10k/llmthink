@@ -57,6 +57,10 @@ export type {
   ResolvedValueSource,
   ResolvedEmbeddingConfig,
 } from "./config/runtime.js";
+export {
+  AUDIT_RESULT_CATEGORIES,
+  AUDIT_SEVERITIES,
+} from "./model/diagnostics.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
 export type {
