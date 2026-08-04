@@ -1,11 +1,13 @@
 {
   "name": "llmthink",
-  "version": "0.5.1",
-  "private": true,
+  "version": "0.5.2",
   "license": "MPL-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mako10k/llmthink.git"
+    "url": "git+https://github.com/mako10k/llmthink.git"
   },
   "homepage": "https://github.com/mako10k/llmthink",
   "bugs": {
@@ -27,9 +29,9 @@
     "schemas"
   ],
   "bin": {
-    "llmthink": "./dist/cli.js",
-    "llmthink-mcp": "./dist/mcp/server.js",
-    "llmthink-lsp": "./dist/lsp/server.js"
+    "llmthink": "dist/cli.js",
+    "llmthink-mcp": "dist/mcp/server.js",
+    "llmthink-lsp": "dist/lsp/server.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && node ./scripts/prepare-build-dir.mjs",

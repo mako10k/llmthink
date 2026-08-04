@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+## 0.5.2
+
 - 監査出力へ最低 severity と category 抑制を追加し、ノイズ除外後の件数に対して出力上限を適用
-- CLI の `--min-severity` / `--suppress-category` と MCP の対応する監査出力オプションを追加
+- CLI の `--min-severity` / `--suppress-category` / `--suppress-tag` と MCP の対応する監査出力オプションを追加
+- 100 件を超える監査ノイズがあっても、フィルタ後の出力が上限内なら成功する回帰テストを追加
+- preview 回帰テストのリポジトリ path 依存と DSLQL 行番 fixture の差異を修正
+- VSIX 用の standalone extension bundle を現行の LSP 解決順に同期
+- root package の public publish 設定と npm インストール導線を追加
 
 ## 0.5.1
 

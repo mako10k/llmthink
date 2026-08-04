@@ -5,6 +5,7 @@
 ## 対象
 
 - root package
+- npm package
 - MCP server
 - VSIX extension
 - Git tag
@@ -31,6 +32,7 @@
 3. npm run build
 4. npm run build:extension で bundled LSP の shebang 重複と Node syntax check も通ることを確認する
 5. npm run package:vsix
+6. npm pack --dry-run で公開対象ファイルを確認する
 
 ## 配布物
 
@@ -44,9 +46,12 @@
 2. release commit を main へ push する
 3. annotated tag を v<version> 形式で作成する
 4. tag を origin へ push する
+5. npm の認証主体を確認し、`npm publish --access public` で root package を公開する
+6. GitHub Release に changelog と VSIX を掲載する
 
 ## 公開後確認
 
 1. origin/main が release commit を指していることを確認する
 2. origin の tag 一覧に release tag が載っていることを確認する
-3. public repository の README と配布導線が崩れていないことを確認する
+3. npm registry の version と dist-tag が release version を指すことを確認する
+4. public repository の README と GitHub Release / npm / VSIX の配布導線が崩れていないことを確認する

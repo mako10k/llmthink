@@ -11,7 +11,7 @@ import { addThoughtReflection, deleteThought, relateThought, finalizeThought, li
 import { auditAndPersistThought } from "../thought/workflow.js";
 const server = new McpServer({
     name: "llmthink",
-    version: "0.5.1",
+    version: "0.5.2",
 });
 function auditOutputOptions(options) {
     return {

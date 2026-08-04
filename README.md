@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 0.5.1。
+現行 release version は 0.5.2。
 
 ## 構成
 
@@ -55,6 +55,8 @@
 
 ## 配布
 
+- npm package は `npm install -g llmthink` で CLI / MCP / LSP をインストールできる
+- library として利用する場合は `npm install llmthink` を使う
 - VS Code 拡張の配布物は vscode-extension/llmthink.vsix を生成して配布する
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
@@ -292,6 +294,7 @@ secret は次の形式で指定できます。
 - 0.4.3 は annotation / comparison の help 導線強化、LSP completion の文脈依存化、grammar spec 同期をまとめた patch release とする
 - 0.5.0 は multiline block text、long quoted lint と修正導線、block text highlight 修正をまとめた minor release とする
 - 0.5.1 は bundled LSP の起動回帰修正を含む patch release とする
+- 0.5.2 は後方互換な監査出力フィルタ、配布成果物の同期、npm への初回公開をまとめた patch release とする
 
 ## ライセンス
 
