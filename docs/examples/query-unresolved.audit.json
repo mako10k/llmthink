@@ -23,7 +23,7 @@
       "message": "query Q1 の参照 P2 を解決できない。",
       "rationale": "query 引数の参照先が文書内に存在しない。",
       "metadata": {
-        "line": 13,
+        "line": 15,
         "column": 32,
         "end_column": 34,
         "unresolved_ref": "P2"

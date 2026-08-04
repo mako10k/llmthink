@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { chromium } from "playwright";
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
 test("preview:html defaults to fit and keeps the outer map area stable on zoom", async () => {
-  const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-"));
   const outputPath = join(tempDir, "preview.html");
 
@@ -137,7 +139,6 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
 });
 
 test("preview:html keeps cards aligned, hides scrollbars, and applies control opacity", async () => {
-  const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-layout-"));
   const outputPath = join(tempDir, "preview.html");
 
@@ -267,7 +268,6 @@ test("preview:html keeps cards aligned, hides scrollbars, and applies control op
 });
 
 test("preview:html renders problem references as problem nodes instead of unresolved refs", async () => {
-  const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-problem-"));
   const outputPath = join(tempDir, "preview.html");
 
@@ -322,7 +322,6 @@ test("preview:html renders problem references as problem nodes instead of unreso
 });
 
 test("preview:html renders comparison statements and comparison section", async () => {
-  const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-comparison-"));
   const inputPath = join(tempDir, "comparison.dsl");
   const outputPath = join(tempDir, "preview.html");
@@ -418,7 +417,6 @@ test("preview:html renders comparison statements and comparison section", async 
 });
 
 test("preview:html marks intentional orphan nodes with a weak visual class", async () => {
-  const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-orphan-"));
   const inputPath = join(tempDir, "intentional-orphan.dsl");
   const outputPath = join(tempDir, "preview.html");
@@ -474,7 +472,6 @@ test("preview:html marks intentional orphan nodes with a weak visual class", asy
 });
 
 test("preview:html highlights edge endpoints on hover and fits them on edge double click", async () => {
-  const repoRoot = resolve("/home/mako10k/llmthink");
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-edge-"));
   const inputPath = join(tempDir, "edge-fit.dsl");
   const outputPath = join(tempDir, "preview.html");
