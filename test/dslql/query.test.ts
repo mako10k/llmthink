@@ -369,6 +369,82 @@ test("document runtime mirrors the complete structural AST", () => {
   );
 });
 
+test("document runtime projects evidence resources as ordered anonymous values", () => {
+  const sha256 =
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  const document = parseDocument(`
+evidence EV1:
+  "Resource metadata is structural provenance"
+  resource:
+    file "docs/spec.md"
+  resource:
+    url "https://example.test/spec.pdf"
+    digest "sha256:${sha256}"
+    mime "application/pdf"
+    label "Published specification"
+`);
+  const runtime = createDocumentDslqlRuntime(document);
+
+  assert.deepEqual(
+    evaluateDslqlExpression(
+      '.document.steps[].statement | select(.role == "evidence") | .resources[]',
+      runtime,
+    ),
+    [
+      {
+        node_kind: "evidence_resource",
+        locator_kind: "file",
+        locator: "docs/spec.md",
+        digest: null,
+        mime: null,
+        label: null,
+        span: { line: 4, column: 3 },
+      },
+      {
+        node_kind: "evidence_resource",
+        locator_kind: "url",
+        locator: "https://example.test/spec.pdf",
+        digest: `sha256:${sha256}`,
+        mime: "application/pdf",
+        label: "Published specification",
+        span: { line: 6, column: 3 },
+      },
+    ],
+  );
+  assert.deepEqual(
+    createDocumentDeclarationIndex(document).declarations.map(({ id }) => id),
+    ["S-EV1", "EV1"],
+  );
+});
+
+test("evidence resource metadata does not expand semantic text", async () => {
+  const document = parseDocument(`
+evidence EV1:
+  "Canonical evidence text"
+  resource:
+    url "https://example.test/secret-metadata"
+    label "Resource-only label"
+`);
+  const batches: string[][] = [];
+
+  await evaluateSemanticDocumentDslqlExpression(
+    'similarity(@EV1, "query literal")',
+    document,
+    {
+      embedder: async (texts) => {
+        batches.push(texts);
+        return {
+          embeddings: texts.map(() => [1, 0]),
+          provider: "deterministic",
+          model: "resource-boundary",
+        };
+      },
+    },
+  );
+
+  assert.deepEqual(batches, [["Canonical evidence text", "query literal"]]);
+});
+
 test("document runtime preserves framework, annotations, and role-specific nodes", () => {
   const source = `
 framework Review:

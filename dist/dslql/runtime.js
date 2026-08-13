@@ -20,6 +20,19 @@ function normalizeAnnotation(annotation) {
         span: normalizeSpan(annotation.span),
     };
 }
+function normalizeEvidenceResource(resource) {
+    return {
+        node_kind: "evidence_resource",
+        locator_kind: resource.locator.kind,
+        locator: resource.locator.value,
+        digest: resource.digest
+            ? `${resource.digest.algorithm}:${resource.digest.value}`
+            : null,
+        mime: resource.mime?.value ?? null,
+        label: resource.label?.value ?? null,
+        span: normalizeSpan(resource.span),
+    };
+}
 function textStatementFields(statement) {
     return {
         text: statement.text,
@@ -36,9 +49,14 @@ function normalizeStatement(statement) {
     };
     switch (statement.role) {
         case "premise":
-        case "evidence":
         case "pending":
             return { ...common, ...textStatementFields(statement) };
+        case "evidence":
+            return {
+                ...common,
+                ...textStatementFields(statement),
+                resources: statement.resources.map(normalizeEvidenceResource),
+            };
         case "viewpoint":
             return { ...common, axis: statement.axis };
         case "partition":

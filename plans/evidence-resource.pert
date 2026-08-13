@@ -28,6 +28,7 @@ milestone RESOURCE_VALIDATION_IMPLEMENTED:
 
 milestone RESOURCE_PROJECTION_IMPLEMENTED:
   title "Resource values projected without semantic expansion"
+  state reached
 
 milestone RESOURCE_SURFACES_SYNCHRONIZED:
   title "Documentation and tooling surfaces synchronized"
@@ -81,7 +82,7 @@ task PROJECT_RESOURCE_VALUES RESOURCE_VALIDATION_IMPLEMENTED -> RESOURCE_PROJECT
     optimistic 0.5d
     most_likely 1d
     pessimistic 1.5d
-  status planned
+  status done
   priority 100
   requires:
     CODEX 1
@@ -151,3 +152,16 @@ work_event FINISH_VALIDATE_RESOURCE_STRUCTURE:
   task VALIDATE_RESOURCE_STRUCTURE
   kind finish
   occurred_at 2026-08-13T15:56:34+09:00
+
+work_event START_PROJECT_RESOURCE_VALUES:
+  model 1
+  task PROJECT_RESOURCE_VALUES
+  kind start
+  occurred_at 2026-08-13T15:57:16+09:00
+  planned_value 1d
+
+work_event FINISH_PROJECT_RESOURCE_VALUES:
+  model 1
+  task PROJECT_RESOURCE_VALUES
+  kind finish
+  occurred_at 2026-08-13T15:58:52+09:00
