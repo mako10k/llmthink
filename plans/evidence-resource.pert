@@ -16,6 +16,7 @@ milestone RESOURCE_DESIGN_REVIEWED:
 
 milestone RESOURCE_CONTRACT_CAPTURED:
   title "Resource grammar and regression contract captured"
+  state reached
 
 milestone RESOURCE_CORE_IMPLEMENTED:
   title "Resource AST parser and formatter implemented"
@@ -39,7 +40,7 @@ task CAPTURE_RESOURCE_CONTRACT RESOURCE_DESIGN_REVIEWED -> RESOURCE_CONTRACT_CAP
     optimistic 0.5d
     most_likely 1d
     pessimistic 1.5d
-  status planned
+  status done
   priority 100
   requires:
     CODEX 1
@@ -109,3 +110,16 @@ task ACCEPT_EVIDENCE_RESOURCES RESOURCE_SURFACES_SYNCHRONIZED -> EVIDENCE_RESOUR
   requires:
     CODEX 1
   source "D9"
+
+work_event START_CAPTURE_RESOURCE_CONTRACT:
+  model 1
+  task CAPTURE_RESOURCE_CONTRACT
+  kind start
+  occurred_at 2026-08-13T15:36:29+09:00
+  planned_value 1d
+
+work_event FINISH_CAPTURE_RESOURCE_CONTRACT:
+  model 1
+  task CAPTURE_RESOURCE_CONTRACT
+  kind finish
+  occurred_at 2026-08-13T15:41:29+09:00
