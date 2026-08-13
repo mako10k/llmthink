@@ -142,6 +142,194 @@ function parseAnnotations(lines, startIndex, expectedIndent) {
     }
     return { annotations, nextIndex: index };
 }
+const EVIDENCE_RESOURCE_FIELDS = [
+    "url",
+    "file",
+    "blob",
+    "digest",
+    "mime",
+    "label",
+];
+function isEvidenceResourceField(value) {
+    return EVIDENCE_RESOURCE_FIELDS.includes(value);
+}
+function parseEvidenceResourceField(rawLine, lineIndex) {
+    const line = rawLine.trim();
+    const match = /^([A-Za-z][A-Za-z0-9_-]*)\s+(".*")$/.exec(line);
+    if (!match) {
+        throw new ParseError("Invalid evidence resource field", lineIndex + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+    }
+    const name = match[1] ?? "";
+    if (!isEvidenceResourceField(name)) {
+        throw new ParseError(`Unknown evidence resource field '${name}'`, lineIndex + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+    }
+    return {
+        name,
+        value: stripQuotes(match[2] ?? ""),
+        span: span(lineIndex + 1, firstNonWhitespaceColumn(rawLine)),
+    };
+}
+function parseSha256(value, spanValue, kind) {
+    const match = /^sha256:([0-9a-fA-F]{64})$/.exec(value);
+    if (!match) {
+        throw new ParseError(`Evidence resource ${kind} must use sha256:<64 hex>`, spanValue.line, spanValue.column, spanValue.column + value.length);
+    }
+    return {
+        algorithm: "sha256",
+        value: (match[1] ?? "").toLowerCase(),
+        span: spanValue,
+    };
+}
+function validateEvidenceResourceUrl(value, spanValue) {
+    let parsed;
+    try {
+        parsed = new URL(value);
+    }
+    catch {
+        throw new ParseError("Evidence resource URL must be an absolute http or https URL", spanValue.line, spanValue.column, spanValue.column + value.length);
+    }
+    const scheme = parsed.protocol.replace(/:$/, "");
+    if (scheme !== "http" && scheme !== "https") {
+        throw new ParseError(`Unsupported evidence resource URL scheme '${scheme}'`, spanValue.line, spanValue.column, spanValue.column + value.length);
+    }
+}
+function validateEvidenceResourceHeader(rawHeader, startIndex, expectedIndent) {
+    const header = rawHeader.trim();
+    if (/^resource\s+/.test(header)) {
+        throw new ParseError("Evidence resources must use anonymous 'resource:' syntax", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+    }
+    if (header !== "resource:") {
+        throw new ParseError("Invalid evidence resource declaration", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+    }
+    if (currentIndent(rawHeader) !== expectedIndent) {
+        throw new ParseError("Invalid evidence resource indentation", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+    }
+}
+function collectEvidenceResourceFields(lines, startIndex, expectedIndent) {
+    const fields = new Map();
+    let index = startIndex + 1;
+    while (index < lines.length) {
+        const rawLine = lines[index] ?? "";
+        if (!rawLine.trim() || isCommentLine(rawLine)) {
+            index += 1;
+            continue;
+        }
+        const indent = currentIndent(rawLine);
+        if (indent <= expectedIndent)
+            break;
+        if (indent !== expectedIndent + 2) {
+            throw new ParseError("Invalid evidence resource field indentation", index + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+        }
+        const field = parseEvidenceResourceField(rawLine, index);
+        if (fields.has(field.name)) {
+            throw new ParseError(`Duplicate evidence resource field '${field.name}'`, index + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+        }
+        fields.set(field.name, field);
+        index += 1;
+    }
+    return { fields, nextIndex: index };
+}
+function requireEvidenceResourceLocatorField(fields, rawHeader, startIndex) {
+    const locatorFields = ["url", "file", "blob"]
+        .map((kind) => fields.get(kind))
+        .filter((field) => Boolean(field));
+    if (locatorFields.length === 0) {
+        throw new ParseError("Evidence resource locator is required", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+    }
+    if (locatorFields.length > 1) {
+        const field = locatorFields[1] ?? locatorFields[0];
+        throw new ParseError("Evidence resource must have exactly one locator", field.span.line, field.span.column, field.span.column + field.value.length);
+    }
+    return locatorFields[0];
+}
+function validateEvidenceResourceFile(field) {
+    if (!field.value) {
+        throw new ParseError("Evidence resource file path must not be empty", field.span.line, field.span.column, field.span.column);
+    }
+    if (field.value.includes("\0")) {
+        throw new ParseError("Evidence resource file path must not contain NUL", field.span.line, field.span.column, field.span.column + field.value.length);
+    }
+}
+function parseEvidenceResourceLocator(field) {
+    const kind = field.name;
+    if (kind === "url")
+        validateEvidenceResourceUrl(field.value, field.span);
+    if (kind === "file")
+        validateEvidenceResourceFile(field);
+    const value = kind === "blob"
+        ? `sha256:${parseSha256(field.value, field.span, "blob").value}`
+        : field.value;
+    return { kind, value, span: field.span };
+}
+function parseEvidenceResourceDigest(fields, locator) {
+    const field = fields.get("digest");
+    if (locator.kind === "blob" && field) {
+        throw new ParseError("Evidence resource blob locator cannot be combined with digest metadata", field.span.line, field.span.column, field.span.column + field.value.length);
+    }
+    return field ? parseSha256(field.value, field.span, "digest") : undefined;
+}
+function parseEvidenceResourceMime(fields) {
+    const field = fields.get("mime");
+    if (field &&
+        !/^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/.test(field.value)) {
+        throw new ParseError("Evidence resource MIME type must be type/subtype without parameters", field.span.line, field.span.column, field.span.column + field.value.length);
+    }
+    return field ? { value: field.value, span: field.span } : undefined;
+}
+function parseEvidenceResourceLabel(fields) {
+    const field = fields.get("label");
+    if (field && !field.value.trim()) {
+        throw new ParseError("Evidence resource label must not be empty", field.span.line, field.span.column, field.span.column);
+    }
+    return field ? { value: field.value, span: field.span } : undefined;
+}
+function parseEvidenceResource(lines, startIndex, expectedIndent) {
+    const rawHeader = lines[startIndex] ?? "";
+    validateEvidenceResourceHeader(rawHeader, startIndex, expectedIndent);
+    const { fields, nextIndex } = collectEvidenceResourceFields(lines, startIndex, expectedIndent);
+    const locator = parseEvidenceResourceLocator(requireEvidenceResourceLocatorField(fields, rawHeader, startIndex));
+    const digest = parseEvidenceResourceDigest(fields, locator);
+    const mime = parseEvidenceResourceMime(fields);
+    const label = parseEvidenceResourceLabel(fields);
+    return {
+        resource: {
+            locator,
+            ...(digest ? { digest } : {}),
+            ...(mime ? { mime } : {}),
+            ...(label ? { label } : {}),
+            span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+        },
+        nextIndex,
+    };
+}
+function parseEvidenceChildren(lines, startIndex, expectedIndent) {
+    const resources = [];
+    const annotations = [];
+    let index = startIndex;
+    while (index < lines.length) {
+        index = nextSignificantLineIndex(lines, index);
+        if (index >= lines.length)
+            break;
+        const rawLine = lines[index] ?? "";
+        if (currentIndent(rawLine) !== expectedIndent)
+            break;
+        const line = rawLine.trim();
+        if (line === "resource:" || line.startsWith("resource ")) {
+            const parsed = parseEvidenceResource(lines, index, expectedIndent);
+            resources.push(parsed.resource);
+            index = parsed.nextIndex;
+            continue;
+        }
+        if (line.startsWith("annotation ")) {
+            const parsed = parseAnnotations(lines, index, expectedIndent);
+            annotations.push(...parsed.annotations);
+            index = parsed.nextIndex;
+            continue;
+        }
+        break;
+    }
+    return { resources, annotations, nextIndex: index };
+}
 function parseDecisionHeader(header) {
     if (!header.startsWith("decision ") || !header.endsWith(":")) {
         return undefined;
@@ -493,7 +681,7 @@ function parseStatement(lines, lineIndex, line) {
         return parseTextStatement("premise", lines, lineIndex);
     }
     if (line.startsWith("evidence ")) {
-        return parseTextStatement("evidence", lines, lineIndex);
+        return parseEvidenceStatement(lines, lineIndex);
     }
     if (line.startsWith("pending ")) {
         return parseTextStatement("pending", lines, lineIndex);
@@ -526,6 +714,25 @@ function parseTextStatement(role, lines, startIndex) {
         id,
         text,
         textBody: body,
+        annotations,
+        span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+        nextIndex,
+    };
+}
+function parseEvidenceStatement(lines, startIndex) {
+    const rawHeader = lines[startIndex] ?? "";
+    const id = parseIdentifierAfterKeyword(rawHeader.trim(), "evidence");
+    if (!id) {
+        throw new ParseError("Invalid evidence declaration", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+    }
+    const { text, body, nextIndex: textNextIndex, } = parseIndentedTextBody(lines, startIndex, "evidence text is required");
+    const { resources, annotations, nextIndex } = parseEvidenceChildren(lines, textNextIndex, body.span.column - 1);
+    return {
+        role: "evidence",
+        id,
+        text,
+        textBody: body,
+        resources,
         annotations,
         span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
         nextIndex,

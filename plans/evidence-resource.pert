@@ -20,6 +20,7 @@ milestone RESOURCE_CONTRACT_CAPTURED:
 
 milestone RESOURCE_CORE_IMPLEMENTED:
   title "Resource AST parser and formatter implemented"
+  state reached
 
 milestone RESOURCE_VALIDATION_IMPLEMENTED:
   title "Deterministic structural resource validation implemented"
@@ -53,7 +54,7 @@ task IMPLEMENT_RESOURCE_CORE RESOURCE_CONTRACT_CAPTURED -> RESOURCE_CORE_IMPLEME
     optimistic 1d
     most_likely 2d
     pessimistic 3d
-  status planned
+  status done
   priority 100
   requires:
     CODEX 1
@@ -123,3 +124,16 @@ work_event FINISH_CAPTURE_RESOURCE_CONTRACT:
   task CAPTURE_RESOURCE_CONTRACT
   kind finish
   occurred_at 2026-08-13T15:41:29+09:00
+
+work_event START_IMPLEMENT_RESOURCE_CORE:
+  model 1
+  task IMPLEMENT_RESOURCE_CORE
+  kind start
+  occurred_at 2026-08-13T15:46:24+09:00
+  planned_value 2d
+
+work_event FINISH_IMPLEMENT_RESOURCE_CORE:
+  model 1
+  task IMPLEMENT_RESOURCE_CORE
+  kind finish
+  occurred_at 2026-08-13T15:52:39+09:00

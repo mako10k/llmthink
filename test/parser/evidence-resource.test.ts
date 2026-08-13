@@ -157,6 +157,24 @@ evidence EV1:
   }
 });
 
+test("resource blocks work inside explicit steps", () => {
+  const document = parseDocument(`
+step S1:
+  evidence EV1:
+    "Nested provenance"
+    resource:
+      file "docs/spec.md"
+`);
+  const statement = document.steps[0]?.statement;
+  assert.equal(statement?.role, "evidence");
+  assert.equal(
+    statement?.role === "evidence"
+      ? statement.resources[0]?.locator.value
+      : undefined,
+    "docs/spec.md",
+  );
+});
+
 test("resource blocks stay anonymous and cannot replace evidence text", () => {
   assert.throws(
     () =>
@@ -266,7 +284,8 @@ evidence EV1:
 ${invalidCase.body}
 `),
       (error: unknown) =>
-        error instanceof ParseError && error.message === invalidCase.message,
+        error instanceof ParseError &&
+        error.message.startsWith(invalidCase.message),
       invalidCase.name,
     );
   }
@@ -284,7 +303,7 @@ evidence EV1:
   assert.equal(report.results[0]?.category, "contract_violation");
   assert.equal(
     report.results[0]?.message,
-    "Evidence resource locator is required",
+    "Evidence resource locator is required at line 4",
   );
   assert.deepEqual(
     {

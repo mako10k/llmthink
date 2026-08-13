@@ -66,11 +66,34 @@ export interface PartitionStatement {
     members: PartitionMember[];
     span: SourceSpan;
 }
+export type EvidenceResourceLocatorKind = "url" | "file" | "blob";
+export interface EvidenceResourceLocator {
+    kind: EvidenceResourceLocatorKind;
+    value: string;
+    span: SourceSpan;
+}
+export interface EvidenceResourceDigest {
+    algorithm: "sha256";
+    value: string;
+    span: SourceSpan;
+}
+export interface EvidenceResourceMetadataValue {
+    value: string;
+    span: SourceSpan;
+}
+export interface EvidenceResource {
+    locator: EvidenceResourceLocator;
+    digest?: EvidenceResourceDigest;
+    mime?: EvidenceResourceMetadataValue;
+    label?: EvidenceResourceMetadataValue;
+    span: SourceSpan;
+}
 export interface EvidenceStatement {
     role: "evidence";
     id: string;
     text: string;
     textBody: TextBody;
+    resources: EvidenceResource[];
     annotations: Annotation[];
     span: SourceSpan;
 }

@@ -44,6 +44,26 @@ function formatQuotedStepBody(keyword, statement) {
         ...formatAnnotations(statement.annotations).map(indent),
     ];
 }
+function formatEvidenceResource(resource) {
+    const digestValue = resource.digest
+        ? `${resource.digest.algorithm}:${resource.digest.value}`
+        : undefined;
+    return [
+        "resource:",
+        indent(`${resource.locator.kind} ${quote(resource.locator.value)}`),
+        ...(digestValue ? [indent(`digest ${quote(digestValue)}`)] : []),
+        ...(resource.mime ? [indent(`mime ${quote(resource.mime.value)}`)] : []),
+        ...(resource.label ? [indent(`label ${quote(resource.label.value)}`)] : []),
+    ];
+}
+function formatEvidence(statement) {
+    return [
+        `evidence ${statement.id}:`,
+        ...formatTextBody(statement.text, statement.textBody).map(indent),
+        ...statement.resources.flatMap((resource) => formatEvidenceResource(resource).map(indent)),
+        ...formatAnnotations(statement.annotations).map(indent),
+    ];
+}
 function formatDecision(statement) {
     const basedOn = statement.basedOn.length > 0
         ? ` based_on ${statement.basedOn.join(", ")}`
@@ -69,7 +89,7 @@ function formatStepBody(step) {
         case "premise":
             return formatQuotedStepBody("premise", step.statement);
         case "evidence":
-            return formatQuotedStepBody("evidence", step.statement);
+            return formatEvidence(step.statement);
         case "pending":
             return formatQuotedStepBody("pending", step.statement);
         case "decision":

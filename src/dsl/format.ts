@@ -4,6 +4,7 @@ import type {
   DecisionStatement,
   DocumentAst,
   EvidenceStatement,
+  EvidenceResource,
   FrameworkDecl,
   PendingStatement,
   PremiseStatement,
@@ -66,12 +67,36 @@ function formatFramework(framework: FrameworkDecl): string {
 }
 
 function formatQuotedStepBody(
-  keyword: "premise" | "evidence" | "pending",
-  statement: PremiseStatement | EvidenceStatement | PendingStatement,
+  keyword: "premise" | "pending",
+  statement: PremiseStatement | PendingStatement,
 ): string[] {
   return [
     `${keyword} ${statement.id}:`,
     ...formatTextBody(statement.text, statement.textBody).map(indent),
+    ...formatAnnotations(statement.annotations).map(indent),
+  ];
+}
+
+function formatEvidenceResource(resource: EvidenceResource): string[] {
+  const digestValue = resource.digest
+    ? `${resource.digest.algorithm}:${resource.digest.value}`
+    : undefined;
+  return [
+    "resource:",
+    indent(`${resource.locator.kind} ${quote(resource.locator.value)}`),
+    ...(digestValue ? [indent(`digest ${quote(digestValue)}`)] : []),
+    ...(resource.mime ? [indent(`mime ${quote(resource.mime.value)}`)] : []),
+    ...(resource.label ? [indent(`label ${quote(resource.label.value)}`)] : []),
+  ];
+}
+
+function formatEvidence(statement: EvidenceStatement): string[] {
+  return [
+    `evidence ${statement.id}:`,
+    ...formatTextBody(statement.text, statement.textBody).map(indent),
+    ...statement.resources.flatMap((resource) =>
+      formatEvidenceResource(resource).map(indent),
+    ),
     ...formatAnnotations(statement.annotations).map(indent),
   ];
 }
@@ -105,7 +130,7 @@ function formatStepBody(step: StepDecl): string[] {
     case "premise":
       return formatQuotedStepBody("premise", step.statement);
     case "evidence":
-      return formatQuotedStepBody("evidence", step.statement);
+      return formatEvidence(step.statement);
     case "pending":
       return formatQuotedStepBody("pending", step.statement);
     case "decision":
