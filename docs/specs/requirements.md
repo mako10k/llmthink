@@ -150,7 +150,8 @@
 - Partition: ドメインを分割する分類集合
 - Complement: 既存分類の補集合として定義される集合
 - Premise: 前提として置く記述
-- Evidence: 判断の根拠
+- Evidence: 判断の根拠。必須本文に加えて、出典や取得先を表す匿名 resource を 0 個以上持てる
+- Evidence Resource: evidence を補足する provenance payload。url / file / blob の locator と任意 metadata を持つが、独立した判断根拠や宣言 ID ではない
 - Inference: 前提や根拠から導く推論
 - Decision: 現時点の判断
 - Pending: 未解決として明示された項目
@@ -313,6 +314,7 @@ Could:
 - partition
 - complement
 - evidence
+- evidence resource（URL、file path、blob identity、integrity digest、MIME type、label）
 - inference
 - decision
 - pending
@@ -670,6 +672,11 @@ step S3:
 step S4:
 	evidence EV1:
 		"A案の初期費用はB案より低い"
+		resource:
+			url "https://example.test/a-plan.pdf"
+			digest "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+			mime "application/pdf"
+			label "A案見積書"
 
 step S5:
 	decision D1 based_on EV1:
@@ -701,6 +708,9 @@ query Q1:
 - distinct な on-demand literal embedding は最悪時の生成数で予算検査し、キャッシュの温冷によってクエリの可否を変えない
 - semantic view は更新伝搬を必要とするため導入しない。将来の optimizer は式全体の distinct embedding 生成上限を証明できる場合に限り、定数伝搬や定数畳み込み後の semantic operand を許可できる
 - embedding provider が利用不能な場合、semantic query は lexical または全候補へ暗黙 fallback せず、query_result を空にして実行不能を info として報告する
+- evidence resource は匿名の 0..N structural value とし、locator は url / file / blob のいずれかちょうど 1 つ、digest / mime / label は任意 metadata とする
+- resource の mandatory validation は I/O を行わない。到達性、file existence、content digest、MIME sniff は明示的 resolver capability へ分離し、相対 file path に source document base がない場合も process.cwd へ暗黙 fallback しない
+- resource は `based_on`、宣言 ID namespace、`@ID`、semantic operand の対象にせず、DSLQL では evidence の `.resources[]` から lossless に取得する
 
 ### 18.2 このサンプルが示すこと
 

@@ -82,6 +82,11 @@ const HELP_NODES = [
                 summary: "explicit step、step:、flatten 記法",
             },
             {
+                key: "syntax.evidence-resource",
+                label: "evidence-resource",
+                summary: "evidence に付ける匿名 URL / file / blob provenance",
+            },
+            {
                 key: "syntax.decision",
                 label: "decision",
                 summary: "based_on を含む decision 文法",
@@ -163,6 +168,33 @@ const HELP_NODES = [
         ],
         exampleSamples: ["decision-minimal"],
         related: ["syntax.decision", "query"],
+    },
+    {
+        key: "syntax.evidence-resource",
+        title: "Evidence Resource Syntax",
+        summary: "evidence 本文を補足する匿名 resource と、その locator / metadata 契約。",
+        quick: [
+            "evidence の必須 text の後に `resource:` block を 0 個以上置ける。",
+            "各 resource は url / file / blob の locator をちょうど 1 つ持つ。",
+            "digest / mime / label は任意で各 1 回まで。resource に ID は付けない。",
+        ],
+        detail: [
+            "url は absolute HTTP/HTTPS、blob と digest は sha256:<64 hex>、mime は parameter なしの type/subtype、label は空でない文字列に限る。",
+            "blob と digest は identity authority が重複するため併記できない。formatter は locator、digest、mime、label の順へ正規化する。",
+            "通常の parse / audit は構造だけを検査し、URL fetch、file read、digest verification、MIME sniff を実行しない。相対 file path の暗黙 process.cwd 解決も行わない。",
+            "resource は anonymous structural value で、宣言 ID、based_on、@ID、definition / rename、semantic operand の対象ではない。DSLQL では evidence の .resources[] から lossless に読める。",
+        ],
+        examples: [
+            "evidence EV1:",
+            '  "公開仕様が判断を裏付ける"',
+            "  resource:",
+            '    url "https://example.test/specification.pdf"',
+            '    digest "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"',
+            '    mime "application/pdf"',
+            '    label "公開仕様"',
+        ],
+        exampleSamples: ["evidence-resource"],
+        related: ["syntax.step", "query.roots", "samples.evidence-resource"],
     },
     {
         key: "syntax.annotations",
@@ -333,19 +365,22 @@ const HELP_NODES = [
         quick: [
             "`.document.problems[]` は problem stream。",
             "`.document.steps[]` は step stream、`.document.steps[].statement` は statement stream。",
+            "evidence の `.resources[]` は匿名 provenance value の stream。",
             "`.audit` は latest audit result、`.search[]` は thought search result stream。",
         ],
         detail: [
             "step の `id` と statement の `id` は別階層で、statement は `role` と role 固有 field を持つ。",
+            "evidence resource は locator_kind / locator / digest / mime / label / span を持つが、宣言 ID は持たない。",
             "problem から decision を辿るときは `.document.problems[]` を始点にする。",
             "監査結果の集計は `.audit` を始点にする。",
         ],
         examples: [
             ".document.problems[] | select(.id == @P1) | related_decisions()",
             '.document.steps[].statement | select(.role == "decision")',
+            '.document.steps[].statement | select(.role == "evidence") | .resources[]',
             '.audit | audit_findings("warning")',
         ],
-        exampleSamples: ["query-assist"],
+        exampleSamples: ["query-assist", "evidence-resource"],
         related: ["query.functions", "query.examples"],
     },
     {
@@ -1068,7 +1103,7 @@ const PARSE_ERROR_HELP_RULES = [
             "evidence text is required",
         ]),
         help: {
-            rationale: "evidence は 'evidence Id:' の次に quoted text または block text を持つ。",
+            rationale: "evidence は 'evidence Id:' の次に必須の quoted text または block text を持ち、その後に任意の resource / annotation を置ける。",
             expectedSyntax: [
                 "step S1:",
                 "  evidence EV1:",
@@ -1076,6 +1111,26 @@ const PARSE_ERROR_HELP_RULES = [
                 "  evidence EV2:",
                 "    |",
                 "      複数行の観測",
+            ].join("\n"),
+        },
+    },
+    {
+        matches: (message) => startsWithAny(message, [
+            "Invalid evidence resource",
+            "Evidence resource",
+            "Unsupported evidence resource",
+            "Unknown evidence resource",
+            "Duplicate evidence resource",
+        ]),
+        help: {
+            rationale: "resource は匿名 block とし、url / file / blob の locator をちょうど 1 つ、任意の digest / mime / label を各 1 回まで持つ。",
+            expectedSyntax: [
+                "evidence EV1:",
+                '  "観測事実"',
+                "  resource:",
+                '    url "https://example.test/source.pdf"',
+                '    mime "application/pdf"',
+                '    label "出典"',
             ].join("\n"),
         },
     },

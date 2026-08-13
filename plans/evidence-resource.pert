@@ -95,7 +95,7 @@ task SYNCHRONIZE_RESOURCE_SURFACES RESOURCE_PROJECTION_IMPLEMENTED -> RESOURCE_S
     optimistic 1d
     most_likely 2d
     pessimistic 3d
-  status planned
+  status done
   priority 100
   requires:
     CODEX 1
@@ -165,3 +165,16 @@ work_event FINISH_PROJECT_RESOURCE_VALUES:
   task PROJECT_RESOURCE_VALUES
   kind finish
   occurred_at 2026-08-13T15:58:52+09:00
+
+work_event START_SYNCHRONIZE_RESOURCE_SURFACES:
+  model 1
+  task SYNCHRONIZE_RESOURCE_SURFACES
+  kind start
+  occurred_at 2026-08-13T15:59:20+09:00
+  planned_value 2d
+
+work_event FINISH_SYNCHRONIZE_RESOURCE_SURFACES:
+  model 1
+  task SYNCHRONIZE_RESOURCE_SURFACES
+  kind finish
+  occurred_at 2026-08-13T16:09:07+09:00

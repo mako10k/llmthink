@@ -273,6 +273,25 @@ secret は次の形式で指定できます。
 
 ## DSLQL query result と埋め込みの扱い
 
+evidence は必須本文に加えて、出典や取得先を表す匿名 `resource:` block を 0 個以上持てます。
+
+```dsl
+evidence EV1:
+  "公開仕様が設計判断を裏付ける"
+  resource:
+    url "https://example.test/specification.pdf"
+    digest "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    mime "application/pdf"
+    label "公開仕様"
+```
+
+- locator は `url` / `file` / `blob` のいずれかちょうど 1 つ。`digest` / `mime` / `label` は任意
+- 通常の parse / audit は構造だけを検査し、URL fetch、file read、digest verification、MIME sniff を実行しない
+- resource は匿名 value で、宣言 ID、`based_on`、`@ID`、semantic operand にはしない
+- DSLQL では evidence の `.resources[]` から `locator_kind`、`locator`、`digest`、`mime`、`label`、`span` を取得できる
+- named/shared resource、resource-only evidence、sha256 以外の digest、resource の自動取得・抽出・embedding は未導入
+- 完全な例は [docs/examples/evidence-resource.dsl](docs/examples/evidence-resource.dsl) を参照する
+
 - query block の評価結果は `query_results[].values` に順序どおり格納し、boolean、string、object、semantic match を decision 候補へ暗黙変換しない
 - query expression 自体や参照先本文を補助 embedding せず、固定 score、lexical fallback、暗黙再順位付けを行わない。順位が必要な場合だけ `nearest_to()` を式に明示する
 - raw report は lossless で、presentation 上限を適用したコピーだけが `total_value_count` と `truncated: true` で省略を明示する

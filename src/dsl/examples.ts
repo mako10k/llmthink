@@ -45,6 +45,11 @@ const DSL_EXAMPLES: DslExampleEntry[] = [
     summary: "decision と based_on の最小例",
   },
   {
+    id: "evidence-resource",
+    path: "docs/examples/evidence-resource.dsl",
+    summary: "evidence に複数の匿名 resource を付ける代表例",
+  },
+  {
     id: "contradiction-pending",
     path: "docs/examples/contradiction-pending.dsl",
     summary: "decision と pending が同居する監査例",

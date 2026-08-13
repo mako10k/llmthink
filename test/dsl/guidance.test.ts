@@ -115,6 +115,19 @@ test("getDslSyntaxGuidanceText exposes dedicated annotation guidance", () => {
   assert.match(text, /intentional orphan/);
 });
 
+test("getDslSyntaxGuidanceText exposes evidence resource boundaries", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "syntax",
+    subtopic: "evidence-resource",
+    detail: "detail",
+  });
+  assert.match(text, /Topic: syntax\.evidence-resource/);
+  assert.match(text, /url \/ file \/ blob/);
+  assert.match(text, /URL fetch/);
+  assert.match(text, /semantic operand/);
+  assert.match(text, /evidence-resource/);
+});
+
 test("getDslSyntaxGuidanceText lists use-case profiles for ideation and problem solving", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "usecases",

@@ -2,6 +2,7 @@ import ELK from "elkjs/lib/elk.bundled.js";
 import type {
   Annotation,
   DocumentAst,
+  EvidenceResource,
   FrameworkRule,
   ProblemDecl,
   StepDecl,
@@ -184,6 +185,16 @@ function formatStatementSummary(statement: StepStatement): string {
   }
 }
 
+function formatEvidenceResource(resource: EvidenceResource): string {
+  const metadata = [
+    resource.digest ? `digest sha256:${resource.digest.value}` : undefined,
+    resource.mime ? `mime ${resource.mime.value}` : undefined,
+  ].filter((value): value is string => Boolean(value));
+  const prefix = resource.label ? `${resource.label.value} · ` : "";
+  const suffix = metadata.length > 0 ? ` · ${metadata.join(" · ")}` : "";
+  return `${prefix}${resource.locator.kind} ${resource.locator.value}${suffix}`;
+}
+
 function formatStep(step: StepDecl, annotationLabel: string): string[] {
   const statement = step.statement;
   const header = `### ${step.id} · ${statement.role} ${statement.id}`;
@@ -197,6 +208,14 @@ function formatStep(step: StepDecl, annotationLabel: string): string[] {
     lines.push(`- scope: ${statement.problemId} / ${statement.viewpointId}`);
     lines.push(
       `- relation: ${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId}`,
+    );
+  }
+
+  if (statement.role === "evidence") {
+    lines.push(
+      ...statement.resources.map(
+        (resource) => `- resource: ${formatEvidenceResource(resource)}`,
+      ),
     );
   }
 

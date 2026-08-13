@@ -31,6 +31,25 @@
     ],
     "description": "decision stream を embedding 類似度で順位付けする DSLQL query",
   },
+  "DSLQL Evidence Resources": {
+    "scope": "llmthink",
+    "prefix": "dslql-resources",
+    "body": [
+      ".document.steps[].statement | select(.role == \"evidence\") | .resources[]",
+    ],
+    "description": "evidence の匿名 resource stream を取得する DSLQL query",
+  },
+  "LLMThink Evidence Resource": {
+    "scope": "llmthink",
+    "prefix": "dsl-resource",
+    "body": [
+      "resource:",
+      "  ${1|url,file,blob|} \"${2:locator}\"",
+      "  mime \"${3:application/octet-stream}\"",
+      "  label \"${4:evidence resource}\"",
+    ],
+    "description": "evidence に匿名 resource block を挿入する",
+  },
   "LLMThink Comment Line": {
     "scope": "llmthink",
     "prefix": "dsl-comment",

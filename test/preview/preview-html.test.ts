@@ -67,6 +67,23 @@ async function readDiagramMetrics(page: Page) {
   });
 }
 
+test("preview:html renders evidence resource provenance", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-resource-"));
+  const outputPath = join(tempDir, "preview.html");
+
+  try {
+    renderPreview("docs/examples/evidence-resource.dsl", outputPath);
+    const html = readFileSync(outputPath, "utf8");
+    assert.match(html, /公開仕様/);
+    assert.match(html, /https:\/\/example\.test\/specification\.pdf/);
+    assert.match(html, /sha256:0123456789abcdef/);
+    assert.match(html, /ローカル検証記録/);
+    assert.match(html, /evidence\/verification\.txt/);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("preview:html defaults to fit and keeps the outer map area stable on zoom", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-"));
   const outputPath = join(tempDir, "preview.html");

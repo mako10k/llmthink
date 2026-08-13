@@ -260,13 +260,14 @@ document
 
 statement の role 固有 field は次のとおり。
 
-| `role`                           | field                                                                                                                 |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `premise`, `evidence`, `pending` | `text`, `text_body`, `annotations`                                                                                    |
-| `viewpoint`                      | `axis`                                                                                                                |
-| `partition`                      | `domain_id`, `axis`, `members: {name, predicate}[]`                                                                   |
-| `decision`                       | `text`, `text_body`, `annotations`, `based_on`                                                                        |
-| `comparison`                     | `text`, `text_body`, `annotations`, `problem_id`, `viewpoint_id`, `relation`, `left_decision_id`, `right_decision_id` |
+| `role`               | field                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `premise`, `pending` | `text`, `text_body`, `annotations`                                                                                    |
+| `evidence`           | `text`, `text_body`, `resources`, `annotations`                                                                       |
+| `viewpoint`          | `axis`                                                                                                                |
+| `partition`          | `domain_id`, `axis`, `members: {name, predicate}[]`                                                                   |
+| `decision`           | `text`, `text_body`, `annotations`, `based_on`                                                                        |
+| `comparison`         | `text`, `text_body`, `annotations`, `problem_id`, `viewpoint_id`, `relation`, `left_decision_id`, `right_decision_id` |
 
 - `textBody` → `text_body`
 - `descriptionBody` → `description_body`
@@ -282,6 +283,8 @@ statement の role 固有 field は次のとおり。
 - `rightDecisionId` → `right_decision_id`
 - `expressionSpan` → `expression_span`
 - step syntax の `stepId` → `step_id`
+
+`evidence.resources[]` は source 順の匿名 object value であり、各要素は `node_kind: "evidence_resource"`、`locator_kind`、`locator`、`digest`、`mime`、`label`、`span` を持つ。省略可能 metadata は `null` に正規化する。resource は宣言ではないため `@ID` では参照できず、その locator や metadata を semantic operand の暗黙本文にも含めない。
 
 step は `id`、`syntax`、`span`、`statement` を保持する。statement を flat にした別名 collection は作らない。
 

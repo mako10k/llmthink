@@ -314,6 +314,10 @@ evidence EV1:
     },
     { line: 4, column: 3 },
   );
+  assert.match(
+    String(report.results[0]?.metadata?.expected_syntax),
+    /resource:\n\s+url "https:\/\/example\.test\/source\.pdf"/,
+  );
 });
 
 test("validateEvidenceResource rejects malformed hand-built AST values", () => {

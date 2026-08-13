@@ -261,6 +261,28 @@
 
 - suppression は orphan finding にだけ効き、unresolved reference や decision_without_reference には効かない
 
+### Evidence resource structural validation
+
+対象:
+
+- evidence 配下の resource
+
+条件:
+
+- locator が url / file / blob のいずれかちょうど 1 つでない
+- field が未知または重複している
+- URL scheme、sha256 digest、MIME type、label、blob と digest の組合せが構造契約を満たさない
+
+結果:
+
+- parse error / fatal
+
+注記:
+
+- 通常 audit は URL fetch、file read、digest verification、MIME sniff を実行しない
+- resource の存在とは有効な locator が記述されていることであり、外部 resource の到達可能性ではない
+- resource は匿名 value で、宣言参照や orphan supporting node の独立対象にはしない
+
 ### R011 comparison_unresolved_reference
 
 対象:

@@ -100,7 +100,17 @@ const KEYWORD_DOCS: Record<string, string> = {
   viewpoint: "評価軸を表す step body です。",
   axis: "viewpoint や partition の軸名を示します。",
   partition: "MECE 分割候補を表す step body です。",
-  evidence: "根拠を表す step body です。",
+  evidence:
+    "根拠を表す step body です。必須本文の後に匿名 resource block を 0 個以上持てます。",
+  resource:
+    "evidence 本文を補足する匿名 provenance block です。url / file / blob の locator をちょうど 1 つ持ちます。",
+  url: "evidence resource の absolute HTTP/HTTPS locator です。",
+  file: "evidence resource の source に記録する file path locator です。通常 audit は file を読みません。",
+  blob: "evidence resource の sha256 content identity locator です。",
+  digest: "url / file resource に付ける任意の sha256 integrity digest です。",
+  mime: "evidence resource に付ける parameter なしの MIME metadata claim です。",
+  label:
+    "evidence resource に付ける空でない表示用 label です。identity には使いません。",
   decision: "判断を表す step body です。",
   comparison:
     "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
@@ -148,6 +158,13 @@ const DSLQL_IDENTIFIER_DOCS: Record<string, string> = {
   provider: "semantic match を生成した embedding provider です。",
   model: "semantic match を生成した embedding model です。",
   node_kind: "document AST node の構造種別 field です。",
+  resources:
+    "evidence が持つ source 順の匿名 resource 一覧です。各要素は宣言 ID を持ちません。",
+  locator_kind: "evidence resource locator の url / file / blob tag です。",
+  locator: "evidence resource の locator value です。",
+  digest: "evidence resource の sha256 integrity digest または null です。",
+  mime: "evidence resource の MIME metadata claim または null です。",
+  label: "evidence resource の表示用 label または null です。",
 };
 
 const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
@@ -184,6 +201,14 @@ const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
     detail: "DSLQL root",
     documentation: "step AST 配下の statement 一覧を stream として展開します。",
     insertText: ".document.steps[].statement",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".document.steps[].statement.resources[]",
+    detail: "DSLQL evidence resource stream",
+    documentation:
+      "evidence statement の匿名 resource 一覧を source 順に展開します。",
+    insertText: ".document.steps[].statement.resources[]",
     kind: CompletionItemKind.Field,
   },
   {
@@ -440,6 +465,23 @@ function previousSignificantLineText(
   return undefined;
 }
 
+function isInsideEvidenceBody(
+  document: TextDocument,
+  line: number,
+  childLine: string,
+): boolean {
+  const childIndent = /^\s*/.exec(childLine)?.[0].length ?? 0;
+  for (let currentLine = line - 1; currentLine >= 0; currentLine -= 1) {
+    const text = lineTextAt(document, currentLine);
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const indent = /^\s*/.exec(text)?.[0].length ?? 0;
+    if (indent >= childIndent) continue;
+    return /^evidence\s+[A-Za-z][A-Za-z0-9_-]*\s*:\s*$/.test(trimmed);
+  }
+  return false;
+}
+
 function buildKeywordCompletionItems(
   labels: readonly string[],
   detail: string,
@@ -462,6 +504,22 @@ function buildAnnotationHeaderCompletionItems() {
     documentation: KEYWORD_DOCS[label],
     insertText: `annotation ${label}:`,
   }));
+}
+
+function buildEvidenceResourceCompletionItem() {
+  return {
+    label: "resource",
+    kind: CompletionItemKind.Snippet,
+    detail: "evidence resource snippet",
+    documentation: KEYWORD_DOCS.resource,
+    insertText: [
+      "resource:",
+      '  ${1|url,file,blob|} "${2:locator}"',
+      '  mime "${3:application/octet-stream}"',
+      '  label "${4:evidence resource}"',
+    ].join("\n"),
+    insertTextFormat: InsertTextFormat.Snippet,
+  };
 }
 
 function contextualDslCompletions(document: TextDocument, position: Position) {
@@ -488,7 +546,23 @@ function contextualDslCompletions(document: TextDocument, position: Position) {
   if (!trimmedPrefix) {
     const previousLine = previousSignificantLineText(document, position.line);
     if (previousLine?.trim().startsWith('"')) {
-      return buildAnnotationHeaderCompletionItems();
+      const items = buildAnnotationHeaderCompletionItems();
+      if (isInsideEvidenceBody(document, position.line, previousLine)) {
+        items.unshift(buildEvidenceResourceCompletionItem());
+      }
+      return items;
+    }
+    if (
+      previousLine &&
+      /^(?:resource:|(?:url|file|blob|digest|mime|label)\s+")/.test(
+        previousLine.trim(),
+      )
+    ) {
+      return buildKeywordCompletionItems(
+        ["url", "file", "blob", "digest", "mime", "label"],
+        "evidence resource field",
+        { kind: CompletionItemKind.Field, insertTextSuffix: ' "' },
+      );
     }
   }
 

@@ -42,6 +42,13 @@
 - axis
 - partition
 - evidence
+- resource
+- url
+- file
+- blob
+- digest
+- mime
+- label
 - decision
 - comparison
 - based_on
@@ -141,7 +148,10 @@ PredicateExpr   = Identifier | "not" Identifier | Identifier { ("and" | "or") Id
 ### 5.8 evidence 宣言
 
 ```ebnf
-EvidenceDecl    = "evidence" Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
+EvidenceDecl    = "evidence" Identifier ":" Newline Indent TextBody { ResourceDecl | AnnotationDecl } Dedent ;
+ResourceDecl    = "resource" ":" Newline Indent ResourceLocator { ResourceMetadata } Dedent ;
+ResourceLocator = ("url" | "file" | "blob") String Newline ;
+ResourceMetadata = ("digest" | "mime" | "label") String Newline ;
 ```
 
 ### 5.9 decision 宣言
@@ -207,6 +217,12 @@ DSLQL の評価意味論、組み込み関数、semantic operand、遅延 embedd
 - step 本文は 1 要素のみを持つ
 - `step:` のように Identifier を省略した場合、parser は内部 Step ID を statement ID から合成して補う
 - top-level に StepBody を直接置いた場合も implicit step として扱い、内部 Step ID を statement ID から合成して補う
+- evidence text は resource の有無にかかわらず必須で、resource は evidence 本文の後に匿名 block として 0 個以上置ける
+- resource は url / file / blob の locator をちょうど 1 つ持ち、digest / mime / label はそれぞれ 0 または 1 個だけ持つ
+- url は absolute HTTP/HTTPS、blob と digest は `sha256:<64 hex>`、mime は parameter なしの `type/subtype`、label は空でない文字列とする
+- blob と digest の併記、resource field の重複、未知 field、named resource を拒否する
+- parser と通常 audit の resource 検査は I/O を行わず、URL 到達性、file existence、content digest、MIME sniff は検査しない
+- resource は匿名 structural value であり、宣言 ID namespace、`@ID`、`based_on`、semantic operand の対象にしない
 
 ---
 

@@ -25,7 +25,11 @@
       "patterns": [
         {
           "name": "keyword.control.llmthink",
-          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|decision|comparison|relation|based_on|pending|query|requires|forbids|warns)\\b"
+          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|query|requires|forbids|warns)\\b"
+        },
+        {
+          "name": "support.type.property-name.resource.llmthink",
+          "match": "\\b(url|file|blob|digest|mime|label)\\b(?=\\s+\")"
         },
         {
           "name": "keyword.operator.relation.llmthink",
