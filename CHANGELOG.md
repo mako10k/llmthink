@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0 - 2026-08-13
+
 - DSLQL を range 付き公開 AST、visitor / transformer / formatter、AST 直接評価を持つ v2 core へ再構成
 - 宣言参照を `@ID`、関数呼出しを `name()` と明示し、required / optional path と strict cardinality を分離
 - document runtime を source AST の一意な正規形へ改め、relation 関数を入力依存の graph traversal として実装
