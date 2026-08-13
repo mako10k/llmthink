@@ -77,6 +77,11 @@ export interface DslqlPipeExpression extends DslqlNodeBase {
 export type DslqlExpression = DslqlArrayExpression | DslqlBinaryExpression | DslqlCallExpression | DslqlLiteralExpression | DslqlObjectExpression | DslqlPathExpression | DslqlPipeExpression | DslqlReferenceExpression | DslqlUnaryExpression;
 export type DslqlAstNode = DslqlExpression | DslqlObjectField | DslqlPathSegment;
 export type DslqlVisitor = (node: DslqlAstNode, parent: DslqlAstNode | undefined) => void;
+export declare class DslqlAstValidationError extends TypeError {
+    readonly range?: DslqlSourceRange | undefined;
+    constructor(message: string, range?: DslqlSourceRange | undefined);
+}
+export declare function validateDslqlAst(expression: DslqlExpression): void;
 export declare function visitDslqlAst(expression: DslqlExpression, visitor: DslqlVisitor): void;
 export type DslqlTransformer = (node: DslqlAstNode) => DslqlAstNode | undefined;
 export declare function transformDslqlAst(expression: DslqlExpression, transformer: DslqlTransformer): DslqlExpression;

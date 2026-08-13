@@ -426,7 +426,7 @@ Could:
 - semantic_hint
 - query_result
 
-query_resultはqueryが与えられた場合にのみ生成される補助出力とする。
+query_resultはqueryが与えられた場合にのみ生成される補助出力とする。値は evaluator の順序付き出力を `values` に保持し、decision 候補への暗黙変換や再順位付けをしない。
 
 ---
 
@@ -569,6 +569,9 @@ MVPから外す。
 
 - 意味論的距離や関連性が、断定ではなく補足情報として返されること
 - queryが与えられた場合のみ、query_resultが返されること
+- query_result が scalar、array、object、semantic match を区別せず lossless な `values` として保持すること
+- raw report の `total_value_count` が `values.length` と一致し、`truncated` が false であること
+- presentation が値を省略する場合、監査原本を変更せず総数と truncation を明示すること
 
 ### 16.6 再読性
 
@@ -632,6 +635,7 @@ Must:
 Should:
 
 - `query_result` は hint として最低 severity の対象に含めること
+- query value の表示上限を適用する場合は `total_value_count` と `truncated` で省略を明示すること
 - フィルタ後も件数上限を超える場合は、従来どおり重大度順に制限し、`output_limit` を表示すること
 
 ---
@@ -690,6 +694,7 @@ query Q1:
 - Others の定義は記述されているが、ProductChoice の被覆確認が不十分なら mece_assessment かつ warning
 - PD1 が存在するため、「結論確定済み」と強く表示しない補足が info
 - Q1 が与えられていれば query_result が hint
+- query_result は evaluator の順序付き DSLQL 値を `values` に lossless に保持し、decision 候補への暗黙変換や補助 score での再順位付けを行わない
 - embedding は一級オブジェクトの不可視属性とし、path access、列挙、projection、serialization では取得できない
 - `similarity(left, right)` は 0..1 の数値、`similar_to(left, right, threshold)` は真偽値を返す。`nearest_to(@ID|string-literal[, threshold])` は元 node、score、provider、model を持つ match を類似度降順で返す
 - 文字列リテラルは semantic operand として semantic runtime preparation 時に embedding し、同一 preparation 内では同じ literal value を共通化する。process 間または query 間の永続 cache は公開契約に含めない。動的な文字列 path、`concat(...)`、その他の生成上限を証明できない式は拒否する

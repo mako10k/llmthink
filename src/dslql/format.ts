@@ -2,6 +2,7 @@ import {
   type DslqlBinaryExpression,
   type DslqlExpression,
   type DslqlPathSegment,
+  validateDslqlAst,
 } from "./ast.js";
 
 const IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -114,5 +115,6 @@ function formatPath(
 }
 
 export function formatDslqlExpression(expression: DslqlExpression): string {
+  validateDslqlAst(expression);
   return formatExpression(expression);
 }

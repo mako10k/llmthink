@@ -8,7 +8,7 @@ import {
 } from "../../src/presentation/report.ts";
 import type { AuditReport } from "../../src/model/diagnostics.ts";
 
-function buildReport(issueCount: number, queryItemCount = 0): AuditReport {
+function buildReport(issueCount: number, queryValueCount = 0): AuditReport {
   return {
     engine_version: "test-engine",
     document_id: "sample-doc",
@@ -30,15 +30,17 @@ function buildReport(issueCount: number, queryItemCount = 0): AuditReport {
       message: `Issue ${index + 1}`,
     })),
     query_results:
-      queryItemCount > 0
+      queryValueCount > 0
         ? [
             {
               query_id: "Q1",
               severity: "hint",
-              items: Array.from({ length: queryItemCount }, (_, index) => ({
-                ref_id: `R${index + 1}`,
+              values: Array.from({ length: queryValueCount }, (_, index) => ({
+                id: `R${index + 1}`,
                 score: index + 1,
               })),
+              total_value_count: queryValueCount,
+              truncated: false,
             },
           ]
         : [],
@@ -178,7 +180,7 @@ test("limitAuditReport can suppress query result output by category", () => {
   assert.equal(filtered.results.length, 1);
 });
 
-test("formatAuditReportText limits issues and query items by default", () => {
+test("formatAuditReportText limits query values explicitly by default", () => {
   const text = formatAuditReportText(buildReport(55, 25));
 
   assert.equal(text.includes("Issue 49"), true);
@@ -187,9 +189,28 @@ test("formatAuditReportText limits issues and query items by default", () => {
     text,
     /\[error\] output_limit: 監査結果が多すぎるため、上位 49 件のみを出力した。/,
   );
-  assert.equal(text.includes("R20 score=20"), true);
-  assert.equal(text.includes("R21 score=21"), false);
-  assert.match(text, /5 more query items omitted/);
+  assert.equal(text.includes('{"id":"R20","score":20}'), true);
+  assert.equal(text.includes('{"id":"R21","score":21}'), false);
+  assert.match(text, /5 more query values omitted/);
+
+  const original = buildReport(0, 25);
+  const limited = limitAuditReport(original);
+  assert.equal(original.query_results[0]?.values.length, 25);
+  assert.equal(original.query_results[0]?.truncated, false);
+  assert.equal(limited.query_results[0]?.values.length, 20);
+  assert.equal(limited.query_results[0]?.total_value_count, 25);
+  assert.equal(limited.query_results[0]?.truncated, true);
+});
+
+test("limitAuditReport preserves an upstream query truncation boundary", () => {
+  const report = buildReport(0, 2);
+  report.query_results[0]!.total_value_count = 5;
+
+  const limited = limitAuditReport(report, { maxQueryValuesPerResult: 20 });
+
+  assert.equal(limited.query_results[0]?.values.length, 2);
+  assert.equal(limited.query_results[0]?.total_value_count, 5);
+  assert.equal(limited.query_results[0]?.truncated, true);
 });
 
 test("formatAuditReportHtml limits issues by default", () => {
@@ -198,8 +219,8 @@ test("formatAuditReportHtml limits issues by default", () => {
   assert.equal(html.includes("Issue 49"), true);
   assert.equal(html.includes("Issue 50"), false);
   assert.match(html, /監査結果が多すぎるため、上位 49 件のみを出力した。/);
-  assert.match(html, /R20 \(20\)/);
-  assert.doesNotMatch(html, /R21 \(21\)/);
+  assert.match(html, /&quot;id&quot;:&quot;R20&quot;/);
+  assert.doesNotMatch(html, /&quot;id&quot;:&quot;R21&quot;/);
   assert.match(html, /5 more/);
 });
 

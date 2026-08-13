@@ -14,13 +14,30 @@
     {
       "query_id": "Q1",
       "severity": "hint",
-      "items": [
+      "values": [
         {
-          "ref_id": "D1",
-          "score": 1,
-          "explanation": ".document.problems[] | select(.id == @P1) | related_decisions() に関連する decision 候補。"
+          "node_kind": "statement",
+          "role": "decision",
+          "id": "D1",
+          "span": {
+            "line": 14,
+            "column": 3
+          },
+          "text": "ADR を先に確定する",
+          "text_body": {
+            "syntax": "quoted",
+            "span": {
+              "line": 15,
+              "column": 5
+            },
+            "line_count": 1
+          },
+          "annotations": [],
+          "based_on": ["P1", "EV1"]
         }
-      ]
+      ],
+      "total_value_count": 1,
+      "truncated": false
     }
   ]
 }

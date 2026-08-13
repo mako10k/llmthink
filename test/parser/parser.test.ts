@@ -1,7 +1,39 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatDslText, parseDocument } from "../../src/index.ts";
+import { formatDslText, ParseError, parseDocument } from "../../src/index.ts";
+
+test("parseDocument enforces one namespace across declaration kinds", () => {
+  assert.throws(
+    () =>
+      parseDocument(`
+framework Shared:
+
+domain Shared:
+  description "duplicate across kinds"
+`),
+    (error: unknown) =>
+      error instanceof ParseError &&
+      error.line === 4 &&
+      error.column === 8 &&
+      /Duplicate declaration ID 'Shared'.*framework.*domain/.test(
+        error.message,
+      ),
+  );
+
+  assert.throws(
+    () =>
+      parseDocument(`
+problem P1:
+  "step and statement IDs also share the namespace"
+
+step D1:
+  decision D1 based_on P1:
+    "duplicate within one step"
+`),
+    /Duplicate declaration ID 'D1'.*step.*statement/,
+  );
+});
 
 test("parseDocument ignores standalone comment lines", () => {
   const document = parseDocument(`

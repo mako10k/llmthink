@@ -34,7 +34,9 @@
     {
       "query_id": "Q1",
       "severity": "hint",
-      "items": []
+      "values": [],
+      "total_value_count": 0,
+      "truncated": false
     }
   ]
 }

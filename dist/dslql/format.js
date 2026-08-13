@@ -1,3 +1,4 @@
+import { validateDslqlAst, } from "./ast.js";
 const IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 function precedence(expression) {
     if (expression.kind === "pipe")
@@ -84,6 +85,7 @@ function formatPath(origin, segments) {
     return `${origin === "root" ? "$" : "."}${formatted.join("")}`;
 }
 export function formatDslqlExpression(expression) {
+    validateDslqlAst(expression);
     return formatExpression(expression);
 }
 //# sourceMappingURL=format.js.map

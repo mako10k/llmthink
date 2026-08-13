@@ -1,3 +1,5 @@
+import type { DslqlValue } from "../dslql/evaluator.js";
+
 export const AUDIT_RESULT_CATEGORIES = [
   "contradiction",
   "contradiction_candidate",
@@ -37,16 +39,12 @@ export interface AuditIssue {
   metadata?: Record<string, unknown>;
 }
 
-export interface QueryResultItem {
-  ref_id: string;
-  score?: number;
-  explanation?: string;
-}
-
 export interface QueryResult {
   query_id: string;
   severity: "hint";
-  items: QueryResultItem[];
+  values: DslqlValue[];
+  total_value_count: number;
+  truncated: boolean;
 }
 
 export interface AuditSummary {

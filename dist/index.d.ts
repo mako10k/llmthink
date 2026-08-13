@@ -14,5 +14,7 @@ export type { ConfigDomain, ResolveRuntimeConfigOptions, ResolvedRuntimeConfig, 
 export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
+export { collectDocumentDeclarations, createDocumentDeclarationIndex, DocumentDeclarationIndex, DOCUMENT_DECLARATION_KINDS, DuplicateDocumentDeclarationError, } from "./model/declarations.js";
+export type { DocumentDeclaration, DocumentDeclarationKind, DocumentDeclarationNode, } from "./model/declarations.js";
 export type { ThoughtStoreLocation, ThoughtReflection, ThoughtReflectionKind, ThoughtSemanticAuditInput, ThoughtSemanticAuditVerdict, ThoughtSnapshot, } from "./thought/store.js";
 export type { PersistedThoughtAudit, ThoughtIdSource, } from "./thought/workflow.js";

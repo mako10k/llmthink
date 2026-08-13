@@ -1,0 +1,204 @@
+project DSLQL_CONSISTENCY_REMEDIATION:
+  version 5
+  title "DSLQL consistency remediation"
+  description "Implement the accepted LLMThink remediation decisions D0-D5: one document declaration namespace, fail-closed public AST validation, lossless query values without implicit ranking, a canonical function registry, synchronized public surfaces, and end-to-end acceptance. Release, publication, remote writes, and unrelated Analyzer behavior remain outside this plan."
+  as_of 2026-08-13
+  duration_unit day
+  finish DSLQL_ACCEPTED
+
+resource CODEX:
+  title "DSLQL implementation capacity"
+  capacity 1
+
+milestone REVIEW_ACCEPTED:
+  title "Consistency review and LLMThink remediation accepted"
+  state reached
+
+milestone REGRESSIONS_CAPTURED:
+  title "Regression cases and breaking schema boundary captured"
+  state reached
+
+milestone DECLARATIONS_UNIFIED:
+  title "Document declaration identity unified"
+  state reached
+
+milestone AST_BOUNDARY_HARDENED:
+  title "Public AST boundary hardened"
+  state reached
+
+milestone QUERY_RESULTS_LOSSLESS:
+  title "Embedded query results made lossless"
+  state reached
+
+milestone FUNCTION_REGISTRY_CANONICAL:
+  title "DSLQL function registry canonical"
+  state reached
+
+milestone SURFACES_SYNCHRONIZED:
+  title "Documentation and tooling surfaces synchronized"
+  state reached
+
+milestone DSLQL_ACCEPTED:
+  title "DSLQL consistency remediation accepted"
+  state reached
+
+task CAPTURE_REGRESSIONS REVIEW_ACCEPTED -> REGRESSIONS_CAPTURED:
+  title "Capture review findings as executable regressions"
+  description "Add failing coverage for scalar and object query values, cross-kind duplicate IDs, domain ID resolution, generic semantic duplicate candidates, unsafe path indexes, non-finite literals, malformed ranges, duplicate object fields, and cyclic ASTs. Freeze QueryResult as ordered values plus explicit truncation metadata and document the breaking boundary."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "docs/process/dslql-consistency-remediation.dsl"
+
+task UNIFY_DECLARATION_INDEX REGRESSIONS_CAPTURED -> DECLARATIONS_UNIFIED:
+  title "Introduce one document declaration index"
+  description "Index framework, domain, problem, step, statement, and query declarations once; reject duplicate IDs during parsing; reuse the index for Analyzer references, relation runtime, semantic resolution, definitions, and hover; distinguish unresolved from non-text-bearing semantic targets; migrate the two duplicate examples."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "D2"
+
+task VALIDATE_PUBLIC_AST DECLARATIONS_UNIFIED -> AST_BOUNDARY_HARDENED:
+  title "Validate every public DSLQL AST boundary"
+  description "Expose validateDslqlAst; enforce node categories, operators, identifiers, unique object fields, finite numbers, safe non-negative indexes, coherent source ranges, and acyclic structure; validate parser, formatter, visitor, transformer input and output, evaluator, and semantic entry points."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "D3"
+
+task PRESERVE_QUERY_VALUES AST_BOUNDARY_HARDENED -> QUERY_RESULTS_LOSSLESS:
+  title "Preserve embedded query values without implicit ranking"
+  description "Replace decision-only query items with ordered DslqlValue values, remove implicit decision extraction, query-expression embeddings, lexical fallback, heuristic boosts, and query-time semantic reranking; keep ranking exclusive to explicit nearest_to and make any presentation truncation non-mutating and explicit."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "D1"
+
+task CANONICALIZE_FUNCTION_SPECS QUERY_RESULTS_LOSSLESS -> FUNCTION_REGISTRY_CANONICAL:
+  title "Canonicalize DSLQL function metadata"
+  description "Define one DSLQLFunctionSpec registry for name, category, arity, operands, result, semantic flag, and summary; derive evaluator checks, Help, LSP, VSIX, and MCP-facing guidance where practical; add coverage that every implementation and public surface matches the registry."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "D4"
+
+task SYNCHRONIZE_SURFACES FUNCTION_REGISTRY_CANONICAL -> SURFACES_SYNCHRONIZED:
+  title "Synchronize DSLQL documentation and generated surfaces"
+  description "Update the DSLQL specification, schema, README, changelog, examples, LSP hover wording for based_on_refs, VSIX help and snippets, MCP help, generated dist artifacts, and migration diagnostics for every breaking contract change."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "D4,D5"
+
+task ACCEPT_REMEDIATION SURFACES_SYNCHRONIZED -> DSLQL_ACCEPTED:
+  title "Accept consistency remediation end to end"
+  description "Run perttool plan validation and frontier checks, LLMThink audit, focused regressions, format, lint, typecheck, complete tests, build, examples, schema checks, VSIX packaging, package dry run, generated-artifact diff review, and repository status review; record exact results without pushing or releasing."
+  duration 1d
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "D5"
+
+work_event START_CAPTURE_REGRESSIONS:
+  model 1
+  task CAPTURE_REGRESSIONS
+  kind start
+  occurred_at 2026-08-13T12:32:06+09:00
+  planned_value 1d
+
+work_event FINISH_CAPTURE_REGRESSIONS:
+  model 1
+  task CAPTURE_REGRESSIONS
+  kind finish
+  occurred_at 2026-08-13T13:24:02+09:00
+
+work_event START_UNIFY_DECLARATION_INDEX:
+  model 1
+  task UNIFY_DECLARATION_INDEX
+  kind start
+  occurred_at 2026-08-13T13:24:03+09:00
+  planned_value 1d
+
+work_event FINISH_UNIFY_DECLARATION_INDEX:
+  model 1
+  task UNIFY_DECLARATION_INDEX
+  kind finish
+  occurred_at 2026-08-13T13:25:10+09:00
+
+work_event START_VALIDATE_PUBLIC_AST:
+  model 1
+  task VALIDATE_PUBLIC_AST
+  kind start
+  occurred_at 2026-08-13T13:25:11+09:00
+  planned_value 1d
+
+work_event FINISH_VALIDATE_PUBLIC_AST:
+  model 1
+  task VALIDATE_PUBLIC_AST
+  kind finish
+  occurred_at 2026-08-13T13:25:58+09:00
+
+work_event START_PRESERVE_QUERY_VALUES:
+  model 1
+  task PRESERVE_QUERY_VALUES
+  kind start
+  occurred_at 2026-08-13T13:25:59+09:00
+  planned_value 1d
+
+work_event FINISH_PRESERVE_QUERY_VALUES:
+  model 1
+  task PRESERVE_QUERY_VALUES
+  kind finish
+  occurred_at 2026-08-13T13:26:31+09:00
+
+work_event START_CANONICALIZE_FUNCTION_SPECS:
+  model 1
+  task CANONICALIZE_FUNCTION_SPECS
+  kind start
+  occurred_at 2026-08-13T13:26:32+09:00
+  planned_value 1d
+
+work_event FINISH_CANONICALIZE_FUNCTION_SPECS:
+  model 1
+  task CANONICALIZE_FUNCTION_SPECS
+  kind finish
+  occurred_at 2026-08-13T13:30:55+09:00
+
+work_event START_SYNCHRONIZE_SURFACES:
+  model 1
+  task SYNCHRONIZE_SURFACES
+  kind start
+  occurred_at 2026-08-13T13:30:56+09:00
+  planned_value 1d
+
+work_event FINISH_SYNCHRONIZE_SURFACES:
+  model 1
+  task SYNCHRONIZE_SURFACES
+  kind finish
+  occurred_at 2026-08-13T13:40:01+09:00
+
+work_event START_ACCEPT_REMEDIATION:
+  model 1
+  task ACCEPT_REMEDIATION
+  kind start
+  occurred_at 2026-08-13T13:40:33+09:00
+  planned_value 1d
+
+work_event FINISH_ACCEPT_REMEDIATION:
+  model 1
+  task ACCEPT_REMEDIATION
+  kind finish
+  occurred_at 2026-08-13T13:44:19+09:00

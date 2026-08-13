@@ -20,6 +20,10 @@ import {
   type TextBody,
   type ViewpointStatement,
 } from "../model/ast.js";
+import {
+  createDocumentDeclarationIndex,
+  DuplicateDocumentDeclarationError,
+} from "../model/declarations.js";
 
 const IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
@@ -325,6 +329,32 @@ export class ParseError extends Error {
   }
 }
 
+function validateDocumentDeclarationNamespace(
+  document: DocumentAst,
+  lines: readonly string[],
+): void {
+  try {
+    createDocumentDeclarationIndex(document);
+  } catch (error) {
+    if (!(error instanceof DuplicateDocumentDeclarationError)) throw error;
+    const duplicateLine = lines[error.duplicate.span.line - 1] ?? "";
+    const identifierOffset = duplicateLine.indexOf(
+      error.duplicate.id,
+      Math.max(error.duplicate.span.column - 1, 0),
+    );
+    const identifierColumn =
+      identifierOffset >= 0
+        ? identifierOffset + 1
+        : error.duplicate.span.column;
+    throw new ParseError(
+      error.message,
+      error.duplicate.span.line,
+      identifierColumn,
+      identifierColumn + error.duplicate.id.length,
+    );
+  }
+}
+
 export function parseDocument(input: string): DocumentAst {
   const lines = input.replace(/\r\n/g, "\n").split("\n");
   const document: DocumentAst = {
@@ -393,6 +423,8 @@ export function parseDocument(input: string): DocumentAst {
       rawLine.length + 1,
     );
   }
+
+  validateDocumentDeclarationNamespace(document, lines);
 
   return document;
 }

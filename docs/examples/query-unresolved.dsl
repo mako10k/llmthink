@@ -1,7 +1,7 @@
 framework QueryReference:
   requires problem
 
-domain QueryReference:
+domain QueryReferenceDomain:
   description "query の未解決参照を検証する"
 
 problem P1:

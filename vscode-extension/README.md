@@ -17,6 +17,8 @@ DSLQL 導入後は、query 行に対して LSP の completion と hover が入�
 - query 行では `.document.problems[]`、`.document.steps[].statement`、`select(...)`、`similarity(...)`、`similar_to(...)`、`nearest_to(...)`、`limit(...)` などの補完が出る
 - `query by problem`、`semantic decisions`、`audit warnings` などの snippet を使って基本 query をすぐ挿入できる
 - DSLQL の pipe、比較演算子、関数名、`true` / `false` / `null` を syntax highlight する
+- 関数補完、hover、syntax highlight の関数名は core の `DSLQL_FUNCTION_SPECS` と被覆検査される
+- query の監査結果は evaluator の順序付き `values` を保持し、順位付けは `nearest_to()` を明示した場合だけ行う
 
 ## 提供コマンド
 

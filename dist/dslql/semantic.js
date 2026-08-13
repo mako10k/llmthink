@@ -2,6 +2,7 @@ import { cosineSimilarity, embedTexts, } from "../semantic/embeddings.js";
 import { visitDslqlAst, } from "./ast.js";
 import { DslqlEvaluationError, evaluateDslqlExpression, } from "./evaluator.js";
 import { parseDslqlExpression } from "./parser.js";
+import { acceptsDslqlFunctionArity, assertDslqlFunctionImplementationCoverage, formatDslqlFunctionArity, getDslqlFunctionSpec, listDslqlFunctionSpecs, } from "./functions.js";
 import { createDocumentDslqlRuntime, } from "./runtime.js";
 export class DslqlSemanticError extends DslqlEvaluationError {
     constructor(message, range) {
@@ -15,7 +16,7 @@ export class DslqlSemanticUnavailableError extends DslqlSemanticError {
         this.name = "DslqlSemanticUnavailableError";
     }
 }
-const SEMANTIC_FUNCTIONS = new Set(["similarity", "similar_to", "nearest_to"]);
+const SEMANTIC_FUNCTIONS = new Set(listDslqlFunctionSpecs(["semantic"]).map((entry) => entry.name));
 export const DEFAULT_DSLQL_ON_DEMAND_EMBEDDING_LIMIT = 8;
 function asObject(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -81,6 +82,45 @@ function collectSemanticCandidates(root, selectText) {
     collect(root);
     return candidates;
 }
+function collectIdentifiedSemanticObjects(root) {
+    const visited = new WeakSet();
+    const byId = new Map();
+    const ambiguousIds = new Set();
+    function collect(value) {
+        if (Array.isArray(value)) {
+            value.forEach(collect);
+            return;
+        }
+        const object = asObject(value);
+        if (!object || visited.has(object))
+            return;
+        visited.add(object);
+        if (typeof object.id === "string") {
+            if (byId.has(object.id))
+                ambiguousIds.add(object.id);
+            else
+                byId.set(object.id, object);
+        }
+        Object.values(object).forEach(collect);
+    }
+    collect(root);
+    return { byId, ambiguousIds };
+}
+function validateSemanticReferenceTargets(targets, identified, candidateById) {
+    for (const target of targets) {
+        if (!target.referenceId)
+            continue;
+        if (identified.ambiguousIds.has(target.referenceId)) {
+            throw new DslqlSemanticError(`ambiguous semantic reference '${target.referenceId}' resolves to multiple objects`, target.range);
+        }
+        if (!identified.byId.has(target.referenceId)) {
+            throw new DslqlSemanticError(`unresolved semantic reference '${target.referenceId}'`, target.range);
+        }
+        if (!candidateById.has(target.referenceId)) {
+            throw new DslqlSemanticError(`semantic reference '${target.referenceId}' has no text-bearing node`, target.range);
+        }
+    }
+}
 function targetFromOperand(operand) {
     if (operand.kind === "reference") {
         return {
@@ -117,24 +157,19 @@ function validateThreshold(expression, index) {
     }
 }
 function validateSemanticCall(expression) {
+    const functionSpec = getDslqlFunctionSpec(expression.name);
+    if (!acceptsDslqlFunctionArity(functionSpec, expression.arguments.length)) {
+        throw new DslqlSemanticError(`${expression.name}() expects ${formatDslqlFunctionArity(functionSpec)} argument(s); received ${expression.arguments.length}`, expression.range);
+    }
     let operands;
     if (expression.name === "similarity") {
-        if (expression.arguments.length !== 2) {
-            throw new DslqlSemanticError(`similarity() expects 2 argument(s); received ${expression.arguments.length}`, expression.range);
-        }
         operands = expression.arguments;
     }
     else if (expression.name === "similar_to") {
-        if (expression.arguments.length !== 3) {
-            throw new DslqlSemanticError(`similar_to() expects 3 argument(s); received ${expression.arguments.length}`, expression.range);
-        }
         validateThreshold(expression, 2);
         operands = expression.arguments.slice(0, 2);
     }
     else {
-        if (expression.arguments.length < 1 || expression.arguments.length > 2) {
-            throw new DslqlSemanticError(`nearest_to() expects 1..2 argument(s); received ${expression.arguments.length}`, expression.range);
-        }
         validateThreshold(expression, 1);
         operands = expression.arguments.slice(0, 1);
         if (operands[0]?.kind === "path") {
@@ -337,17 +372,14 @@ export async function createSemanticDslqlRuntime(runtime, expression, options = 
         return runtime;
     validateOnDemandEmbeddingBudget(targets, options);
     const candidates = collectSemanticCandidates(runtime.root, options.selectText ?? semanticText);
+    const identified = collectIdentifiedSemanticObjects(runtime.root);
     const candidateById = new Map();
     for (const candidate of candidates) {
         const id = candidate.value.id;
         if (typeof id === "string")
             candidateById.set(id, candidate);
     }
-    for (const target of targets) {
-        if (target.referenceId && !candidateById.has(target.referenceId)) {
-            throw new DslqlSemanticError(`Semantic reference '${target.referenceId}' has no text-bearing node`, target.range);
-        }
-    }
+    validateSemanticReferenceTargets(targets, identified, candidateById);
     const texts = new Set();
     if (objectEmbeddingsNeeded) {
         candidates.forEach((candidate) => texts.add(candidate.text));
@@ -375,13 +407,17 @@ export async function createSemanticDslqlRuntime(runtime, expression, options = 
             : target.text;
         targetVectors.set(target.key, vectorByText.get(text));
     });
+    const semanticFunctions = {
+        similarity: createSimilarityFunction(vectorByValue, targetVectors),
+        similar_to: createSimilarToPredicateFunction(vectorByValue, targetVectors),
+        nearest_to: createNearestToFunction(vectorByValue, targetVectors, result.provider, result.model),
+    };
+    assertDslqlFunctionImplementationCoverage(["semantic"], Object.keys(semanticFunctions));
     return {
         ...runtime,
         functions: {
             ...runtime.functions,
-            similarity: createSimilarityFunction(vectorByValue, targetVectors),
-            similar_to: createSimilarToPredicateFunction(vectorByValue, targetVectors),
-            nearest_to: createNearestToFunction(vectorByValue, targetVectors, result.provider, result.model),
+            ...semanticFunctions,
         },
     };
 }

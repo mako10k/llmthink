@@ -20,13 +20,13 @@ import type {
   AuditSeverity,
   QueryResult,
 } from "../model/diagnostics.js";
+import { createDocumentDeclarationIndex } from "../model/declarations.js";
 import {
   createDslGuidanceReport,
   createParseErrorReport,
   isDslHelpRequest,
 } from "../dsl/guidance.js";
 import {
-  collectDslqlReferenceIds,
   collectDslqlReferences,
   createDocumentDslqlRuntime,
   createSemanticDocumentDslqlRuntime,
@@ -38,7 +38,6 @@ import {
   parseDslqlExpression,
   usesSemanticDslql,
   type DslqlSemanticEmbedder,
-  type DslqlObject,
   type DslqlRuntime,
   type DslqlValue,
 } from "../dslql/query.js";
@@ -133,11 +132,19 @@ function createIssue(
   issues.push({ issue_id: issueId(issues.length + 1), ...partial });
 }
 
-function collectDeclaredIds(document: DocumentAst): Set<string> {
-  const ids = new Set<string>();
-  for (const problem of document.problems) ids.add(problem.name);
-  for (const step of document.steps) ids.add(step.statement.id);
-  return ids;
+function collectBasedOnTargetIds(document: DocumentAst): Set<string> {
+  return new Set(
+    createDocumentDeclarationIndex(document)
+      .declarations.filter(
+        (declaration) =>
+          declaration.kind === "problem" || declaration.kind === "statement",
+      )
+      .map((declaration) => declaration.id),
+  );
+}
+
+function collectDslqlDeclaredIds(document: DocumentAst): Set<string> {
+  return new Set(createDocumentDeclarationIndex(document).byId.keys());
 }
 
 function hasIntentionalOrphanAnnotation(annotations: Annotation[]): boolean {
@@ -1186,27 +1193,21 @@ interface PreparedQueryRuntime {
   error?: DslqlSemanticError;
 }
 
-interface EvaluatedQuerySelection {
-  selection: QueryDecisionSelection;
+interface EvaluatedQueryValues {
+  values: DslqlValue[];
   error?: DslqlEvaluationError;
 }
 
-function evaluateQuerySelection(
+function evaluateQueryValues(
   expression: string,
   runtime: DslqlRuntime | undefined,
-): EvaluatedQuerySelection {
-  const empty = {
-    ids: new Set<string>(),
-    scores: new Map<string, SemanticDecisionScore>(),
-  };
-  if (!runtime) return { selection: empty };
+): EvaluatedQueryValues {
+  if (!runtime) return { values: [] };
   try {
-    return {
-      selection: collectDecisionSelectionFromQuery(expression, runtime),
-    };
+    return { values: evaluateDslqlExpression(expression, runtime) };
   } catch (error) {
     if (error instanceof DslqlEvaluationError) {
-      return { selection: empty, error };
+      return { values: [], error };
     }
     throw error;
   }
@@ -1237,8 +1238,6 @@ async function prepareQueryRuntime(
 async function buildQueryResults(
   issues: AuditIssue[],
   document: DocumentAst,
-  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
-  semanticContext: SemanticContext | undefined,
   options?: AuditOptions,
 ): Promise<QueryResult[]> {
   const baseRuntime = createDocumentDslqlRuntime(document);
@@ -1267,7 +1266,7 @@ async function buildQueryResults(
         },
       });
     }
-    const evaluated = evaluateQuerySelection(
+    const evaluated = evaluateQueryValues(
       query.expression,
       queryRuntime?.runtime,
     );
@@ -1287,41 +1286,11 @@ async function buildQueryResults(
     return {
       query_id: query.id,
       severity: "hint",
-      items: rankDecisionsForQuery(
-        query.expression,
-        queryIndex,
-        decisions,
-        semanticContext,
-        evaluated.selection,
-      ).map((item) => ({
-        ref_id: item.ref_id,
-        score: item.score,
-        explanation: item.explanation,
-      })),
+      values: evaluated.values,
+      total_value_count: evaluated.values.length,
+      truncated: false,
     };
   });
-}
-
-function buildQuerySemanticText(
-  document: DocumentAst,
-  queryExpression: string,
-): string {
-  const problemTexts = collectDslqlReferenceIds(queryExpression)
-    .map((problemId) =>
-      document.problems.find((candidate) => candidate.name === problemId),
-    )
-    .filter((problem): problem is DocumentAst["problems"][number] =>
-      Boolean(problem),
-    )
-    .map((problem) => problem.text);
-
-  const problemContext = problemTexts
-    .map((problemText) => `problem: ${problemText}`)
-    .join("\n");
-
-  return problemTexts.length === 0
-    ? queryExpression
-    : `${queryExpression}\n${problemContext}`;
 }
 
 async function auditDocument(
@@ -1330,15 +1299,16 @@ async function auditDocument(
   options?: AuditOptions,
 ): Promise<AuditReport> {
   const issues: AuditIssue[] = [];
-  const ids = collectDeclaredIds(document);
+  const basedOnTargetIds = collectBasedOnTargetIds(document);
+  const dslqlDeclaredIds = collectDslqlDeclaredIds(document);
   const directDecisionRefs = collectDirectDecisionRefs(document);
   const pendingSteps = findPending(document);
   const decisions = findDecisions(document);
   const comparisons = findComparisons(document);
 
   auditFrameworkRequirements(issues, document);
-  auditStepContracts(issues, document, ids);
-  auditQueryReferences(issues, document, ids);
+  auditStepContracts(issues, document, basedOnTargetIds);
+  auditQueryReferences(issues, document, dslqlDeclaredIds);
   addOrphanNodeIssues(issues, document, directDecisionRefs);
   addContradictionCandidateIssues(issues, decisions);
   addComparisonConsistencyIssues(issues, comparisons);
@@ -1346,22 +1316,10 @@ async function auditDocument(
   addStatusAnnotationIssues(issues, document, decisions, comparisons);
   addPendingHintIssue(issues, pendingSteps, decisions);
 
-  const semanticContext = await createSemanticContext(
-    decisions,
-    document.queries.map((query) =>
-      buildQuerySemanticText(document, query.expression),
-    ),
-    options,
-  );
+  const semanticContext = await createSemanticContext(decisions, options);
   addDecisionSemanticHint(issues, decisions, semanticContext);
 
-  const queryResults = await buildQueryResults(
-    issues,
-    document,
-    decisions,
-    semanticContext,
-    options,
-  );
+  const queryResults = await buildQueryResults(issues, document, options);
 
   return {
     engine_version: ENGINE_VERSION,
@@ -1375,14 +1333,12 @@ async function auditDocument(
 
 interface SemanticContext {
   decisionEmbeddings: number[][];
-  queryEmbeddings: number[][];
   provider: string;
   model: string;
 }
 
 async function createSemanticContext(
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
-  queries: string[],
   options?: AuditOptions,
 ): Promise<SemanticContext | undefined> {
   if (decisions.length === 0) {
@@ -1391,7 +1347,7 @@ async function createSemanticContext(
 
   try {
     const result = await embedTexts(
-      [...decisions.map((decision) => decision.statement.text), ...queries],
+      decisions.map((decision) => decision.statement.text),
       options?.embeddings,
     );
     if (!result) {
@@ -1400,7 +1356,6 @@ async function createSemanticContext(
 
     return {
       decisionEmbeddings: result.embeddings.slice(0, decisions.length),
-      queryEmbeddings: result.embeddings.slice(decisions.length),
       provider: result.provider,
       model: result.model,
     };
@@ -1414,121 +1369,6 @@ function roundScore(value: number): number {
     ? Math.max(0, Math.min(1, value))
     : 0;
   return Number(normalized.toFixed(4));
-}
-
-function rankDecisionsForQuery(
-  queryExpression: string,
-  queryIndex: number,
-  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
-  semanticContext: SemanticContext | undefined,
-  selection?: QueryDecisionSelection,
-): Array<{ ref_id: string; score: number; explanation: string }> {
-  const candidateDecisions = decisions.filter(
-    (decision) => !selection || selection.ids.has(decision.statement.id),
-  );
-
-  if (selection && selection.scores.size > 0) {
-    return candidateDecisions
-      .map((decision) => {
-        const semantic = selection.scores.get(decision.statement.id);
-        return {
-          ref_id: decision.statement.id,
-          score: semantic?.score ?? 0,
-          explanation: semantic
-            ? `${queryExpression} の nearest_to() 候補。 (${semantic.provider}/${semantic.model})`
-            : `${queryExpression} の nearest_to() 候補。`,
-        };
-      })
-      .sort((left, right) => right.score - left.score);
-  }
-
-  if (!semanticContext || !semanticContext.queryEmbeddings[queryIndex]) {
-    return candidateDecisions.map((decision, index) => ({
-      ref_id: decision.statement.id,
-      score: Math.max(0.5, 1 - index * 0.1),
-      explanation: `${queryExpression} に関連する decision 候補。`,
-    }));
-  }
-
-  return candidateDecisions
-    .map((decision) => {
-      const decisionIndex = decisions.findIndex(
-        (candidate) => candidate.statement.id === decision.statement.id,
-      );
-      const similarity = cosineSimilarity(
-        semanticContext.queryEmbeddings[queryIndex] ?? [],
-        semanticContext.decisionEmbeddings[decisionIndex] ?? [],
-      );
-      return {
-        ref_id: decision.statement.id,
-        score: roundScore(similarity),
-        explanation: `${queryExpression} に関連する decision 候補。 (${semanticContext.provider}/${semanticContext.model})`,
-      };
-    })
-    .sort((left, right) => right.score - left.score);
-}
-
-interface SemanticDecisionScore {
-  score: number;
-  provider: string;
-  model: string;
-}
-
-interface QueryDecisionSelection {
-  ids: Set<string>;
-  scores: Map<string, SemanticDecisionScore>;
-}
-
-function asDslqlObject(value: unknown): DslqlObject | undefined {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as DslqlObject)
-    : undefined;
-}
-
-function decisionCandidate(match: DslqlObject): DslqlObject | undefined {
-  const candidate = asDslqlObject(match.node) ?? match;
-  return candidate.role === "decision" && typeof candidate.id === "string"
-    ? candidate
-    : undefined;
-}
-
-function semanticDecisionScore(
-  match: DslqlObject,
-): SemanticDecisionScore | undefined {
-  return typeof match.score === "number" &&
-    typeof match.provider === "string" &&
-    typeof match.model === "string"
-    ? {
-        score: match.score,
-        provider: match.provider,
-        model: match.model,
-      }
-    : undefined;
-}
-
-function addDecisionSelection(
-  selection: QueryDecisionSelection,
-  value: DslqlValue,
-): void {
-  const match = asDslqlObject(value);
-  const candidate = match ? decisionCandidate(match) : undefined;
-  if (!match || !candidate || typeof candidate.id !== "string") return;
-  selection.ids.add(candidate.id);
-  const semantic = semanticDecisionScore(match);
-  if (semantic) selection.scores.set(candidate.id, semantic);
-}
-
-function collectDecisionSelectionFromQuery(
-  queryExpression: string,
-  runtime: DslqlRuntime,
-): QueryDecisionSelection {
-  const values = evaluateDslqlExpression(queryExpression, runtime);
-  const selection: QueryDecisionSelection = {
-    ids: new Set<string>(),
-    scores: new Map<string, SemanticDecisionScore>(),
-  };
-  values.forEach((value) => addDecisionSelection(selection, value));
-  return selection;
 }
 
 function auditPartition(

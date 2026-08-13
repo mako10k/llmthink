@@ -1,7 +1,7 @@
 framework StrictRequirements:
   requires problem and decision
 
-domain StrictRequirements:
+domain StrictRequirementsDomain:
   description "framework requires の and 条件を検証する"
 
 problem P1:

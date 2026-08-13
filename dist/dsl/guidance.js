@@ -1,6 +1,16 @@
 import { listDslExamples, resolveDslExamplePath } from "./examples.js";
+import { DSLQL_FUNCTION_SPECS, } from "../dslql/functions.js";
 const ENGINE_VERSION = "0.1.0";
 const HELP_HEADER = "LLMThink DSL Help";
+function dslqlFunctionSignature(name, operands) {
+    return `${name}(${operands.join(", ")})`;
+}
+function dslqlFunctionNames(category) {
+    return DSLQL_FUNCTION_SPECS.filter((entry) => entry.category === category)
+        .map((entry) => `${entry.name}()`)
+        .join("、");
+}
+const DSLQL_FUNCTION_DETAILS = DSLQL_FUNCTION_SPECS.map((entry) => `\`${dslqlFunctionSignature(entry.name, entry.operands)}\` -> ${entry.result}: ${entry.summary}`);
 const HELP_NODES = [
     {
         key: "overview",
@@ -381,15 +391,15 @@ const HELP_NODES = [
     {
         key: "query.functions",
         title: "Query Functions",
-        summary: "llmthink 固有の relation-aware function。",
+        summary: "DSLQL core、relation、context、semantic function の正規一覧。",
         quick: [
-            "`related_decisions()` は problem から decision を辿る。",
-            "`based_on_refs()` は decision の根拠 node を返す。",
-            "`similarity(a, b)` は類似度、`similar_to(a, b, threshold)` は判定を返す。",
-            "`nearest_to(@ID|string-literal[, threshold])` は候補を embedding 類似度で順位付けする。",
-            "`audit_findings()`、`has_open_pending()`、`score()`、`kind()` を使える。",
+            `core: ${dslqlFunctionNames("core")}`,
+            `relation: ${dslqlFunctionNames("relation")}`,
+            `context: ${dslqlFunctionNames("context")}`,
+            `semantic: ${dslqlFunctionNames("semantic")}`,
         ],
         detail: [
+            ...DSLQL_FUNCTION_DETAILS,
             "`related_decisions()` は problem node または problem id を受け、参照 graph 上の decision stream を返す。",
             "`nearest_to()` は `{node, score, provider, model}` を返すため、後続 field は `.node.id` や `.score` になる。",
             "文字列はリテラルだけを semantic runtime preparation 時に embedding でき、動的な text path や concat は許可しない。",

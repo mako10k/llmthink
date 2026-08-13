@@ -25,6 +25,9 @@ v2 は旧 DSLQL との構文互換を持たない。曖昧な暗黙挙動より�
 | relation   | `related_decisions` が入力 problem を無視した                                  | 入力 node から relation index を辿る                       |
 | runtime    | `.document` と root 直下に同じ collection が重複した                           | root context と document AST を一意の階層にする            |
 | API        | evaluator が毎回文字列を parse し、AST を評価できなかった                      | parse 済み AST と文字列の両方を評価できる                  |
+| 宣言 ID    | Analyzer、runtime、semantic、LSP が別々の ID 集合を作っていた                  | 文書内の全宣言を一つの index と namespace で扱う           |
+| query 出力 | 任意の DSLQL 値を decision 候補へ暗黙縮退し、補助 score で再順位付けした       | 評価結果を順序付き `values` としてそのまま保持する         |
+| 関数仕様   | arity、説明、補完、highlight の関数一覧が各層に重複していた                    | `DSLQL_FUNCTION_SPECS` を公開メタデータの正とする          |
 
 ## 3. 設計原則
 
@@ -34,6 +37,7 @@ v2 は旧 DSLQL との構文互換を持たない。曖昧な暗黙挙動より�
 4. 宣言 ID の参照と通常の文字列を構文上区別する。
 5. document runtime は source AST の全構造を失わず、一つの正規形だけを持つ。
 6. evaluator から外部 I/O、更新代入、任意コード実行を行わない。embedding I/O は host の runtime preparation に限定する。
+7. framework、domain、problem、step、statement、query の ID は文書全体で一意とする。
 
 ## 4. 公開 AST 契約
 
@@ -59,6 +63,7 @@ path segment は `property`、`index`、`iterate`、object field は `field` と
 
 ```ts
 parseDslqlExpression(source): DslqlExpression
+validateDslqlAst(ast): void
 formatDslqlExpression(ast): string
 visitDslqlAst(ast, visitor): void
 transformDslqlAst(ast, transformer): DslqlExpression
@@ -73,9 +78,15 @@ createSemanticDocumentDslqlRuntime(documentAst, sourceOrAst, options): Promise<D
 evaluateSemanticDslqlExpression(sourceOrAst, runtime, options): Promise<DslqlValue[]>
 evaluateSemanticDocumentDslqlExpression(sourceOrAst, documentAst, options): Promise<DslqlValue[]>
 DEFAULT_DSLQL_ON_DEMAND_EMBEDDING_LIMIT: 8
+DSLQL_FUNCTION_SPECS: readonly DSLQLFunctionSpec[]
+getDslqlFunctionSpec(name): DSLQLFunctionSpec | undefined
+listDslqlFunctionSpecs(categories?): DSLQLFunctionSpec[]
+createDocumentDeclarationIndex(documentAst): DocumentDeclarationIndex
 ```
 
 transform は expression、path segment、object field を含む全 node に対して bottom-up である。callback が `undefined` を返した場合は、変換済み children を持つ node が維持される。
+
+`validateDslqlAst` は public AST の fail-closed boundary である。全 node category、operator、identifier、unique object field、finite number、非負 safe integer index、包含関係を満たす source range、cycle 不在を検査する。parser の出力、formatter、visitor、transformer の入力と出力、reference collector、evaluator、semantic runtime preparation は同じ validator を通る。手組みまたは transformer が返した不正 AST は `DslqlAstValidationError` とし、NaN を `null` に整形したり、大きな index を丸めたりしない。
 
 `SemanticDslqlRuntimeOptions.maxOnDemandEmbeddings` は distinct string literal の遅延生成上限で、既定値は `DEFAULT_DSLQL_ON_DEMAND_EMBEDDING_LIMIT` の 8 である。Analyzer の `AuditOptions` では同じ値を `semanticMaxOnDemandEmbeddings` として受け取り、semantic runtime option へ渡す。
 
@@ -130,6 +141,8 @@ required access で property 不在、型不一致、index 範囲外が起きた
 
 `@P1` は文字列値 `"P1"` として評価されるが、AST 上は `reference` node である。これにより、静的な未解決参照検査、rename、definition lookup を通常の文字列検索から分離できる。
 
+文書宣言の namespace は framework、domain、problem、step、statement、query をすべて含む。異なる kind であっても同じ ID は parse 時の `ParseError` になる。Analyzer の DSLQL reference、relation runtime、semantic `@ID`、LSP definition / rename は `DocumentDeclarationIndex` の同じ集合を使う。なお、DSL の `decision based_on` が参照できるのは従来どおり problem と statement に限り、DSLQL の全宣言 namespace とは別の role 制約である。
+
 ```text
 .document.problems[] | select(.id == @P1)
 ```
@@ -181,7 +194,7 @@ empty、`false`、`null` を false とし、それ以外を true とする。条
 
 ## 7. 組み込み関数
 
-すべての関数は括弧を必須とする。
+すべての関数は括弧を必須とする。関数名、category、arity、operand label、result、semantic flag、summary の正は `DSLQL_FUNCTION_SPECS` であり、evaluator、Help/MCP、LSP、VSIX の公開面はこの registry との被覆を検査する。
 
 | 関数                    | stream 契約                                                     |
 | ----------------------- | --------------------------------------------------------------- |
@@ -214,6 +227,8 @@ empty、`false`、`null` を false とし、それ以外を true とする。条
 
 旧版のように `.problems` と `.document.problems` を重複させない。
 `audit` は llmthink の `AuditReport` と同じ `results` field を持つ形を受け取る。
+
+runtime の relation index は `DocumentDeclarationIndex` の宣言順と一意性を再利用する。Map の last-wins で重複 ID を黙って上書きしない。
 
 ### 8.1 DocumentNode
 
@@ -316,6 +331,7 @@ embedding は一級オブジェクトに付随し得る不可視の意味属性�
 - `threshold` は省略可能な 0 以上 1 以下の number literal で、既定は 0。
 - 候補は `text`、`description`、`excerpt` などの意味本文を持つ runtime node に限る。
 - `@ID` は同じ document runtime の text-bearing node を指す。
+- `@ID` が namespace に存在しない場合は unresolved、存在するが意味本文を持たない場合は non-text-bearing として区別する。汎用 runtime で同じ ID の object が複数ある場合は ambiguous として embedding I/O 前に拒否する。
 - 同点は元の stream 順を保つ。
 - semantic match に再度 `nearest_to()` を適用した場合は `.node` を引き継ぎ、別 target で再順位付けする。
 - `score` は cosine similarity を 0..1 に clamp して小数 4 桁へ丸める。
@@ -358,6 +374,10 @@ query Q1:
 ```
 
 DSL parser は expression の raw text と開始 span を保持し、audit 時に DSLQL parser を適用する。`@ID` は未解決参照監査と LSP reference の対象になる。
+
+Analyzer の `query_results` は DSLQL evaluator が返した順序付き `DslqlValue[]` を `values` にそのまま格納する。scalar、boolean、string、array、object、semantic match のいずれも decision だけへ縮退させない。query expression 自体を embedding した補助順位付け、lexical fallback、固定 score、`nearest_to()` 以外の暗黙再順位付けは行わない。
+
+各 query result は `query_id`、`severity: "hint"`、`values`、`total_value_count`、`truncated` を持つ。Analyzer の raw report は `total_value_count === values.length` かつ `truncated === false` で lossless である。text / HTML presentation が既定上限を適用する場合は新しい report を返し、元 report を変更せず、総数と `truncated: true` によって省略を明示する。
 
 semantic query も同じ query body に書ける。
 

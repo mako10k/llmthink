@@ -1,7 +1,7 @@
 import type { AuditReport, AuditResultCategory, AuditSeverity } from "../model/diagnostics.js";
 export interface AuditReportFormatOptions {
     maxIssues?: number;
-    maxQueryItemsPerResult?: number;
+    maxQueryValuesPerResult?: number;
     minSeverity?: AuditSeverity;
     suppressedCategories?: readonly AuditResultCategory[];
 }

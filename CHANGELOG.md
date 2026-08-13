@@ -9,6 +9,10 @@
 - embedding を一級オブジェクトの不可視属性として定義し、文字列リテラルだけを安全な遅延生成対象に限定した。動的な path / `concat(...)` は生成上限を証明できる optimizer の導入まで拒否する
 - embedding 無効・失敗時は semantic query を暗黙 fallback せず、Analyzer が空の query result と info 診断を返すようにした
 - DSLQL v2 の破壊的変更に合わせ、root package、MCP server、VSIX extension を 1.0.0 へ同期
+- framework / domain / problem / step / statement / query を一つの宣言 ID namespace に統合し、cross-kind 重複を parse 時に拒否
+- `validateDslqlAst` を公開し、全 public AST 境界で finite number、safe index、range、category、operator、重複 field、cycle を fail closed に検査
+- embedded query result を decision-only `items` から順序付き `DslqlValue` の `values` へ変更し、query expression embedding、固定 score、暗黙再順位付けを廃止。presentation truncation は `total_value_count` / `truncated` で明示
+- 20 個の組み込み関数を `DSLQL_FUNCTION_SPECS` に集約し、evaluator、Help/MCP、LSP、VSIX の被覆検査を追加
 
 ## 0.5.2
 

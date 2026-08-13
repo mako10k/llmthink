@@ -168,7 +168,7 @@ llmthink thought audit --id review-002 --pretty
 ## 埋め込み設定
 
 - 既定の埋め込みプロバイダは Ollama
-- 埋め込み取得に失敗した場合、decision 間の `semantic_hint` と semantic 関数を含まない query result の補助順位付けはヒューリスティックへフォールバックする
+- 埋め込み取得に失敗した場合、decision 間の補助 `semantic_hint` だけは従来のヒューリスティック表示を維持する。DSLQL query result は暗黙の embedding、固定 score、再順位付けを行わない
 - `similarity()`、`similar_to()`、`nearest_to()` を明示した DSLQL query は意味を変える fallback を行わず、実行不能として報告する
 
 ### Windows + WSL で Ollama を使う場合
@@ -271,17 +271,19 @@ secret は次の形式で指定できます。
 - `LLMTHINK_EMBEDDING_PROVIDER=openai OPENAI_API_KEY=... npm run cli -- dsl audit docs/examples/query-assist.dsl --pretty`
 - `LLMTHINK_EMBEDDING_PROVIDER=none npm run verify-examples`
 
-## Query 埋め込みの扱い
+## DSLQL query result と埋め込みの扱い
 
-- semantic 関数を含まない `.document.problems[] | select(.id == @P1) | related_decisions()` のような query の補助順位付けでは、式そのものに加えて明示参照先 problem の本文も埋め込み対象に含める
-- これにより、固定的な query 関数名だけではなく、選択された problem 文脈に近い decision が上位に来やすくなる
+- query block の評価結果は `query_results[].values` に順序どおり格納し、boolean、string、object、semantic match を decision 候補へ暗黙変換しない
+- query expression 自体や参照先本文を補助 embedding せず、固定 score、lexical fallback、暗黙再順位付けを行わない。順位が必要な場合だけ `nearest_to()` を式に明示する
+- raw report は lossless で、presentation 上限を適用したコピーだけが `total_value_count` と `truncated: true` で省略を明示する
 - DSLQL v2 では宣言参照を `@ID`、関数を `name()` と明示し、required path と `.field?` を区別する
+- framework、domain、problem、step、statement、query は文書全体で一つの ID namespace を共有し、cross-kind の重複も parse error にする
 - `similarity(., @P1)` は数値、`similar_to(., @P1, 0.5)` は真偽値を返す。文字列リテラルは semantic runtime preparation 時に embedding し、同じ準備内で共通化する
 - `.document.steps[].statement | select(.role == "decision") | nearest_to(@P1, 0.5)` で候補を embedding 類似度順にできる。結果は `.node`、`.score`、`.provider`、`.model` を持つ
 - 動的な文字列 path や `concat(...)` は semantic operand にできない。式全体の embedding 生成上限を証明する optimizer が導入されるまで fail closed とする
 - distinct な文字列リテラルの遅延 embedding は `maxOnDemandEmbeddings`（既定8）で制限し、キャッシュ状態に依存せず最悪時の件数で検査する。`auditDslText` / `auditDslFile` からは `semanticMaxOnDemandEmbeddings` で渡す
 - semantic query は provider 不可時に全候補や lexical search へ暗黙 fallback せず、実行不能を監査結果へ明示する
-- package の主要 API は `parseDslqlExpression`、`visitDslqlAst`、`transformDslqlAst`、`formatDslqlExpression`、`collectDslqlReferences`、`evaluateDslqlExpression`、`documentAstToDslqlValue`、`createDocumentDslqlRuntime`、`usesSemanticDslql`、semantic runtime/evaluator 群を公開する
+- package の主要 API は `parseDslqlExpression`、`validateDslqlAst`、`visitDslqlAst`、`transformDslqlAst`、`formatDslqlExpression`、`collectDslqlReferences`、`evaluateDslqlExpression`、`documentAstToDslqlValue`、`createDocumentDeclarationIndex`、`createDocumentDslqlRuntime`、`DSLQL_FUNCTION_SPECS`、`usesSemanticDslql`、semantic runtime/evaluator 群を公開する
 - 完全な構文、stream cardinality、正規化 AST schema は [docs/specs/dslql.md](docs/specs/dslql.md) を参照する
 
 ## DSL ヘルプ

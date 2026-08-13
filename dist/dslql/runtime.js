@@ -1,4 +1,6 @@
+import { createDocumentDeclarationIndex, } from "../model/declarations.js";
 import { DslqlEvaluationError, } from "./evaluator.js";
+import { assertDslqlFunctionImplementationCoverage } from "./functions.js";
 function normalizeSpan(span) {
     return { line: span.line, column: span.column };
 }
@@ -155,14 +157,7 @@ function referenceIds(node) {
     }
     return [];
 }
-function addIdentifiedNodes(index, values) {
-    for (const value of values) {
-        const id = stringField(value, "id");
-        if (id)
-            index.set(id, value);
-    }
-}
-function buildRelationIndex(document) {
+function normalizedDeclarationsByKind(document) {
     const domains = document.domains;
     const problems = document.problems;
     const steps = document.steps;
@@ -170,15 +165,28 @@ function buildRelationIndex(document) {
     const statements = steps
         .map(statementFrom)
         .filter((value) => Boolean(value));
-    const nodes = new Map();
-    addIdentifiedNodes(nodes, domains);
-    addIdentifiedNodes(nodes, problems);
-    addIdentifiedNodes(nodes, steps);
-    addIdentifiedNodes(nodes, statements);
-    addIdentifiedNodes(nodes, queries);
     const framework = document.framework;
-    if (framework !== null)
-        addIdentifiedNodes(nodes, [framework]);
+    return {
+        framework: framework === null ? [] : [framework],
+        domain: domains,
+        problem: problems,
+        step: steps,
+        statement: statements,
+        query: queries,
+    };
+}
+function buildRelationIndex(documentAst, document) {
+    const declarationIndex = createDocumentDeclarationIndex(documentAst);
+    const normalizedByKind = normalizedDeclarationsByKind(document);
+    const nodes = new Map();
+    for (const declaration of declarationIndex.declarations) {
+        const value = normalizedByKind[declaration.kind].find((candidate) => stringField(candidate, "id") === declaration.id);
+        if (!value) {
+            throw new Error(`Normalized ${declaration.kind} '${declaration.id}' is missing`);
+        }
+        nodes.set(declaration.id, value);
+    }
+    const statements = normalizedByKind.statement.filter((value) => Boolean(asObject(value)));
     const reverse = new Map();
     for (const statement of statements) {
         const statementId = stringField(statement, "id");
@@ -270,7 +278,7 @@ function severityAtLeast(value, minimum) {
         order.indexOf(severity) >= order.indexOf(minimum));
 }
 function createRelationFunctions(index) {
-    return {
+    const functions = {
         related_decisions: (context) => {
             requireNoArguments(context, "related_decisions");
             const { input } = context;
@@ -318,9 +326,11 @@ function createRelationFunctions(index) {
             return traverseRelations(inputIds(context.input), (id) => index.reverse.get(id) ?? [], index);
         },
     };
+    assertDslqlFunctionImplementationCoverage(["relation"], Object.keys(functions));
+    return functions;
 }
 function createContextFunctions() {
-    return {
+    const functions = {
         audit_findings: (context) => {
             const minimum = singleStringArgument(context, "audit_findings");
             const findings = context.input.flatMap(findingsFrom);
@@ -346,10 +356,12 @@ function createContextFunctions() {
             });
         },
     };
+    assertDslqlFunctionImplementationCoverage(["context"], Object.keys(functions));
+    return functions;
 }
 export function createDocumentDslqlRuntime(documentAst, options = {}) {
     const document = normalizeDocument(documentAst);
-    const relationIndex = buildRelationIndex(document);
+    const relationIndex = buildRelationIndex(documentAst, document);
     return {
         root: {
             document,

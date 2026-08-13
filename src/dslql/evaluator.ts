@@ -6,8 +6,15 @@ import {
   type DslqlPathExpression,
   type DslqlPathSegment,
   type DslqlSourceRange,
+  validateDslqlAst,
 } from "./ast.js";
 import { parseDslqlExpression } from "./parser.js";
+import {
+  acceptsDslqlFunctionArity,
+  assertDslqlFunctionImplementationCoverage,
+  formatDslqlFunctionArity,
+  getDslqlFunctionSpec,
+} from "./functions.js";
 
 export type DslqlValue =
   | string
@@ -315,17 +322,18 @@ function evaluateObject(
   });
 }
 
-function requireArity(
-  expression: DslqlCallExpression,
-  minimum: number,
-  maximum = minimum,
-): void {
-  const count = expression.arguments.length;
-  if (count < minimum || count > maximum) {
+function validateFunctionArity(expression: DslqlCallExpression): void {
+  const functionSpec = getDslqlFunctionSpec(expression.name);
+  if (
+    functionSpec &&
+    !acceptsDslqlFunctionArity(functionSpec, expression.arguments.length)
+  ) {
     const expected =
-      minimum === maximum ? String(minimum) : `${minimum}..${maximum}`;
+      functionSpec.arity.maximum === 0
+        ? "no arguments"
+        : `${formatDslqlFunctionArity(functionSpec)} argument(s)`;
     throw new DslqlEvaluationError(
-      `${expression.name}() expects ${expected} argument(s); received ${count}`,
+      `${expression.name}() expects ${expected}; received ${expression.arguments.length}`,
       expression.range,
     );
   }
@@ -372,7 +380,6 @@ function evaluateSortBy(
   input: readonly DslqlValue[],
   context: EvaluationContext,
 ): DslqlValue[] {
-  requireArity(expression, 1);
   const selector = expression.arguments[0]!;
   const decorated = input.map((value, position) => ({
     value,
@@ -403,7 +410,6 @@ function evaluateUniqueBy(
   input: readonly DslqlValue[],
   context: EvaluationContext,
 ): DslqlValue[] {
-  requireArity(expression, 0, 1);
   const selector = expression.arguments[0];
   const seen = new Set<string>();
   return input.filter((item) => {
@@ -422,7 +428,6 @@ function evaluateLimit(
   input: readonly DslqlValue[],
   context: EvaluationContext,
 ): DslqlValue[] {
-  requireArity(expression, 1);
   const argument = expression.arguments[0]!;
   const scope =
     input.length > 0 ? [input[0] as DslqlValue] : [context.runtime.root];
@@ -455,9 +460,7 @@ function evaluateScalarFunction(
   input: readonly DslqlValue[],
   context: EvaluationContext,
   operation: (value: DslqlValue, argument?: DslqlValue) => DslqlValue,
-  arity: 0 | 1,
 ): DslqlValue[] {
-  requireArity(expression, arity);
   const argument = expression.arguments[0];
   return input.map((item) => {
     const value = argument
@@ -503,81 +506,68 @@ function evaluateStringBoundary(
   return operation(value, boundary);
 }
 
+type BuiltinEvaluator = (
+  expression: DslqlCallExpression,
+  input: readonly DslqlValue[],
+  context: EvaluationContext,
+) => DslqlValue[];
+
+const BUILTIN_EVALUATORS: Readonly<Record<string, BuiltinEvaluator>> = {
+  select: (expression, input, context) => {
+    const condition = expression.arguments[0]!;
+    return input.filter((item) =>
+      conditionTruth(
+        evaluateExpression(condition, [item], context),
+        condition,
+        "select() predicate",
+      ),
+    );
+  },
+  map: (expression, input, context) =>
+    evaluatePerItem(expression.arguments[0]!, input, context),
+  sort_by: evaluateSortBy,
+  unique_by: evaluateUniqueBy,
+  limit: evaluateLimit,
+  len: (expression, input, context) =>
+    evaluateScalarFunction(expression, input, context, (item, argument) =>
+      lengthOf(argument ?? item, expression),
+    ),
+  contains: (expression, input, context) =>
+    evaluateScalarFunction(expression, input, context, (item, argument) =>
+      evaluateContains(item, argument, expression),
+    ),
+  starts_with: (expression, input, context) =>
+    evaluateScalarFunction(expression, input, context, (item, argument) =>
+      evaluateStringBoundary(item, argument, expression, (text, prefix) =>
+        text.startsWith(prefix),
+      ),
+    ),
+  ends_with: (expression, input, context) =>
+    evaluateScalarFunction(expression, input, context, (item, argument) =>
+      evaluateStringBoundary(item, argument, expression, (text, suffix) =>
+        text.endsWith(suffix),
+      ),
+    ),
+  kind: (expression, input, context) =>
+    evaluateScalarFunction(expression, input, context, (item) =>
+      valueKind(item),
+    ),
+};
+
+export const DSLQL_BUILTIN_FUNCTION_NAMES = Object.freeze(
+  Object.keys(BUILTIN_EVALUATORS),
+);
+assertDslqlFunctionImplementationCoverage(
+  ["core"],
+  DSLQL_BUILTIN_FUNCTION_NAMES,
+);
+
 function evaluateBuiltin(
   expression: DslqlCallExpression,
   input: readonly DslqlValue[],
   context: EvaluationContext,
 ): DslqlValue[] | undefined {
-  switch (expression.name) {
-    case "select": {
-      requireArity(expression, 1);
-      const condition = expression.arguments[0]!;
-      return input.filter((item) =>
-        conditionTruth(
-          evaluateExpression(condition, [item], context),
-          condition,
-          "select() predicate",
-        ),
-      );
-    }
-    case "map":
-      requireArity(expression, 1);
-      return evaluatePerItem(expression.arguments[0]!, input, context);
-    case "sort_by":
-      return evaluateSortBy(expression, input, context);
-    case "unique_by":
-      return evaluateUniqueBy(expression, input, context);
-    case "limit":
-      return evaluateLimit(expression, input, context);
-    case "len":
-      return evaluateScalarFunction(
-        expression,
-        input,
-        context,
-        (item, argument) => lengthOf(argument ?? item, expression),
-        expression.arguments.length === 0 ? 0 : 1,
-      );
-    case "contains":
-      return evaluateScalarFunction(
-        expression,
-        input,
-        context,
-        (item, argument) => evaluateContains(item, argument, expression),
-        1,
-      );
-    case "starts_with":
-      return evaluateScalarFunction(
-        expression,
-        input,
-        context,
-        (item, argument) =>
-          evaluateStringBoundary(item, argument, expression, (text, prefix) =>
-            text.startsWith(prefix),
-          ),
-        1,
-      );
-    case "ends_with":
-      return evaluateScalarFunction(
-        expression,
-        input,
-        context,
-        (item, argument) =>
-          evaluateStringBoundary(item, argument, expression, (text, suffix) =>
-            text.endsWith(suffix),
-          ),
-        1,
-      );
-    case "kind":
-      return evaluateScalarFunction(
-        expression,
-        input,
-        context,
-        (item) => valueKind(item),
-        0,
-      );
-    default:
-      return undefined;
-  }
+  return BUILTIN_EVALUATORS[expression.name]?.(expression, input, context);
 }
 
 function evaluateCall(
@@ -585,6 +575,7 @@ function evaluateCall(
   input: readonly DslqlValue[],
   context: EvaluationContext,
 ): DslqlValue[] {
+  validateFunctionArity(expression);
   const builtin = evaluateBuiltin(expression, input, context);
   if (builtin !== undefined) return builtin;
   const fn = context.runtime.functions?.[expression.name];
@@ -656,5 +647,6 @@ export function evaluateDslqlExpression(
     typeof expression === "string"
       ? parseDslqlExpression(expression)
       : expression;
+  validateDslqlAst(ast);
   return evaluateExpression(ast, [runtime.root], { runtime });
 }

@@ -146,7 +146,13 @@
     "queryResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["query_id", "severity", "items"],
+      "required": [
+        "query_id",
+        "severity",
+        "values",
+        "total_value_count",
+        "truncated"
+      ],
       "properties": {
         "query_id": {
           "type": "string",
@@ -155,27 +161,36 @@
         "severity": {
           "const": "hint"
         },
-        "items": {
+        "values": {
           "type": "array",
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["ref_id"],
-            "properties": {
-              "ref_id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "score": {
-                "type": "number"
-              },
-              "explanation": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/$defs/dslqlValue"
           }
+        },
+        "total_value_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
         }
       }
+    },
+    "dslqlValue": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dslqlValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/dslqlValue" }
+        }
+      ]
     }
   }
 }

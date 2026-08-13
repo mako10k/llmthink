@@ -5,7 +5,8 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { Position, Range, TextEdit, } from "vscode-languageserver-types";
 import { auditDslText } from "../analyzer/audit.js";
 import { formatDslText } from "../dsl/format.js";
-import { collectDslqlReferences } from "../dslql/query.js";
+import { assertDslqlFunctionImplementationCoverage, collectDslqlReferences, DSLQL_FUNCTION_SPECS, } from "../dslql/query.js";
+import { collectDocumentDeclarations } from "../model/declarations.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -57,28 +58,7 @@ const KEYWORD_DOCS = {
     forbids: "framework が禁止する要素を表します。",
     warns: "framework が注意喚起する要素を表します。",
 };
-const QUERY_FUNCTION_DOCS = {
-    related_decisions: "input problem から参照 graph を辿り、関連する decision を返す query 関数です。",
-    select: "DSLQL の filter 関数です。条件が真の要素だけを通します。",
-    len: "DSLQL の長さ関数です。配列や文字列の長さを返します。",
-    map: "DSLQL の map 関数です。各要素に式を適用して新しい stream を作ります。",
-    sort_by: "DSLQL の sort_by 関数です。指定式の評価結果で stream を並び替えます。",
-    limit: "DSLQL の limit 関数です。stream の先頭 N 件を返します。",
-    unique_by: "DSLQL の unique_by 関数です。指定式の評価結果で重複排除します。",
-    contains: "input string の部分一致または input array の要素包含を判定します。",
-    starts_with: "input string の prefix を判定します。",
-    ends_with: "input string の suffix を判定します。",
-    audit_findings: "監査結果から finding stream を取り出す DSLQL 関数です。severity を省略できます。",
-    based_on_refs: "decision から based_on 参照先の statement stream を引く DSLQL 関数です。",
-    upstream: "statement の上流参照を辿る DSLQL 関数です。",
-    downstream: "statement の下流参照を辿る DSLQL 関数です。",
-    score: "search result の ranking score を返す DSLQL 関数です。",
-    kind: "値の正規化後 kind 名を返す DSLQL 関数です。",
-    has_open_pending: "input 構造に pending statement が含まれるかどうかを返す DSLQL 関数です。",
-    similarity: "current object、@ID、または非空文字列リテラルからなる 2 つの意味オブジェクトの embedding 類似度を 0..1 の数値で返します。",
-    similar_to: "2 つの意味オブジェクトの類似度が、必須の 0..1 number literal threshold 以上かを返します。",
-    nearest_to: "候補 stream を @ID または非空文字列リテラルとの embedding 類似度で降順にし、node、score、provider、model を返します。",
-};
+const QUERY_FUNCTION_DOCS = Object.fromEntries(DSLQL_FUNCTION_SPECS.map((entry) => [entry.name, entry.summary]));
 const DSLQL_IDENTIFIER_DOCS = {
     document: "document AST view です。framework、domains、problems、steps、queries を持ちます。",
     framework: "framework 宣言の root です。",
@@ -326,6 +306,9 @@ const DSLQL_COMPLETIONS = [
         kind: CompletionItemKind.Snippet,
     },
 ];
+assertDslqlFunctionImplementationCoverage(["core", "relation", "context", "semantic"], DSLQL_COMPLETIONS.filter((entry) => entry.kind === CompletionItemKind.Function)
+    .map((entry) => /^([A-Za-z_][A-Za-z0-9_-]*)\(/.exec(entry.label)?.[1])
+    .filter((name) => Boolean(name)));
 function toRange(span, endColumn) {
     return {
         start: { line: span.line - 1, character: span.column - 1 },
@@ -479,21 +462,8 @@ function addDslqlReferences(index, document, query) {
 }
 function buildSymbolIndex(document, ast) {
     const index = createSymbolIndex();
-    if (ast.framework) {
-        addDefinitionAtSpan(index, document, ast.framework.name, ast.framework.span);
-    }
-    for (const domain of ast.domains) {
-        addDefinitionAtSpan(index, document, domain.name, domain.span);
-    }
-    for (const problem of ast.problems) {
-        addDefinitionAtSpan(index, document, problem.name, problem.span);
-    }
-    for (const step of ast.steps) {
-        addDefinitionAtSpan(index, document, step.id, step.span);
-        addDefinitionAtSpan(index, document, step.statement.id, step.statement.span);
-    }
-    for (const query of ast.queries) {
-        addDefinitionAtSpan(index, document, query.id, query.span);
+    for (const declaration of collectDocumentDeclarations(ast)) {
+        addDefinitionAtSpan(index, document, declaration.id, declaration.span);
     }
     if (ast.framework) {
         for (const rule of ast.framework.rules) {

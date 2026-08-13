@@ -1,4 +1,6 @@
+import { validateDslqlAst, } from "./ast.js";
 import { parseDslqlExpression } from "./parser.js";
+import { acceptsDslqlFunctionArity, assertDslqlFunctionImplementationCoverage, formatDslqlFunctionArity, getDslqlFunctionSpec, } from "./functions.js";
 export class DslqlEvaluationError extends Error {
     range;
     constructor(message, range) {
@@ -179,11 +181,14 @@ function evaluateObject(expression, input, context) {
         return output;
     });
 }
-function requireArity(expression, minimum, maximum = minimum) {
-    const count = expression.arguments.length;
-    if (count < minimum || count > maximum) {
-        const expected = minimum === maximum ? String(minimum) : `${minimum}..${maximum}`;
-        throw new DslqlEvaluationError(`${expression.name}() expects ${expected} argument(s); received ${count}`, expression.range);
+function validateFunctionArity(expression) {
+    const functionSpec = getDslqlFunctionSpec(expression.name);
+    if (functionSpec &&
+        !acceptsDslqlFunctionArity(functionSpec, expression.arguments.length)) {
+        const expected = functionSpec.arity.maximum === 0
+            ? "no arguments"
+            : `${formatDslqlFunctionArity(functionSpec)} argument(s)`;
+        throw new DslqlEvaluationError(`${expression.name}() expects ${expected}; received ${expression.arguments.length}`, expression.range);
     }
 }
 function evaluatePerItem(expression, input, context) {
@@ -199,7 +204,6 @@ function sortableValue(value, expression) {
     throw new DslqlEvaluationError("sort_by() keys must all be strings or numbers", expression.range);
 }
 function evaluateSortBy(expression, input, context) {
-    requireArity(expression, 1);
     const selector = expression.arguments[0];
     const decorated = input.map((value, position) => ({
         value,
@@ -221,7 +225,6 @@ function evaluateSortBy(expression, input, context) {
         .map((item) => item.value);
 }
 function evaluateUniqueBy(expression, input, context) {
-    requireArity(expression, 0, 1);
     const selector = expression.arguments[0];
     const seen = new Set();
     return input.filter((item) => {
@@ -236,7 +239,6 @@ function evaluateUniqueBy(expression, input, context) {
     });
 }
 function evaluateLimit(expression, input, context) {
-    requireArity(expression, 1);
     const argument = expression.arguments[0];
     const scope = input.length > 0 ? [input[0]] : [context.runtime.root];
     const value = requiredSingleton(evaluateExpression(argument, scope, context), "limit() argument", argument);
@@ -254,8 +256,7 @@ function lengthOf(value, expression) {
         return 0;
     throw new DslqlEvaluationError(`len() does not accept ${valueKind(value)}`, expression.range);
 }
-function evaluateScalarFunction(expression, input, context, operation, arity) {
-    requireArity(expression, arity);
+function evaluateScalarFunction(expression, input, context, operation) {
     const argument = expression.arguments[0];
     return input.map((item) => {
         const value = argument
@@ -279,37 +280,28 @@ function evaluateStringBoundary(value, boundary, expression, operation) {
     }
     return operation(value, boundary);
 }
+const BUILTIN_EVALUATORS = {
+    select: (expression, input, context) => {
+        const condition = expression.arguments[0];
+        return input.filter((item) => conditionTruth(evaluateExpression(condition, [item], context), condition, "select() predicate"));
+    },
+    map: (expression, input, context) => evaluatePerItem(expression.arguments[0], input, context),
+    sort_by: evaluateSortBy,
+    unique_by: evaluateUniqueBy,
+    limit: evaluateLimit,
+    len: (expression, input, context) => evaluateScalarFunction(expression, input, context, (item, argument) => lengthOf(argument ?? item, expression)),
+    contains: (expression, input, context) => evaluateScalarFunction(expression, input, context, (item, argument) => evaluateContains(item, argument, expression)),
+    starts_with: (expression, input, context) => evaluateScalarFunction(expression, input, context, (item, argument) => evaluateStringBoundary(item, argument, expression, (text, prefix) => text.startsWith(prefix))),
+    ends_with: (expression, input, context) => evaluateScalarFunction(expression, input, context, (item, argument) => evaluateStringBoundary(item, argument, expression, (text, suffix) => text.endsWith(suffix))),
+    kind: (expression, input, context) => evaluateScalarFunction(expression, input, context, (item) => valueKind(item)),
+};
+export const DSLQL_BUILTIN_FUNCTION_NAMES = Object.freeze(Object.keys(BUILTIN_EVALUATORS));
+assertDslqlFunctionImplementationCoverage(["core"], DSLQL_BUILTIN_FUNCTION_NAMES);
 function evaluateBuiltin(expression, input, context) {
-    switch (expression.name) {
-        case "select": {
-            requireArity(expression, 1);
-            const condition = expression.arguments[0];
-            return input.filter((item) => conditionTruth(evaluateExpression(condition, [item], context), condition, "select() predicate"));
-        }
-        case "map":
-            requireArity(expression, 1);
-            return evaluatePerItem(expression.arguments[0], input, context);
-        case "sort_by":
-            return evaluateSortBy(expression, input, context);
-        case "unique_by":
-            return evaluateUniqueBy(expression, input, context);
-        case "limit":
-            return evaluateLimit(expression, input, context);
-        case "len":
-            return evaluateScalarFunction(expression, input, context, (item, argument) => lengthOf(argument ?? item, expression), expression.arguments.length === 0 ? 0 : 1);
-        case "contains":
-            return evaluateScalarFunction(expression, input, context, (item, argument) => evaluateContains(item, argument, expression), 1);
-        case "starts_with":
-            return evaluateScalarFunction(expression, input, context, (item, argument) => evaluateStringBoundary(item, argument, expression, (text, prefix) => text.startsWith(prefix)), 1);
-        case "ends_with":
-            return evaluateScalarFunction(expression, input, context, (item, argument) => evaluateStringBoundary(item, argument, expression, (text, suffix) => text.endsWith(suffix)), 1);
-        case "kind":
-            return evaluateScalarFunction(expression, input, context, (item) => valueKind(item), 0);
-        default:
-            return undefined;
-    }
+    return BUILTIN_EVALUATORS[expression.name]?.(expression, input, context);
 }
 function evaluateCall(expression, input, context) {
+    validateFunctionArity(expression);
     const builtin = evaluateBuiltin(expression, input, context);
     if (builtin !== undefined)
         return builtin;
@@ -359,6 +351,7 @@ export function evaluateDslqlExpression(expression, runtime) {
     const ast = typeof expression === "string"
         ? parseDslqlExpression(expression)
         : expression;
+    validateDslqlAst(ast);
     return evaluateExpression(ast, [runtime.root], { runtime });
 }
 //# sourceMappingURL=evaluator.js.map

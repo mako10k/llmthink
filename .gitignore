@@ -5,6 +5,11 @@ dist/
 dist/*
 !dist/dslql/
 !dist/dslql/*
+!dist/model/
+dist/model/*
+!dist/model/declarations.d.ts
+!dist/model/declarations.js
+!dist/model/declarations.js.map
 node_modules/
 *.vsix
 .llmthink/

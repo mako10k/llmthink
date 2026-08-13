@@ -1,3 +1,4 @@
+import { validateDslqlAst, } from "./ast.js";
 const IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*/;
 const NUMBER_PATTERN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/;
 export class DslqlParseError extends Error {
@@ -40,6 +41,7 @@ class Parser {
         if (!this.isAtEnd()) {
             throw this.error("Unexpected token");
         }
+        validateDslqlAst(expression);
         return expression;
     }
     parsePipe() {
@@ -383,7 +385,11 @@ class Parser {
             return undefined;
         }
         this.index += match[0].length;
-        return Number(match[0]);
+        const value = Number(match[0]);
+        if (!Number.isSafeInteger(value)) {
+            throw this.error("Array index must be a non-negative safe integer", this.index - match[0].length);
+        }
+        return value;
     }
     consumeOptionalMarker() {
         if (this.peek() !== "?") {

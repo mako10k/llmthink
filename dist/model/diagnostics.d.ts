@@ -1,3 +1,4 @@
+import type { DslqlValue } from "../dslql/evaluator.js";
 export declare const AUDIT_RESULT_CATEGORIES: readonly ["contradiction", "contradiction_candidate", "contract_violation", "mece_assessment", "semantic_hint", "query_result"];
 export type AuditResultCategory = (typeof AUDIT_RESULT_CATEGORIES)[number];
 export type AuditCategory = AuditResultCategory | "output_limit";
@@ -18,15 +19,12 @@ export interface AuditIssue {
     suggestion?: string;
     metadata?: Record<string, unknown>;
 }
-export interface QueryResultItem {
-    ref_id: string;
-    score?: number;
-    explanation?: string;
-}
 export interface QueryResult {
     query_id: string;
     severity: "hint";
-    items: QueryResultItem[];
+    values: DslqlValue[];
+    total_value_count: number;
+    truncated: boolean;
 }
 export interface AuditSummary {
     fatal_count: number;

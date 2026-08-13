@@ -6,12 +6,17 @@ import type {
   TextBody,
 } from "../model/ast.js";
 import {
+  createDocumentDeclarationIndex,
+  type DocumentDeclarationKind,
+} from "../model/declarations.js";
+import {
   DslqlEvaluationError,
   type DslqlFunction,
   type DslqlObject,
   type DslqlRuntime,
   type DslqlValue,
 } from "./evaluator.js";
+import { assertDslqlFunctionImplementationCoverage } from "./functions.js";
 
 export interface DocumentDslqlRuntimeOptions {
   audit?: DslqlValue;
@@ -189,16 +194,6 @@ function referenceIds(node: DslqlObject): string[] {
   return [];
 }
 
-function addIdentifiedNodes(
-  index: Map<string, DslqlValue>,
-  values: DslqlValue[],
-): void {
-  for (const value of values) {
-    const id = stringField(value, "id");
-    if (id) index.set(id, value);
-  }
-}
-
 interface RelationIndex {
   nodes: Map<string, DslqlValue>;
   statements: DslqlObject[];
@@ -206,7 +201,9 @@ interface RelationIndex {
   reverse: Map<string, string[]>;
 }
 
-function buildRelationIndex(document: DslqlObject): RelationIndex {
+function normalizedDeclarationsByKind(
+  document: DslqlObject,
+): Record<DocumentDeclarationKind, DslqlValue[]> {
   const domains = document.domains as DslqlValue[];
   const problems = document.problems as DslqlValue[];
   const steps = document.steps as DslqlValue[];
@@ -214,14 +211,39 @@ function buildRelationIndex(document: DslqlObject): RelationIndex {
   const statements = steps
     .map(statementFrom)
     .filter((value): value is DslqlObject => Boolean(value));
-  const nodes = new Map<string, DslqlValue>();
-  addIdentifiedNodes(nodes, domains);
-  addIdentifiedNodes(nodes, problems);
-  addIdentifiedNodes(nodes, steps);
-  addIdentifiedNodes(nodes, statements);
-  addIdentifiedNodes(nodes, queries);
   const framework = document.framework;
-  if (framework !== null) addIdentifiedNodes(nodes, [framework]);
+  return {
+    framework: framework === null ? [] : [framework],
+    domain: domains,
+    problem: problems,
+    step: steps,
+    statement: statements,
+    query: queries,
+  };
+}
+
+function buildRelationIndex(
+  documentAst: DocumentAst,
+  document: DslqlObject,
+): RelationIndex {
+  const declarationIndex = createDocumentDeclarationIndex(documentAst);
+  const normalizedByKind = normalizedDeclarationsByKind(document);
+  const nodes = new Map<string, DslqlValue>();
+  for (const declaration of declarationIndex.declarations) {
+    const value = normalizedByKind[declaration.kind].find(
+      (candidate) => stringField(candidate, "id") === declaration.id,
+    );
+    if (!value) {
+      throw new Error(
+        `Normalized ${declaration.kind} '${declaration.id}' is missing`,
+      );
+    }
+    nodes.set(declaration.id, value);
+  }
+
+  const statements = normalizedByKind.statement.filter(
+    (value): value is DslqlObject => Boolean(asObject(value)),
+  ) as DslqlObject[];
 
   const reverse = new Map<string, string[]>();
   for (const statement of statements) {
@@ -332,7 +354,7 @@ function severityAtLeast(value: DslqlValue, minimum: string): boolean {
 function createRelationFunctions(
   index: RelationIndex,
 ): Record<string, DslqlFunction> {
-  return {
+  const functions: Record<string, DslqlFunction> = {
     related_decisions: (context) => {
       requireNoArguments(context, "related_decisions");
       const { input } = context;
@@ -393,10 +415,15 @@ function createRelationFunctions(
       );
     },
   };
+  assertDslqlFunctionImplementationCoverage(
+    ["relation"],
+    Object.keys(functions),
+  );
+  return functions;
 }
 
 function createContextFunctions(): Record<string, DslqlFunction> {
-  return {
+  const functions: Record<string, DslqlFunction> = {
     audit_findings: (context) => {
       const minimum = singleStringArgument(context, "audit_findings");
       const findings = context.input.flatMap(findingsFrom);
@@ -423,6 +450,11 @@ function createContextFunctions(): Record<string, DslqlFunction> {
       });
     },
   };
+  assertDslqlFunctionImplementationCoverage(
+    ["context"],
+    Object.keys(functions),
+  );
+  return functions;
 }
 
 export function createDocumentDslqlRuntime(
@@ -430,7 +462,7 @@ export function createDocumentDslqlRuntime(
   options: DocumentDslqlRuntimeOptions = {},
 ): DslqlRuntime {
   const document = normalizeDocument(documentAst);
-  const relationIndex = buildRelationIndex(document);
+  const relationIndex = buildRelationIndex(documentAst, document);
   return {
     root: {
       document,

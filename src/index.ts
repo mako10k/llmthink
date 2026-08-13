@@ -65,6 +65,18 @@ export {
 } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
 export type * from "./model/diagnostics.js";
+export {
+  collectDocumentDeclarations,
+  createDocumentDeclarationIndex,
+  DocumentDeclarationIndex,
+  DOCUMENT_DECLARATION_KINDS,
+  DuplicateDocumentDeclarationError,
+} from "./model/declarations.js";
+export type {
+  DocumentDeclaration,
+  DocumentDeclarationKind,
+  DocumentDeclarationNode,
+} from "./model/declarations.js";
 export type {
   ThoughtStoreLocation,
   ThoughtReflection,

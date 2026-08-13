@@ -7,6 +7,7 @@ import {
   createDocumentDslqlRuntime,
   createSemanticDslqlRuntime,
   DslqlEvaluationError,
+  DslqlAstValidationError,
   DslqlParseError,
   DslqlSemanticError,
   DslqlSemanticUnavailableError,
@@ -17,11 +18,14 @@ import {
   parseDslqlExpression,
   transformDslqlAst,
   usesSemanticDslql,
+  validateDslqlAst,
   visitDslqlAst,
   type DslqlRuntime,
   type DslqlValue,
 } from "../../src/dslql/query.ts";
+import { createDocumentDeclarationIndex } from "../../src/model/declarations.ts";
 import { parseDocument } from "../../src/parser/parser.ts";
+import { deterministicSemanticEmbedder } from "../support/semantic-embedder.ts";
 
 function createRuntime(): DslqlRuntime {
   return {
@@ -110,6 +114,79 @@ test("parser rejects ambiguous bare function names and chained comparisons", () 
     DslqlParseError,
   );
   assert.throws(() => parseDslqlExpression(".score < 2 < 3"), DslqlParseError);
+  assert.throws(
+    () => parseDslqlExpression(".[9007199254740993]"),
+    /safe integer/,
+  );
+});
+
+test("public AST boundaries reject invalid and cyclic hand-built nodes", () => {
+  const range = {
+    start: { offset: 0, line: 1, column: 1 },
+    end: { offset: 1, line: 1, column: 2 },
+  };
+  const invalidNumber = {
+    kind: "literal",
+    value: Number.NaN,
+    range,
+  } as const;
+  assert.throws(() => validateDslqlAst(invalidNumber), DslqlAstValidationError);
+  assert.throws(
+    () => formatDslqlExpression(invalidNumber),
+    DslqlAstValidationError,
+  );
+  assert.throws(
+    () => evaluateDslqlExpression(invalidNumber, createRuntime()),
+    DslqlAstValidationError,
+  );
+
+  const invalidIndex = {
+    kind: "path",
+    origin: "current",
+    segments: [{ kind: "index", index: -1, optional: false, range }],
+    range,
+  } as const;
+  assert.throws(() => visitDslqlAst(invalidIndex, () => {}), /safe integer/);
+
+  const invalidRange = {
+    kind: "reference",
+    id: "P1",
+    range: { start: range.end, end: range.start },
+  } as const;
+  assert.throws(() => validateDslqlAst(invalidRange), /range/);
+
+  const duplicateFields = {
+    kind: "object",
+    fields: [
+      { kind: "field", key: "id", value: invalidRange, range },
+      { kind: "field", key: "id", value: invalidRange, range },
+    ],
+    range,
+  } as const;
+  assert.throws(
+    () => validateDslqlAst(duplicateFields),
+    /Duplicate object field/,
+  );
+
+  const cyclic = {
+    kind: "array",
+    elements: [],
+    range,
+  } as unknown as {
+    kind: "array";
+    elements: unknown[];
+    range: typeof range;
+  };
+  cyclic.elements.push(cyclic);
+  assert.throws(() => validateDslqlAst(cyclic as never), /cycle|shared node/i);
+
+  assert.throws(
+    () =>
+      transformDslqlAst(parseDslqlExpression("@P1"), (node) =>
+        node.kind === "reference" ? invalidRange : undefined,
+      ),
+    DslqlAstValidationError,
+  );
 });
 
 test("formatter round-trips canonical syntax", () => {
@@ -250,7 +327,27 @@ test("custom functions receive the input stream and can evaluate argument ASTs",
 });
 
 test("document runtime mirrors the complete structural AST", () => {
-  const runtime = createDocumentDslqlRuntime(parseDocument(DOCUMENT_SOURCE));
+  const document = parseDocument(DOCUMENT_SOURCE);
+  assert.deepEqual(
+    createDocumentDeclarationIndex(document).declarations.map(
+      ({ id, kind }) => `${kind}:${id}`,
+    ),
+    [
+      "domain:Design",
+      "problem:P1",
+      "problem:P2",
+      "step:S1",
+      "statement:EV1",
+      "step:S2",
+      "statement:D1",
+      "step:S3",
+      "statement:D2",
+      "step:S4",
+      "statement:PD1",
+      "query:Q1",
+    ],
+  );
+  const runtime = createDocumentDslqlRuntime(document);
   assert.deepEqual(
     evaluateDslqlExpression(
       ".document.steps[] | map({step_id: .id, role: .statement.role, syntax: .syntax.step})",
@@ -425,15 +522,7 @@ step S2:
   decision D_SPEED based_on P_COST:
     "応答速度を最優先する"
 `);
-  const embedder = async (texts: string[]) => ({
-    embeddings: texts.map((text) => {
-      if (text.includes("速度")) return [0, 1];
-      if (text.includes("コスト") || text.includes("安価")) return [1, 0];
-      return [0.1, 0.1];
-    }),
-    provider: "deterministic",
-    model: "test-2d",
-  });
+  const embedder = deterministicSemanticEmbedder;
 
   const byReference = await evaluateSemanticDocumentDslqlExpression(
     '.document.steps[].statement | select(.role == "decision") | nearest_to(@P_COST, 0.5) | map({id: .node.id, score: .score, provider: .provider})',
@@ -574,6 +663,54 @@ test("generic semantic runtime accepts an explicit text selector", async () => {
     "A",
   ]);
   assert.deepEqual(batches, [["alpha", "beta"]]);
+});
+
+test("generic semantic references reject ambiguous IDs instead of last-wins", async () => {
+  const runtime: DslqlRuntime = {
+    root: {
+      items: [
+        { id: "A", text: "first" },
+        { id: "A", text: "second" },
+      ],
+    },
+  };
+  await assert.rejects(
+    () =>
+      evaluateSemanticDslqlExpression('similarity(@A, "target")', runtime, {
+        embedder: async () => {
+          throw new Error("embedder must not be called");
+        },
+      }),
+    /ambiguous semantic reference 'A'/,
+  );
+});
+
+test("semantic references distinguish unresolved and non-text-bearing IDs", async () => {
+  const runtime: DslqlRuntime = {
+    root: { items: [{ id: "EMPTY", count: 1 }] },
+  };
+  await assert.rejects(
+    () =>
+      evaluateSemanticDslqlExpression(
+        'similarity(@MISSING, "target")',
+        runtime,
+        {
+          embedder: async () => {
+            throw new Error("embedder must not be called");
+          },
+        },
+      ),
+    /unresolved semantic reference 'MISSING'/,
+  );
+  await assert.rejects(
+    () =>
+      evaluateSemanticDslqlExpression('similarity(@EMPTY, "target")', runtime, {
+        embedder: async () => {
+          throw new Error("embedder must not be called");
+        },
+      }),
+    /semantic reference 'EMPTY' has no text-bearing node/,
+  );
 });
 
 test("literal-only similarity embeds only distinct demanded literals", async () => {

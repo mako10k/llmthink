@@ -20,4 +20,5 @@ export declare class DslqlEvaluationError extends Error {
     readonly range?: DslqlSourceRange | undefined;
     constructor(message: string, range?: DslqlSourceRange | undefined);
 }
+export declare const DSLQL_BUILTIN_FUNCTION_NAMES: readonly string[];
 export declare function evaluateDslqlExpression(expression: string | DslqlExpression, runtime: DslqlRuntime): DslqlValue[];

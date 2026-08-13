@@ -7,13 +7,13 @@ import type {
 
 export interface AuditReportFormatOptions {
   maxIssues?: number;
-  maxQueryItemsPerResult?: number;
+  maxQueryValuesPerResult?: number;
   minSeverity?: AuditSeverity;
   suppressedCategories?: readonly AuditResultCategory[];
 }
 
 const DEFAULT_MAX_AUDIT_ISSUES = 50;
-const DEFAULT_MAX_QUERY_ITEMS_PER_RESULT = 20;
+const DEFAULT_MAX_QUERY_VALUES_PER_RESULT = 20;
 const SEVERITY_PRIORITY = {
   fatal: 0,
   error: 1,
@@ -104,15 +104,22 @@ export function limitAuditReport(
   options: AuditReportFormatOptions = {},
 ): AuditReport {
   const maxIssues = options.maxIssues ?? DEFAULT_MAX_AUDIT_ISSUES;
-  const maxQueryItemsPerResult =
-    options.maxQueryItemsPerResult ?? DEFAULT_MAX_QUERY_ITEMS_PER_RESULT;
+  const maxQueryValuesPerResult =
+    options.maxQueryValuesPerResult ?? DEFAULT_MAX_QUERY_VALUES_PER_RESULT;
 
   const filteredIssues = filterIssues(report.results, options);
   const limitedQueryResults = includesQueryResults(options)
-    ? report.query_results.map((queryResult) => ({
-        ...queryResult,
-        items: queryResult.items.slice(0, maxQueryItemsPerResult),
-      }))
+    ? report.query_results.map((queryResult) => {
+        const values = queryResult.values.slice(0, maxQueryValuesPerResult);
+        return {
+          ...queryResult,
+          values,
+          total_value_count: queryResult.total_value_count,
+          truncated:
+            queryResult.truncated ||
+            queryResult.total_value_count > values.length,
+        };
+      })
     : [];
 
   if (filteredIssues.length <= maxIssues) {
@@ -218,20 +225,13 @@ export function formatAuditReportText(
     lines.push("query_results:");
     for (const queryResult of limitedReport.query_results) {
       lines.push(`- ${queryResult.query_id} [${queryResult.severity}]`);
-      for (const item of queryResult.items) {
-        const scoreText =
-          item.score !== undefined ? ` score=${item.score}` : "";
-        const explanation = item.explanation ? ` ${item.explanation}` : "";
-        lines.push(`  - ${item.ref_id}${scoreText}${explanation}`);
+      for (const value of queryResult.values) {
+        lines.push(`  - ${JSON.stringify(value)}`);
       }
-      const originalQueryResult = report.query_results.find(
-        (candidate) => candidate.query_id === queryResult.query_id,
-      );
-      const omittedItems =
-        (originalQueryResult?.items.length ?? queryResult.items.length) -
-        queryResult.items.length;
-      if (omittedItems > 0) {
-        lines.push(`  - ... ${omittedItems} more query items omitted`);
+      const omittedValues =
+        queryResult.total_value_count - queryResult.values.length;
+      if (omittedValues > 0) {
+        lines.push(`  - ... ${omittedValues} more query values omitted`);
       }
     }
   }
@@ -309,22 +309,15 @@ export function formatAuditReportHtml(
 
   const queryRows = limitedReport.query_results
     .map((queryResult) => {
-      const originalQueryResult = report.query_results.find(
-        (candidate) => candidate.query_id === queryResult.query_id,
-      );
-      const omittedItems =
-        (originalQueryResult?.items.length ?? queryResult.items.length) -
-        queryResult.items.length;
-      const renderedItems = queryResult.items
-        .map((item) => {
-          const scoreText = item.score !== undefined ? ` (${item.score})` : "";
-          return `${escapeHtml(item.ref_id)}${scoreText}`;
-        })
+      const omittedValues =
+        queryResult.total_value_count - queryResult.values.length;
+      const renderedValues = queryResult.values
+        .map((value) => escapeHtml(JSON.stringify(value)))
         .join(", ");
       const omittedSuffix =
-        omittedItems > 0 ? `, ... ${omittedItems} more` : "";
+        omittedValues > 0 ? `, ... ${omittedValues} more` : "";
       return `
-        <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${renderedItems}${omittedSuffix}</li>`;
+        <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${renderedValues}${omittedSuffix}</li>`;
     })
     .join("");
 

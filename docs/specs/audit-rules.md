@@ -75,6 +75,10 @@
 ### 3.6 query_result
 
 - query が与えられた場合の補助結果
+- evaluator が返す順序付き `DslqlValue[]` を `values` に保持する
+- decision 候補への暗黙変換、固定 score、query expression embedding、暗黙再順位付けを行わない
+- raw report は `total_value_count == values.length`、`truncated == false` とする
+- presentation で省略する場合だけ、原本を変更せず `total_value_count` と `truncated == true` を返す
 
 推奨重大度:
 
@@ -212,6 +216,9 @@
 
 - category = query_result
 - severity = hint
+- query_results[].values = evaluator の順序付き出力
+- query_results[].total_value_count = 評価された総値数
+- query_results[].truncated = raw report では false
 
 ### R009 orphan_problem
 
