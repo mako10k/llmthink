@@ -3,41 +3,47 @@
     "scope": "llmthink",
     "prefix": "dslql-problem",
     "body": [
-      ".problems[] | select(.id == \"${1:P1}\") | related_decisions | map({id: .id, text: .text})"
+      ".document.problems[] | select(.id == @${1:P1}) | related_decisions() | map({id: .id, text: .text})",
     ],
-    "description": "problem を起点に related_decisions を引く DSLQL query"
+    "description": "problem を起点に related_decisions を引く DSLQL query",
   },
   "DSLQL Audit Warnings": {
     "scope": "llmthink",
     "prefix": "dslql-audit",
     "body": [
-      ".audit | audit_findings(\"${1:warning}\") | [.] | {count: len(.), findings: .}"
+      ".audit | audit_findings(\"${1:warning}\") | [.] | {count: len(.), findings: .}",
     ],
-    "description": "audit findings を集約する DSLQL query"
+    "description": "audit findings を集約する DSLQL query",
   },
   "DSLQL Decision Filter": {
     "scope": "llmthink",
     "prefix": "dslql-decisions",
     "body": [
-      ".steps[] | select(.role == \"decision\") | sort_by(.${1:id}) | unique_by(.id) | limit(${2:10})"
+      ".document.steps[].statement | select(.role == \"decision\") | sort_by(.${1:id}) | unique_by(.id) | limit(${2:10})",
     ],
-    "description": "decision stream を絞り込み整形する DSLQL query"
+    "description": "decision stream を絞り込み整形する DSLQL query",
+  },
+  "DSLQL Semantic Decisions": {
+    "scope": "llmthink",
+    "prefix": "dslql-similar",
+    "body": [
+      ".document.steps[].statement | select(.role == \"decision\") | nearest_to(@${1:P1}, ${2:0.5}) | limit(${3:10})",
+    ],
+    "description": "decision stream を embedding 類似度で順位付けする DSLQL query",
   },
   "LLMThink Comment Line": {
     "scope": "llmthink",
     "prefix": "dsl-comment",
-    "body": [
-      "# ${1:note}"
-    ],
-    "description": "自由コメント行を挿入する"
+    "body": ["# ${1:note}"],
+    "description": "自由コメント行を挿入する",
   },
   "LLMThink Annotation Block": {
     "scope": "llmthink",
     "prefix": "dsl-annotation",
     "body": [
       "annotation ${1|explanation,rationale,caveat,todo|}:",
-      "  \"${2:annotation text}\""
+      "  \"${2:annotation text}\"",
     ],
-    "description": "annotation ブロックを挿入する"
-  }
+    "description": "annotation ブロックを挿入する",
+  },
 }

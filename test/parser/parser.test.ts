@@ -22,13 +22,13 @@ step S1:
 
 query Q1:
   # query note
-  .problems[]
+  .document.problems[]
 `);
 
   assert.equal(document.domains[0]?.name, "Review");
   assert.equal(document.problems[0]?.text, "Decide comment syntax");
   assert.equal(document.steps[0]?.statement.role, "evidence");
-  assert.equal(document.queries[0]?.expression, ".problems[]");
+  assert.equal(document.queries[0]?.expression, ".document.problems[]");
 });
 
 test("formatDslText drops standalone comment lines during normalization", () => {
@@ -46,7 +46,7 @@ step S1:
   assert.equal(
     formatted,
     [
-      'problem P1:',
+      "problem P1:",
       '  "Decide comment syntax"',
       "",
       "step S1:",
@@ -79,11 +79,10 @@ step S1:
       "Keep this branch visible"
 `);
 
-  assert.deepEqual(document.problems[0]?.annotations.map((item) => item.kind), [
-    "rationale",
-    "status",
-    "orphan_reference",
-  ]);
+  assert.deepEqual(
+    document.problems[0]?.annotations.map((item) => item.kind),
+    ["rationale", "status", "orphan_reference"],
+  );
   assert.deepEqual(
     document.steps[0]?.statement.role === "decision"
       ? document.steps[0].statement.annotations.map((item) => item.kind)
@@ -118,9 +117,15 @@ decision D1 based_on P1:
 
   assert.equal(document.domains[0]?.description, "First line\nSecond line");
   assert.equal(document.domains[0]?.descriptionBody.syntax, "block");
-  assert.equal(document.problems[0]?.text, "Decide multiline text syntax\nwithout escaped quotes");
+  assert.equal(
+    document.problems[0]?.text,
+    "Decide multiline text syntax\nwithout escaped quotes",
+  );
   assert.equal(document.problems[0]?.textBody.syntax, "block");
-  assert.equal(document.problems[0]?.annotations[0]?.text, "Block text keeps\nindentation-based structure");
+  assert.equal(
+    document.problems[0]?.annotations[0]?.text,
+    "Block text keeps\nindentation-based structure",
+  );
   assert.equal(document.problems[0]?.annotations[0]?.body.syntax, "block");
   assert.equal(
     document.steps[0]?.statement.role === "decision"

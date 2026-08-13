@@ -1,274 +1,417 @@
-# DSLQL 設計仕様
+# DSLQL v2 設計仕様
 
-## 1. 目的
+## 1. 位置付け
 
-DSLQL は、llmthink の thought 記述、監査結果、永続化メタデータに対して問い合わせるための query language である。
+DSLQL は、llmthink の document AST、監査結果、thought metadata、検索結果を読み取り専用で問い合わせる Query Language である。jq の構文を再現することではなく、次の二点を同時に満たすことを目的とする。
 
-狙いは jq 互換を再実装することではない。狙いは jq の次の操作感を、llmthink の思考モデルに合わせて持ち込むことである。
+- DSL 文書に埋め込める、小さく宣言的な query 構文
+- parser が返す Query AST を visitor、transformer、formatter、evaluator から直接操作できる公開 API
 
-- 小さな path access を pipe でつなげる
-- 配列や集合を stream として絞り込む
-- 射影、整形、並び替えを 1 行で記述する
-- query を検索要求だけでなく、思考の検査にも使えるようにする
+v2 は旧 DSLQL との構文互換を持たない。曖昧な暗黙挙動より、一貫した AST と評価規則を優先する。
 
-DSLQL は JSON 全般を対象にしない。対象は llmthink が持つ意味モデルであり、実行時には JSON 風の値へ正規化して評価する。
+## 2. 再構成レビュー
 
----
+旧実装には、仕様・構文・評価器の間に次の非対称があった。
 
-## 2. 設計原則
+| 観点       | 旧実装の問題                                                                   | v2 の判断                                                  |
+| ---------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| 構文と実装 | `in`、文字列 predicate、list literal、複数の relation 関数が仕様だけに存在した | 本仕様に列挙する構文と組み込み関数を実装・テスト対象にする |
+| AST        | 大半の node 型が非公開で source range がなかった                               | 全 node を discriminated union と range 付きで公開する     |
+| 呼出し     | bare identifier と `name()` が同じ call AST になった                           | 関数は常に `name(...)` と書く                              |
+| 参照       | `.id == "P1"` という通常の文字列比較を静的参照と推測した                       | 宣言参照を `@P1` として第一級 AST node にする              |
+| path       | required access と safe access が同じく empty を返した                         | required は失敗、`?` 付きだけが empty を返す               |
+| 射影       | object field の複数結果を先頭一件へ黙って縮退した                              | 0 件は field 省略、1 件は採用、複数件は評価エラーにする    |
+| 比較       | 順序比較が `Number(...)` で暗黙変換された                                      | number 同士または string 同士だけを比較する                |
+| relation   | `related_decisions` が入力 problem を無視した                                  | 入力 node から relation index を辿る                       |
+| runtime    | `.document` と root 直下に同じ collection が重複した                           | root context と document AST を一意の階層にする            |
+| API        | evaluator が毎回文字列を parse し、AST を評価できなかった                      | parse 済み AST と文字列の両方を評価できる                  |
 
-### 2.1 jq 風だが jq 互換ではない
+## 3. 設計原則
 
-- pipe、field access、filter、projection を主軸にする
-- jq の全機能を追わない
-- 再帰 descent、更新代入、任意コード実行は MVP 対象外とする
-- llmthink 固有の relation 関数を第一級で持つ
+1. すべての式は 0 件以上の値からなる stream を受け、stream を返す。
+2. 同じ AST は、DSL 文書への埋め込み、静的解析、変換、実行で共有する。
+3. 値の欠落、複数値、型不一致を黙って補正しない。
+4. 宣言 ID の参照と通常の文字列を構文上区別する。
+5. document runtime は source AST の全構造を失わず、一つの正規形だけを持つ。
+6. evaluator から外部 I/O、更新代入、任意コード実行を行わない。embedding I/O は host の runtime preparation に限定する。
 
-### 2.2 query は思考検査にも使う
+## 4. 公開 AST 契約
 
-- 関連 decision の探索
-- 根拠未接続 decision の抽出
-- pending を含む step の列挙
-- audit finding の集約
-- persisted thought の横断検索結果の整形
+### 4.1 Node
 
-### 2.3 query 構文を DSLQL へ置き換える
+すべての AST node は `kind` と `range` を持つ。`range.start` は inclusive、`range.end` は exclusive で、offset は 0-based、line と column は 1-based である。
 
-- top-level の `query` ブロック構造は維持する
-- query body の正規構文は DSLQL のみとする
-- parser は当面 `expression: string` を維持し、query evaluator 側で DSLQL を解釈する
-- 従来の function call 形式は設計上の移行対象であり、互換要件としては持たない
+主な expression kind は次のとおり。
 
----
+- `literal`
+- `reference`
+- `path`
+- `array`
+- `object`
+- `call`
+- `unary`
+- `binary`
+- `pipe`
 
-## 3. 対象データモデル
+path segment は `property`、`index`、`iterate`、object field は `field` として同じ visitor から観察できる。
 
-DSLQL は評価前に thought runtime を query object へ正規化する。MVP の root は次とする。
+### 4.2 API
 
-| Root | 意味 |
-| --- | --- |
-| `.` | 現在の thought runtime 全体 |
-| `.document` | current draft か final の document AST 相当 |
-| `.framework` | framework 宣言 |
-| `.domains` | domain 一覧 |
-| `.problems` | problem 一覧 |
-| `.steps` | step 一覧 |
-| `.queries` | query 一覧 |
-| `.audit` | latest audit result |
-| `.thought` | thought metadata、history summary、storage state |
-| `.search` | thought search 実行結果の統一 view |
-
-step statement は正規化時に次の共通 field を持つ。
-
-- `step_id`
-- `role`
-- `id`
-- `text`
-- `based_on`
-- `span`
-- `source_kind`: `draft` | `final` | `audit`
-
-これにより、`premise`、`evidence`、`decision`、`pending` を同じ stream として扱える。
-
----
-
-## 4. コア構文
-
-### 4.1 形
-
-MVP では query body の 1 行を DSLQL expression として扱う。
-
-```text
-query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+```ts
+parseDslqlExpression(source): DslqlExpression
+formatDslqlExpression(ast): string
+visitDslqlAst(ast, visitor): void
+transformDslqlAst(ast, transformer): DslqlExpression
+collectDslqlReferences(sourceOrAst): DslqlReference[]
+collectDslqlReferenceIds(sourceOrAst): string[]
+evaluateDslqlExpression(sourceOrAst, runtime): DslqlValue[]
+createDocumentDslqlRuntime(documentAst, options): DslqlRuntime
+documentAstToDslqlValue(documentAst): DslqlValue
+usesSemanticDslql(sourceOrAst): boolean
+createSemanticDslqlRuntime(runtime, sourceOrAst, options): Promise<DslqlRuntime>
+createSemanticDocumentDslqlRuntime(documentAst, sourceOrAst, options): Promise<DslqlRuntime>
+evaluateSemanticDslqlExpression(sourceOrAst, runtime, options): Promise<DslqlValue[]>
+evaluateSemanticDocumentDslqlExpression(sourceOrAst, documentAst, options): Promise<DslqlValue[]>
+DEFAULT_DSLQL_ON_DEMAND_EMBEDDING_LIMIT: 8
 ```
 
-### 4.2 基本演算子
+transform は expression、path segment、object field を含む全 node に対して bottom-up である。callback が `undefined` を返した場合は、変換済み children を持つ node が維持される。
 
-| 構文 | 意味 |
-| --- | --- |
-| `.` | 現在値 |
-| `.field` | field access |
-| `.field?` | safe field access。存在しなければ empty |
-| `.items[]` | array / stream 展開 |
-| `expr | expr` | pipe |
-| `select(cond)` | filter |
-| `map(expr)` | 各要素へ適用 |
-| `sort_by(expr)` | 並び替え |
-| `limit(n)` | 上位 n 件 |
-| `unique_by(expr)` | key 単位の重複排除 |
-| `{key: expr, ...}` | object projection |
-| `[expr]` | collect |
+`SemanticDslqlRuntimeOptions.maxOnDemandEmbeddings` は distinct string literal の遅延生成上限で、既定値は `DEFAULT_DSLQL_ON_DEMAND_EMBEDDING_LIMIT` の 8 である。Analyzer の `AuditOptions` では同じ値を `semanticMaxOnDemandEmbeddings` として受け取り、semantic runtime option へ渡す。
 
-### 4.3 条件式
+## 5. 構文
 
-| 構文 | 意味 |
-| --- | --- |
-| `==`, `!=`, `>`, `>=`, `<`, `<=` | 比較 |
-| `and`, `or`, `not` | 論理演算 |
-| `in` | 集合所属 |
-| `contains(x)` | 部分一致または配列包含 |
-| `starts_with(x)` | 文字列 prefix |
-| `ends_with(x)` | 文字列 suffix |
+### 5.1 EBNF
 
-### 4.4 リテラル
+```ebnf
+Expression       = PipeExpr ;
+PipeExpr         = OrExpr { "|" OrExpr } ;
+OrExpr           = AndExpr { "or" AndExpr } ;
+AndExpr          = ComparisonExpr { "and" ComparisonExpr } ;
+ComparisonExpr   = UnaryExpr [ ComparisonOp UnaryExpr ] ;
+ComparisonOp     = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" ;
+UnaryExpr        = "not" UnaryExpr | PrimaryExpr ;
+PrimaryExpr      = PathExpr | Reference | Literal | ArrayExpr
+                 | ObjectExpr | CallExpr | "(" Expression ")" ;
+PathExpr         = CurrentPath | RootPath ;
+CurrentPath      = "." [ Identifier ["?"] ] { PathSegment } ;
+RootPath         = "$" { PathSegment } ;
+PathSegment      = Property | Bracket ;
+Property         = "." Identifier ["?"] ;
+Bracket          = "[]" ["?"]
+                 | "[" UnsignedInteger "]" ["?"]
+                 | "[" String "]" ["?"] ;
+Reference        = "@" Identifier ;
+ArrayExpr        = "[" [ Expression { "," Expression } ] "]" ;
+ObjectExpr       = "{" [ ObjectField { "," ObjectField } ] "}" ;
+ObjectField      = (Identifier | String) ":" Expression ;
+CallExpr         = Identifier "(" [ Expression { "," Expression } ] ")" ;
+Literal          = String | Number | "true" | "false" | "null" ;
+```
 
-- string: `"decision"`
-- number: `1`, `10`, `0.75`
-- boolean: `true`, `false`
-- null: `null`
-- list: `["decision", "pending"]`
+比較の chain は許可しない。`.a < .b < .c` は `.a < .b and .b < .c` と明示する。
 
----
+### 5.2 Path
 
-## 5. llmthink 固有関数
+| 構文          | 意味                              |
+| ------------- | --------------------------------- |
+| `.`           | 現在の input stream               |
+| `$`           | runtime root                      |
+| `.field`      | required property access          |
+| `.field?`     | optional property access          |
+| `.["non-id"]` | string key access                 |
+| `.items[0]`   | array index                       |
+| `.items[]`    | array 展開                        |
+| `.items[]?`   | input が array でない場合も empty |
 
-DSLQL の価値は単なる field access ではなく、思考構造の relation を直接引けることにある。MVP では次を定義する。
+required access で property 不在、型不一致、index 範囲外が起きた場合は `DslqlEvaluationError` とする。optional access は該当 input から値を出さない。
 
-| 関数 | 入力 | 出力 |
-| --- | --- | --- |
-| `related_decisions` | problem または problem id | decision stream |
-| `based_on_refs` | decision | referenced statement stream |
-| `upstream` | statement | 推移的な参照元 stream |
-| `downstream` | statement | 推移的な被参照 stream |
-| `audit_findings` | severity 省略可 | finding stream |
-| `has_open_pending` | any | boolean |
-| `score` | search result | ranking score |
-| `kind` | any | 正規化後の kind 名 |
+### 5.3 宣言参照
 
-MVP では query 記述も DSLQL に統一する。
+`@P1` は文字列値 `"P1"` として評価されるが、AST 上は `reference` node である。これにより、静的な未解決参照検査、rename、definition lookup を通常の文字列検索から分離できる。
 
-- problem 単位の decision 探索は `.problems[] | select(.id == "P1") | related_decisions` と書く
-- problem 指定は識別子文字列で明示し、`.problems[] | select(.id == "P1") | related_decisions` の形へ正規化する
+```text
+.document.problems[] | select(.id == @P1)
+```
 
----
+`.id == "P1"` も実行時の比較としては有効だが、宣言参照とは見なさない。
 
-## 6. 実行モデル
+### 5.4 Array と object
 
-### 6.1 Stream ベース評価
+`[expr, ...]` は各 expression を現在の input stream 全体に対して評価し、全結果を一つの array へ集約する。
 
-- 各式は 0 件以上の値を返す
-- `|` は左辺 stream の各要素を右辺へ流す
-- `select(...)` は false の要素を落とす
-- object projection は各要素を新しい object へ写像する
-- `[expr]` は stream を 1 つの array に束ねる
+```text
+.document.steps[].statement | select(.role == "decision") | [.id]
+```
+
+object は input ごとに一つ生成する。各 field expression の結果は次の cardinality 契約を持つ。
+
+- 0 件: field を省略する
+- 1 件: その値を field value にする
+- 2 件以上: lossless に扱えないため評価エラー
+
+複数値を field に入れる場合は `{ids: [.id]}` のように array を明示する。
+
+## 6. 評価意味論
+
+### 6.1 Stream と pipe
+
+runtime root を一件だけ持つ stream から評価を開始する。pipe は左から右へ、直前の出力 stream 全体を次の式へ渡す。
+
+通常の path、literal、unary、binary、object は input ごとに評価される。array、`sort_by`、`unique_by`、`limit` は stream 全体を束ねる操作である。
 
 ### 6.2 Empty と null
 
-- field 不在は empty とする
-- field が存在して値が未設定なら null とする
-- empty は pipe を通ると消える
-- `?` 付き access は missing field を error にしない
+- empty は値ではなく、stream の要素数 0 を表す。
+- null は一件の値である。
+- optional path の欠落は empty になる。
+- comparison の片辺が empty なら結果は false になる。
+- object field が empty なら field 自体を省略する。
 
-### 6.3 安全性
+### 6.3 真偽値
 
-- DSLQL は read-only とする
-- 外部 I/O、任意コード実行、shell 呼び出しは不許可
-- 実行コストが高い再帰探索は MVP で不許可
+empty、`false`、`null` を false とし、それ以外を true とする。条件式と論理 operand は 0 または 1 値を要求し、複数値は評価エラーにする。`and` と `or` は short-circuit、`not` はこの規則を反転する。
 
----
+### 6.4 比較
 
-## 7. DSL への埋め込み方針
+- `==` と `!=` は object key 順を正規化した deep equality を使う。
+- `<`、`<=`、`>`、`>=` は number 同士または string 同士に限る。
+- `in` の右辺は array でなければならない。
+- comparison operand が複数値を返す場合は評価エラーとする。
 
-### 7.1 維持するもの
+## 7. 組み込み関数
 
-- `query Q1:` の top-level 宣言
-- 1 query 1 expression の形
-- thought 文書と同居する query 記述
+すべての関数は括弧を必須とする。
 
-### 7.2 拡張するもの
+| 関数                    | stream 契約                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `select(predicate)`     | predicate が truthy の input だけを返す                         |
+| `map(expression)`       | input ごとに expression を評価して flat-map する                |
+| `sort_by(selector)`     | string または number の同一型 key で stable ascending sort する |
+| `unique_by([selector])` | 値または selector key の deep equality で先勝ち重複排除する     |
+| `limit(n)`              | 非負 safe integer の先頭 n 件を返す                             |
+| `len()`                 | 各 input の string、array、object の長さを返す。null は 0       |
+| `len(expression)`       | 各 input で expression が返す単一値の長さを返す                 |
+| `contains(value)`       | string 部分一致または array 要素の deep inclusion               |
+| `starts_with(text)`     | string prefix 判定                                              |
+| `ends_with(text)`       | string suffix 判定                                              |
+| `kind()`                | `null`、`boolean`、`number`、`string`、`array`、`object` を返す |
 
-現行の仕様書では query 式を function call へ限定しているが、DSLQL 導入後は次へ拡張する。
+未知の関数、arity 不一致、型不一致は empty ではなく `DslqlEvaluationError` にする。
 
-```ebnf
-QueryDecl       = "query" Identifier ":" Newline Indent QueryExprLine Dedent ;
-QueryExprLine   = DSLQLExpr Newline ;
-```
+## 8. document runtime
 
-query body は当面 1 行固定とする。複数行 pipeline は将来拡張とし、MVP では parser と editor support を単純に保つ。
-
-### 7.3 移行方針
-
-- evaluator は DSLQL expression のみを受け付ける前提で設計する
-- 旧 query 記述の自動変換が必要なら、互換レイヤーではなく migration ツールとして分離する
-- 既存 example の更新は parser/evaluator 導入と同じタイミングで行う
-
----
-
-## 8. 最小構文スケッチ
-
-```ebnf
-DSLQLExpr       = PipeExpr ;
-PipeExpr        = UnaryExpr { "|" UnaryExpr } ;
-UnaryExpr       = PrimaryExpr | FunctionCall | ObjectLiteral | ArrayCollect ;
-PrimaryExpr     = "." PathTail? | Literal ;
-PathTail        = { "." Identifier ["?"] | "[]" } ;
-FunctionCall    = Identifier "(" [ ArgList ] ")" | Identifier ;
-ArgList         = DSLQLExpr { "," DSLQLExpr } ;
-ObjectLiteral   = "{" ObjectField { "," ObjectField } "}" ;
-ObjectField     = Identifier ":" DSLQLExpr ;
-ArrayCollect    = "[" DSLQLExpr "]" ;
-Literal         = String | Number | Boolean | "null" ;
-```
-
-この EBNF は evaluator 実装の起点であり、最終的な precedence と associativity は別途固定する。
-
----
-
-## 9. 代表クエリ
-
-### 9.1 特定 problem に関連する decision を列挙する
+`createDocumentDslqlRuntime(documentAst, options)` が作る root は次の一形だけを持つ。
 
 ```text
-.problems[] | select(.id == "P1") | related_decisions | {id: .id, text: .text, based_on: .based_on}
+{
+  document: DocumentNode,
+  audit: object | null,
+  thought: object | null,
+  search: array
+}
 ```
 
-### 9.2 根拠未接続 decision を探す
+旧版のように `.problems` と `.document.problems` を重複させない。
+`audit` は llmthink の `AuditReport` と同じ `results` field を持つ形を受け取る。
+
+### 8.1 DocumentNode
 
 ```text
-.steps[] | select(.role == "decision" and len(.based_on) == 0)
+document
+├── framework: framework | null
+├── domains: domain[]
+├── problems: problem[]
+├── steps: step[]
+│   └── statement: statement
+└── queries: query[]
 ```
 
-### 9.3 open pending を持つ thought を検索結果から絞り込む
+主要な normalized node は `node_kind`、宣言 node は `id`、source を持つ node は `span` を持つ。`span`、text body、step syntax、partition member のような補助 value object は `node_kind` を持たない。
+
+正規化 schema は次のとおり。`span` は `{line, column}`、text body は `{syntax, span, line_count}` である。
+
+| `node_kind`      | field                                                  |
+| ---------------- | ------------------------------------------------------ |
+| `document`       | `framework`, `domains`, `problems`, `steps`, `queries` |
+| `framework`      | `id`, `rules`, `span`                                  |
+| `framework_rule` | `rule_kind`, `value`, `span`                           |
+| `domain`         | `id`, `description`, `description_body`, `span`        |
+| `problem`        | `id`, `text`, `text_body`, `annotations`, `span`       |
+| `step`           | `id`, `statement`, `syntax: {step, step_id}`, `span`   |
+| `statement`      | 共通の `role`, `id`, `span` と、下記の role 固有 field |
+| `annotation`     | `annotation_kind`, `text`, `body`, `span`              |
+| `query`          | `id`, `expression`, `span`, `expression_span`          |
+
+statement の role 固有 field は次のとおり。
+
+| `role`                           | field                                                                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `premise`, `evidence`, `pending` | `text`, `text_body`, `annotations`                                                                                    |
+| `viewpoint`                      | `axis`                                                                                                                |
+| `partition`                      | `domain_id`, `axis`, `members: {name, predicate}[]`                                                                   |
+| `decision`                       | `text`, `text_body`, `annotations`, `based_on`                                                                        |
+| `comparison`                     | `text`, `text_body`, `annotations`, `problem_id`, `viewpoint_id`, `relation`, `left_decision_id`, `right_decision_id` |
+
+- `textBody` → `text_body`
+- `descriptionBody` → `description_body`
+- `lineCount` → `line_count`
+- framework / domain / problem の `name` → `id`
+- annotation `kind` → `annotation_kind`
+- framework rule `kind` → `rule_kind`
+- `basedOn` → `based_on`
+- `domainName` → `domain_id`
+- `problemId` → `problem_id`
+- `viewpointId` → `viewpoint_id`
+- `leftDecisionId` → `left_decision_id`
+- `rightDecisionId` → `right_decision_id`
+- `expressionSpan` → `expression_span`
+- step syntax の `stepId` → `step_id`
+
+step は `id`、`syntax`、`span`、`statement` を保持する。statement を flat にした別名 collection は作らない。
+
+### 8.2 llmthink runtime 関数
+
+| 関数                           | 入力                     | 出力                                           |
+| ------------------------------ | ------------------------ | ---------------------------------------------- |
+| `related_decisions()`          | problem node または ID   | 参照 graph 上でその node を上流に持つ decision |
+| `based_on_refs()`              | decision またはその step | `based_on` の直接参照 node                     |
+| `upstream()`                   | 宣言 node                | 推移的な参照先 node                            |
+| `downstream()`                 | 宣言 node                | 推移的な被参照 node                            |
+| `audit_findings([severity])`   | audit object             | finding。severity 指定時はその重要度以上       |
+| `has_open_pending()`           | 任意の構造値             | pending statement を含むか                     |
+| `score()`                      | search result            | numeric score                                  |
+| `similarity(left, right)`      | semantic operands        | 0..1 の embedding 類似度                       |
+| `similar_to(left, right, min)` | semantic operands        | 類似度が min 以上か                            |
+| `nearest_to(target[, min])`    | text-bearing node stream | embedding 類似度順の semantic match            |
+
+relation、audit、utility 関数は `createDocumentDslqlRuntime` が作る基底 runtime に含まれる。`similarity`、`similar_to`、`nearest_to` は基底 runtime には含まれず、`createSemanticDslqlRuntime` または `createSemanticDocumentDslqlRuntime` が成功した時だけ追加される。
+
+relation traversal は開始 node 自身を返さず、同じ ID を一度だけ返し、cycle で停止する。
+
+### 8.3 Semantic 類似検索
+
+embedding は一級オブジェクトに付随し得る不可視の意味属性である。通常の property namespace には存在せず、path access、列挙、projection、serialization では取得できない。`similarity`、`similar_to`、`nearest_to` だけが関係的に観測する。
+
+- `similarity(left, right)` は cosine similarity を 0..1 に clamp し、小数 4 桁へ丸めた number を返す。
+- `similar_to(left, right, threshold)` は `similarity(left, right) >= threshold` と同じ boolean を返す。threshold は 0..1 の number literal で必須とする。
+- 現行 evaluator の operand は、current object `.`、`@ID`、空でない string literal に限る。
+- string literal は一級の意味オブジェクトとして扱い、semantic runtime preparation 時に embedding を生成する。同一準備内の同じ文字列は一度だけ生成する。
+- distinct string literal の worst-case 生成数は `maxOnDemandEmbeddings` で制限し、既定値は 8 とする。キャッシュ済みでも許可判定上は1件として数える。
+- `.text` のような動的文字列 path、object literal、`concat(...)` などの合成 expression は、黙示的に embedding しない。
+- `select`、`sort_by`、`limit` など同じ object identity を流す演算は不可視属性を維持する。object literal で作った新しい object には embedding を暗黙継承しない。
+
+`nearest_to(target[, threshold])` は候補 stream を embedding 類似度の降順にし、各候補を次の match object へ変換する。
 
 ```text
-.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)
+{
+  node: original candidate,
+  score: number,
+  provider: string,
+  model: string
+}
 ```
 
-### 9.4 warning 以上の audit finding を集計する
+- `target` は `@ID` または空でない string literal に限る。任意 expression の黙示的な文字列化はしない。
+- `threshold` は省略可能な 0 以上 1 以下の number literal で、既定は 0。
+- 候補は `text`、`description`、`excerpt` などの意味本文を持つ runtime node に限る。
+- `@ID` は同じ document runtime の text-bearing node を指す。
+- 同点は元の stream 順を保つ。
+- semantic match に再度 `nearest_to()` を適用した場合は `.node` を引き継ぎ、別 target で再順位付けする。
+- `score` は cosine similarity を 0..1 に clamp して小数 4 桁へ丸める。
+- raw embedding vector は query value として公開せず、model 固有次元を AST 契約へ持ち込まない。
+
+embedding は同期 evaluator の外側で取得する。`createSemanticDocumentDslqlRuntime` が query AST を検査し、literal は文字列値で重複排除する。現行 optimizer は object の到達集合を絞り込まないため、`.` operand または `nearest_to()` がある場合は runtime 内の text-bearing object を保守的に一括準備する。literal 同士または `@ID` 同士だけの比較では、無関係な runtime object を埋め込まない。これにより `evaluateDslqlExpression` と AST transformer は I/O を持たない。
+
+この重複排除は一つの semantic runtime preparation 内の契約であり、process 間または query 間の永続 cache は公開契約に含めない。host が追加 cache を持つ場合も、許可判定は cache miss 時の worst case で行う。
+
+semantic expression の許可判定はキャッシュの温冷に依存させない。将来 optimizer を追加する場合は、式の worst-case distinct embedding 生成上限を `0`、`1`、有限 `N`、証明不能 `∞` として求め、予算内の場合に限って定数伝搬や定数畳み込み後の expression を許可する。例えば `o == "abc"` からの伝搬や `concat("a", "b")` の畳み込みは将来対象にできるが、行依存の `concat(o, "x")` は証明できない限り拒否する。
+
+更新時の伝搬処理を必要とする semantic view は導入しない。
+
+汎用 `DslqlRuntime` には `createSemanticDslqlRuntime` を使う。既定 text selector は llmthink の `text`、`description`、`excerpt` などを認識し、独自 object schema は `selectText(value)` を明示して接続できる。
+
+provider が `none`、通信失敗、vector batch 不正の場合は `DslqlSemanticUnavailableError` とする。semantic query を lexical search や全候補へ暗黙 fallback しない。Analyzer では query result を空にし、実行不能を `semantic_hint/info` で報告する。
+
+## 9. Custom function API
+
+runtime は組み込み名以外の関数を追加できる。custom function は input stream、argument AST、runtime、同じ evaluator を呼ぶ helper を受け取る。
+
+```ts
+type DslqlFunction = (context: {
+  input: readonly DslqlValue[];
+  arguments: readonly DslqlExpression[];
+  runtime: DslqlRuntime;
+  evaluate(expression, input?): DslqlValue[];
+}) => readonly DslqlValue[];
+```
+
+argument を eager に先頭一値へ縮退させない。関数側が必要な cardinality を宣言的に検査する。
+
+## 10. DSL 埋め込み
+
+top-level `query` は一行の DSLQL expression を持つ。
+
+```llmthink
+query Q1:
+  .document.problems[] | select(.id == @P1) | related_decisions()
+```
+
+DSL parser は expression の raw text と開始 span を保持し、audit 時に DSLQL parser を適用する。`@ID` は未解決参照監査と LSP reference の対象になる。
+
+semantic query も同じ query body に書ける。
+
+```llmthink
+query Q2:
+  .document.steps[].statement | select(.role == "decision") | nearest_to(@P1, 0.5) | limit(10)
+```
+
+## 11. 代表 query
+
+特定 problem に関連する decision:
 
 ```text
-.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}
+.document.problems[] | select(.id == @P1) | related_decisions() | map({id: .id, text: .text, based_on: .based_on})
 ```
 
----
+根拠未接続 decision:
 
-## 10. MVP 範囲外
+```text
+.document.steps[].statement | select(.role == "decision" and len(.based_on) == 0)
+```
+
+warning 以上の finding 集約:
+
+```text
+.audit | audit_findings("warning") | [.] | map({count: len(), findings: .})
+```
+
+現在の document に pending があるか:
+
+```text
+.document | has_open_pending()
+```
+
+既に ranking 済みの search result の先頭取得:
+
+```text
+.search[] | limit(10)
+```
+
+特定 problem に意味的に近い decision:
+
+```text
+.document.steps[].statement | select(.role == "decision") | nearest_to(@P1, 0.5) | limit(10)
+```
+
+## 12. 非目標
 
 - jq 完全互換
-- 更新演算子
-- 再帰 descent
-- ユーザー定義関数
-- 複数行 query body
-- join、group_by、reduce などの重い集約
-- 外部 storage への直接アクセス
+- update assignment や source AST の直接 mutation
+- evaluator からの外部 storage、network、shell への直接アクセス
+- user-defined function 構文
+- semantic view とその更新伝搬
+- 再帰 descent、join、reduce、group_by
+- DSL 内の複数行 query body
 
----
-
-## 11. 実装順序
-
-1. DSLQL tokenizer / parser を追加する
-2. thought runtime を query object へ正規化する
-3. core operator を `field access`、`[]`、`|`、`select`、projection に絞って実装する
-4. llmthink 固有関数を `related_decisions`、`based_on_refs`、`audit_findings` から追加する
-5. CLI、MCP、VSIX で同じ evaluator を共有する
-6. 旧 query 記述が残っている example と文書を DSLQL へ移行する
-
----
-
-## 12. 設計判断
-
-- DSLQL は `query` ブロックの正規構文として導入する
-- jq 風の使用感は採るが、意味モデルは llmthink 固有 object を優先する
-- 後方互換より、query 言語としての一貫性を優先する
-- MVP は stream filtering と projection に集中し、重い集約や再帰探索は後回しにする
+AST transformer は新しい AST を返す純粋な host API であり、DSLQL 実行時の mutation 機能ではない。

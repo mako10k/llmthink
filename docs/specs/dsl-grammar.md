@@ -174,17 +174,26 @@ QueryDecl       = "query" Identifier ":" Newline Indent QueryExprLine Dedent ;
 QueryExprLine   = DSLQLExpr Newline ;
 
 DSLQLExpr       = PipeExpr ;
-PipeExpr        = UnaryExpr { "|" UnaryExpr } ;
-UnaryExpr       = PrimaryExpr | FunctionCall | ObjectLiteral | ArrayCollect ;
-PrimaryExpr     = "." PathTail? | Literal ;
-PathTail        = { "." Identifier ["?"] | "[]" } ;
-FunctionCall    = Identifier "(" [ ArgList ] ")" | Identifier ;
+PipeExpr        = OrExpr { "|" OrExpr } ;
+OrExpr          = AndExpr { "or" AndExpr } ;
+AndExpr         = ComparisonExpr { "and" ComparisonExpr } ;
+ComparisonExpr  = UnaryExpr [ ("==" | "!=" | ">" | ">=" | "<" | "<=" | "in") UnaryExpr ] ;
+UnaryExpr       = "not" UnaryExpr | PrimaryExpr ;
+PrimaryExpr     = PathExpr | Reference | Literal | ArrayExpr | ObjectExpr | FunctionCall | "(" DSLQLExpr ")" ;
+PathExpr        = CurrentPath | RootPath ;
+CurrentPath     = "." [ Identifier ["?"] ] { PathSegment } ;
+RootPath        = "$" { PathSegment } ;
+PathSegment     = "." Identifier ["?"] | "[]" ["?"] | "[" UnsignedInteger "]" ["?"] | "[" String "]" ["?"] ;
+Reference       = "@" Identifier ;
+FunctionCall    = Identifier "(" [ ArgList ] ")" ;
 ArgList         = DSLQLExpr { "," DSLQLExpr } ;
-ObjectLiteral   = "{" ObjectField { "," ObjectField } "}" ;
-ObjectField     = Identifier ":" DSLQLExpr ;
-ArrayCollect    = "[" DSLQLExpr "]" ;
-Literal         = String | Number | Boolean | "null" ;
+ObjectExpr      = "{" [ ObjectField { "," ObjectField } ] "}" ;
+ObjectField     = (Identifier | String) ":" DSLQLExpr ;
+ArrayExpr       = "[" [ DSLQLExpr { "," DSLQLExpr } ] "]" ;
+Literal         = String | Number | "true" | "false" | "null" ;
 ```
+
+DSLQL の評価意味論、組み込み関数、semantic operand、遅延 embedding 予算は [dslql.md](dslql.md) を正とする。
 
 ---
 

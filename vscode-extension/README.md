@@ -2,7 +2,7 @@
 
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
-現行 release version は 0.5.2。
+現行 release version は 1.0.0。
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 
@@ -14,8 +14,8 @@ DSLQL 導入後は、query 行に対して LSP の completion と hover が入�
 
 ## DSLQL 編集支援
 
-- query 行では `.problems[]`、`.steps[]`、`select(...)`、`map(...)`、`sort_by(...)`、`limit(...)`、`unique_by(...)` などの補完が出る
-- `query by problem`、`audit warnings` などの snippet を使って基本 query をすぐ挿入できる
+- query 行では `.document.problems[]`、`.document.steps[].statement`、`select(...)`、`similarity(...)`、`similar_to(...)`、`nearest_to(...)`、`limit(...)` などの補完が出る
+- `query by problem`、`semantic decisions`、`audit warnings` などの snippet を使って基本 query をすぐ挿入できる
 - DSLQL の pipe、比較演算子、関数名、`true` / `false` / `null` を syntax highlight する
 
 ## 提供コマンド

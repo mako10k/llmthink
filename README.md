@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 0.5.2。
+現行 release version は 1.0.0。
 
 ## 構成
 
@@ -168,7 +168,8 @@ llmthink thought audit --id review-002 --pretty
 ## 埋め込み設定
 
 - 既定の埋め込みプロバイダは Ollama
-- 埋め込み取得に失敗した場合、semantic_hint と query_result の順位付けはヒューリスティックへフォールバックする
+- 埋め込み取得に失敗した場合、decision 間の `semantic_hint` と semantic 関数を含まない query result の補助順位付けはヒューリスティックへフォールバックする
+- `similarity()`、`similar_to()`、`nearest_to()` を明示した DSLQL query は意味を変える fallback を行わず、実行不能として報告する
 
 ### Windows + WSL で Ollama を使う場合
 
@@ -223,20 +224,20 @@ CLI では保存先を直接上書きできます。
 
 ```json
 {
-	"thought": {
-		"storageDomain": "workspace"
-	},
-	"embeddings": {
-		"provider": "openai",
-		"timeoutMs": 5000,
-		"openai": {
-			"baseUrl": "https://api.openai.com/v1",
-			"model": "text-embedding-3-small",
-			"apiKey": {
-				"env": "OPENAI_API_KEY"
-			}
-		}
-	}
+  "thought": {
+    "storageDomain": "workspace"
+  },
+  "embeddings": {
+    "provider": "openai",
+    "timeoutMs": 5000,
+    "openai": {
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "text-embedding-3-small",
+      "apiKey": {
+        "env": "OPENAI_API_KEY"
+      }
+    }
+  }
 }
 ```
 
@@ -272,8 +273,16 @@ secret は次の形式で指定できます。
 
 ## Query 埋め込みの扱い
 
-- `.problems[] | select(.id == "P1") | related_decisions` のような query は、式そのものに加えて参照先 problem の本文も埋め込み対象に含める
+- semantic 関数を含まない `.document.problems[] | select(.id == @P1) | related_decisions()` のような query の補助順位付けでは、式そのものに加えて明示参照先 problem の本文も埋め込み対象に含める
 - これにより、固定的な query 関数名だけではなく、選択された problem 文脈に近い decision が上位に来やすくなる
+- DSLQL v2 では宣言参照を `@ID`、関数を `name()` と明示し、required path と `.field?` を区別する
+- `similarity(., @P1)` は数値、`similar_to(., @P1, 0.5)` は真偽値を返す。文字列リテラルは semantic runtime preparation 時に embedding し、同じ準備内で共通化する
+- `.document.steps[].statement | select(.role == "decision") | nearest_to(@P1, 0.5)` で候補を embedding 類似度順にできる。結果は `.node`、`.score`、`.provider`、`.model` を持つ
+- 動的な文字列 path や `concat(...)` は semantic operand にできない。式全体の embedding 生成上限を証明する optimizer が導入されるまで fail closed とする
+- distinct な文字列リテラルの遅延 embedding は `maxOnDemandEmbeddings`（既定8）で制限し、キャッシュ状態に依存せず最悪時の件数で検査する。`auditDslText` / `auditDslFile` からは `semanticMaxOnDemandEmbeddings` で渡す
+- semantic query は provider 不可時に全候補や lexical search へ暗黙 fallback せず、実行不能を監査結果へ明示する
+- package の主要 API は `parseDslqlExpression`、`visitDslqlAst`、`transformDslqlAst`、`formatDslqlExpression`、`collectDslqlReferences`、`evaluateDslqlExpression`、`documentAstToDslqlValue`、`createDocumentDslqlRuntime`、`usesSemanticDslql`、semantic runtime/evaluator 群を公開する
+- 完全な構文、stream cardinality、正規化 AST schema は [docs/specs/dslql.md](docs/specs/dslql.md) を参照する
 
 ## DSL ヘルプ
 
@@ -295,6 +304,7 @@ secret は次の形式で指定できます。
 - 0.5.0 は multiline block text、long quoted lint と修正導線、block text highlight 修正をまとめた minor release とする
 - 0.5.1 は bundled LSP の起動回帰修正を含む patch release とする
 - 0.5.2 は後方互換な監査出力フィルタ、配布成果物の同期、npm への初回公開をまとめた patch release とする
+- 1.0.0 は DSLQL の構文、公開 AST、評価意味論、document runtime を一貫した v2 契約へ破壊的に再構成する major release とする
 
 ## ライセンス
 

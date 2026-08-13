@@ -77,10 +77,10 @@ step S11:
       Step ID と statement ID の責務をどこまで増やすかは別途整理が必要である
 
 query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+  .document.problems[] | select(.id == @P1) | related_decisions()
 
 query Q2:
-  .problems[] | select(.id == "P2") | related_decisions
+  .document.problems[] | select(.id == @P2) | related_decisions()
 
 query Q3:
-  .problems[] | select(.id == "P3") | related_decisions
+  .document.problems[] | select(.id == @P3) | related_decisions()

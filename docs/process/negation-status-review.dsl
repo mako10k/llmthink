@@ -83,10 +83,10 @@ step S11:
       値は自由文字列ではなく annotation text で列挙検査する形から始める
 
 query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+  .document.problems[] | select(.id == @P1) | related_decisions()
 
 query Q2:
-  .problems[] | select(.id == "P2") | related_decisions
+  .document.problems[] | select(.id == @P2) | related_decisions()
 
 query Q3:
-  .problems[] | select(.id == "P3") | related_decisions
+  .document.problems[] | select(.id == @P3) | related_decisions()

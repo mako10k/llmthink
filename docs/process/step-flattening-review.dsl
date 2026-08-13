@@ -83,10 +83,10 @@ step S12:
       audit report の step_id 互換をどう移行するかは別途設計が必要である
 
 query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+  .document.problems[] | select(.id == @P1) | related_decisions()
 
 query Q2:
-  .problems[] | select(.id == "P2") | related_decisions
+  .document.problems[] | select(.id == @P2) | related_decisions()
 
 query Q3:
-  .problems[] | select(.id == "P3") | related_decisions
+  .document.problems[] | select(.id == @P3) | related_decisions()

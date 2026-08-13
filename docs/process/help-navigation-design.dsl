@@ -19,7 +19,7 @@ problem P3:
 
 problem P4:
   |
-    query の書き方は field access、pipe、select、related_decisions など複数の概念をまたぐため、
+    query の書き方は field access、pipe、select、related_decisions() など複数の概念をまたぐため、
     逆引きと関連索引がないと把握しづらい
 
 step S1:
@@ -45,7 +45,7 @@ step S4:
 step S5:
   evidence EV3:
     |
-      query は .problems[]、select(.id == \"P1\")、related_decisions、projection など複数要素の組み合わせで成立するため、
+      query は .document.problems[]、select(.id == @P1)、related_decisions()、projection など複数要素の組み合わせで成立するため、
       構文一覧だけでは書き始めにくい
 
 step S6:
@@ -103,13 +103,13 @@ step S15:
     "detail_level の段階数と 1 回あたりの最大 section 数は CLI 出力、MCP token、VSIX UI の実測を見て最終調整する必要がある"
 
 query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+  .document.problems[] | select(.id == @P1) | related_decisions()
 
 query Q2:
-  .problems[] | select(.id == "P2") | related_decisions
+  .document.problems[] | select(.id == @P2) | related_decisions()
 
 query Q3:
-  .problems[] | select(.id == "P3") | related_decisions
+  .document.problems[] | select(.id == @P3) | related_decisions()
 
 query Q4:
-  .problems[] | select(.id == "P4") | related_decisions
+  .document.problems[] | select(.id == @P4) | related_decisions()

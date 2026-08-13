@@ -26,4 +26,4 @@ step S4:
     "cache 変更で改善しない場合は network mirror を比較する"
 
 query Q1:
-  .steps[] | select(.role == "decision" and len(.based_on) > 0)
+  .document.steps[].statement | select(.role == "decision" and len(.based_on) > 0)

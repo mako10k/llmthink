@@ -30,7 +30,7 @@ import {
 } from "vscode-languageserver-types";
 import { auditDslText } from "../analyzer/audit.js";
 import { formatDslText } from "../dsl/format.js";
-import { collectDslqlReferenceIds } from "../dslql/query.js";
+import { collectDslqlReferences } from "../dslql/query.js";
 import type { AuditIssue } from "../model/diagnostics.js";
 import type { DocumentAst, SourceSpan, StepDecl } from "../model/ast.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
@@ -84,11 +84,14 @@ const KEYWORD_DOCS: Record<string, string> = {
     "problem と premise / evidence / decision / comparison / pending に付く構造化注釈を宣言します。kind は閉じた集合で、詳細は `dsl help syntax annotations` を辿れます。",
   explanation: "annotation kind です。補足説明を表します。",
   rationale: "annotation kind です。判断理由や背景説明を表します。",
-  status: "annotation kind です。要素の状態を表します。rejected、negated、superseded などを使います。",
+  status:
+    "annotation kind です。要素の状態を表します。rejected、negated、superseded などを使います。",
   caveat: "annotation kind です。注意点や制約を表します。",
   todo: "annotation kind です。後続作業や未完了事項を表します。",
-  orphan_future: "annotation kind です。将来扱う intentional orphan を表します。",
-  orphan_reference: "annotation kind です。参照用に残す intentional orphan を表します。",
+  orphan_future:
+    "annotation kind です。将来扱う intentional orphan を表します。",
+  orphan_reference:
+    "annotation kind です。参照用に残す intentional orphan を表します。",
   step: "1 つの推論ステップを表します。",
   premise: "前提を表す step body です。",
   viewpoint: "評価軸を表す step body です。",
@@ -96,14 +99,20 @@ const KEYWORD_DOCS: Record<string, string> = {
   partition: "MECE 分割候補を表す step body です。",
   evidence: "根拠を表す step body です。",
   decision: "判断を表す step body です。",
-  comparison: "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
-  based_on: "decision の参照根拠を列挙します。declared problem id と statement id を参照できます。",
+  comparison:
+    "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
+  based_on:
+    "decision の参照根拠を列挙します。declared problem id と statement id を参照できます。",
   relation:
     "comparison header で使う比較関係です。値は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合です。",
-  preferred_over: "comparison relation です。左側 decision を右側より優先します。",
-  weaker_than: "comparison relation です。左側 decision が右側より弱いことを表します。",
-  incomparable: "comparison relation です。2 つの decision を同一軸では順序付けしないことを表します。",
-  counterexample_to: "comparison relation です。左側 decision が右側 decision の反例や反証になることを表します。",
+  preferred_over:
+    "comparison relation です。左側 decision を右側より優先します。",
+  weaker_than:
+    "comparison relation です。左側 decision が右側より弱いことを表します。",
+  incomparable:
+    "comparison relation です。2 つの decision を同一軸では順序付けしないことを表します。",
+  counterexample_to:
+    "comparison relation です。左側 decision が右側 decision の反例や反証になることを表します。",
   pending: "未解決事項を表す step body です。",
   query: "DSL 文書に対する問い合わせを宣言します。",
   requires: "framework が要求する役割を表します。",
@@ -113,13 +122,18 @@ const KEYWORD_DOCS: Record<string, string> = {
 
 const QUERY_FUNCTION_DOCS: Record<string, string> = {
   related_decisions:
-    "problem を引数に取り、関連する decision 候補を返す query 関数です。",
+    "input problem から参照 graph を辿り、関連する decision を返す query 関数です。",
   select: "DSLQL の filter 関数です。条件が真の要素だけを通します。",
   len: "DSLQL の長さ関数です。配列や文字列の長さを返します。",
   map: "DSLQL の map 関数です。各要素に式を適用して新しい stream を作ります。",
-  sort_by: "DSLQL の sort_by 関数です。指定式の評価結果で stream を並び替えます。",
+  sort_by:
+    "DSLQL の sort_by 関数です。指定式の評価結果で stream を並び替えます。",
   limit: "DSLQL の limit 関数です。stream の先頭 N 件を返します。",
   unique_by: "DSLQL の unique_by 関数です。指定式の評価結果で重複排除します。",
+  contains:
+    "input string の部分一致または input array の要素包含を判定します。",
+  starts_with: "input string の prefix を判定します。",
+  ends_with: "input string の suffix を判定します。",
   audit_findings:
     "監査結果から finding stream を取り出す DSLQL 関数です。severity を省略できます。",
   based_on_refs:
@@ -129,15 +143,22 @@ const QUERY_FUNCTION_DOCS: Record<string, string> = {
   score: "search result の ranking score を返す DSLQL 関数です。",
   kind: "値の正規化後 kind 名を返す DSLQL 関数です。",
   has_open_pending:
-    "pending を含むかどうかを返す DSLQL 関数です。thought search の絞り込みに使います。",
+    "input 構造に pending statement が含まれるかどうかを返す DSLQL 関数です。",
+  similarity:
+    "current object、@ID、または非空文字列リテラルからなる 2 つの意味オブジェクトの embedding 類似度を 0..1 の数値で返します。",
+  similar_to:
+    "2 つの意味オブジェクトの類似度が、必須の 0..1 number literal threshold 以上かを返します。",
+  nearest_to:
+    "候補 stream を @ID または非空文字列リテラルとの embedding 類似度で降順にし、node、score、provider、model を返します。",
 };
 
 const DSLQL_IDENTIFIER_DOCS: Record<string, string> = {
-  document: "thought runtime 全体の document view です。domains、problems、steps、queries を持ちます。",
+  document:
+    "document AST view です。framework、domains、problems、steps、queries を持ちます。",
   framework: "framework 宣言の root です。",
   domains: "domain 一覧の root stream です。",
   problems: "problem 一覧の root stream です。",
-  steps: "step statement 一覧の root stream です。",
+  steps: "step AST 一覧です。statement は各 step の .statement にあります。",
   queries: "query 一覧の root stream です。",
   audit: "latest audit result の root です。",
   thought: "thought metadata の root です。",
@@ -146,31 +167,55 @@ const DSLQL_IDENTIFIER_DOCS: Record<string, string> = {
   role: "statement role field です。decision、evidence、pending などを表します。",
   text: "本文 text field です。problem や statement の説明に使われます。",
   based_on: "decision の参照 ID 一覧 field です。",
-  step_id: "statement が属する step の識別子 field です。",
+  statement: "step が所有する statement AST です。",
+  node: "semantic match が保持する元の候補 node です。",
   score: "search result や query projection で使う score field です。",
-  source_kind: "draft、final、audit のような source 種別 field です。",
+  provider: "semantic match を生成した embedding provider です。",
+  model: "semantic match を生成した embedding model です。",
+  node_kind: "document AST node の構造種別 field です。",
 };
 
 const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
   {
-    label: ".problems[]",
+    label: ".document.problems[]",
     detail: "DSLQL root",
     documentation: "problem 一覧を stream として展開します。",
-    insertText: ".problems[]",
+    insertText: ".document.problems[]",
     kind: CompletionItemKind.Field,
   },
   {
-    label: ".steps[]",
+    label: ".document.framework",
     detail: "DSLQL root",
-    documentation: "step statement 一覧を stream として展開します。",
-    insertText: ".steps[]",
+    documentation: "framework AST にアクセスします。",
+    insertText: ".document.framework",
     kind: CompletionItemKind.Field,
   },
   {
-    label: ".queries[]",
+    label: ".document.domains[]",
+    detail: "DSLQL root",
+    documentation: "domain AST 一覧を stream として展開します。",
+    insertText: ".document.domains[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".document.steps[]",
+    detail: "DSLQL root",
+    documentation: "step AST 一覧を stream として展開します。",
+    insertText: ".document.steps[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".document.steps[].statement",
+    detail: "DSLQL root",
+    documentation: "step AST 配下の statement 一覧を stream として展開します。",
+    insertText: ".document.steps[].statement",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".document.queries[]",
     detail: "DSLQL root",
     documentation: "query 一覧を stream として展開します。",
-    insertText: ".queries[]",
+    insertText: ".document.queries[]",
     kind: CompletionItemKind.Field,
   },
   {
@@ -178,6 +223,20 @@ const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
     detail: "DSLQL root",
     documentation: "latest audit result にアクセスします。",
     insertText: ".audit",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".thought",
+    detail: "DSLQL root",
+    documentation: "thought metadata にアクセスします。",
+    insertText: ".thought",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".search[]",
+    detail: "DSLQL root",
+    documentation: "thought search result を stream として展開します。",
+    insertText: ".search[]",
     kind: CompletionItemKind.Field,
   },
   {
@@ -216,10 +275,10 @@ const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
     kind: CompletionItemKind.Function,
   },
   {
-    label: "related_decisions",
+    label: "related_decisions()",
     detail: "DSLQL relation",
     documentation: QUERY_FUNCTION_DOCS.related_decisions,
-    insertText: "related_decisions",
+    insertText: "related_decisions()",
     kind: CompletionItemKind.Function,
   },
   {
@@ -230,25 +289,120 @@ const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
     kind: CompletionItemKind.Function,
   },
   {
-    label: "len(...)",
+    label: "len()",
     detail: "DSLQL helper",
     documentation: QUERY_FUNCTION_DOCS.len,
-    insertText: "len(${1:.})",
+    insertText: "len(${1})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "contains(...)",
+    detail: "DSLQL predicate",
+    documentation: QUERY_FUNCTION_DOCS.contains,
+    insertText: 'contains(${1:"value"})',
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "starts_with(...)",
+    detail: "DSLQL predicate",
+    documentation: QUERY_FUNCTION_DOCS.starts_with,
+    insertText: 'starts_with(${1:"prefix"})',
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "ends_with(...)",
+    detail: "DSLQL predicate",
+    documentation: QUERY_FUNCTION_DOCS.ends_with,
+    insertText: 'ends_with(${1:"suffix"})',
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "based_on_refs()",
+    detail: "DSLQL relation",
+    documentation: QUERY_FUNCTION_DOCS.based_on_refs,
+    insertText: "based_on_refs()",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "upstream()",
+    detail: "DSLQL relation",
+    documentation: QUERY_FUNCTION_DOCS.upstream,
+    insertText: "upstream()",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "downstream()",
+    detail: "DSLQL relation",
+    documentation: QUERY_FUNCTION_DOCS.downstream,
+    insertText: "downstream()",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "has_open_pending()",
+    detail: "DSLQL predicate",
+    documentation: QUERY_FUNCTION_DOCS.has_open_pending,
+    insertText: "has_open_pending()",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "score()",
+    detail: "DSLQL helper",
+    documentation: QUERY_FUNCTION_DOCS.score,
+    insertText: "score()",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "kind()",
+    detail: "DSLQL helper",
+    documentation: QUERY_FUNCTION_DOCS.kind,
+    insertText: "kind()",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "similarity(...)",
+    detail: "DSLQL semantic score",
+    documentation: QUERY_FUNCTION_DOCS.similarity,
+    insertText: "similarity(., @${1:P1})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "similar_to(...)",
+    detail: "DSLQL semantic predicate",
+    documentation: QUERY_FUNCTION_DOCS.similar_to,
+    insertText: "similar_to(., @${1:P1}, ${2:0.5})",
+    kind: CompletionItemKind.Function,
+  },
+  {
+    label: "nearest_to(...)",
+    detail: "DSLQL semantic rank",
+    documentation: QUERY_FUNCTION_DOCS.nearest_to,
+    insertText: "nearest_to(@${1:P1}, ${2:0.5})",
     kind: CompletionItemKind.Function,
   },
   {
     label: "query by problem",
     detail: "DSLQL snippet",
-    documentation: "problem を起点に related_decisions を引く基本パターンです。",
+    documentation:
+      "problem を起点に related_decisions を引く基本パターンです。",
     insertText:
-      '.problems[] | select(.id == "${1:P1}") | related_decisions | ${2:map({id: .id, text: .text})}',
+      ".document.problems[] | select(.id == @${1:P1}) | related_decisions() | ${2:map({id: .id, text: .text})}",
     kind: CompletionItemKind.Snippet,
   },
   {
     label: "audit warnings",
     detail: "DSLQL snippet",
     documentation: "warning 以上の audit finding を束ねる基本パターンです。",
-    insertText: '.audit | audit_findings("${1:warning}") | [.] | {count: len(.), findings: .}',
+    insertText:
+      '.audit | audit_findings("${1:warning}") | [.] | {count: len(.), findings: .}',
+    kind: CompletionItemKind.Snippet,
+  },
+  {
+    label: "semantic decisions",
+    detail: "DSLQL snippet",
+    documentation:
+      "decision stream を宣言または自由文との embedding 類似度で順位付けします。",
+    insertText:
+      '.document.steps[].statement | select(.role == "decision") | nearest_to(@${1:P1}, ${2:0.5}) | limit(${3:10})',
     kind: CompletionItemKind.Snippet,
   },
 ];
@@ -338,9 +492,13 @@ function contextualDslCompletions(document: TextDocument, position: Position) {
   }
 
   if (/^comparison\b.*\brelation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
-    return buildKeywordCompletionItems(COMPARISON_RELATIONS, "comparison relation", {
-      kind: CompletionItemKind.EnumMember,
-    });
+    return buildKeywordCompletionItems(
+      COMPARISON_RELATIONS,
+      "comparison relation",
+      {
+        kind: CompletionItemKind.EnumMember,
+      },
+    );
   }
 
   if (!trimmedPrefix) {
@@ -378,14 +536,6 @@ function tokenizeRuleValue(value: string): string[] {
     .filter((token) => token && token !== "and" && token !== "or");
 }
 
-function extractQueryArguments(expression: string): string[] {
-  try {
-    return collectDslqlReferenceIds(expression);
-  } catch {
-    return [];
-  }
-}
-
 function createSymbolIndex(): SymbolIndex {
   return {
     definitions: new Map<string, Location>(),
@@ -394,7 +544,11 @@ function createSymbolIndex(): SymbolIndex {
   };
 }
 
-function addSemanticLocation(index: SymbolIndex, name: string, range: Range): void {
+function addSemanticLocation(
+  index: SymbolIndex,
+  name: string,
+  range: Range,
+): void {
   index.semanticLocations.push({ name, range });
 }
 
@@ -458,11 +612,42 @@ function addReferencesFromLine(
   }
 }
 
-function buildSymbolIndex(document: TextDocument, ast: DocumentAst): SymbolIndex {
+function addDslqlReferences(
+  index: SymbolIndex,
+  document: TextDocument,
+  query: DocumentAst["queries"][number],
+): void {
+  try {
+    for (const reference of collectDslqlReferences(query.expression)) {
+      const line = query.expressionSpan.line + reference.range.start.line - 2;
+      const character =
+        reference.range.start.line === 1
+          ? query.expressionSpan.column + reference.range.start.column - 1
+          : reference.range.start.column;
+      const range = Range.create(
+        Position.create(line, character),
+        Position.create(line, character + reference.id.length),
+      );
+      addReference(index, document.uri, reference.id, range);
+    }
+  } catch {
+    // Parse diagnostics own invalid DSLQL. An incomplete query has no stable references.
+  }
+}
+
+function buildSymbolIndex(
+  document: TextDocument,
+  ast: DocumentAst,
+): SymbolIndex {
   const index = createSymbolIndex();
 
   if (ast.framework) {
-    addDefinitionAtSpan(index, document, ast.framework.name, ast.framework.span);
+    addDefinitionAtSpan(
+      index,
+      document,
+      ast.framework.name,
+      ast.framework.span,
+    );
   }
   for (const domain of ast.domains) {
     addDefinitionAtSpan(index, document, domain.name, domain.span);
@@ -472,7 +657,12 @@ function buildSymbolIndex(document: TextDocument, ast: DocumentAst): SymbolIndex
   }
   for (const step of ast.steps) {
     addDefinitionAtSpan(index, document, step.id, step.span);
-    addDefinitionAtSpan(index, document, step.statement.id, step.statement.span);
+    addDefinitionAtSpan(
+      index,
+      document,
+      step.statement.id,
+      step.statement.span,
+    );
   }
   for (const query of ast.queries) {
     addDefinitionAtSpan(index, document, query.id, query.span);
@@ -501,33 +691,21 @@ function buildSymbolIndex(document: TextDocument, ast: DocumentAst): SymbolIndex
     }
 
     if (step.statement.role === "partition") {
-      addReferencesFromLine(
-        index,
-        document,
-        step.statement.span.line - 1,
-        [step.statement.domainName, step.statement.axis],
-      );
+      addReferencesFromLine(index, document, step.statement.span.line - 1, [
+        step.statement.domainName,
+        step.statement.axis,
+      ]);
       continue;
     }
 
     if (step.statement.role === "viewpoint") {
-      addReferencesFromLine(
-        index,
-        document,
-        step.statement.span.line,
-        [step.statement.axis],
-      );
+      addReferencesFromLine(index, document, step.statement.span.line, [
+        step.statement.axis,
+      ]);
     }
   }
 
-  for (const query of ast.queries) {
-    addReferencesFromLine(
-      index,
-      document,
-      query.expressionSpan.line - 1,
-      extractQueryArguments(query.expression),
-    );
-  }
+  ast.queries.forEach((query) => addDslqlReferences(index, document, query));
 
   return index;
 }
@@ -551,9 +729,13 @@ function positionInRange(position: Position, range: Range): boolean {
   return true;
 }
 
-function symbolAtPosition(index: SymbolIndex, position: Position): string | undefined {
-  return index.semanticLocations.find(({ range }) => positionInRange(position, range))
-    ?.name;
+function symbolAtPosition(
+  index: SymbolIndex,
+  position: Position,
+): string | undefined {
+  return index.semanticLocations.find(({ range }) =>
+    positionInRange(position, range),
+  )?.name;
 }
 
 function parseIndexedDocument(
@@ -590,7 +772,11 @@ function buildReferenceRanges(document: DocumentAst): Map<string, Range> {
   };
 
   if (document.framework) {
-    add(document.framework.name, document.framework.span, document.framework.name);
+    add(
+      document.framework.name,
+      document.framework.span,
+      document.framework.name,
+    );
   }
   for (const domain of document.domains) {
     add(domain.name, domain.span, domain.name);
@@ -624,12 +810,13 @@ function metadataRange(
   ) {
     const lineText = lineTextAt(textDocument, line - 1);
     const resolvedEndColumn =
-      Number.isFinite(endColumn) && endColumn > column
-        ? endColumn
-        : column + 1;
+      Number.isFinite(endColumn) && endColumn > column ? endColumn : column + 1;
     return Range.create(
       Position.create(line - 1, Math.min(column - 1, lineText.length)),
-      Position.create(line - 1, Math.min(resolvedEndColumn - 1, lineText.length)),
+      Position.create(
+        line - 1,
+        Math.min(resolvedEndColumn - 1, lineText.length),
+      ),
     );
   }
 
@@ -655,9 +842,13 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 
   try {
     const ast = parseDocument(textDocument.getText());
-    const report = await auditDslText(textDocument.getText(), textDocument.uri, {
-      embeddings: { provider: "none" },
-    });
+    const report = await auditDslText(
+      textDocument.getText(),
+      textDocument.uri,
+      {
+        embeddings: { provider: "none" },
+      },
+    );
     const referenceRanges = buildReferenceRanges(ast);
     for (const issue of report.results) {
       const issueRange = metadataRange(textDocument, issue);
@@ -679,7 +870,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
       diagnostics.push({
         range: Range.create(
           Position.create(error.line - 1, Math.max(error.column - 1, 0)),
-          Position.create(error.line - 1, Math.max(error.endColumn - 1, error.column)),
+          Position.create(
+            error.line - 1,
+            Math.max(error.endColumn - 1, error.column),
+          ),
         ),
         severity: DiagnosticSeverity.Error,
         source: "llmthink",
@@ -728,7 +922,12 @@ function stepBodySymbol(step: StepDecl): DocumentSymbol {
         return SymbolKind.Interface;
     }
   })();
-  return makeSymbol(step.statement.id, kind, step.statement.span, step.statement.role);
+  return makeSymbol(
+    step.statement.id,
+    kind,
+    step.statement.span,
+    step.statement.role,
+  );
 }
 
 function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
@@ -814,7 +1013,9 @@ function buildHover(document: TextDocument, position: Position): Hover | null {
     return null;
   }
   const description =
-    KEYWORD_DOCS[word] ?? QUERY_FUNCTION_DOCS[word] ?? DSLQL_IDENTIFIER_DOCS[word];
+    KEYWORD_DOCS[word] ??
+    QUERY_FUNCTION_DOCS[word] ??
+    DSLQL_IDENTIFIER_DOCS[word];
   if (!description) {
     return null;
   }
@@ -837,7 +1038,11 @@ function buildDslqlCompletionItems() {
   }));
 }
 
-function buildRenameEdit(document: TextDocument, name: string, newName: string): WorkspaceEdit {
+function buildRenameEdit(
+  document: TextDocument,
+  name: string,
+  newName: string,
+): WorkspaceEdit {
   const parsed = parseIndexedDocument(document);
   const edits: TextEdit[] = [];
   if (!parsed) {
@@ -896,7 +1101,9 @@ function formatDocumentAction(document: TextDocument): CodeAction | undefined {
     kind: CodeActionKind.Source,
     edit: {
       changes: {
-        [document.uri]: [TextEdit.replace(fullDocumentRange(document), formatted)],
+        [document.uri]: [
+          TextEdit.replace(fullDocumentRange(document), formatted),
+        ],
       },
     },
   };
@@ -923,7 +1130,8 @@ function missingBasedOnAction(
   }
 
   const line = issue.target_refs[0]?.step_id
-    ? ast.steps.find((step) => step.id === issue.target_refs[0]?.step_id)?.statement.span.line
+    ? ast.steps.find((step) => step.id === issue.target_refs[0]?.step_id)
+        ?.statement.span.line
     : undefined;
   if (!line) {
     return undefined;
@@ -943,7 +1151,10 @@ function missingBasedOnAction(
     kind: CodeActionKind.QuickFix,
     diagnostics: [
       {
-        range: Range.create(Position.create(lineIndex, 0), Position.create(lineIndex, originalLine.length)),
+        range: Range.create(
+          Position.create(lineIndex, 0),
+          Position.create(lineIndex, originalLine.length),
+        ),
         message: issue.message,
       },
     ],
@@ -968,7 +1179,9 @@ function missingReferenceAction(
   ast: DocumentAst,
   issue: AuditIssue,
 ): CodeAction | undefined {
-  const match = issue.message.match(/参照\s+([A-Za-z][A-Za-z0-9_-]*)\s+を解決できない/);
+  const match = issue.message.match(
+    /参照\s+([A-Za-z][A-Za-z0-9_-]*)\s+を解決できない/,
+  );
   if (!match) {
     return undefined;
   }
@@ -1017,7 +1230,9 @@ function buildCodeActions(
 }
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
-  hasConfigurationCapability = Boolean(params.capabilities.workspace?.configuration);
+  hasConfigurationCapability = Boolean(
+    params.capabilities.workspace?.configuration,
+  );
 
   return {
     capabilities: {
@@ -1061,7 +1276,12 @@ connection.onDocumentFormatting((params): TextEdit[] => {
   if (!document) {
     return [];
   }
-  return [TextEdit.replace(fullDocumentRange(document), formatDslText(document.getText()))];
+  return [
+    TextEdit.replace(
+      fullDocumentRange(document),
+      formatDslText(document.getText()),
+    ),
+  ];
 });
 
 connection.onDocumentSymbol((params) => {
@@ -1083,7 +1303,7 @@ connection.onDefinition((params) => {
     return null;
   }
   const name = symbolAtPosition(parsed.index, params.position);
-  return name ? parsed.index.definitions.get(name) ?? null : null;
+  return name ? (parsed.index.definitions.get(name) ?? null) : null;
 });
 
 connection.onReferences((params) => {
@@ -1190,16 +1410,20 @@ connection.onHover((params) => {
 
 connection.onCompletion((params) => {
   const document = documents.get(params.textDocument.uri);
-  const keywordItems = Object.entries(KEYWORD_DOCS).map(([label, documentation]) => ({
-    label,
-    kind: CompletionItemKind.Keyword,
-    documentation,
-  }));
-  const queryItems = Object.entries(QUERY_FUNCTION_DOCS).map(([label, documentation]) => ({
-    label,
-    kind: CompletionItemKind.Function,
-    documentation,
-  }));
+  const keywordItems = Object.entries(KEYWORD_DOCS).map(
+    ([label, documentation]) => ({
+      label,
+      kind: CompletionItemKind.Keyword,
+      documentation,
+    }),
+  );
+  const queryItems = Object.entries(QUERY_FUNCTION_DOCS).map(
+    ([label, documentation]) => ({
+      label,
+      kind: CompletionItemKind.Function,
+      documentation,
+    }),
+  );
   if (document && isDslqlQueryPosition(document, params.position)) {
     return [...buildDslqlCompletionItems(), ...queryItems];
   }

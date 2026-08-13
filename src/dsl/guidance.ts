@@ -1,7 +1,4 @@
-import {
-  listDslExamples,
-  resolveDslExamplePath,
-} from "./examples.js";
+import { listDslExamples, resolveDslExamplePath } from "./examples.js";
 import type { AuditIssue, AuditReport } from "../model/diagnostics.js";
 import type { ParseError } from "../parser/parser.js";
 
@@ -58,11 +55,31 @@ const HELP_NODES: HelpNode[] = [
       "parse error 時は全文再掲ではなく、対応する quick reference と関連 topic への導線を返す。",
     ],
     index: [
-      { key: "syntax", label: "syntax", summary: "top-level block、step 記法、各 statement の基本文法" },
-      { key: "query", label: "query", summary: "DSLQL の root、operator、関数、代表 query" },
-      { key: "usecases", label: "usecases", summary: "目的別の逆引き query テンプレート" },
-      { key: "samples", label: "samples", summary: "論理 sample id から具体例と現在環境での配置を辿る" },
-      { key: "channels", label: "channels", summary: "CLI / MCP / VSIX からの呼び出し方法" },
+      {
+        key: "syntax",
+        label: "syntax",
+        summary: "top-level block、step 記法、各 statement の基本文法",
+      },
+      {
+        key: "query",
+        label: "query",
+        summary: "DSLQL の root、operator、関数、代表 query",
+      },
+      {
+        key: "usecases",
+        label: "usecases",
+        summary: "目的別の逆引き query テンプレート",
+      },
+      {
+        key: "samples",
+        label: "samples",
+        summary: "論理 sample id から具体例と現在環境での配置を辿る",
+      },
+      {
+        key: "channels",
+        label: "channels",
+        summary: "CLI / MCP / VSIX からの呼び出し方法",
+      },
     ],
     related: ["query", "usecases", "samples"],
   },
@@ -82,12 +99,36 @@ const HELP_NODES: HelpNode[] = [
       "decision based_on は任意だが、未指定 decision は監査対象になりうる。",
     ],
     index: [
-      { key: "syntax.top-level", label: "top-level", summary: "framework / domain / problem / step / query の入口" },
-      { key: "syntax.step", label: "step", summary: "explicit step、step:、flatten 記法" },
-      { key: "syntax.decision", label: "decision", summary: "based_on を含む decision 文法" },
-      { key: "syntax.annotations", label: "annotations", summary: "annotation kind と付与位置の使い分け" },
-      { key: "syntax.comparison", label: "comparison", summary: "problem / viewpoint scope を持つ decision 比較文法" },
-      { key: "syntax.query-block", label: "query-block", summary: "query 宣言と DSLQL body" },
+      {
+        key: "syntax.top-level",
+        label: "top-level",
+        summary: "framework / domain / problem / step / query の入口",
+      },
+      {
+        key: "syntax.step",
+        label: "step",
+        summary: "explicit step、step:、flatten 記法",
+      },
+      {
+        key: "syntax.decision",
+        label: "decision",
+        summary: "based_on を含む decision 文法",
+      },
+      {
+        key: "syntax.annotations",
+        label: "annotations",
+        summary: "annotation kind と付与位置の使い分け",
+      },
+      {
+        key: "syntax.comparison",
+        label: "comparison",
+        summary: "problem / viewpoint scope を持つ decision 比較文法",
+      },
+      {
+        key: "syntax.query-block",
+        label: "query-block",
+        summary: "query 宣言と DSLQL body",
+      },
     ],
     related: ["query", "usecases"],
   },
@@ -104,7 +145,7 @@ const HELP_NODES: HelpNode[] = [
     ],
     detail: [
       "framework は `requires / forbids / warns` rule を持てる。",
-      "domain は `description \"...\"` または `description |` の block text を 1 つ持つ。",
+      'domain は `description "..."` または `description |` の block text を 1 つ持つ。',
       "query は 1 行の DSLQL expression を body に持つ。",
     ],
     examples: [
@@ -154,7 +195,8 @@ const HELP_NODES: HelpNode[] = [
   {
     key: "syntax.annotations",
     title: "Annotation Syntax",
-    summary: "annotation kind の閉じた集合と、problem / text-bearing statement への付与方法。",
+    summary:
+      "annotation kind の閉じた集合と、problem / text-bearing statement への付与方法。",
     quick: [
       "annotation は `annotation kind:` の header と、その次行の quoted text か block text で書く。",
       "kind は explanation / rationale / status / caveat / todo / orphan_future / orphan_reference の閉じた集合。",
@@ -208,12 +250,18 @@ const HELP_NODES: HelpNode[] = [
       '    "根拠を明示する"',
     ],
     exampleSamples: ["decision-minimal", "contradiction-pending"],
-    related: ["syntax.annotations", "syntax.step", "query.functions", "usecases.decision-without-basis"],
+    related: [
+      "syntax.annotations",
+      "syntax.step",
+      "query.functions",
+      "usecases.decision-without-basis",
+    ],
   },
   {
     key: "syntax.comparison",
     title: "Comparison Syntax",
-    summary: "同一 problem / viewpoint scope で decision 間の相対比較を記述する。",
+    summary:
+      "同一 problem / viewpoint scope で decision 間の相対比較を記述する。",
     quick: [
       "`comparison CMP1 on P1 viewpoint VP1 relation preferred_over D1, D2:` の形を使う。",
       "relation は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合。",
@@ -241,16 +289,16 @@ const HELP_NODES: HelpNode[] = [
     quick: [
       "`query Q1:` の次の indented line に DSLQL を 1 行で書く。",
       "body は field access、pipe、select、projection、relation function を組み合わせる。",
-      "まずは `.problems[] | select(.id == \"P1\") | related_decisions` を基準形にする。",
+      "まずは `.document.problems[] | select(.id == @P1) | related_decisions()` を基準形にする。",
     ],
     detail: [
       "query body は当面 1 行固定。複数行 pipeline は未導入。",
-      "query expression は parser 上 string のまま保持し、DSLQL evaluator が解釈する。",
+      "DSL parser は query body を string と span で保持し、DSLQL parser が range 付き AST に変換する。",
       "query 詳細は `dsl help query` から辿る。",
     ],
     examples: [
       "query Q1:",
-      '  .problems[] | select(.id == "P1") | related_decisions',
+      "  .document.problems[] | select(.id == @P1) | related_decisions()",
     ],
     exampleSamples: ["query-assist", "query-unresolved"],
     related: ["query", "query.examples", "usecases.problem-to-decision"],
@@ -261,22 +309,50 @@ const HELP_NODES: HelpNode[] = [
     summary: "DSLQL の root schema、operator、function、代表例への入口。",
     quick: [
       "query は root を stream として辿り、pipe で絞り込みをつなぐ。",
-      "最初に覚えるのは `.problems[]`、`select(...)`、`related_decisions`。",
+      "最初に覚えるのは `.document.problems[]`、`select(...)`、`related_decisions()`。",
       "困ったら examples か usecases から逆引きする。",
     ],
     detail: [
       "query には syntax より専用 index を用意し、概念ごとに小さく分割する。",
-      "roots は `.problems` / `.steps` / `.audit` / `.search` の入口。",
+      "document AST は `.document`、実行 context は `.audit` / `.thought` / `.search` が入口。",
       "functions は relation-aware helper をまとめる。",
     ],
     index: [
-      { key: "query.roots", label: "roots", summary: "`.problems`、`.steps`、`.audit`、`.search` の意味" },
-      { key: "query.operators", label: "operators", summary: "pipe、select、map、sort_by、limit、unique_by" },
-      { key: "query.conditions", label: "conditions", summary: "比較、and/or/not、contains、starts_with" },
-      { key: "query.functions", label: "functions", summary: "related_decisions、based_on_refs、audit_findings など" },
-      { key: "query.projections", label: "projections", summary: "object projection と collect の使い方" },
-      { key: "query.examples", label: "examples", summary: "代表 query のテンプレート" },
-      { key: "query.errors", label: "errors", summary: "よくある迷い方と回復導線" },
+      {
+        key: "query.roots",
+        label: "roots",
+        summary: "`.document`、`.audit`、`.thought`、`.search` の意味",
+      },
+      {
+        key: "query.operators",
+        label: "operators",
+        summary: "pipe、select、map、sort_by、limit、unique_by",
+      },
+      {
+        key: "query.conditions",
+        label: "conditions",
+        summary: "比較、and/or/not、contains、starts_with",
+      },
+      {
+        key: "query.functions",
+        label: "functions",
+        summary: "related_decisions()、similarity()、nearest_to() など",
+      },
+      {
+        key: "query.projections",
+        label: "projections",
+        summary: "object projection と collect の使い方",
+      },
+      {
+        key: "query.examples",
+        label: "examples",
+        summary: "代表 query のテンプレート",
+      },
+      {
+        key: "query.errors",
+        label: "errors",
+        summary: "よくある迷い方と回復導線",
+      },
     ],
     related: ["syntax.query-block", "usecases", "samples"],
   },
@@ -285,18 +361,18 @@ const HELP_NODES: HelpNode[] = [
     title: "Query Roots",
     summary: "DSLQL の開始点になる root schema。",
     quick: [
-      "`.problems[]` は problem stream。",
-      "`.steps[]` は正規化された step statement stream。",
+      "`.document.problems[]` は problem stream。",
+      "`.document.steps[]` は step stream、`.document.steps[].statement` は statement stream。",
       "`.audit` は latest audit result、`.search[]` は thought search result stream。",
     ],
     detail: [
-      "`.steps[]` の各要素は `step_id`、`role`、`id`、`text`、`based_on` などの共通 field を持つ。",
-      "problem から decision を辿るときは `.problems[]` を始点にする。",
+      "step の `id` と statement の `id` は別階層で、statement は `role` と role 固有 field を持つ。",
+      "problem から decision を辿るときは `.document.problems[]` を始点にする。",
       "監査結果の集計は `.audit` を始点にする。",
     ],
     examples: [
-      '.problems[] | select(.id == "P1") | related_decisions',
-      '.steps[] | select(.role == "decision")',
+      ".document.problems[] | select(.id == @P1) | related_decisions()",
+      '.document.steps[].statement | select(.role == "decision")',
       '.audit | audit_findings("warning")',
     ],
     exampleSamples: ["query-assist"],
@@ -312,13 +388,13 @@ const HELP_NODES: HelpNode[] = [
       "`map(expr)`、`sort_by(expr)`、`limit(n)`、`unique_by(expr)` を組み合わせる。",
     ],
     detail: [
-      "field 不在は empty として扱われ、stream から落ちる。",
+      "required field 不在は評価エラー、`.field?` の不在だけが empty になる。",
       "`[expr]` は current stream を array に束ねる。",
       "operator 詳細より先に examples を見たほうが書き始めやすい場合が多い。",
     ],
     examples: [
-      '.steps[] | select(.role == "decision") | sort_by(.score) | limit(2)',
-      '.steps[] | select(.role == "decision") | map({id: .id, text: .text})',
+      '.document.steps[].statement | select(.role == "decision") | sort_by(.id) | limit(2)',
+      '.document.steps[].statement | select(.role == "decision") | map({id: .id, text: .text})',
     ],
     related: ["query.conditions", "query.projections", "query.examples"],
   },
@@ -332,13 +408,13 @@ const HELP_NODES: HelpNode[] = [
       "`contains(x)`、`starts_with(x)`、`ends_with(x)` を使える。",
     ],
     detail: [
-      "role 判定は `.role == \"decision\"` の形が基準。",
-      "problem id 指定は `.id == \"P1\"` の形。",
+      'role 判定は `.role == "decision"` の形が基準。',
+      "宣言 id 指定は通常文字列ではなく `.id == @P1` の形。",
       "配列や text を含む条件は `contains(...)` を使う。",
     ],
     examples: [
-      '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
-      '.search[] | select(contains(.id, "ADR"))',
+      '.document.steps[].statement | select(.role == "decision" and len(.based_on) == 0)',
+      '.search[] | select(.id | contains("ADR"))',
     ],
     related: ["query.operators", "query.examples"],
   },
@@ -347,19 +423,28 @@ const HELP_NODES: HelpNode[] = [
     title: "Query Functions",
     summary: "llmthink 固有の relation-aware function。",
     quick: [
-      "`related_decisions` は problem から decision を辿る。",
-      "`based_on_refs` は decision の根拠 statement を返す。",
-      "`audit_findings`、`has_open_pending`、`score`、`kind` を使える。",
+      "`related_decisions()` は problem から decision を辿る。",
+      "`based_on_refs()` は decision の根拠 node を返す。",
+      "`similarity(a, b)` は類似度、`similar_to(a, b, threshold)` は判定を返す。",
+      "`nearest_to(@ID|string-literal[, threshold])` は候補を embedding 類似度で順位付けする。",
+      "`audit_findings()`、`has_open_pending()`、`score()`、`kind()` を使える。",
     ],
     detail: [
-      "`related_decisions` は problem または problem id を受け、decision stream を返す。",
-      "`audit_findings(\"warning\")` は warning 以上の finding stream を返す。",
+      "`related_decisions()` は problem node または problem id を受け、参照 graph 上の decision stream を返す。",
+      "`nearest_to()` は `{node, score, provider, model}` を返すため、後続 field は `.node.id` や `.score` になる。",
+      "文字列はリテラルだけを semantic runtime preparation 時に embedding でき、動的な text path や concat は許可しない。",
+      "distinct literal は既定で 8 件までとし、host API から上限を変更できる。",
+      "embedding provider が無効または失敗した場合は semantic query を広い結果へ暗黙 fallback しない。",
+      '`audit_findings("warning")` は warning 以上の finding stream を返す。',
       "query 設計で迷ったら、まず root selection と relation function の 2 段に分けて考える。",
     ],
     examples: [
-      '.problems[] | select(.id == "P1") | related_decisions',
+      ".document.problems[] | select(.id == @P1) | related_decisions()",
+      '.document.steps[].statement | select(.role == "decision" and similar_to(., @P1, 0.5))',
+      '.document.steps[].statement | select(.role == "decision") | nearest_to(@P1, 0.5) | limit(10)',
       '.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}',
-      '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
+      ".document | has_open_pending()",
+      ".search[] | limit(10)",
     ],
     exampleSamples: ["query-assist", "query-unresolved"],
     related: ["query.roots", "query.examples", "usecases.problem-to-decision"],
@@ -374,12 +459,12 @@ const HELP_NODES: HelpNode[] = [
       "集約前に `unique_by(.id)` を入れると重複を減らせる。",
     ],
     detail: [
-      "object projection は各要素を軽量 view に変換する。",
+      "object field は 0 または 1 値を要求し、複数値は `[expr]` で明示的に束ねる。",
       "collect の後は `len(.)` のような配列処理につなげられる。",
       "出力が長いときは projection を先に入れる。",
     ],
     examples: [
-      '.steps[] | select(.role == "decision") | map({id: .id, text: .text})',
+      '.document.steps[].statement | select(.role == "decision") | map({id: .id, text: .text})',
       '.audit | audit_findings("warning") | [.] | {count: len(.), findings: .}',
     ],
     related: ["query.operators", "query.examples"],
@@ -390,6 +475,7 @@ const HELP_NODES: HelpNode[] = [
     summary: "よく使う query の雛形。",
     quick: [
       "problem から decision を辿る。",
+      "宣言または自由文に近い decision を探す。",
       "根拠のない decision を探す。",
       "open pending を持つ thought を絞り込む。",
     ],
@@ -399,9 +485,11 @@ const HELP_NODES: HelpNode[] = [
       "逆引きしたいときは `dsl help usecases` を使う。",
     ],
     examples: [
-      '.problems[] | select(.id == "P1") | related_decisions | {id: .id, text: .text, based_on: .based_on}',
-      '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
-      '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
+      ".document.problems[] | select(.id == @P1) | related_decisions() | {id: .id, text: .text, based_on: .based_on}",
+      '.document.steps[].statement | select(.role == "decision") | nearest_to("運用コスト") | limit(10)',
+      '.document.steps[].statement | select(.role == "decision" and len(.based_on) == 0)',
+      ".document | has_open_pending()",
+      ".search[] | limit(10)",
     ],
     exampleSamples: ["query-assist", "query-unresolved", "dsl-samples"],
     related: ["usecases", "query.functions", "query.projections"],
@@ -411,18 +499,20 @@ const HELP_NODES: HelpNode[] = [
     title: "Query Troubleshooting",
     summary: "query が書けないときの見直し順。",
     quick: [
-      "まず root が正しいか確認する。problem 起点なら `.problems[]`、statement 起点なら `.steps[]`。",
+      "まず root が正しいか確認する。problem 起点なら `.document.problems[]`、statement 起点なら `.document.steps[].statement`。",
       "次に select 条件の id や role を確認する。",
-      "最後に relation function と projection を足す。",
+      "最後に relation / semantic function と projection を足す。",
     ],
     detail: [
       "field access と relation function を一度に混ぜず、root -> select -> relation -> projection の順で組むと崩れにくい。",
+      "nearest_to() 後は match object になるため、元 node は `.node` 配下を参照する。",
+      "semantic query の embedding 不可は empty ではなく監査 info として報告される。",
       "query 断片より逆引きが欲しいなら usecases topic を使う。",
       "parse error 時の quick reference からもこの topic へ戻れるようにする。",
     ],
     examples: [
-      'query Q1:\n  .problems[] | select(.id == "P1") | related_decisions',
-      'query Q2:\n  .steps[] | select(.role == "decision")',
+      "query Q1:\n  .document.problems[] | select(.id == @P1) | related_decisions()",
+      'query Q2:\n  .document.steps[].statement | select(.role == "decision")',
     ],
     exampleSamples: ["query-unresolved", "query-assist"],
     related: ["query.roots", "query.functions", "usecases"],
@@ -450,7 +540,8 @@ const HELP_NODES: HelpNode[] = [
   {
     key: "usecases",
     title: "Use Case Index",
-    summary: "目的文や思考 profile から query テンプレートと代表例へ逆引きする入口。",
+    summary:
+      "目的文や思考 profile から query テンプレートと代表例へ逆引きする入口。",
     quick: [
       "query 文法ではなく、やりたいことから辿りたいときの入口。",
       "迷ったら usecase profile を選び、最小 role、alias、関連 query を見る。",
@@ -460,13 +551,42 @@ const HELP_NODES: HelpNode[] = [
       "LLM には usecase の短いテンプレートを返し、人間には see also を付ける。",
     ],
     index: [
-      { key: "usecases.ideation", label: "ideation", summary: "発散 -> 収束 -> クラスタ化 -> ラベル -> 結論を既存 role で記述したい" },
-      { key: "usecases.problem-solving", label: "problem-solving", summary: "課題解決・問題解決の最小 role を知りたい" },
-      { key: "usecases.other-profiles", label: "other-profiles", summary: "その他ユースケースを representative profile で見たい" },
-      { key: "usecases.problem-to-decision", label: "problem-to-decision", summary: "problem から関連 decision を出したい" },
-      { key: "usecases.decision-without-basis", label: "decision-without-basis", summary: "根拠のない decision を探したい" },
-      { key: "usecases.open-pending", label: "open-pending", summary: "pending を含む thought を探したい" },
-      { key: "usecases.audit-findings", label: "audit-findings", summary: "warning 以上の finding を集計したい" },
+      {
+        key: "usecases.ideation",
+        label: "ideation",
+        summary:
+          "発散 -> 収束 -> クラスタ化 -> ラベル -> 結論を既存 role で記述したい",
+      },
+      {
+        key: "usecases.problem-solving",
+        label: "problem-solving",
+        summary: "課題解決・問題解決の最小 role を知りたい",
+      },
+      {
+        key: "usecases.other-profiles",
+        label: "other-profiles",
+        summary: "その他ユースケースを representative profile で見たい",
+      },
+      {
+        key: "usecases.problem-to-decision",
+        label: "problem-to-decision",
+        summary: "problem から関連 decision を出したい",
+      },
+      {
+        key: "usecases.decision-without-basis",
+        label: "decision-without-basis",
+        summary: "根拠のない decision を探したい",
+      },
+      {
+        key: "usecases.open-pending",
+        label: "open-pending",
+        summary: "現在の document の pending を確認したい",
+      },
+      {
+        key: "usecases.audit-findings",
+        label: "audit-findings",
+        summary: "warning 以上の finding を集計したい",
+      },
     ],
     related: ["query.examples", "query.functions"],
   },
@@ -485,8 +605,8 @@ const HELP_NODES: HelpNode[] = [
     ],
     examples: [
       'problem P1:\n  "次に検討する案を整理したい"',
-      'viewpoint VP1:\n  axis activation',
-      'partition PT1 on Ideation axis activation:\n  Guided := guided_entry\n  Checklist := checklist_entry\n  Others := not Guided and not Checklist',
+      "viewpoint VP1:\n  axis activation",
+      "partition PT1 on Ideation axis activation:\n  Guided := guided_entry\n  Checklist := checklist_entry\n  Others := not Guided and not Checklist",
       'decision D1 based_on P1, PR1, EV1:\n  "guided entry を中心案として収束する"',
     ],
     exampleSamples: ["ideation-profile"],
@@ -511,12 +631,17 @@ const HELP_NODES: HelpNode[] = [
       'decision D1 based_on P1, PR1, EV1:\n  "dependency cache invalidation を先に試す"',
     ],
     exampleSamples: ["problem-solving-profile"],
-    related: ["usecases.problem-to-decision", "usecases.open-pending", "syntax.decision"],
+    related: [
+      "usecases.problem-to-decision",
+      "usecases.open-pending",
+      "syntax.decision",
+    ],
   },
   {
     key: "usecases.other-profiles",
     title: "Use Case: Other Profiles",
-    summary: "その他ユースケースは syntax 追加ではなく representative profile を段階追加する。",
+    summary:
+      "その他ユースケースは syntax 追加ではなく representative profile を段階追加する。",
     quick: [
       "設計レビュー、比較検討、計画整理、振り返りなどを profile と example で増やす。",
       "alias は parser keyword ではなく docs/help 上の説明語として扱う。",
@@ -537,15 +662,15 @@ const HELP_NODES: HelpNode[] = [
     title: "Use Case: Problem to Decision",
     summary: "problem から関連 decision を辿る。",
     quick: [
-      '`.problems[] | select(.id == "P1") | related_decisions` を起点にする。',
+      "`.document.problems[] | select(.id == @P1) | related_decisions()` を起点にする。",
       "最後に projection を足すと読みやすい。",
     ],
     detail: [
-      "problem id を絞ってから `related_decisions` を呼ぶ。",
+      "problem id を絞ってから `related_decisions()` を呼ぶ。",
       "decision text や based_on を見たいなら object projection を足す。",
     ],
     examples: [
-      '.problems[] | select(.id == "P1") | related_decisions | {id: .id, text: .text, based_on: .based_on}',
+      ".document.problems[] | select(.id == @P1) | related_decisions() | {id: .id, text: .text, based_on: .based_on}",
     ],
     exampleSamples: ["query-assist"],
     related: ["query.functions", "query.projections", "syntax.query-block"],
@@ -555,15 +680,15 @@ const HELP_NODES: HelpNode[] = [
     title: "Use Case: Decision Without Basis",
     summary: "根拠参照がない decision を探す。",
     quick: [
-      '`.steps[] | select(.role == "decision" and len(.based_on) == 0)` を使う。',
+      '`.document.steps[].statement | select(.role == "decision" and len(.based_on) == 0)` を使う。',
       "監査前の自己チェック用に向いている。",
     ],
     detail: [
-      "`.steps[]` は normalized statement stream。",
+      "`.document.steps[].statement` は step AST 配下の normalized statement stream。",
       "role 判定と based_on 長さ判定を組み合わせる。",
     ],
     examples: [
-      '.steps[] | select(.role == "decision" and len(.based_on) == 0)',
+      '.document.steps[].statement | select(.role == "decision" and len(.based_on) == 0)',
     ],
     exampleSamples: ["decision-minimal", "contradiction-pending"],
     related: ["query.conditions", "syntax.decision"],
@@ -571,17 +696,18 @@ const HELP_NODES: HelpNode[] = [
   {
     key: "usecases.open-pending",
     title: "Use Case: Open Pending",
-    summary: "pending を含む thought を検索結果から絞り込む。",
+    summary: "現在の document に pending が残っているか確認する。",
     quick: [
-      '`.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)` を使う。',
-      "search result の ranking score を最後に使う。",
+      "`.document | has_open_pending()` で有無を判定する。",
+      '一覧が必要なら `.document.steps[].statement | select(.role == "pending")` を使う。',
     ],
     detail: [
-      "persisted thought search を前提に `.search[]` を root にする。",
-      "`has_open_pending` と `score` は llmthink 固有関数。",
+      "`has_open_pending()` は input の構造を再帰的に調べる。",
+      "thought search result 自体は pending 構造を持たず、既に ranking 済みなので `.search[] | limit(10)` で先頭を取る。",
     ],
     examples: [
-      '.search[] | select(has_open_pending(.)) | sort_by(score(.)) | limit(10)',
+      ".document | has_open_pending()",
+      '.document.steps[].statement | select(.role == "pending")',
     ],
     related: ["query.functions", "query.operators"],
   },
@@ -617,9 +743,21 @@ const HELP_NODES: HelpNode[] = [
       "topic だけを先に問い合わせ、必要なら subtopic へ進むのが基本。",
     ],
     index: [
-      { key: "channels.cli", label: "cli", summary: "コマンドラインからの使い方" },
-      { key: "channels.mcp", label: "mcp", summary: "MCP tool 引数としての使い方" },
-      { key: "channels.vsix", label: "vsix", summary: "VSIX language model tool と dsl help text の使い方" },
+      {
+        key: "channels.cli",
+        label: "cli",
+        summary: "コマンドラインからの使い方",
+      },
+      {
+        key: "channels.mcp",
+        label: "mcp",
+        summary: "MCP tool 引数としての使い方",
+      },
+      {
+        key: "channels.vsix",
+        label: "vsix",
+        summary: "VSIX language model tool と dsl help text の使い方",
+      },
     ],
     related: ["overview", "query", "samples"],
   },
@@ -735,7 +873,10 @@ function formatCodeBlock(lines: string[]): string[] {
   return ["```llmthink", ...lines, "```"];
 }
 
-function helpInvocationExamples(node: HelpNode, request: DslHelpRequest): string[] {
+function helpInvocationExamples(
+  node: HelpNode,
+  request: DslHelpRequest,
+): string[] {
   const detail = inferDetail(request);
   const topic = node.key.split(".")[0] ?? "overview";
   const subtopic = node.key.includes(".") ? node.key.split(".")[1] : undefined;
@@ -796,11 +937,7 @@ function formatIndex(node: HelpNode): string[] {
 }
 
 function formatQuickReference(node: HelpNode): string[] {
-  return [
-    "Quick Reference",
-    ...node.quick.map((line) => `- ${line}`),
-    "",
-  ];
+  return ["Quick Reference", ...node.quick.map((line) => `- ${line}`), ""];
 }
 
 function formatDetailReference(node: HelpNode): string[] {
@@ -837,7 +974,10 @@ function formatExampleSamples(node: HelpNode): string[] {
 
 export function parseDslHelpRequest(input: string): DslHelpRequest | undefined {
   const tokens = input.trim().split(/\s+/u).filter(Boolean);
-  if (tokens[0]?.toLowerCase() !== "dsl" || tokens[1]?.toLowerCase() !== "help") {
+  if (
+    tokens[0]?.toLowerCase() !== "dsl" ||
+    tokens[1]?.toLowerCase() !== "help"
+  ) {
     return undefined;
   }
 
@@ -848,11 +988,7 @@ export function parseDslHelpRequest(input: string): DslHelpRequest | undefined {
       : undefined;
   return {
     topic: tokens[2],
-    subtopic: detail
-      ? tokens.length >= 5
-        ? tokens[3]
-        : undefined
-      : tokens[3],
+    subtopic: detail ? (tokens.length >= 5 ? tokens[3] : undefined) : tokens[3],
     detail,
   };
 }
@@ -895,7 +1031,8 @@ export function getDslSyntaxGuidanceText(request: DslHelpRequest = {}): string {
 
 const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
   {
-    matches: (message) => startsWithAny(message, ["Unexpected top-level statement:"]),
+    matches: (message) =>
+      startsWithAny(message, ["Unexpected top-level statement:"]),
     help: {
       rationale:
         "top-level では framework / domain / problem / step / query に加えて premise / evidence / pending / viewpoint / partition / decision も許可される。",
@@ -908,12 +1045,13 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
         "evidence EV1:",
         '  "..."',
         "query Q1:",
-        '  .problems[] | select(.id == "P1") | related_decisions',
+        "  .document.problems[] | select(.id == @P1) | related_decisions()",
       ].join("\n"),
     },
   },
   {
-    matches: (message) => startsWithAny(message, ["Invalid framework declaration"]),
+    matches: (message) =>
+      startsWithAny(message, ["Invalid framework declaration"]),
     help: {
       rationale:
         "framework は 'framework Name' または 'framework Name:' で始める必要がある。",
@@ -926,18 +1064,36 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid domain declaration", "Domain description is required"]),
+      startsWithAny(message, [
+        "Invalid domain declaration",
+        "Domain description is required",
+      ]),
     help: {
       rationale: "domain は header 行の次に description 行を持つ。",
-      expectedSyntax: ["domain DesignReview:", '  description "設計レビュー論点"', "  description |", "    複数行の説明"].join("\n"),
+      expectedSyntax: [
+        "domain DesignReview:",
+        '  description "設計レビュー論点"',
+        "  description |",
+        "    複数行の説明",
+      ].join("\n"),
     },
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid problem declaration", "Problem text is required"]),
+      startsWithAny(message, [
+        "Invalid problem declaration",
+        "Problem text is required",
+      ]),
     help: {
-      rationale: "problem は header 行の次に quoted text または `|` marker 付き block text を持つ。",
-      expectedSyntax: ["problem P1:", '  "監査したい問題文"', "problem P2:", "  |", "    複数行の問題文"].join("\n"),
+      rationale:
+        "problem は header 行の次に quoted text または `|` marker 付き block text を持つ。",
+      expectedSyntax: [
+        "problem P1:",
+        '  "監査したい問題文"',
+        "problem P2:",
+        "  |",
+        "    複数行の問題文",
+      ].join("\n"),
     },
   },
   {
@@ -958,39 +1114,80 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid premise declaration", "premise text is required"]),
+      startsWithAny(message, [
+        "Invalid premise declaration",
+        "premise text is required",
+      ]),
     help: {
-      rationale: "premise は 'premise Id:' の次に quoted text または block text を持つ。",
-      expectedSyntax: ["step S1:", "  premise PR1:", '    "現在の前提"', "  premise PR2:", "    |", "      複数行の前提"].join("\n"),
+      rationale:
+        "premise は 'premise Id:' の次に quoted text または block text を持つ。",
+      expectedSyntax: [
+        "step S1:",
+        "  premise PR1:",
+        '    "現在の前提"',
+        "  premise PR2:",
+        "    |",
+        "      複数行の前提",
+      ].join("\n"),
     },
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid evidence declaration", "evidence text is required"]),
+      startsWithAny(message, [
+        "Invalid evidence declaration",
+        "evidence text is required",
+      ]),
     help: {
-      rationale: "evidence は 'evidence Id:' の次に quoted text または block text を持つ。",
-      expectedSyntax: ["step S1:", "  evidence EV1:", '    "観測事実"', "  evidence EV2:", "    |", "      複数行の観測"].join("\n"),
+      rationale:
+        "evidence は 'evidence Id:' の次に quoted text または block text を持つ。",
+      expectedSyntax: [
+        "step S1:",
+        "  evidence EV1:",
+        '    "観測事実"',
+        "  evidence EV2:",
+        "    |",
+        "      複数行の観測",
+      ].join("\n"),
     },
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid pending declaration", "pending text is required"]),
+      startsWithAny(message, [
+        "Invalid pending declaration",
+        "pending text is required",
+      ]),
     help: {
-      rationale: "pending は 'pending Id:' の次に quoted text または block text を持つ。",
-      expectedSyntax: ["step S1:", "  pending PD1:", '    "未確定事項"', "  pending PD2:", "    |", "      複数行の未確定事項"].join("\n"),
+      rationale:
+        "pending は 'pending Id:' の次に quoted text または block text を持つ。",
+      expectedSyntax: [
+        "step S1:",
+        "  pending PD1:",
+        '    "未確定事項"',
+        "  pending PD2:",
+        "    |",
+        "      複数行の未確定事項",
+      ].join("\n"),
     },
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid viewpoint declaration", "Viewpoint axis is required"]),
+      startsWithAny(message, [
+        "Invalid viewpoint declaration",
+        "Viewpoint axis is required",
+      ]),
     help: {
       rationale: "viewpoint は 'viewpoint Id:' の次に 'axis name' を持つ。",
-      expectedSyntax: ["step S1:", "  viewpoint VP1:", "    axis cost"].join("\n"),
+      expectedSyntax: ["step S1:", "  viewpoint VP1:", "    axis cost"].join(
+        "\n",
+      ),
     },
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid partition declaration", "Invalid partition member"]),
+      startsWithAny(message, [
+        "Invalid partition declaration",
+        "Invalid partition member",
+      ]),
     help: {
       rationale:
         "partition は on/axis を含む header と、4 space 相当で始まる member 行を持つ。",
@@ -1004,7 +1201,10 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid annotation declaration", "Annotation text is required"]),
+      startsWithAny(message, [
+        "Invalid annotation declaration",
+        "Annotation text is required",
+      ]),
     help: {
       rationale:
         "annotation は閉じた kind 集合を持ち、header 行の次に quoted text または block text を置く。kind 名が未知だったり本文が無い場合は annotation 自体の構文を見直す。",
@@ -1021,7 +1221,10 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid decision declaration", "Decision text is required"]),
+      startsWithAny(message, [
+        "Invalid decision declaration",
+        "Decision text is required",
+      ]),
     help: {
       rationale:
         "decision は 'decision Id based_on Ref1, Ref2:' の形式で、次行に quoted text または block text を持つ。",
@@ -1037,12 +1240,16 @@ const PARSE_ERROR_HELP_RULES: ParseErrorHelpRule[] = [
   },
   {
     matches: (message) =>
-      startsWithAny(message, ["Invalid query declaration", "Query expression is required"]),
+      startsWithAny(message, [
+        "Invalid query declaration",
+        "Query expression is required",
+      ]),
     help: {
-      rationale: "query は 'query Id:' の次に expression を持つ。DSLQL の詳細は query help を辿る。",
+      rationale:
+        "query は 'query Id:' の次に expression を持つ。DSLQL の詳細は query help を辿る。",
       expectedSyntax: [
         "query Q1:",
-        '  .problems[] | select(.id == "P1") | related_decisions',
+        "  .document.problems[] | select(.id == @P1) | related_decisions()",
       ].join("\n"),
     },
   },
@@ -1058,7 +1265,10 @@ function parseErrorHelp(error: ParseError): ParseErrorHelp {
   return {
     rationale:
       "DSL の header、indent、quoted text の位置が期待形とずれている可能性がある。",
-    expectedSyntax: getDslSyntaxGuidanceText({ topic: "syntax", detail: "quick" }).trimEnd(),
+    expectedSyntax: getDslSyntaxGuidanceText({
+      topic: "syntax",
+      detail: "quick",
+    }).trimEnd(),
   };
 }
 

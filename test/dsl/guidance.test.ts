@@ -46,6 +46,11 @@ test("getDslSyntaxGuidanceText returns query function detail with next requests"
   assert.match(text, /Topic: query.functions/);
   assert.match(text, /related_decisions/);
   assert.match(text, /audit_findings/);
+  assert.match(text, /similarity\(a, b\)/);
+  assert.match(text, /similar_to\(a, b, threshold\)/);
+  assert.match(text, /nearest_to\(@ID\|string-literal/);
+  assert.match(text, /distinct literal は既定で 8 件/);
+  assert.doesNotMatch(text, /similar_to\(@ID/);
   assert.match(text, /Next Requests/);
   assert.match(text, /llmthink dsl help query functions detail/);
 });
@@ -103,7 +108,10 @@ test("getDslSyntaxGuidanceText exposes dedicated annotation guidance", () => {
     detail: "detail",
   });
   assert.match(text, /Topic: syntax.annotations/);
-  assert.match(text, /explanation \/ rationale \/ status \/ caveat \/ todo \/ orphan_future \/ orphan_reference/);
+  assert.match(
+    text,
+    /explanation \/ rationale \/ status \/ caveat \/ todo \/ orphan_future \/ orphan_reference/,
+  );
   assert.match(text, /intentional orphan/);
 });
 

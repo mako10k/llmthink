@@ -71,10 +71,10 @@ step S9:
       library 切り替えで UI 契約は変えない
 
 query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+  .document.problems[] | select(.id == @P1) | related_decisions()
 
 query Q2:
-  .problems[] | select(.id == "P2") | related_decisions
+  .document.problems[] | select(.id == @P2) | related_decisions()
 
 query Q3:
-  .problems[] | select(.id == "P3") | related_decisions
+  .document.problems[] | select(.id == @P3) | related_decisions()

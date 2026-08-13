@@ -11,7 +11,7 @@ import { addThoughtReflection, deleteThought, relateThought, finalizeThought, li
 import { auditAndPersistThought } from "../thought/workflow.js";
 const server = new McpServer({
     name: "llmthink",
-    version: "0.5.2",
+    version: "1.0.0",
 });
 function auditOutputOptions(options) {
     return {
@@ -84,7 +84,9 @@ function showThoughtView(thoughtId, view, outputOptions = {}) {
 }
 function summarizeThought(thoughtId) {
     return {
-        content: [textContent(formatThoughtSummary(loadThought(thoughtId, thoughtLocation())))],
+        content: [
+            textContent(formatThoughtSummary(loadThought(thoughtId, thoughtLocation()))),
+        ],
     };
 }
 async function handleThoughtSearch(query, limit, includeReflections) {
@@ -210,7 +212,11 @@ function handleThoughtSemanticAuditAction(thoughtId, decisionId, supportId, verd
 }
 async function handleThoughtAction(action, thoughtId, dslText, fromThoughtId, text, kind, query, limit, includeReflections, decisionId, supportId, verdict, reason, auditId, reviewer, model, auditedAt, sourceThoughtId, view, outputOptions) {
     if (action === "list") {
-        return { content: [textContent(formatThoughtList(listThoughts(thoughtLocation())))] };
+        return {
+            content: [
+                textContent(formatThoughtList(listThoughts(thoughtLocation()))),
+            ],
+        };
     }
     if (action === "search") {
         return handleThoughtSearch(query, limit, includeReflections);
@@ -249,9 +255,18 @@ server.tool("dsl", "LLMThink DSL operations. Use action=audit to audit and auto-
     topic: z.string().optional(),
     subtopic: z.string().optional(),
     detail: z.enum(["index", "quick", "detail"]).optional(),
-    maxIssues: z.number().int().positive().max(1000).optional().describe("Maximum number of audit issues to return after output filtering."),
+    maxIssues: z
+        .number()
+        .int()
+        .positive()
+        .max(1000)
+        .optional()
+        .describe("Maximum number of audit issues to return after output filtering."),
     minSeverity: AUDIT_SEVERITY_SCHEMA.optional().describe("Minimum audit severity to return, inclusive."),
-    suppressCategories: z.array(AUDIT_RESULT_CATEGORY_SCHEMA).optional().describe("Audit result categories to omit from output."),
+    suppressCategories: z
+        .array(AUDIT_RESULT_CATEGORY_SCHEMA)
+        .optional()
+        .describe("Audit result categories to omit from output."),
 }, async ({ action, dslText, filePath, documentId, thoughtId, topic, subtopic, detail, maxIssues, minSeverity, suppressCategories, }) => {
     if (isDslHelpAction(action, dslText)) {
         const parsedRequest = dslText ? parseDslHelpRequest(dslText) : undefined;
@@ -276,7 +291,10 @@ server.tool("dsl", "LLMThink DSL operations. Use action=audit to audit and auto-
         thoughtId,
     }, {
         fileBaseDir: process.cwd(),
-        storageRoot: resolveThoughtStorageRoot({ cwd: process.cwd(), filePath }),
+        storageRoot: resolveThoughtStorageRoot({
+            cwd: process.cwd(),
+            filePath,
+        }),
     });
     const outputOptions = auditOutputOptions({
         maxIssues,
@@ -316,9 +334,18 @@ server.tool("thought", "LLMThink thought lifecycle operations. Use action=draft|
     kind: REFLECTION_KIND_SCHEMA.default("note"),
     query: z.string().optional(),
     limit: z.number().int().positive().max(20).optional(),
-    maxIssues: z.number().int().positive().max(1000).optional().describe("Maximum number of audit issues for audit output or view=audit."),
+    maxIssues: z
+        .number()
+        .int()
+        .positive()
+        .max(1000)
+        .optional()
+        .describe("Maximum number of audit issues for audit output or view=audit."),
     minSeverity: AUDIT_SEVERITY_SCHEMA.optional().describe("Minimum audit severity for audit output or view=audit, inclusive."),
-    suppressCategories: z.array(AUDIT_RESULT_CATEGORY_SCHEMA).optional().describe("Audit result categories to omit from audit output or view=audit."),
+    suppressCategories: z
+        .array(AUDIT_RESULT_CATEGORY_SCHEMA)
+        .optional()
+        .describe("Audit result categories to omit from audit output or view=audit."),
     includeReflections: z.boolean().default(false),
     decisionId: z.string().optional(),
     supportId: z.string().optional(),

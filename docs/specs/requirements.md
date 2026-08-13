@@ -680,7 +680,7 @@ step S7:
 		"運用負荷の比較は未完了"
 
 query Q1:
-	.problems[] | select(.id == "P1") | related_decisions
+	.document.problems[] | select(.id == @P1) | related_decisions()
 ```
 
 ### 18.1 想定監査結果
@@ -690,6 +690,12 @@ query Q1:
 - Others の定義は記述されているが、ProductChoice の被覆確認が不十分なら mece_assessment かつ warning
 - PD1 が存在するため、「結論確定済み」と強く表示しない補足が info
 - Q1 が与えられていれば query_result が hint
+- embedding は一級オブジェクトの不可視属性とし、path access、列挙、projection、serialization では取得できない
+- `similarity(left, right)` は 0..1 の数値、`similar_to(left, right, threshold)` は真偽値を返す。`nearest_to(@ID|string-literal[, threshold])` は元 node、score、provider、model を持つ match を類似度降順で返す
+- 文字列リテラルは semantic operand として semantic runtime preparation 時に embedding し、同一 preparation 内では同じ literal value を共通化する。process 間または query 間の永続 cache は公開契約に含めない。動的な文字列 path、`concat(...)`、その他の生成上限を証明できない式は拒否する
+- distinct な on-demand literal embedding は最悪時の生成数で予算検査し、キャッシュの温冷によってクエリの可否を変えない
+- semantic view は更新伝搬を必要とするため導入しない。将来の optimizer は式全体の distinct embedding 生成上限を証明できる場合に限り、定数伝搬や定数畳み込み後の semantic operand を許可できる
+- embedding provider が利用不能な場合、semantic query は lexical または全候補へ暗黙 fallback せず、query_result を空にして実行不能を info として報告する
 
 ### 18.2 このサンプルが示すこと
 

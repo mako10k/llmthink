@@ -1,6 +1,10 @@
 .DS_Store
 Thumbs.db
 dist/
+!dist/
+dist/*
+!dist/dslql/
+!dist/dslql/*
 node_modules/
 *.vsix
 .llmthink/

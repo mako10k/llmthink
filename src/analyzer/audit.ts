@@ -27,9 +27,18 @@ import {
 } from "../dsl/guidance.js";
 import {
   collectDslqlReferenceIds,
+  collectDslqlReferences,
+  createDocumentDslqlRuntime,
+  createSemanticDocumentDslqlRuntime,
+  DslqlEvaluationError,
   DslqlParseError,
+  DslqlSemanticError,
+  DslqlSemanticUnavailableError,
   evaluateDslqlExpression,
   parseDslqlExpression,
+  usesSemanticDslql,
+  type DslqlSemanticEmbedder,
+  type DslqlObject,
   type DslqlRuntime,
   type DslqlValue,
 } from "../dslql/query.js";
@@ -42,8 +51,10 @@ import {
 
 const ENGINE_VERSION = "0.1.0";
 
-interface AuditOptions {
+export interface AuditOptions {
   embeddings?: EmbeddingRequestOptions;
+  semanticEmbedder?: DslqlSemanticEmbedder;
+  semanticMaxOnDemandEmbeddings?: number;
 }
 
 function statementIdentifierColumn(statement: StepStatement): number {
@@ -60,8 +71,7 @@ function basedOnReferenceColumn(
   ref: string,
 ): number {
   const basedOnPrefixLength =
-    statement.span.column +
-    `decision ${statement.id} based_on `.length;
+    statement.span.column + `decision ${statement.id} based_on `.length;
   const beforeRefLength = statement.basedOn
     .slice(0, statement.basedOn.indexOf(ref))
     .join(", ").length;
@@ -71,11 +81,6 @@ function basedOnReferenceColumn(
 
 function frameworkRuleValueColumn(kind: string): number {
   return 3 + kind.length + 1;
-}
-
-function queryArgumentColumn(expression: string, queryColumn: number, ref: string): number {
-  const index = expression.indexOf(ref);
-  return queryColumn + (index >= 0 ? index : 0);
 }
 
 function overlappingBasedOnRefs(
@@ -215,31 +220,33 @@ const TEXT_SYNTAX_HELP_COMMAND = "llmthink dsl help syntax detail";
 
 function quotedTextSyntaxGuidance(): string {
   return [
-    '短い本文は quoted line を使う。',
-    '例:',
-    'problem P1:',
+    "短い本文は quoted line を使う。",
+    "例:",
+    "problem P1:",
     '  "短い本文"',
   ].join("\n");
 }
 
 function blockTextSyntaxGuidance(): string {
   return [
-    '長い本文は block text を使い、意味の切れ目で改行する。',
-    '例:',
-    'problem P1:',
-    '  |',
-    '    1 行目の説明',
-    '    2 行目の説明',
+    "長い本文は block text を使い、意味の切れ目で改行する。",
+    "例:",
+    "problem P1:",
+    "  |",
+    "    1 行目の説明",
+    "    2 行目の説明",
   ].join("\n");
 }
 
 function collectTextLintTargets(document: DocumentAst): TextLintTarget[] {
-  const targets: TextLintTarget[] = document.domains.map((domain: DomainDecl) => ({
-    label: `domain ${domain.name} の description`,
-    target: { ref_id: domain.name, role: "domain" },
-    body: domain.descriptionBody,
-    text: domain.description,
-  }));
+  const targets: TextLintTarget[] = document.domains.map(
+    (domain: DomainDecl) => ({
+      label: `domain ${domain.name} の description`,
+      target: { ref_id: domain.name, role: "domain" },
+      body: domain.descriptionBody,
+      text: domain.description,
+    }),
+  );
 
   targets.push(
     ...document.problems.map((problem: ProblemDecl) => ({
@@ -303,8 +310,10 @@ function addTextBodyLintIssues(
         severity: "hint",
         target_refs: [target.target],
         message: `${target.label} は 1 行の quoted text が長いため、block text に変えると読みやすい。`,
-        rationale: "長い本文は block text に寄せると、折り返し位置を意図的に表現でき、複数行本文との読み分けも安定する。",
-        suggestion: "長い 1 行本文を block text へ分割し、意味の切れ目で改行する。",
+        rationale:
+          "長い本文は block text に寄せると、折り返し位置を意図的に表現でき、複数行本文との読み分けも安定する。",
+        suggestion:
+          "長い 1 行本文を block text へ分割し、意味の切れ目で改行する。",
         metadata: {
           line: target.body.span.line,
           column: target.body.span.column,
@@ -325,7 +334,8 @@ function addTextBodyLintIssues(
       severity: "hint",
       target_refs: [target.target],
       message: `${target.label} は block text が 1 行のみであり、quoted line に簡略化できる。`,
-      rationale: "block text は複数行本文や quote を避けたい本文に寄せると、短文との読み分けが安定する。",
+      rationale:
+        "block text は複数行本文や quote を避けたい本文に寄せると、短文との読み分けが安定する。",
       suggestion: "1 行本文で足りるなら quoted line を使う。",
       metadata: {
         line: target.body.span.line,
@@ -354,7 +364,8 @@ function findDecisions(
 function findComparisons(
   document: DocumentAst,
 ): Array<{ stepId: string; statement: ComparisonStatement }> {
-  const comparisons: Array<{ stepId: string; statement: ComparisonStatement }> = [];
+  const comparisons: Array<{ stepId: string; statement: ComparisonStatement }> =
+    [];
   for (const step of document.steps) {
     if (step.statement.role === "comparison") {
       comparisons.push({ stepId: step.id, statement: step.statement });
@@ -386,7 +397,8 @@ function evaluateFrameworkRequirement(
     .split(/\s+or\s+/)
     .map((clause) => tokenizeFrameworkRequirementClause(clause));
   return clauses.some(
-    (clause) => clause.length > 0 && clause.every((token) => availableRoles.has(token)),
+    (clause) =>
+      clause.length > 0 && clause.every((token) => availableRoles.has(token)),
   );
 }
 
@@ -450,9 +462,15 @@ function auditQueryReferences(
           message: `query ${query.id} の DSLQL 構文が不正である。`,
           rationale: error.message,
           metadata: {
-            line: query.expressionSpan.line,
-            column: query.expressionSpan.column + error.column - 1,
-            end_column: query.expressionSpan.column + error.endColumn - 1,
+            line: query.expressionSpan.line + error.line - 1,
+            column:
+              error.line === 1
+                ? query.expressionSpan.column + error.column - 1
+                : error.column,
+            end_column:
+              error.endLine === 1
+                ? query.expressionSpan.column + error.endColumn - 1
+                : error.endColumn,
           },
         });
         continue;
@@ -460,23 +478,23 @@ function auditQueryReferences(
       throw error;
     }
 
-    for (const ref of collectDslqlReferenceIds(query.expression)) {
-      if (ids.has(ref)) {
+    for (const reference of collectDslqlReferences(query.expression)) {
+      if (ids.has(reference.id)) {
         continue;
       }
 
-      const column = queryArgumentColumn(query.expression, query.expressionSpan.column, ref);
+      const column = query.expressionSpan.column + reference.range.start.column;
       createIssue(issues, {
         category: "contract_violation",
         severity: "fatal",
         target_refs: [{ ref_id: query.id, role: "query" }],
-        message: `query ${query.id} の参照 ${ref} を解決できない。`,
+        message: `query ${query.id} の参照 ${reference.id} を解決できない。`,
         rationale: "query 引数の参照先が文書内に存在しない。",
         metadata: {
           line: query.expressionSpan.line,
           column,
-          end_column: column + ref.length,
-          unresolved_ref: ref,
+          end_column: column + reference.id.length,
+          unresolved_ref: reference.id,
         },
       });
     }
@@ -541,7 +559,9 @@ function auditComparisonStep(
   const comparison = step.statement;
   const checks = [
     {
-      ok: document.problems.some((problem) => problem.name === comparison.problemId),
+      ok: document.problems.some(
+        (problem) => problem.name === comparison.problemId,
+      ),
       ref: comparison.problemId,
       message: `comparison ${comparison.id} の problem ${comparison.problemId} を解決できない。`,
     },
@@ -583,7 +603,8 @@ function auditComparisonStep(
       severity: "fatal",
       target_refs: [statementReference(comparison, step.id)],
       message: check.message,
-      rationale: "comparison は problem、viewpoint、左右の decision を明示参照で解決できる必要がある。",
+      rationale:
+        "comparison は problem、viewpoint、左右の decision を明示参照で解決できる必要がある。",
       metadata: {
         line: comparison.span.line,
         column: statementIdentifierColumn(comparison),
@@ -634,7 +655,10 @@ function addComparisonConsistencyIssues(
       }
       if (comparison.statement.relation === "incomparable") {
         incomparablePairs.add(
-          [comparison.statement.leftDecisionId, comparison.statement.rightDecisionId]
+          [
+            comparison.statement.leftDecisionId,
+            comparison.statement.rightDecisionId,
+          ]
             .sort()
             .join("::"),
         );
@@ -642,7 +666,10 @@ function addComparisonConsistencyIssues(
     }
 
     for (const comparison of scopeComparisons) {
-      const pairKey = [comparison.statement.leftDecisionId, comparison.statement.rightDecisionId]
+      const pairKey = [
+        comparison.statement.leftDecisionId,
+        comparison.statement.rightDecisionId,
+      ]
         .sort()
         .join("::");
       if (
@@ -653,9 +680,12 @@ function addComparisonConsistencyIssues(
         createIssue(issues, {
           category: "contradiction_candidate",
           severity: "warning",
-          target_refs: [statementReference(comparison.statement, comparison.stepId)],
+          target_refs: [
+            statementReference(comparison.statement, comparison.stepId),
+          ],
           message: `comparison ${comparison.statement.id} は incomparable と preference の両方を同じ decision 組に与えている。`,
-          rationale: "同じ problem / viewpoint scope で incomparable と優先関係が同居すると比較関係が不整合になる。",
+          rationale:
+            "同じ problem / viewpoint scope で incomparable と優先関係が同居すると比較関係が不整合になる。",
           metadata: {
             line: comparison.statement.span.line,
             column: statementIdentifierColumn(comparison.statement),
@@ -665,7 +695,11 @@ function addComparisonConsistencyIssues(
       }
     }
 
-    const hasPath = (origin: string, current: string, seen: Set<string>): boolean => {
+    const hasPath = (
+      origin: string,
+      current: string,
+      seen: Set<string>,
+    ): boolean => {
       const next = preferredEdges.get(current);
       if (!next) {
         return false;
@@ -692,19 +726,24 @@ function addComparisonConsistencyIssues(
       ) {
         continue;
       }
-      const from = comparison.statement.relation === "preferred_over"
-        ? comparison.statement.leftDecisionId
-        : comparison.statement.rightDecisionId;
-      const to = comparison.statement.relation === "preferred_over"
-        ? comparison.statement.rightDecisionId
-        : comparison.statement.leftDecisionId;
+      const from =
+        comparison.statement.relation === "preferred_over"
+          ? comparison.statement.leftDecisionId
+          : comparison.statement.rightDecisionId;
+      const to =
+        comparison.statement.relation === "preferred_over"
+          ? comparison.statement.rightDecisionId
+          : comparison.statement.leftDecisionId;
       if (hasPath(from, to, new Set([to]))) {
         createIssue(issues, {
           category: "contradiction_candidate",
           severity: "warning",
-          target_refs: [statementReference(comparison.statement, comparison.stepId)],
+          target_refs: [
+            statementReference(comparison.statement, comparison.stepId),
+          ],
           message: `comparison ${comparison.statement.id} が preference cycle を形成している可能性がある。`,
-          rationale: "preferred_over / weaker_than を正規化した優先関係に循環があると partial order として解釈しにくい。",
+          rationale:
+            "preferred_over / weaker_than を正規化した優先関係に循環があると partial order として解釈しにくい。",
           metadata: {
             line: comparison.statement.span.line,
             column: statementIdentifierColumn(comparison.statement),
@@ -717,12 +756,14 @@ function addComparisonConsistencyIssues(
 }
 
 function collectStatusTargets(document: DocumentAst): StatusTarget[] {
-  const targets: StatusTarget[] = document.problems.map((problem: ProblemDecl) => ({
-    id: problem.name,
-    role: "problem",
-    annotations: problem.annotations,
-    span: problem.span,
-  }));
+  const targets: StatusTarget[] = document.problems.map(
+    (problem: ProblemDecl) => ({
+      id: problem.name,
+      role: "problem",
+      annotations: problem.annotations,
+      span: problem.span,
+    }),
+  );
 
   for (const step of document.steps) {
     if (!("annotations" in step.statement)) {
@@ -757,7 +798,8 @@ function addStatusAnnotationIssues(
     if (comparison.statement.relation !== "counterexample_to") {
       continue;
     }
-    const current = incomingCounterexamples.get(comparison.statement.rightDecisionId) ?? [];
+    const current =
+      incomingCounterexamples.get(comparison.statement.rightDecisionId) ?? [];
     current.push(comparison.statement);
     incomingCounterexamples.set(comparison.statement.rightDecisionId, current);
   }
@@ -775,8 +817,10 @@ function addStatusAnnotationIssues(
           severity: "error",
           target_refs: [annotationTargetReference(target)],
           message: `${target.role} ${target.id} の annotation status は複数行を取れない。`,
-          rationale: "status は機械解釈する列挙値であり、単一行の scalar として扱う。",
-          suggestion: "status を 1 行 quoted text にし、補足説明は rationale など別 annotation へ分ける。",
+          rationale:
+            "status は機械解釈する列挙値であり、単一行の scalar として扱う。",
+          suggestion:
+            "status を 1 行 quoted text にし、補足説明は rationale など別 annotation へ分ける。",
           metadata: {
             line: annotation.body.span.line,
             column: annotation.body.span.column,
@@ -816,7 +860,8 @@ function addStatusAnnotationIssues(
         severity: "error",
         target_refs: [annotationTargetReference(target)],
         message: `${target.role} ${target.id} に排他的な status が併記されている。`,
-        rationale: "status は単一の状態として解釈されるため、同一要素に複数の異なる状態を同時付与できない。",
+        rationale:
+          "status は単一の状態として解釈されるため、同一要素に複数の異なる状態を同時付与できない。",
         suggestion: "status を 1 つに絞る。",
         metadata: {
           line: target.span.line,
@@ -834,19 +879,29 @@ function addStatusAnnotationIssues(
     }
 
     const leftDecision = decisionById.get(comparison.statement.leftDecisionId);
-    const rightDecision = decisionById.get(comparison.statement.rightDecisionId);
+    const rightDecision = decisionById.get(
+      comparison.statement.rightDecisionId,
+    );
     if (!leftDecision || !rightDecision) {
       continue;
     }
 
-    const leftIsNegated = hasStatus(leftDecision.annotations, ["rejected", "negated"]);
-    const rightIsNegated = hasStatus(rightDecision.annotations, ["rejected", "negated"]);
+    const leftIsNegated = hasStatus(leftDecision.annotations, [
+      "rejected",
+      "negated",
+    ]);
+    const rightIsNegated = hasStatus(rightDecision.annotations, [
+      "rejected",
+      "negated",
+    ]);
 
     if (!rightIsNegated) {
       createIssue(issues, {
         category: "semantic_hint",
         severity: leftIsNegated ? "warning" : "hint",
-        target_refs: [statementReference(comparison.statement, comparison.stepId)],
+        target_refs: [
+          statementReference(comparison.statement, comparison.stepId),
+        ],
         message: leftIsNegated
           ? `comparison ${comparison.statement.id} は counterexample_to の左側 ${leftDecision.id} を negated/rejected にしており、向きと status が逆転している可能性がある。`
           : `comparison ${comparison.statement.id} は counterexample_to の対象 ${rightDecision.id} に negated/rejected status がなく、反例の向きが監査上読み取りにくい。`,
@@ -866,13 +921,20 @@ function addStatusAnnotationIssues(
   }
 
   for (const decision of decisions) {
-    const requiresSupport = hasStatus(decision.statement.annotations, ["rejected", "negated"]);
+    const requiresSupport = hasStatus(decision.statement.annotations, [
+      "rejected",
+      "negated",
+    ]);
     if (!requiresSupport) {
       continue;
     }
 
-    const hasCounterexample = (incomingCounterexamples.get(decision.statement.id) ?? []).length > 0;
-    const hasRationale = hasAnnotationKind(decision.statement.annotations, "rationale");
+    const hasCounterexample =
+      (incomingCounterexamples.get(decision.statement.id) ?? []).length > 0;
+    const hasRationale = hasAnnotationKind(
+      decision.statement.annotations,
+      "rationale",
+    );
     if (hasCounterexample || hasRationale) {
       continue;
     }
@@ -882,8 +944,10 @@ function addStatusAnnotationIssues(
       severity: "info",
       target_refs: [statementReference(decision.statement, decision.stepId)],
       message: `decision ${decision.statement.id} は negated/rejected status を持つが、その根拠となる counterexample_to comparison または rationale がない。`,
-      rationale: "否定系 status は、比較関係または注記理由と対で残すと後続の監査と読解が安定する。",
-      suggestion: "対応する comparison を追加するか、annotation rationale で理由を補う。",
+      rationale:
+        "否定系 status は、比較関係または注記理由と対で残すと後続の監査と読解が安定する。",
+      suggestion:
+        "対応する comparison を追加するか、annotation rationale で理由を補う。",
       metadata: {
         line: decision.statement.span.line,
         column: statementIdentifierColumn(decision.statement),
@@ -917,7 +981,11 @@ function addContradictionCandidateIssues(
 
   for (let index = 0; index < decisions.length - 1; index += 1) {
     const current = decisions[index];
-    for (let candidateIndex = index + 1; candidateIndex < decisions.length; candidateIndex += 1) {
+    for (
+      let candidateIndex = index + 1;
+      candidateIndex < decisions.length;
+      candidateIndex += 1
+    ) {
       const candidate = decisions[candidateIndex];
       const overlaps = overlappingBasedOnRefs(
         current.statement,
@@ -995,7 +1063,8 @@ function addOrphanNodeIssues(
       metadata: {
         line: problem.span.line,
         column: problem.span.column + "problem ".length,
-        end_column: problem.span.column + "problem ".length + problem.name.length,
+        end_column:
+          problem.span.column + "problem ".length + problem.name.length,
         orphan_rule: "problem_direct_incoming_edge",
       },
     });
@@ -1061,7 +1130,9 @@ function addDecisionSemanticHint(
     message: `${decisions[0]?.statement.id} と ${decisions[1]?.statement.id} は意味的に近接している可能性がある。`,
     metadata: {
       line: decisions[0]?.statement.span.line,
-      column: decisions[0] ? statementIdentifierColumn(decisions[0].statement) : 1,
+      column: decisions[0]
+        ? statementIdentifierColumn(decisions[0].statement)
+        : 1,
       end_column: decisions[0]
         ? statementIdentifierEndColumn(decisions[0].statement)
         : 1,
@@ -1077,27 +1148,125 @@ function addDecisionSemanticHint(
   });
 }
 
-function buildQueryResults(
+interface PreparedQueryRuntime {
+  runtime?: DslqlRuntime;
+  error?: DslqlSemanticError;
+}
+
+interface EvaluatedQuerySelection {
+  selection: QueryDecisionSelection;
+  error?: DslqlEvaluationError;
+}
+
+function evaluateQuerySelection(
+  expression: string,
+  runtime: DslqlRuntime | undefined,
+): EvaluatedQuerySelection {
+  const empty = {
+    ids: new Set<string>(),
+    scores: new Map<string, SemanticDecisionScore>(),
+  };
+  if (!runtime) return { selection: empty };
+  try {
+    return {
+      selection: collectDecisionSelectionFromQuery(expression, runtime),
+    };
+  } catch (error) {
+    if (error instanceof DslqlEvaluationError) {
+      return { selection: empty, error };
+    }
+    throw error;
+  }
+}
+
+async function prepareQueryRuntime(
+  document: DocumentAst,
+  expression: string,
+  baseRuntime: DslqlRuntime,
+  options?: AuditOptions,
+): Promise<PreparedQueryRuntime> {
+  try {
+    if (!usesSemanticDslql(expression)) return { runtime: baseRuntime };
+    return {
+      runtime: await createSemanticDocumentDslqlRuntime(document, expression, {
+        embeddings: options?.embeddings,
+        embedder: options?.semanticEmbedder,
+        maxOnDemandEmbeddings: options?.semanticMaxOnDemandEmbeddings,
+      }),
+    };
+  } catch (error) {
+    if (error instanceof DslqlParseError) return {};
+    if (error instanceof DslqlSemanticError) return { error };
+    throw error;
+  }
+}
+
+async function buildQueryResults(
+  issues: AuditIssue[],
   document: DocumentAst,
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
   semanticContext: SemanticContext | undefined,
-): QueryResult[] {
-  const runtime = createDslqlRuntime(document);
-  return document.queries.map((query, queryIndex) => ({
-    query_id: query.id,
-    severity: "hint",
-    items: rankDecisionsForQuery(
+  options?: AuditOptions,
+): Promise<QueryResult[]> {
+  const baseRuntime = createDocumentDslqlRuntime(document);
+  const prepared = await Promise.all(
+    document.queries.map((query) =>
+      prepareQueryRuntime(document, query.expression, baseRuntime, options),
+    ),
+  );
+
+  return document.queries.map((query, queryIndex) => {
+    const queryRuntime = prepared[queryIndex];
+    if (queryRuntime?.error) {
+      const unavailable =
+        queryRuntime.error instanceof DslqlSemanticUnavailableError;
+      createIssue(issues, {
+        category: unavailable ? "semantic_hint" : "contract_violation",
+        severity: unavailable ? "info" : "error",
+        target_refs: [{ ref_id: query.id, role: "query" }],
+        message: unavailable
+          ? `query ${query.id} の semantic 検索を実行できない。`
+          : `query ${query.id} の semantic 検索契約が不正である。`,
+        rationale: queryRuntime.error.message,
+        metadata: {
+          line: query.expressionSpan.line,
+          column: query.expressionSpan.column,
+        },
+      });
+    }
+    const evaluated = evaluateQuerySelection(
       query.expression,
-      queryIndex,
-      decisions,
-      semanticContext,
-      collectDecisionIdsFromQuery(query.expression, runtime),
-    ).map((item) => ({
-      ref_id: item.ref_id,
-      score: item.score,
-      explanation: item.explanation,
-    })),
-  }));
+      queryRuntime?.runtime,
+    );
+    if (evaluated.error) {
+      createIssue(issues, {
+        category: "contract_violation",
+        severity: "error",
+        target_refs: [{ ref_id: query.id, role: "query" }],
+        message: `query ${query.id} の DSLQL 評価契約が不正である。`,
+        rationale: evaluated.error.message,
+        metadata: {
+          line: query.expressionSpan.line,
+          column: query.expressionSpan.column,
+        },
+      });
+    }
+    return {
+      query_id: query.id,
+      severity: "hint",
+      items: rankDecisionsForQuery(
+        query.expression,
+        queryIndex,
+        decisions,
+        semanticContext,
+        evaluated.selection,
+      ).map((item) => ({
+        ref_id: item.ref_id,
+        score: item.score,
+        explanation: item.explanation,
+      })),
+    };
+  });
 }
 
 function buildQuerySemanticText(
@@ -1108,12 +1277,18 @@ function buildQuerySemanticText(
     .map((problemId) =>
       document.problems.find((candidate) => candidate.name === problemId),
     )
-    .filter((problem): problem is DocumentAst["problems"][number] => Boolean(problem))
+    .filter((problem): problem is DocumentAst["problems"][number] =>
+      Boolean(problem),
+    )
     .map((problem) => problem.text);
+
+  const problemContext = problemTexts
+    .map((problemText) => `problem: ${problemText}`)
+    .join("\n");
 
   return problemTexts.length === 0
     ? queryExpression
-    : `${queryExpression}\n${problemTexts.map((text) => `problem: ${text}`).join("\n")}`;
+    : `${queryExpression}\n${problemContext}`;
 }
 
 async function auditDocument(
@@ -1147,7 +1322,13 @@ async function auditDocument(
   );
   addDecisionSemanticHint(issues, decisions, semanticContext);
 
-  const queryResults = buildQueryResults(document, decisions, semanticContext);
+  const queryResults = await buildQueryResults(
+    issues,
+    document,
+    decisions,
+    semanticContext,
+    options,
+  );
 
   return {
     engine_version: ENGINE_VERSION,
@@ -1207,12 +1388,26 @@ function rankDecisionsForQuery(
   queryIndex: number,
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
   semanticContext: SemanticContext | undefined,
-  allowedDecisionIds?: Set<string>,
+  selection?: QueryDecisionSelection,
 ): Array<{ ref_id: string; score: number; explanation: string }> {
   const candidateDecisions = decisions.filter(
-    (decision) =>
-      !allowedDecisionIds || allowedDecisionIds.has(decision.statement.id),
+    (decision) => !selection || selection.ids.has(decision.statement.id),
   );
+
+  if (selection && selection.scores.size > 0) {
+    return candidateDecisions
+      .map((decision) => {
+        const semantic = selection.scores.get(decision.statement.id);
+        return {
+          ref_id: decision.statement.id,
+          score: semantic?.score ?? 0,
+          explanation: semantic
+            ? `${queryExpression} の nearest_to() 候補。 (${semantic.provider}/${semantic.model})`
+            : `${queryExpression} の nearest_to() 候補。`,
+        };
+      })
+      .sort((left, right) => right.score - left.score);
+  }
 
   if (!semanticContext || !semanticContext.queryEmbeddings[queryIndex]) {
     return candidateDecisions.map((decision, index) => ({
@@ -1240,95 +1435,67 @@ function rankDecisionsForQuery(
     .sort((left, right) => right.score - left.score);
 }
 
-function normalizeStepStatement(step: DocumentAst["steps"][number]): DslqlValue {
-  return {
-    step_id: step.id,
-    role: step.statement.role,
-    id: step.statement.id,
-    text: "text" in step.statement ? step.statement.text : null,
-    based_on: step.statement.role === "decision" ? step.statement.basedOn : [],
-    ...(step.statement.role === "comparison"
-      ? {
-          problem_id: step.statement.problemId,
-          viewpoint_id: step.statement.viewpointId,
-          relation: step.statement.relation,
-          left_decision_id: step.statement.leftDecisionId,
-          right_decision_id: step.statement.rightDecisionId,
-        }
-      : {}),
-    span: {
-      line: step.statement.span.line,
-      column: step.statement.span.column,
-    },
-    source_kind: "draft",
-  };
+interface SemanticDecisionScore {
+  score: number;
+  provider: string;
+  model: string;
 }
 
-function createDslqlRuntime(document: DocumentAst): DslqlRuntime {
-  const decisionValues = document.steps
-    .filter((step) => step.statement.role === "decision")
-    .map(normalizeStepStatement);
-
-  return {
-    root: {
-      document: {
-        framework: document.framework ? { name: document.framework.name } : null,
-        domains: document.domains.map((domain) => ({
-          id: domain.name,
-          description: domain.description,
-        })),
-        problems: document.problems.map((problem) => ({
-          id: problem.name,
-          text: problem.text,
-        })),
-        steps: document.steps.map(normalizeStepStatement),
-        queries: document.queries.map((query) => ({
-          id: query.id,
-          expression: query.expression,
-        })),
-      },
-      framework: document.framework ? { name: document.framework.name } : null,
-      domains: document.domains.map((domain) => ({
-        id: domain.name,
-        description: domain.description,
-      })),
-      problems: document.problems.map((problem) => ({
-        id: problem.name,
-        text: problem.text,
-      })),
-      steps: document.steps.map(normalizeStepStatement),
-      queries: document.queries.map((query) => ({
-        id: query.id,
-        expression: query.expression,
-      })),
-      audit: null,
-      thought: null,
-      search: [],
-    },
-    functions: {
-      related_decisions: () => decisionValues,
-      audit_findings: () => [],
-    },
-  };
+interface QueryDecisionSelection {
+  ids: Set<string>;
+  scores: Map<string, SemanticDecisionScore>;
 }
 
-function collectDecisionIdsFromQuery(
+function asDslqlObject(value: unknown): DslqlObject | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as DslqlObject)
+    : undefined;
+}
+
+function decisionCandidate(match: DslqlObject): DslqlObject | undefined {
+  const candidate = asDslqlObject(match.node) ?? match;
+  return candidate.role === "decision" && typeof candidate.id === "string"
+    ? candidate
+    : undefined;
+}
+
+function semanticDecisionScore(
+  match: DslqlObject,
+): SemanticDecisionScore | undefined {
+  return typeof match.score === "number" &&
+    typeof match.provider === "string" &&
+    typeof match.model === "string"
+    ? {
+        score: match.score,
+        provider: match.provider,
+        model: match.model,
+      }
+    : undefined;
+}
+
+function addDecisionSelection(
+  selection: QueryDecisionSelection,
+  value: DslqlValue,
+): void {
+  const match = asDslqlObject(value);
+  const candidate = match ? decisionCandidate(match) : undefined;
+  if (!match || !candidate || typeof candidate.id !== "string") return;
+  selection.ids.add(candidate.id);
+  const semantic = semanticDecisionScore(match);
+  if (semantic) selection.scores.set(candidate.id, semantic);
+}
+
+function collectDecisionSelectionFromQuery(
   queryExpression: string,
   runtime: DslqlRuntime,
-): Set<string> | undefined {
-  try {
-    const values = evaluateDslqlExpression(queryExpression, runtime);
-    const ids = values
-      .filter(
-        (value): value is Record<string, DslqlValue | undefined> =>
-          typeof value === "object" && value !== null && !Array.isArray(value),
-      )
-      .filter((value) => value.role === "decision" && typeof value.id === "string")
-      .map((value) => String(value.id));
-    return new Set(ids);
-  } catch {
-    return undefined;
-  }
+): QueryDecisionSelection {
+  const values = evaluateDslqlExpression(queryExpression, runtime);
+  const selection: QueryDecisionSelection = {
+    ids: new Set<string>(),
+    scores: new Map<string, SemanticDecisionScore>(),
+  };
+  values.forEach((value) => addDecisionSelection(selection, value));
+  return selection;
 }
 
 function auditPartition(

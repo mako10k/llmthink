@@ -1,59 +1,95 @@
 domain DSLQLDesign:
-  description "jq 風の操作感を持つ DSLQL の設計方針を整理する"
+  description "DSLQL v2 の一貫性、対称性、網羅性を固定する"
 
 problem P1:
-  "llmthink の query を、最小関数呼び出しより表現力の高い jq 風クエリ言語へどう拡張するか"
+  "query の構文、公開 AST、評価意味論をどう一つの契約にするか"
 
 problem P2:
-  "DSLQL をどの層へ導入すれば query の正規構文として成立するか"
+  "宣言参照、欠落値、複数値、関数呼出しの曖昧性をどう除くか"
 
 problem P3:
-  "DSLQL の MVP で何を入れて何を外すべきか"
+  "document AST と relation 関数をどう欠落なく query runtime へ公開するか"
 
 step S1:
   premise PR1:
-    "llmthink の主対象は JSON 一般ではなく、thought DSL の AST、監査結果、thought metadata である"
+    "DSLQL は jq 互換ではなく llmthink の構造検査と AST 操作を目的とする"
 
 step S2:
-  premise PR2:
-    "jq の価値は JSON 互換そのものより、pipe、select、map、field access、safe navigation による局所探索のしやすさにある"
+  evidence EV1:
+    |
+      旧実装は in、文字列 predicate、list literal、複数 relation 関数を仕様へ列挙したが、
+      parser または evaluator に実装していなかった
 
 step S3:
-  evidence EV1:
-    "現行 DSL の query は function call 1 行のみで、絞り込み、射影、並び替え、集約を表現できない"
-
-step S4:
   evidence EV2:
     |
-      parser と AST は query expression を string として保持しているため、
-      top-level 構造を変えずに evaluator 側で DSLQL を導入できる
+      旧実装は required access と optional access を同じ empty とし、
+      object field の複数結果を先頭一件へ暗黙縮退していた
+
+step S4:
+  evidence EV3:
+    |
+      旧実装は .id と文字列の比較を宣言参照と推測し、
+      related_decisions は input problem を無視して全 decision を返していた
 
 step S5:
-  evidence EV3:
-    "requirements では query を検索要求だけでなく思考の検査手段として位置付けるべきだとしている"
+  decision D1 based_on P1, PR1, EV1:
+    |
+      DSLQL v2 は全 node を kind と source range 付きの公開 union にし、
+      parser、visitor、transformer、formatter、evaluator が同じ AST を使う
 
 step S6:
-  decision D1 based_on PR1, PR2, EV1, EV3:
+  decision D2 based_on P2, EV2:
     |
-      DSLQL は jq 互換を目指すのではなく、
-      thought graph と audit result に対する jq 風の query language として定義する
+      required path は欠落時に失敗させ、optional path だけを empty とし、
+      object field は 0 または 1 値を要求して複数値の黙示的な損失を禁止する
 
 step S7:
-  decision D2 based_on EV2:
-    "DSLQL は新しい top-level keyword を追加せず、既存 query ブロックの正規 expression として導入する"
+  decision D3 based_on P2, EV3:
+    |
+      宣言参照は @P1、関数呼出しは name() と明示し、
+      静的参照抽出と runtime call を通常の文字列や bare identifier から分離する
 
 step S8:
-  decision D3 based_on PR2, EV1, EV2:
+  decision D4 based_on P3, PR1, EV3:
     |
-      DSLQL の MVP は field access、stream 展開、pipe、select、projection、関連参照関数に絞り、
-      重い集約や再帰探索は後回しにする
+      runtime root は document、audit、thought、search の一階層だけを持ち、
+      document は step と statement を分離した source AST の完全な正規形にする
 
 step S9:
-  pending PD1:
-    "query body を複数行 pipeline へ拡張するかどうかは editor support と parser 複雑度を見て後続で判断する"
+  decision D5 based_on P1, P3, EV1, EV3:
+    |
+      組み込み関数と relation 関数は仕様、補完、テストを同時に更新し、
+      未知関数、arity 不一致、型不一致を empty ではなく評価エラーにする
 
 step S10:
-  pending PD2:
+  pending PD1:
+    "複数行 query body と query 専用 CLI は v2 core の安定後に別の受入基準で判断する"
+
+step S11:
+  evidence EV4:
     |
-      search result、audit result、persisted thought metadata の統一 root schema は
-      evaluator 設計時にさらに固定する必要がある
+      llmthink は既に decision ranking と thought search で embedding を使うが、
+      DSLQL v2 core は外部から渡された score の整列しか公開していなかった
+
+step S12:
+  decision D6 based_on P1, P3, EV4:
+    |
+      semantic query は similarity(left, right) を score、
+      similar_to(left, right, threshold) を predicate、
+      nearest_to(target[, threshold]) を stream ranking として分離する。
+      非同期 runtime preparation 後の同期 evaluator は I/O を行わない
+
+step S13:
+  decision D7 based_on P2, EV4:
+    |
+      semantic match は node、score、provider、model を明示し、
+      provider 無効や取得失敗を lexical または全候補へ暗黙 fallback しない
+
+step S14:
+  decision D8 based_on P1, P2, EV4:
+    |
+      embedding は一級オブジェクトの不可視属性とし、文字列リテラルだけを
+      安全な遅延生成対象にする。動的な path や concat は生成上限を証明する
+      optimizer が導入されるまで拒否する。distinct literal の既定上限は 8 とし、
+      cache の温冷で許可判定を変えず、更新伝搬を要する semantic view は作らない

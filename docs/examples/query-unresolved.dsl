@@ -12,4 +12,4 @@ problem P1:
       problem は意図的に decision へ接続していない
 
 query Q1:
-  .problems[] | select(.id == "P2") | related_decisions
+  .document.problems[] | select(.id == @P2) | related_decisions()

@@ -37,4 +37,4 @@ step S6:
     "sandbox 案は次回 backlog 候補として残す"
 
 query Q1:
-  .problems[] | select(.id == "P1") | related_decisions
+  .document.problems[] | select(.id == @P1) | related_decisions()

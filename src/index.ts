@@ -1,4 +1,5 @@
 export { auditDslFile, auditDslText } from "./analyzer/audit.js";
+export type { AuditOptions } from "./analyzer/audit.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
 export {
   getDslSyntaxGuidanceText,
@@ -11,6 +12,7 @@ export type {
   DslHelpRequest,
 } from "./dsl/guidance.js";
 export { parseDocument, ParseError } from "./parser/parser.js";
+export * from "./dslql/query.js";
 export {
   formatAuditReportHtml,
   formatAuditReportText,
@@ -71,4 +73,7 @@ export type {
   ThoughtSemanticAuditVerdict,
   ThoughtSnapshot,
 } from "./thought/store.js";
-export type { PersistedThoughtAudit, ThoughtIdSource } from "./thought/workflow.js";
+export type {
+  PersistedThoughtAudit,
+  ThoughtIdSource,
+} from "./thought/workflow.js";
