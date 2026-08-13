@@ -24,7 +24,8 @@ function summarizeIssues(issues) {
     return {
         fatal_count: issues.filter((issue) => issue.severity === "fatal").length,
         error_count: issues.filter((issue) => issue.severity === "error").length,
-        warning_count: issues.filter((issue) => issue.severity === "warning").length,
+        warning_count: issues.filter((issue) => issue.severity === "warning")
+            .length,
         info_count: issues.filter((issue) => issue.severity === "info").length,
         hint_count: issues.filter((issue) => issue.severity === "hint").length,
     };
@@ -79,9 +80,7 @@ export function limitAuditReport(report, options = {}) {
     const visibleIssues = sortedIssues.slice(0, visibleIssueCount);
     const omittedIssueCount = sortedIssues.length - visibleIssues.length;
     const overflowIssue = buildOverflowIssue(report, maxIssues, omittedIssueCount, filteredIssues.length);
-    const limitedIssues = maxIssues > 0
-        ? [...visibleIssues, overflowIssue]
-        : [overflowIssue];
+    const limitedIssues = maxIssues > 0 ? [...visibleIssues, overflowIssue] : [overflowIssue];
     return {
         ...report,
         summary: summarizeIssues(limitedIssues),
@@ -212,13 +211,15 @@ export function formatAuditReportHtml(report, options = {}) {
         const originalQueryResult = report.query_results.find((candidate) => candidate.query_id === queryResult.query_id);
         const omittedItems = (originalQueryResult?.items.length ?? queryResult.items.length) -
             queryResult.items.length;
-        return `
-        <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${queryResult.items
+        const renderedItems = queryResult.items
             .map((item) => {
             const scoreText = item.score !== undefined ? ` (${item.score})` : "";
             return `${escapeHtml(item.ref_id)}${scoreText}`;
         })
-            .join(", ")}${omittedItems > 0 ? `, ... ${omittedItems} more` : ""}</li>`;
+            .join(", ");
+        const omittedSuffix = omittedItems > 0 ? `, ... ${omittedItems} more` : "";
+        return `
+        <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${renderedItems}${omittedSuffix}</li>`;
     })
         .join("");
     return `<!DOCTYPE html>

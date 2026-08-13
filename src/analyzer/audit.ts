@@ -382,20 +382,18 @@ function findPending(
     .map((step) => ({ stepId: step.id, statement: step.statement }));
 }
 
-function tokenizeFrameworkRequirementClause(value: string): string[] {
-  return value
-    .split(/\s+and\s+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
-}
-
 function evaluateFrameworkRequirement(
   value: string,
   availableRoles: Set<string>,
 ): boolean {
-  const clauses = value
-    .split(/\s+or\s+/)
-    .map((clause) => tokenizeFrameworkRequirementClause(clause));
+  const clauses: string[][] = [[]];
+  for (const token of value.trim().split(/\s+/u)) {
+    if (token === "or") {
+      clauses.push([]);
+    } else if (token !== "and") {
+      clauses.at(-1)!.push(token);
+    }
+  }
   return clauses.some(
     (clause) =>
       clause.length > 0 && clause.every((token) => availableRoles.has(token)),
@@ -615,143 +613,154 @@ function auditComparisonStep(
   }
 }
 
-function addComparisonConsistencyIssues(
-  issues: AuditIssue[],
-  comparisons: Array<{ stepId: string; statement: ComparisonStatement }>,
-): void {
-  const scopedComparisons = new Map<
-    string,
-    Array<{ stepId: string; statement: ComparisonStatement }>
-  >();
+type ComparisonEntry = { stepId: string; statement: ComparisonStatement };
+type DecisionEntry = { stepId: string; statement: DecisionStatement };
+
+function groupComparisonsByScope(
+  comparisons: ComparisonEntry[],
+): Map<string, ComparisonEntry[]> {
+  const scopedComparisons = new Map<string, ComparisonEntry[]>();
   for (const comparison of comparisons) {
     const scopeKey = `${comparison.statement.problemId}::${comparison.statement.viewpointId}`;
     const current = scopedComparisons.get(scopeKey) ?? [];
     current.push(comparison);
     scopedComparisons.set(scopeKey, current);
   }
+  return scopedComparisons;
+}
+
+function comparisonPairKey(comparison: ComparisonStatement): string {
+  return [comparison.leftDecisionId, comparison.rightDecisionId]
+    .sort()
+    .join("::");
+}
+
+function preferenceDirection(
+  comparison: ComparisonStatement,
+): [string, string] | undefined {
+  if (comparison.relation === "preferred_over") {
+    return [comparison.leftDecisionId, comparison.rightDecisionId];
+  }
+  if (comparison.relation === "weaker_than") {
+    return [comparison.rightDecisionId, comparison.leftDecisionId];
+  }
+  return undefined;
+}
+
+function buildPreferenceModel(comparisons: ComparisonEntry[]): {
+  edges: Map<string, Set<string>>;
+  incomparablePairs: Set<string>;
+} {
+  const edges = new Map<string, Set<string>>();
+  const incomparablePairs = new Set<string>();
+  for (const { statement } of comparisons) {
+    const direction = preferenceDirection(statement);
+    if (direction) {
+      const [from, to] = direction;
+      const targets = edges.get(from) ?? new Set<string>();
+      targets.add(to);
+      edges.set(from, targets);
+    }
+    if (statement.relation === "incomparable") {
+      incomparablePairs.add(comparisonPairKey(statement));
+    }
+  }
+  return { edges, incomparablePairs };
+}
+
+function addPreferenceConflictIssues(
+  issues: AuditIssue[],
+  comparisons: ComparisonEntry[],
+  incomparablePairs: Set<string>,
+): void {
+  for (const comparison of comparisons) {
+    if (
+      !preferenceDirection(comparison.statement) ||
+      !incomparablePairs.has(comparisonPairKey(comparison.statement))
+    ) {
+      continue;
+    }
+    createIssue(issues, {
+      category: "contradiction_candidate",
+      severity: "warning",
+      target_refs: [
+        statementReference(comparison.statement, comparison.stepId),
+      ],
+      message: `comparison ${comparison.statement.id} は incomparable と preference の両方を同じ decision 組に与えている。`,
+      rationale:
+        "同じ problem / viewpoint scope で incomparable と優先関係が同居すると比較関係が不整合になる。",
+      metadata: {
+        line: comparison.statement.span.line,
+        column: statementIdentifierColumn(comparison.statement),
+        end_column: statementIdentifierEndColumn(comparison.statement),
+      },
+    });
+  }
+}
+
+function hasPreferencePath(
+  edges: Map<string, Set<string>>,
+  origin: string,
+  current: string,
+  seen: Set<string>,
+): boolean {
+  for (const candidate of edges.get(current) ?? []) {
+    if (candidate === origin) {
+      return true;
+    }
+    if (seen.has(candidate)) {
+      continue;
+    }
+    seen.add(candidate);
+    if (hasPreferencePath(edges, origin, candidate, seen)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function addPreferenceCycleIssues(
+  issues: AuditIssue[],
+  comparisons: ComparisonEntry[],
+  edges: Map<string, Set<string>>,
+): void {
+  for (const comparison of comparisons) {
+    const direction = preferenceDirection(comparison.statement);
+    if (!direction) {
+      continue;
+    }
+    const [from, to] = direction;
+    if (!hasPreferencePath(edges, from, to, new Set([to]))) {
+      continue;
+    }
+    createIssue(issues, {
+      category: "contradiction_candidate",
+      severity: "warning",
+      target_refs: [
+        statementReference(comparison.statement, comparison.stepId),
+      ],
+      message: `comparison ${comparison.statement.id} が preference cycle を形成している可能性がある。`,
+      rationale:
+        "preferred_over / weaker_than を正規化した優先関係に循環があると partial order として解釈しにくい。",
+      metadata: {
+        line: comparison.statement.span.line,
+        column: statementIdentifierColumn(comparison.statement),
+        end_column: statementIdentifierEndColumn(comparison.statement),
+      },
+    });
+  }
+}
+
+function addComparisonConsistencyIssues(
+  issues: AuditIssue[],
+  comparisons: ComparisonEntry[],
+): void {
+  const scopedComparisons = groupComparisonsByScope(comparisons);
 
   for (const scopeComparisons of scopedComparisons.values()) {
-    const preferredEdges = new Map<string, Set<string>>();
-    const incomparablePairs = new Set<string>();
-
-    const addPreferredEdge = (from: string, to: string): void => {
-      const current = preferredEdges.get(from) ?? new Set<string>();
-      current.add(to);
-      preferredEdges.set(from, current);
-    };
-
-    for (const comparison of scopeComparisons) {
-      if (comparison.statement.relation === "preferred_over") {
-        addPreferredEdge(
-          comparison.statement.leftDecisionId,
-          comparison.statement.rightDecisionId,
-        );
-      }
-      if (comparison.statement.relation === "weaker_than") {
-        addPreferredEdge(
-          comparison.statement.rightDecisionId,
-          comparison.statement.leftDecisionId,
-        );
-      }
-      if (comparison.statement.relation === "incomparable") {
-        incomparablePairs.add(
-          [
-            comparison.statement.leftDecisionId,
-            comparison.statement.rightDecisionId,
-          ]
-            .sort()
-            .join("::"),
-        );
-      }
-    }
-
-    for (const comparison of scopeComparisons) {
-      const pairKey = [
-        comparison.statement.leftDecisionId,
-        comparison.statement.rightDecisionId,
-      ]
-        .sort()
-        .join("::");
-      if (
-        (comparison.statement.relation === "preferred_over" ||
-          comparison.statement.relation === "weaker_than") &&
-        incomparablePairs.has(pairKey)
-      ) {
-        createIssue(issues, {
-          category: "contradiction_candidate",
-          severity: "warning",
-          target_refs: [
-            statementReference(comparison.statement, comparison.stepId),
-          ],
-          message: `comparison ${comparison.statement.id} は incomparable と preference の両方を同じ decision 組に与えている。`,
-          rationale:
-            "同じ problem / viewpoint scope で incomparable と優先関係が同居すると比較関係が不整合になる。",
-          metadata: {
-            line: comparison.statement.span.line,
-            column: statementIdentifierColumn(comparison.statement),
-            end_column: statementIdentifierEndColumn(comparison.statement),
-          },
-        });
-      }
-    }
-
-    const hasPath = (
-      origin: string,
-      current: string,
-      seen: Set<string>,
-    ): boolean => {
-      const next = preferredEdges.get(current);
-      if (!next) {
-        return false;
-      }
-      for (const candidate of next) {
-        if (candidate === origin) {
-          return true;
-        }
-        if (seen.has(candidate)) {
-          continue;
-        }
-        seen.add(candidate);
-        if (hasPath(origin, candidate, seen)) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    for (const comparison of scopeComparisons) {
-      if (
-        comparison.statement.relation !== "preferred_over" &&
-        comparison.statement.relation !== "weaker_than"
-      ) {
-        continue;
-      }
-      const from =
-        comparison.statement.relation === "preferred_over"
-          ? comparison.statement.leftDecisionId
-          : comparison.statement.rightDecisionId;
-      const to =
-        comparison.statement.relation === "preferred_over"
-          ? comparison.statement.rightDecisionId
-          : comparison.statement.leftDecisionId;
-      if (hasPath(from, to, new Set([to]))) {
-        createIssue(issues, {
-          category: "contradiction_candidate",
-          severity: "warning",
-          target_refs: [
-            statementReference(comparison.statement, comparison.stepId),
-          ],
-          message: `comparison ${comparison.statement.id} が preference cycle を形成している可能性がある。`,
-          rationale:
-            "preferred_over / weaker_than を正規化した優先関係に循環があると partial order として解釈しにくい。",
-          metadata: {
-            line: comparison.statement.span.line,
-            column: statementIdentifierColumn(comparison.statement),
-            end_column: statementIdentifierEndColumn(comparison.statement),
-          },
-        });
-      }
-    }
+    const { edges, incomparablePairs } = buildPreferenceModel(scopeComparisons);
+    addPreferenceConflictIssues(issues, scopeComparisons, incomparablePairs);
+    addPreferenceCycleIssues(issues, scopeComparisons, edges);
   }
 }
 
@@ -782,18 +791,10 @@ function collectStatusTargets(document: DocumentAst): StatusTarget[] {
   return targets;
 }
 
-function addStatusAnnotationIssues(
-  issues: AuditIssue[],
-  document: DocumentAst,
-  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
-  comparisons: Array<{ stepId: string; statement: ComparisonStatement }>,
-): void {
-  const targets = collectStatusTargets(document);
-  const decisionById = new Map(
-    decisions.map((decision) => [decision.statement.id, decision.statement]),
-  );
+function indexIncomingCounterexamples(
+  comparisons: ComparisonEntry[],
+): Map<string, ComparisonStatement[]> {
   const incomingCounterexamples = new Map<string, ComparisonStatement[]>();
-
   for (const comparison of comparisons) {
     if (comparison.statement.relation !== "counterexample_to") {
       continue;
@@ -803,76 +804,82 @@ function addStatusAnnotationIssues(
     current.push(comparison.statement);
     incomingCounterexamples.set(comparison.statement.rightDecisionId, current);
   }
+  return incomingCounterexamples;
+}
 
-  for (const target of targets) {
-    const statuses = collectStatusValues(target.annotations);
-    if (statuses.length === 0) {
+function addStatusValueIssues(
+  issues: AuditIssue[],
+  target: StatusTarget,
+): void {
+  const statuses = collectStatusValues(target.annotations);
+  for (const { annotation, value } of statuses) {
+    if (annotation.text.includes("\n")) {
+      createIssue(issues, {
+        category: "contract_violation",
+        severity: "error",
+        target_refs: [annotationTargetReference(target)],
+        message: `${target.role} ${target.id} の annotation status は複数行を取れない。`,
+        rationale:
+          "status は機械解釈する列挙値であり、単一行の scalar として扱う。",
+        suggestion:
+          "status を 1 行 quoted text にし、補足説明は rationale など別 annotation へ分ける。",
+        metadata: {
+          line: annotation.body.span.line,
+          column: annotation.body.span.column,
+          end_column: annotation.body.span.column + 1,
+        },
+      });
       continue;
     }
-
-    for (const { annotation, value } of statuses) {
-      if (annotation.text.includes("\n")) {
-        createIssue(issues, {
-          category: "contract_violation",
-          severity: "error",
-          target_refs: [annotationTargetReference(target)],
-          message: `${target.role} ${target.id} の annotation status は複数行を取れない。`,
-          rationale:
-            "status は機械解釈する列挙値であり、単一行の scalar として扱う。",
-          suggestion:
-            "status を 1 行 quoted text にし、補足説明は rationale など別 annotation へ分ける。",
-          metadata: {
-            line: annotation.body.span.line,
-            column: annotation.body.span.column,
-            end_column: annotation.body.span.column + 1,
-          },
-        });
-        continue;
-      }
-
-      if (STATUS_VALUE_SET.has(value)) {
-        continue;
-      }
-      createIssue(issues, {
-        category: "contract_violation",
-        severity: "error",
-        target_refs: [annotationTargetReference(target)],
-        message: `${target.role} ${target.id} の annotation status ${value} は未定義である。`,
-        rationale: `status は ${STATUS_VALUES.join(" / ")} のいずれかであるべきである。`,
-        suggestion: "status 値を既知の集合へ修正する。",
-        metadata: {
-          line: annotation.span.line,
-          column: annotation.span.column,
-          end_column: annotation.span.column + "annotation status".length,
-          status: value,
-        },
-      });
+    if (STATUS_VALUE_SET.has(value)) {
+      continue;
     }
-
-    const distinctStatuses = new Set(
-      statuses
-        .map(({ value }) => value)
-        .filter((value) => STATUS_VALUE_SET.has(value)),
-    );
-    if (distinctStatuses.size > 1) {
-      createIssue(issues, {
-        category: "contract_violation",
-        severity: "error",
-        target_refs: [annotationTargetReference(target)],
-        message: `${target.role} ${target.id} に排他的な status が併記されている。`,
-        rationale:
-          "status は単一の状態として解釈されるため、同一要素に複数の異なる状態を同時付与できない。",
-        suggestion: "status を 1 つに絞る。",
-        metadata: {
-          line: target.span.line,
-          column: target.span.column,
-          end_column: target.span.column + target.id.length,
-          statuses: [...distinctStatuses],
-        },
-      });
-    }
+    createIssue(issues, {
+      category: "contract_violation",
+      severity: "error",
+      target_refs: [annotationTargetReference(target)],
+      message: `${target.role} ${target.id} の annotation status ${value} は未定義である。`,
+      rationale: `status は ${STATUS_VALUES.join(" / ")} のいずれかであるべきである。`,
+      suggestion: "status 値を既知の集合へ修正する。",
+      metadata: {
+        line: annotation.span.line,
+        column: annotation.span.column,
+        end_column: annotation.span.column + "annotation status".length,
+        status: value,
+      },
+    });
   }
 
+  const distinctStatuses = new Set(
+    statuses
+      .map(({ value }) => value)
+      .filter((value) => STATUS_VALUE_SET.has(value)),
+  );
+  if (distinctStatuses.size <= 1) {
+    return;
+  }
+  createIssue(issues, {
+    category: "contract_violation",
+    severity: "error",
+    target_refs: [annotationTargetReference(target)],
+    message: `${target.role} ${target.id} に排他的な status が併記されている。`,
+    rationale:
+      "status は単一の状態として解釈されるため、同一要素に複数の異なる状態を同時付与できない。",
+    suggestion: "status を 1 つに絞る。",
+    metadata: {
+      line: target.span.line,
+      column: target.span.column,
+      end_column: target.span.column + target.id.length,
+      statuses: [...distinctStatuses],
+    },
+  });
+}
+
+function addCounterexampleDirectionIssues(
+  issues: AuditIssue[],
+  comparisons: ComparisonEntry[],
+  decisionById: Map<string, DecisionStatement>,
+): void {
   for (const comparison of comparisons) {
     if (comparison.statement.relation !== "counterexample_to") {
       continue;
@@ -919,7 +926,13 @@ function addStatusAnnotationIssues(
       });
     }
   }
+}
 
+function addNegatedDecisionSupportIssues(
+  issues: AuditIssue[],
+  decisions: DecisionEntry[],
+  incomingCounterexamples: Map<string, ComparisonStatement[]>,
+): void {
   for (const decision of decisions) {
     const requiresSupport = hasStatus(decision.statement.annotations, [
       "rejected",
@@ -955,6 +968,26 @@ function addStatusAnnotationIssues(
       },
     });
   }
+}
+
+function addStatusAnnotationIssues(
+  issues: AuditIssue[],
+  document: DocumentAst,
+  decisions: DecisionEntry[],
+  comparisons: ComparisonEntry[],
+): void {
+  for (const target of collectStatusTargets(document)) {
+    addStatusValueIssues(issues, target);
+  }
+  const decisionById = new Map(
+    decisions.map((decision) => [decision.statement.id, decision.statement]),
+  );
+  addCounterexampleDirectionIssues(issues, comparisons, decisionById);
+  addNegatedDecisionSupportIssues(
+    issues,
+    decisions,
+    indexIncomingCounterexamples(comparisons),
+  );
 }
 
 function auditStepContracts(

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import test from "node:test";
@@ -32,16 +38,31 @@ function writeExecutable(filePath: string, body: string): void {
 
 function workspaceDomainId(dir: string): string {
   const name = dir.split(/[/\\]/).filter(Boolean).at(-1) ?? "workspace";
-  const sanitized = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "workspace";
+  let sanitized = "";
+  for (const character of name.toLowerCase()) {
+    const code = character.codePointAt(0) ?? 0;
+    const isLetter = code >= 97 && code <= 122;
+    const isDigit = code >= 48 && code <= 57;
+    const normalized = isLetter || isDigit ? character : "-";
+    if (normalized !== "-" || !sanitized.endsWith("-")) {
+      sanitized += normalized;
+    }
+  }
+  sanitized = sanitized.replace(/^-|-$/g, "") || "workspace";
   const digest = createHash("sha256").update(dir).digest("hex").slice(0, 12);
   return `${sanitized}-${digest}`;
 }
 
-function expectedWorkspaceStorageRoot(xdgStateHome: string, workspaceDir: string): string {
-  return join(xdgStateHome, "llmthink", "workspace", workspaceDomainId(workspaceDir));
+function expectedWorkspaceStorageRoot(
+  xdgStateHome: string,
+  workspaceDir: string,
+): string {
+  return join(
+    xdgStateHome,
+    "llmthink",
+    "workspace",
+    workspaceDomainId(workspaceDir),
+  );
 }
 
 test("resolveThoughtStorageRoot prefers workspace config over user XDG config", () => {
@@ -69,7 +90,10 @@ test("resolveThoughtStorageRoot prefers workspace config over user XDG config", 
       },
     });
 
-    assert.equal(storageRoot, expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot));
+    assert.equal(
+      storageRoot,
+      expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot),
+    );
   });
 });
 
@@ -117,7 +141,10 @@ test("resolveThoughtStorageRoot derives workspace domain from the nearest marked
       },
     });
 
-    assert.equal(storageRoot, expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot));
+    assert.equal(
+      storageRoot,
+      expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot),
+    );
   });
 });
 
@@ -178,7 +205,7 @@ test("resolveEmbeddingConfig loads api key via secdat", () => {
     mkdirSync(binDir, { recursive: true });
     writeExecutable(
       secdatPath,
-      "#!/bin/sh\nif [ \"$1\" = \"--dir\" ]; then\n  shift\n  shift\nfi\nif [ \"$1\" = \"get\" ] && [ \"$2\" = \"OPENAI_API_KEY\" ]; then\n  printf 'secdat-secret\\n'\n  exit 0\nfi\nexit 1\n",
+      '#!/bin/sh\nif [ "$1" = "--dir" ]; then\n  shift\n  shift\nfi\nif [ "$1" = "get" ] && [ "$2" = "OPENAI_API_KEY" ]; then\n  printf \'secdat-secret\\n\'\n  exit 0\nfi\nexit 1\n',
     );
     writeJson(join(workspaceDir, ".llmthinkrc"), {
       embeddings: {
@@ -224,15 +251,24 @@ test("resolveRuntimeConfig reports discovered config paths and selected storage 
       },
     });
 
-    assert.equal(runtimeConfig.configPaths.workspace, join(dir, "workspace", ".llmthinkrc"));
-    assert.equal(runtimeConfig.configPaths.user, join(xdgConfigHome, "llmthink", "config.json"));
+    assert.equal(
+      runtimeConfig.configPaths.workspace,
+      join(dir, "workspace", ".llmthinkrc"),
+    );
+    assert.equal(
+      runtimeConfig.configPaths.user,
+      join(xdgConfigHome, "llmthink", "config.json"),
+    );
     assert.equal(runtimeConfig.storage.domain, "workspace");
     assert.equal(
       runtimeConfig.storage.root,
       expectedWorkspaceStorageRoot(xdgStateHome, workspaceRoot),
     );
     assert.equal(runtimeConfig.sources.storage.root.layer, "workspace");
-    assert.equal(runtimeConfig.sources.storage.root.key, "thought.storageDomain");
+    assert.equal(
+      runtimeConfig.sources.storage.root.key,
+      "thought.storageDomain",
+    );
     assert.equal(runtimeConfig.sources.storage.domain.layer, "workspace");
     assert.equal(runtimeConfig.sources.embeddings.provider.layer, "default");
   });
@@ -256,10 +292,19 @@ test("resolveRuntimeConfig reports env-backed sources when config files are abse
 
     assert.equal(runtimeConfig.storage.domain, "user");
     assert.equal(runtimeConfig.sources.storage.root.layer, "env");
-    assert.equal(runtimeConfig.sources.storage.root.key, "LLMTHINK_STORAGE_DOMAIN");
+    assert.equal(
+      runtimeConfig.sources.storage.root.key,
+      "LLMTHINK_STORAGE_DOMAIN",
+    );
     assert.equal(runtimeConfig.sources.embeddings.provider.layer, "env");
-    assert.equal(runtimeConfig.sources.embeddings.provider.key, "LLMTHINK_EMBEDDING_PROVIDER");
+    assert.equal(
+      runtimeConfig.sources.embeddings.provider.key,
+      "LLMTHINK_EMBEDDING_PROVIDER",
+    );
     assert.equal(runtimeConfig.sources.embeddings.openaiApiKey.layer, "env");
-    assert.equal(runtimeConfig.sources.embeddings.openaiApiKey.key, "OPENAI_API_KEY");
+    assert.equal(
+      runtimeConfig.sources.embeddings.openaiApiKey.key,
+      "OPENAI_API_KEY",
+    );
   });
 });

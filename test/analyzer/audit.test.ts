@@ -31,13 +31,29 @@ step:
 `);
 
   const messages = report.results.map((issue) => issue.message);
-  assert.match(messages.join("\n"), /problem P1 がどの decision からも直接参照されていない/);
-  assert.match(messages.join("\n"), /premise PR1 がどの decision からも直接参照されていない/);
-  assert.match(messages.join("\n"), /evidence EV1 がどの decision からも直接参照されていない/);
-  assert.equal(messages.some((message) => message.includes("PR2")), false);
+  assert.match(
+    messages.join("\n"),
+    /problem P1 がどの decision からも直接参照されていない/,
+  );
+  assert.match(
+    messages.join("\n"),
+    /premise PR1 がどの decision からも直接参照されていない/,
+  );
+  assert.match(
+    messages.join("\n"),
+    /evidence EV1 がどの decision からも直接参照されていない/,
+  );
+  assert.equal(
+    messages.some((message) => message.includes("PR2")),
+    false,
+  );
 
-  const orphanProblem = report.results.find((issue) => issue.message.includes("problem P1"));
-  const orphanEvidence = report.results.find((issue) => issue.message.includes("evidence EV1"));
+  const orphanProblem = report.results.find((issue) =>
+    issue.message.includes("problem P1"),
+  );
+  const orphanEvidence = report.results.find((issue) =>
+    issue.message.includes("evidence EV1"),
+  );
   assert.equal(orphanProblem?.severity, "warning");
   assert.equal(orphanEvidence?.severity, "hint");
 });
@@ -81,11 +97,15 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("annotation status retired は未定義")),
+    report.results.some((issue) =>
+      issue.message.includes("annotation status retired は未定義"),
+    ),
     true,
   );
   assert.equal(
-    report.results.some((issue) => issue.message.includes("排他的な status が併記")),
+    report.results.some((issue) =>
+      issue.message.includes("排他的な status が併記"),
+    ),
     true,
   );
 });
@@ -103,7 +123,11 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("counterexample_to comparison または rationale がない")),
+    report.results.some((issue) =>
+      issue.message.includes(
+        "counterexample_to comparison または rationale がない",
+      ),
+    ),
     true,
   );
 });
@@ -120,11 +144,17 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("block text が 1 行のみ") && issue.severity === "hint"),
+    report.results.some(
+      (issue) =>
+        issue.message.includes("block text が 1 行のみ") &&
+        issue.severity === "hint",
+    ),
     true,
   );
 
-  const issue = report.results.find((candidate) => candidate.message.includes("block text が 1 行のみ"));
+  const issue = report.results.find((candidate) =>
+    candidate.message.includes("block text が 1 行のみ"),
+  );
   assert.equal(issue?.metadata?.syntax_help, "llmthink dsl help syntax detail");
   assert.match(String(issue?.metadata?.syntax_guidance), /quoted line/);
 });
@@ -141,13 +171,18 @@ step:
 
   assert.equal(
     report.results.some(
-      (issue) => issue.message.includes("1 行の quoted text が長いため、block text に変えると読みやすい") && issue.severity === "hint",
+      (issue) =>
+        issue.message.includes(
+          "1 行の quoted text が長いため、block text に変えると読みやすい",
+        ) && issue.severity === "hint",
     ),
     true,
   );
 
   const issue = report.results.find((candidate) =>
-    candidate.message.includes("1 行の quoted text が長いため、block text に変えると読みやすい")
+    candidate.message.includes(
+      "1 行の quoted text が長いため、block text に変えると読みやすい",
+    ),
   );
   assert.equal(issue?.metadata?.syntax_help, "llmthink dsl help syntax detail");
   assert.match(String(issue?.metadata?.syntax_guidance), /block text/);
@@ -168,7 +203,11 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("annotation status は複数行を取れない") && issue.severity === "error"),
+    report.results.some(
+      (issue) =>
+        issue.message.includes("annotation status は複数行を取れない") &&
+        issue.severity === "error",
+    ),
     true,
   );
 });

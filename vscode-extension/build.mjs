@@ -6,7 +6,9 @@ import { build } from "esbuild";
 const bundledLspOutfile = "dist/llmthink-lsp.js";
 
 function validateBundledNodeEntrypoint(outfile) {
-  const resolvedOutfile = fileURLToPath(new URL(`./${outfile}`, import.meta.url));
+  const resolvedOutfile = fileURLToPath(
+    new URL(`./${outfile}`, import.meta.url),
+  );
   const bundleText = readFileSync(resolvedOutfile, "utf8");
   const shebangLines = bundleText.match(/^#!.*$/gm) ?? [];
 
@@ -16,14 +18,19 @@ function validateBundledNodeEntrypoint(outfile) {
     );
   }
 
-  const syntaxCheck = spawnSync(process.execPath, ["--check", resolvedOutfile], {
-    encoding: "utf8",
-  });
+  const syntaxCheck = spawnSync(
+    process.execPath,
+    ["--check", resolvedOutfile],
+    {
+      encoding: "utf8",
+    },
+  );
 
   if (syntaxCheck.status !== 0) {
     const detail = (syntaxCheck.stderr || syntaxCheck.stdout || "").trim();
+    const detailSuffix = detail ? `\n${detail}` : "";
     throw new Error(
-      `Bundled Node entrypoint failed syntax check: ${outfile}${detail ? `\n${detail}` : ""}`,
+      `Bundled Node entrypoint failed syntax check: ${outfile}${detailSuffix}`,
     );
   }
 }

@@ -24,21 +24,24 @@ function buildReport(issueCount: number, queryItemCount = 0): AuditReport {
       issue_id: `ISSUE-${index + 1}`,
       category: "contract_violation",
       severity: "error",
-      target_refs: [{ ref_id: `D${index + 1}`, role: "decision", step_id: `S${index + 1}` }],
+      target_refs: [
+        { ref_id: `D${index + 1}`, role: "decision", step_id: `S${index + 1}` },
+      ],
       message: `Issue ${index + 1}`,
     })),
-    query_results: queryItemCount > 0
-      ? [
-          {
-            query_id: "Q1",
-            severity: "hint",
-            items: Array.from({ length: queryItemCount }, (_, index) => ({
-              ref_id: `R${index + 1}`,
-              score: index + 1,
-            })),
-          },
-        ]
-      : [],
+    query_results:
+      queryItemCount > 0
+        ? [
+            {
+              query_id: "Q1",
+              severity: "hint",
+              items: Array.from({ length: queryItemCount }, (_, index) => ({
+                ref_id: `R${index + 1}`,
+                score: index + 1,
+              })),
+            },
+          ]
+        : [],
   };
 }
 
@@ -78,10 +81,18 @@ test("limitAuditReport keeps highest severities and adds overflow issue", () => 
   const limited = limitAuditReport(report, { maxIssues: 2 });
 
   assert.deepEqual(
-    limited.results.map((issue) => [issue.severity, issue.category, issue.message]),
+    limited.results.map((issue) => [
+      issue.severity,
+      issue.category,
+      issue.message,
+    ]),
     [
       ["fatal", "contract_violation", "Fatal issue"],
-      ["error", "output_limit", "監査結果が多すぎるため、上位 1 件のみを出力した。"],
+      [
+        "error",
+        "output_limit",
+        "監査結果が多すぎるため、上位 1 件のみを出力した。",
+      ],
     ],
   );
 });
@@ -172,7 +183,10 @@ test("formatAuditReportText limits issues and query items by default", () => {
 
   assert.equal(text.includes("Issue 49"), true);
   assert.equal(text.includes("Issue 50"), false);
-  assert.match(text, /\[error\] output_limit: 監査結果が多すぎるため、上位 49 件のみを出力した。/);
+  assert.match(
+    text,
+    /\[error\] output_limit: 監査結果が多すぎるため、上位 49 件のみを出力した。/,
+  );
   assert.equal(text.includes("R20 score=20"), true);
   assert.equal(text.includes("R21 score=21"), false);
   assert.match(text, /5 more query items omitted/);

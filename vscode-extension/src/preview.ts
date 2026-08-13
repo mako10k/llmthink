@@ -67,7 +67,13 @@ interface ElkLayoutNode {
   width?: number;
   height?: number;
   children?: ElkLayoutNode[];
-  ports?: Array<{ id: string; x?: number; y?: number; width?: number; height?: number }>;
+  ports?: Array<{
+    id: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  }>;
 }
 
 interface ElkLayoutEdge {
@@ -115,7 +121,9 @@ function hasIntentionalOrphanAnnotation(annotations: Annotation[]): boolean {
 }
 
 function getStatusAnnotation(annotations: Annotation[]): string | undefined {
-  return annotations.find((annotation) => annotation.kind === "status")?.text.trim();
+  return annotations
+    .find((annotation) => annotation.kind === "status")
+    ?.text.trim();
 }
 
 function toStatusClass(status: string | undefined): string {
@@ -125,13 +133,16 @@ function toStatusClass(status: string | undefined): string {
 }
 
 function isParseErrorLike(error: unknown): error is ParseErrorLike {
-  return typeof error === "object" && error !== null
-    && "message" in error
-    && "line" in error
-    && "column" in error
-    && typeof (error as ParseErrorLike).message === "string"
-    && typeof (error as ParseErrorLike).line === "number"
-    && typeof (error as ParseErrorLike).column === "number";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    "line" in error &&
+    "column" in error &&
+    typeof (error as ParseErrorLike).message === "string" &&
+    typeof (error as ParseErrorLike).line === "number" &&
+    typeof (error as ParseErrorLike).column === "number"
+  );
 }
 
 function formatFrameworkRule(rule: FrameworkRule): string {
@@ -146,8 +157,9 @@ function formatProblem(
     `### ${problem.name}`,
     "",
     problem.text,
-    ...problem.annotations.map((annotation) =>
-      `- ${annotationLabel}: ${formatAnnotationLabel(annotation)}`,
+    ...problem.annotations.map(
+      (annotation) =>
+        `- ${annotationLabel}: ${formatAnnotationLabel(annotation)}`,
     ),
     "",
   ];
@@ -183,7 +195,9 @@ function formatStep(step: StepDecl, annotationLabel: string): string[] {
 
   if (statement.role === "comparison") {
     lines.push(`- scope: ${statement.problemId} / ${statement.viewpointId}`);
-    lines.push(`- relation: ${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId}`);
+    lines.push(
+      `- relation: ${statement.relation} ${statement.leftDecisionId}, ${statement.rightDecisionId}`,
+    );
   }
 
   if (
@@ -194,8 +208,9 @@ function formatStep(step: StepDecl, annotationLabel: string): string[] {
     statement.role === "pending"
   ) {
     lines.push(
-      ...statement.annotations.map((annotation) =>
-        `- ${annotationLabel}: ${formatAnnotationLabel(annotation)}`,
+      ...statement.annotations.map(
+        (annotation) =>
+          `- ${annotationLabel}: ${formatAnnotationLabel(annotation)}`,
       ),
     );
   }
@@ -204,12 +219,21 @@ function formatStep(step: StepDecl, annotationLabel: string): string[] {
   return lines;
 }
 
-function buildReferenceSection(document: DocumentAst, title: string, emptyLabel: string): string[] {
+function buildReferenceSection(
+  document: DocumentAst,
+  title: string,
+  emptyLabel: string,
+): string[] {
   const edges = document.steps.flatMap((step) => {
-    if (step.statement.role !== "decision" || step.statement.basedOn.length === 0) {
+    if (
+      step.statement.role !== "decision" ||
+      step.statement.basedOn.length === 0
+    ) {
       return [];
     }
-    return step.statement.basedOn.map((source) => `- ${source} -> ${step.statement.id}`);
+    return step.statement.basedOn.map(
+      (source) => `- ${source} -> ${step.statement.id}`,
+    );
   });
 
   if (edges.length === 0) {
@@ -219,7 +243,11 @@ function buildReferenceSection(document: DocumentAst, title: string, emptyLabel:
   return [`## ${title}`, "", ...edges, ""];
 }
 
-function buildComparisonSection(document: DocumentAst, title: string, emptyLabel: string): string[] {
+function buildComparisonSection(
+  document: DocumentAst,
+  title: string,
+  emptyLabel: string,
+): string[] {
   const lines = document.steps.flatMap((step) => {
     if (step.statement.role !== "comparison") {
       return [];
@@ -312,9 +340,7 @@ function buildDiagramData(document: DocumentAst): {
   }
 
   const unresolvedReferences = new Set(
-    edges
-      .map((edge) => edge.from)
-      .filter((source) => !declaredIds.has(source)),
+    edges.map((edge) => edge.from).filter((source) => !declaredIds.has(source)),
   );
 
   for (const source of unresolvedReferences) {
@@ -351,84 +377,16 @@ function buildComparisonHoverPath(
   ]);
 }
 
-function wrapSvgText(value: string, maxLength: number, maxLines: number): string[] {
-  const tokens = Array.from(
-    value.matchAll(/[A-Za-z0-9_./:-]+|\s+|[^\s]/gu),
-    (match) => match[0],
-  );
-  const lines: string[] = [];
-  let current = "";
-  let currentWidth = 0;
-
-  const tokenWidth = (token: string): number => {
-    let width = 0;
-    for (const char of token) {
-      if (/\s/u.test(char)) {
-        width += 0.45;
-      } else if (/[A-Za-z0-9_./:-]/u.test(char)) {
-        width += 0.72;
-      } else {
-        width += 1;
-      }
-    }
-    return width;
-  };
-
-  const pushLine = () => {
-    if (current.trim().length > 0) {
-      lines.push(current.trim());
-    }
-    current = "";
-    currentWidth = 0;
-  };
-
-  for (const token of tokens) {
-    const width = tokenWidth(token);
-    if (currentWidth + width <= maxLength || current.length === 0) {
-      current += token;
-      currentWidth += width;
-      continue;
-    }
-
-    pushLine();
-    if (lines.length === maxLines) {
-      break;
-    }
-
-    current = token.trimStart();
-    currentWidth = tokenWidth(current);
-  }
-
-  if (lines.length < maxLines && current.trim().length > 0) {
-    pushLine();
-  }
-
-  if (lines.length === 0) {
-    return [truncateSvgText(value, Math.floor(maxLength))];
-  }
-
-  if (lines.length > maxLines) {
-    return [
-      ...lines.slice(0, maxLines - 1),
-      truncateSvgText(lines[maxLines - 1], Math.floor(maxLength)),
-    ];
-  }
-
-  if (lines.length === maxLines && lines.join("").length < value.trim().length) {
-    const lastIndex = lines.length - 1;
-    lines[lastIndex] = truncateSvgText(lines[lastIndex], Math.floor(maxLength));
-  }
-
-  return lines;
-}
-
 function buildOrthogonalPath(points: ElkPoint[]): string {
   if (points.length === 0) {
     return "";
   }
 
   const [first, ...rest] = points;
-  return rest.reduce((path, point) => `${path} L ${point.x} ${point.y}`, `M ${first.x} ${first.y}`);
+  return rest.reduce(
+    (path, point) => `${path} L ${point.x} ${point.y}`,
+    `M ${first.x} ${first.y}`,
+  );
 }
 
 function roleSortIndex(role: DiagramRole): number {
@@ -455,7 +413,44 @@ function portId(nodeId: string, side: "in" | "out", index: number): string {
   return `${nodeId}__${side}_${index}`;
 }
 
-async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Promise<{
+function indexDiagramEdges(edges: DiagramEdge[]): {
+  incoming: Map<string, number[]>;
+  outgoing: Map<string, number[]>;
+} {
+  const incoming = new Map<string, number[]>();
+  const outgoing = new Map<string, number[]>();
+  for (const [index, edge] of edges.entries()) {
+    const incomingIndexes = incoming.get(edge.to) ?? [];
+    incomingIndexes.push(index);
+    incoming.set(edge.to, incomingIndexes);
+    const outgoingIndexes = outgoing.get(edge.from) ?? [];
+    outgoingIndexes.push(index);
+    outgoing.set(edge.from, outgoingIndexes);
+  }
+  return { incoming, outgoing };
+}
+
+function diagramPosition(child: ElkLayoutNode): DiagramPosition | undefined {
+  if (
+    typeof child.x !== "number" ||
+    typeof child.y !== "number" ||
+    typeof child.width !== "number" ||
+    typeof child.height !== "number"
+  ) {
+    return undefined;
+  }
+  return {
+    x: child.x,
+    y: child.y,
+    width: child.width,
+    height: child.height,
+  };
+}
+
+async function computeElkLayout(
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+): Promise<{
   nodePositions: Map<string, DiagramPosition>;
   edgeSections: Map<string, ElkLayoutEdge["sections"]>;
   width: number;
@@ -463,18 +458,7 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
 }> {
   const nodeWidth = 236;
   const nodeHeight = 96;
-  const incomingEdgesByNode = new Map<string, number[]>();
-  const outgoingEdgesByNode = new Map<string, number[]>();
-
-  for (const [index, edge] of edges.entries()) {
-    const incoming = incomingEdgesByNode.get(edge.to) ?? [];
-    incoming.push(index);
-    incomingEdgesByNode.set(edge.to, incoming);
-
-    const outgoing = outgoingEdgesByNode.get(edge.from) ?? [];
-    outgoing.push(index);
-    outgoingEdgesByNode.set(edge.from, outgoing);
-  }
+  const edgeIndexes = indexDiagramEdges(edges);
 
   const graph = {
     id: "root",
@@ -495,11 +479,13 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
       width: nodeWidth,
       height: nodeHeight,
       layoutOptions: {
-        "org.eclipse.elk.partitioning.partition": String(roleSortIndex(node.role)),
+        "org.eclipse.elk.partitioning.partition": String(
+          roleSortIndex(node.role),
+        ),
         "org.eclipse.elk.portConstraints": "FIXED_SIDE",
       },
       ports: [
-        ...(incomingEdgesByNode.get(node.key) ?? [0]).map((edgeIndex) => ({
+        ...(edgeIndexes.incoming.get(node.key) ?? [0]).map((edgeIndex) => ({
           id: portId(node.key, "in", edgeIndex),
           width: 8,
           height: 8,
@@ -507,7 +493,7 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
             "org.eclipse.elk.port.side": "WEST",
           },
         })),
-        ...(outgoingEdgesByNode.get(node.key) ?? [0]).map((edgeIndex) => ({
+        ...(edgeIndexes.outgoing.get(node.key) ?? [0]).map((edgeIndex) => ({
           id: portId(node.key, "out", edgeIndex),
           width: 8,
           height: 8,
@@ -528,36 +514,30 @@ async function computeElkLayout(nodes: DiagramNode[], edges: DiagramEdge[]): Pro
   const nodePositions = new Map<string, DiagramPosition>();
   const edgeSections = new Map<string, ElkLayoutEdge["sections"]>();
 
-  for (const child of ((layout as ElkLayoutNode).children ?? [])) {
-    if (
-      child.id &&
-      typeof child.x === "number" &&
-      typeof child.y === "number" &&
-      typeof child.width === "number" &&
-      typeof child.height === "number"
-    ) {
-      nodePositions.set(child.id, {
-        x: child.x,
-        y: child.y,
-        width: child.width,
-        height: child.height,
-      });
+  for (const child of (layout as ElkLayoutNode).children ?? []) {
+    const position = diagramPosition(child);
+    if (child.id && position) {
+      nodePositions.set(child.id, position);
     }
   }
 
-  for (const edge of (((layout as unknown) as { edges?: ElkLayoutEdge[] }).edges ?? [])) {
+  for (const edge of (layout as unknown as { edges?: ElkLayoutEdge[] }).edges ??
+    []) {
     edgeSections.set(edge.id, edge.sections);
   }
 
   return {
     nodePositions,
     edgeSections,
-    width: Math.max(760, Math.ceil(((layout as ElkLayoutNode).width ?? 760))),
-    height: Math.ceil(((layout as ElkLayoutNode).height ?? 320)),
+    width: Math.max(760, Math.ceil((layout as ElkLayoutNode).width ?? 760)),
+    height: Math.ceil((layout as ElkLayoutNode).height ?? 320),
   };
 }
 
-async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): Promise<string> {
+async function buildSvgOverview(
+  document: DocumentAst,
+  locale: PreviewLocale,
+): Promise<string> {
   const { nodes, edges, comparisons } = buildDiagramData(document);
   const strings = getPreviewStrings(locale);
 
@@ -575,7 +555,10 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
     `;
   }
 
-  const { nodePositions, edgeSections, width, height } = await computeElkLayout(nodes, edges);
+  const { nodePositions, edgeSections, width, height } = await computeElkLayout(
+    nodes,
+    edges,
+  );
   const usedRoles = DIAGRAM_ROLE_ORDER.filter((role) =>
     nodes.some((node) => node.role === role),
   );
@@ -584,19 +567,20 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
     .map((edge, index) => {
       const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
       const sections = edgeSections.get(edgeId);
-      const points = sections?.flatMap((section) => {
-        const route: ElkPoint[] = [];
-        if (section.startPoint) {
-          route.push(section.startPoint);
-        }
-        if (section.bendPoints) {
-          route.push(...section.bendPoints);
-        }
-        if (section.endPoint) {
-          route.push(section.endPoint);
-        }
-        return route;
-      }) ?? [];
+      const points =
+        sections?.flatMap((section) => {
+          const route: ElkPoint[] = [];
+          if (section.startPoint) {
+            route.push(section.startPoint);
+          }
+          if (section.bendPoints) {
+            route.push(...section.bendPoints);
+          }
+          if (section.endPoint) {
+            route.push(section.endPoint);
+          }
+          return route;
+        }) ?? [];
 
       if (points.length === 0) {
         return "";
@@ -611,19 +595,20 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
     .map((edge, index) => {
       const edgeId = `edge-${index}-${edge.from}-${edge.to}`;
       const sections = edgeSections.get(edgeId);
-      const points = sections?.flatMap((section) => {
-        const route: ElkPoint[] = [];
-        if (section.startPoint) {
-          route.push(section.startPoint);
-        }
-        if (section.bendPoints) {
-          route.push(...section.bendPoints);
-        }
-        if (section.endPoint) {
-          route.push(section.endPoint);
-        }
-        return route;
-      }) ?? [];
+      const points =
+        sections?.flatMap((section) => {
+          const route: ElkPoint[] = [];
+          if (section.startPoint) {
+            route.push(section.startPoint);
+          }
+          if (section.bendPoints) {
+            route.push(...section.bendPoints);
+          }
+          if (section.endPoint) {
+            route.push(section.endPoint);
+          }
+          return route;
+        }) ?? [];
 
       if (points.length === 0) {
         return "";
@@ -661,12 +646,14 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
       if (!layoutNode) {
         return "";
       }
-      const subtitle = node.subtitle === "__UNRESOLVED_REFERENCE__"
-        ? strings.unresolvedReference
-        : node.subtitle;
-      const dataAttributes = node.line && node.column
-        ? `data-line="${node.line}" data-column="${node.column}" data-node-key="${escapeHtml(node.key)}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
-        : "";
+      const subtitle =
+        node.subtitle === "__UNRESOLVED_REFERENCE__"
+          ? strings.unresolvedReference
+          : node.subtitle;
+      const dataAttributes =
+        node.line && node.column
+          ? `data-line="${node.line}" data-column="${node.column}" data-node-key="${escapeHtml(node.key)}" tabindex="0" role="button" aria-label="Reveal ${escapeHtml(node.key)} in source"`
+          : "";
       const comparisonAttributes = node.comparisonMeta
         ? `data-comparison-id="${escapeHtml(node.key)}" data-comparison-from="${escapeHtml(node.comparisonMeta.leftDecisionId)}" data-comparison-to="${escapeHtml(node.comparisonMeta.rightDecisionId)}" data-comparison-relation="${escapeHtml(node.comparisonMeta.relation)}"`
         : "";
@@ -764,14 +751,22 @@ async function buildSvgOverview(document: DocumentAst, locale: PreviewLocale): P
   `;
 }
 
-function buildPreviewMarkdown(document: DocumentAst, title: string, locale: PreviewLocale): string {
+function buildPreviewMarkdown(
+  document: DocumentAst,
+  title: string,
+  locale: PreviewLocale,
+): string {
   const strings = getPreviewStrings(locale);
   const lines: string[] = [`# ${title}`, ""];
 
   if (document.framework) {
     lines.push(`## ${strings.sections.framework}`, "");
     lines.push(`- ${document.framework.name}`);
-    lines.push(...document.framework.rules.map((rule) => `- ${formatFrameworkRule(rule)}`));
+    lines.push(
+      ...document.framework.rules.map(
+        (rule) => `- ${formatFrameworkRule(rule)}`,
+      ),
+    );
     lines.push("");
   }
 
@@ -790,14 +785,18 @@ function buildPreviewMarkdown(document: DocumentAst, title: string, locale: Prev
   if (document.problems.length > 0) {
     lines.push(`## ${strings.sections.problems}`, "");
     lines.push(
-      ...document.problems.flatMap((problem) => formatProblem(problem, strings.annotationLabel)),
+      ...document.problems.flatMap((problem) =>
+        formatProblem(problem, strings.annotationLabel),
+      ),
     );
   }
 
   if (document.steps.length > 0) {
     lines.push(`## ${strings.sections.steps}`, "");
     lines.push(
-      ...document.steps.flatMap((step) => formatStep(step, strings.annotationLabel)),
+      ...document.steps.flatMap((step) =>
+        formatStep(step, strings.annotationLabel),
+      ),
     );
   }
 
@@ -824,12 +823,20 @@ function buildPreviewMarkdown(document: DocumentAst, title: string, locale: Prev
   }
 
   lines.push(
-    ...buildReferenceSection(document, strings.sections.references, strings.noBasedOnEdges),
+    ...buildReferenceSection(
+      document,
+      strings.sections.references,
+      strings.noBasedOnEdges,
+    ),
   );
   return lines.join("\n");
 }
 
-function buildErrorHtml(error: ParseErrorLike | Error, title: string, locale: PreviewLocale): string {
+function buildErrorHtml(
+  error: ParseErrorLike | Error,
+  title: string,
+  locale: PreviewLocale,
+): string {
   const strings = getPreviewStrings(locale);
   const message = isParseErrorLike(error)
     ? `${error.message} (line ${error.line}, column ${error.column})`
@@ -915,12 +922,13 @@ function markdownToHtml(markdown: string): string {
       continue;
     }
 
-    const headingMatch = /^(#{1,3})\s+(.*)$/.exec(line);
-    if (headingMatch) {
+    const heading = parseMarkdownHeading(line);
+    if (heading) {
       flushParagraph();
       closeList();
-      const level = headingMatch[1].length;
-      html.push(`<h${level}>${escapeHtml(headingMatch[2])}</h${level}>`);
+      html.push(
+        `<h${heading.level}>${escapeHtml(heading.text)}</h${heading.level}>`,
+      );
       continue;
     }
 
@@ -945,6 +953,18 @@ function markdownToHtml(markdown: string): string {
   return html.join("\n");
 }
 
+function parseMarkdownHeading(
+  line: string,
+): { level: number; text: string } | undefined {
+  let level = 0;
+  while (level < 3 && line[level] === "#") {
+    level += 1;
+  }
+  if (level === 0 || line[level] !== " ") {
+    return undefined;
+  }
+  return { level, text: line.slice(level + 1) };
+}
 
 function buildPreviewScript(): string {
   return `
@@ -1596,7 +1616,12 @@ function buildPreviewScript(): string {
   `;
 }
 
-function buildPreviewHtml(markdown: string, title: string, svgOverview: string, locale: PreviewLocale): string {
+function buildPreviewHtml(
+  markdown: string,
+  title: string,
+  svgOverview: string,
+  locale: PreviewLocale,
+): string {
   const strings = getPreviewStrings(locale);
   return `<!DOCTYPE html>
 <html lang="${locale}">
@@ -2185,7 +2210,10 @@ export async function renderDslPreview(
     }
     const markdown = buildPreviewMarkdown(document, title, locale);
     const svgOverview = await buildSvgOverview(document, locale);
-    const localizedMarkdown = markdown.replaceAll("__UNRESOLVED_REFERENCE__", strings.unresolvedReference);
+    const localizedMarkdown = markdown.replaceAll(
+      "__UNRESOLVED_REFERENCE__",
+      strings.unresolvedReference,
+    );
     return buildPreviewHtml(localizedMarkdown, title, svgOverview, locale);
   } catch (error) {
     if (isParseErrorLike(error) || error instanceof Error) {

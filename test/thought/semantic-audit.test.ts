@@ -15,7 +15,9 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-function buildSnapshot(overrides: Partial<ThoughtSnapshot> = {}): ThoughtSnapshot {
+function buildSnapshot(
+  overrides: Partial<ThoughtSnapshot> = {},
+): ThoughtSnapshot {
   return {
     record: {
       id: "sample-thought",
@@ -98,8 +100,14 @@ test("formatThoughtSemanticAuditPairs lists reviewed and unreviewed pairs", () =
 
 test("formatThoughtSemanticAuditSummary reports absence cleanly", () => {
   const snapshot = buildSnapshot({ draftText: "" });
-  assert.equal(formatThoughtSemanticAuditSummary(snapshot), "No semantic audit yet.\n");
-  assert.equal(formatThoughtSemanticAuditPairs(snapshot), "No semantic audit yet.\n");
+  assert.equal(
+    formatThoughtSemanticAuditSummary(snapshot),
+    "No semantic audit yet.\n",
+  );
+  assert.equal(
+    formatThoughtSemanticAuditPairs(snapshot),
+    "No semantic audit yet.\n",
+  );
 });
 
 test("saveThoughtSemanticAudit writes and upserts semantic-audit.dsl", () => {
@@ -153,10 +161,19 @@ test("saveThoughtSemanticAudit writes and upserts semantic-audit.dsl", () => {
     const snapshot = loadThought("sample-thought", baseDir);
     assert.match(snapshot.semanticAuditText ?? "", /verdict mixed/);
     assert.doesNotMatch(snapshot.semanticAuditText ?? "", /verdict supported/);
-    assert.match(formatThoughtSemanticAuditSummary(snapshot), /reviewed_pairs: 1/);
+    assert.match(
+      formatThoughtSemanticAuditSummary(snapshot),
+      /reviewed_pairs: 1/,
+    );
 
     const fileText = readFileSync(
-      join(baseDir, ".llmthink", "thoughts", "sample-thought", "semantic-audit.dsl"),
+      join(
+        baseDir,
+        ".llmthink",
+        "thoughts",
+        "sample-thought",
+        "semantic-audit.dsl",
+      ),
       "utf8",
     );
     assert.match(fileText, /reviewer "QA reviewer"/);

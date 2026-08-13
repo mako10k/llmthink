@@ -349,6 +349,7 @@
 
 - category = contradiction_candidate
 - severity = warning
+
 ---
 
 ## 5. 判定順序

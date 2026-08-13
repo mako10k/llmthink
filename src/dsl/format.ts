@@ -35,7 +35,11 @@ function formatTextBody(text: string, body?: TextBody): string[] {
   return ["|", ...formatBlockTextLines(text)];
 }
 
-function formatLabeledTextBody(label: string, text: string, body?: TextBody): string[] {
+function formatLabeledTextBody(
+  label: string,
+  text: string,
+  body?: TextBody,
+): string[] {
   const useBlock = body?.syntax === "block" || text.includes("\n");
   if (!useBlock) {
     return [`${label} ${quote(text)}`];
@@ -146,7 +150,11 @@ export function formatDocument(document: DocumentAst): string {
     ...document.domains.map((domain) =>
       [
         `domain ${domain.name}:`,
-        ...formatLabeledTextBody("description", domain.description, domain.descriptionBody).map(indent),
+        ...formatLabeledTextBody(
+          "description",
+          domain.description,
+          domain.descriptionBody,
+        ).map(indent),
       ].join("\n"),
     ),
   );

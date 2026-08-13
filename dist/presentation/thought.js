@@ -3,6 +3,57 @@ const SEMANTIC_AUDIT_HEADER = /^semantic_audit\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s
 function stripQuotedValue(value) {
     return value.replace(/^"/, "").replace(/"$/, "");
 }
+function parseSemanticAuditMetadata(line) {
+    const separatorIndex = line.search(/\s/u);
+    if (separatorIndex <= 0) {
+        return undefined;
+    }
+    const key = line.slice(0, separatorIndex);
+    const rawValue = line.slice(separatorIndex).trim();
+    if (!/^[a-z][a-z0-9_]*$/i.test(key) || !rawValue) {
+        return undefined;
+    }
+    const value = rawValue.startsWith('"') && rawValue.endsWith('"')
+        ? stripQuotedValue(rawValue)
+        : rawValue;
+    return [key, value];
+}
+function parseSemanticAuditEntry(lines, headerIndex, header) {
+    const rawHeader = lines[headerIndex] ?? "";
+    const [, auditId, decisionId, supportId, verdict] = header;
+    const entry = {
+        auditId,
+        decisionId,
+        supportId,
+        verdict: verdict,
+        metadata: {},
+    };
+    const baseIndent = rawHeader.search(/\S/u);
+    let index = headerIndex + 1;
+    while (index < lines.length) {
+        const rawLine = lines[index] ?? "";
+        const line = rawLine.trim();
+        if (!line) {
+            index += 1;
+            continue;
+        }
+        const indent = rawLine.search(/\S/u);
+        if (indent <= baseIndent) {
+            break;
+        }
+        if (line.startsWith('"') && line.endsWith('"') && !entry.reason) {
+            entry.reason = stripQuotedValue(line);
+        }
+        else {
+            const metadata = parseSemanticAuditMetadata(line);
+            if (metadata) {
+                entry.metadata[metadata[0]] = metadata[1];
+            }
+        }
+        index += 1;
+    }
+    return { entry, nextIndex: index };
+}
 function parseSemanticAuditEntries(text) {
     if (!text) {
         return [];
@@ -18,45 +69,9 @@ function parseSemanticAuditEntries(text) {
             index += 1;
             continue;
         }
-        const [, auditId, decisionId, supportId, verdict] = header;
-        const entry = {
-            auditId,
-            decisionId,
-            supportId,
-            verdict: verdict,
-            metadata: {},
-        };
-        const baseIndent = rawLine.match(/^\s*/)?.[0].length ?? 0;
-        index += 1;
-        while (index < lines.length) {
-            const childRawLine = lines[index] ?? "";
-            const childLine = childRawLine.trim();
-            const childIndent = childRawLine.match(/^\s*/)?.[0].length ?? 0;
-            if (!childLine) {
-                index += 1;
-                continue;
-            }
-            if (childIndent <= baseIndent) {
-                break;
-            }
-            if (childLine.startsWith("\"") && childLine.endsWith("\"")) {
-                if (!entry.reason) {
-                    entry.reason = stripQuotedValue(childLine);
-                }
-                index += 1;
-                continue;
-            }
-            const metadataMatch = childLine.match(/^([a-z][a-z0-9_]*)\s+(.+)$/i);
-            if (metadataMatch) {
-                const [, key, rawValue] = metadataMatch;
-                entry.metadata[key] =
-                    rawValue.startsWith("\"") && rawValue.endsWith("\"")
-                        ? stripQuotedValue(rawValue)
-                        : rawValue;
-            }
-            index += 1;
-        }
-        entries.push(entry);
+        const parsed = parseSemanticAuditEntry(lines, index, header);
+        entries.push(parsed.entry);
+        index = parsed.nextIndex;
     }
     return entries;
 }

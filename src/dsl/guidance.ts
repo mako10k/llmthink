@@ -986,9 +986,13 @@ export function parseDslHelpRequest(input: string): DslHelpRequest | undefined {
     lastToken === "index" || lastToken === "quick" || lastToken === "detail"
       ? lastToken
       : undefined;
+  let subtopic: string | undefined = tokens[3];
+  if (detail && tokens.length < 5) {
+    subtopic = undefined;
+  }
   return {
     topic: tokens[2],
-    subtopic: detail ? (tokens.length >= 5 ? tokens[3] : undefined) : tokens[3],
+    subtopic,
     detail,
   };
 }

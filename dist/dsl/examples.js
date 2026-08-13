@@ -94,7 +94,10 @@ export function resolveDslExamplePath(id, cwd = process.cwd()) {
     if (!entry) {
         return undefined;
     }
-    const candidates = [resolve(cwd, entry.path), ...candidateRoots.map((root) => resolve(root, entry.path))];
+    const candidates = [
+        resolve(cwd, entry.path),
+        ...candidateRoots.map((root) => resolve(root, entry.path)),
+    ];
     const seen = new Set();
     return candidates.find((candidate) => {
         if (seen.has(candidate)) {

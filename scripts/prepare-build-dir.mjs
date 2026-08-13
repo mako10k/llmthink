@@ -3,9 +3,9 @@ import { dirname, resolve } from "node:path";
 
 const target = resolve("build/llmthink-lsp.js");
 const launcher = [
-	"#!/usr/bin/env node",
-	'import "../dist/lsp/server.js";',
-	"",
+  "#!/usr/bin/env node",
+  'import "../dist/lsp/server.js";',
+  "",
 ].join("\n");
 
 mkdirSync(dirname(target), { recursive: true });

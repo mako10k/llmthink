@@ -10,7 +10,9 @@ function previewTitle(document: vscode.TextDocument): string {
   return baseName.replace(/\.dsl$/i, "") || "active-document";
 }
 
-export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider {
+export class DslPreviewEditorProvider
+  implements vscode.CustomTextEditorProvider
+{
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new DslPreviewEditorProvider(context);
     return vscode.window.registerCustomEditorProvider(
@@ -29,7 +31,6 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
   resolveCustomTextEditor(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel,
-    _token: vscode.CancellationToken,
   ): void {
     const locale = resolvePreviewLocale(vscode.env.language);
     const strings = getPreviewStrings(locale);
@@ -75,24 +76,28 @@ export class DslPreviewEditorProvider implements vscode.CustomTextEditorProvider
       webviewPanel.webview.html = html;
     };
 
-    const messageSubscription = webviewPanel.webview.onDidReceiveMessage((message) => {
-      if (message?.type !== "revealLocation") {
-        return;
-      }
-      const line = Number(message.line);
-      const column = Number(message.column ?? 1);
-      if (!Number.isFinite(line) || !Number.isFinite(column)) {
-        return;
-      }
-      void revealLocation(line, column);
-    });
+    const messageSubscription = webviewPanel.webview.onDidReceiveMessage(
+      (message) => {
+        if (message?.type !== "revealLocation") {
+          return;
+        }
+        const line = Number(message.line);
+        const column = Number(message.column ?? 1);
+        if (!Number.isFinite(line) || !Number.isFinite(column)) {
+          return;
+        }
+        void revealLocation(line, column);
+      },
+    );
 
-    const changeSubscription = vscode.workspace.onDidChangeTextDocument((event) => {
-      if (event.document.uri.toString() !== document.uri.toString()) {
-        return;
-      }
-      void update();
-    });
+    const changeSubscription = vscode.workspace.onDidChangeTextDocument(
+      (event) => {
+        if (event.document.uri.toString() !== document.uri.toString()) {
+          return;
+        }
+        void update();
+      },
+    );
 
     webviewPanel.onDidDispose(
       () => {

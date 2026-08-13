@@ -33,7 +33,9 @@ function candidateDirs(baseDir?: string): string[] {
   return dirs;
 }
 
-async function tryLoadWorkspaceCore(candidatePath: string): Promise<CoreModule | undefined> {
+async function tryLoadWorkspaceCore(
+  candidatePath: string,
+): Promise<CoreModule | undefined> {
   if (!(await fileExists(candidatePath))) {
     return undefined;
   }

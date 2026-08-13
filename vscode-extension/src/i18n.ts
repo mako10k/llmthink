@@ -99,14 +99,16 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
     previewTitle: (title) => `LLMThink Preview: ${title}`,
     diagramKicker: "SVG Graph",
     diagramTitle: "Step Map",
-    diagramEmpty: "No structured steps are available yet, so the SVG graph cannot be shown.",
+    diagramEmpty:
+      "No structured steps are available yet, so the SVG graph cannot be shown.",
     nodesAndEdges: (nodes, edges) => `${nodes} nodes / ${edges} edges`,
     diagramControls: {
       zoomIn: "Zoom in",
       zoomOut: "Zoom out",
       reset: "100%",
       fit: "Fit",
-      dragHint: "Drag to pan, or scroll in either direction to move around the map.",
+      dragHint:
+        "Drag to pan, or scroll in either direction to move around the map.",
       zoomLevel: (percent) => `Zoom ${percent}%`,
     },
     minimap: {
@@ -141,7 +143,9 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
   },
 };
 
-export function resolvePreviewLocale(language: string | undefined): PreviewLocale {
+export function resolvePreviewLocale(
+  language: string | undefined,
+): PreviewLocale {
   return language?.toLowerCase().startsWith("ja") ? "ja" : "en";
 }
 

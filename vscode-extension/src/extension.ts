@@ -3,10 +3,12 @@ import * as vscode from "vscode";
 import { loadLlmthinkCore } from "./core-runtime";
 import { getPreviewStrings, resolvePreviewLocale } from "./i18n";
 import { restartLspClient, startLspClient, stopLspClient } from "./lsp";
-import { DSL_PREVIEW_VIEW_TYPE, DslPreviewEditorProvider } from "./preview-editor";
+import {
+  DSL_PREVIEW_VIEW_TYPE,
+  DslPreviewEditorProvider,
+} from "./preview-editor";
 import {
   addThoughtReflection,
-  auditAndPersistThought,
   deleteThought,
   deriveThoughtIdFromDocumentId,
   deriveThoughtIdFromFilePath,
@@ -22,10 +24,7 @@ import {
   formatThoughtSemanticAuditPairs,
   formatThoughtSemanticAuditSummary,
   formatThoughtSummary,
-  getDslSyntaxGuidanceText,
-  isDslHelpRequest,
   limitAuditReport,
-  parseDslHelpRequest,
   resolveThoughtStorageRoot,
   loadThought,
   listThoughts,
@@ -95,8 +94,16 @@ const SEMANTIC_AUDIT_VERDICT_ITEMS: Array<{
   description: string;
   value: ThoughtSemanticAuditVerdict;
 }> = [
-  { label: "supported", description: "根拠として支持できる", value: "supported" },
-  { label: "unsupported", description: "根拠として支持できない", value: "unsupported" },
+  {
+    label: "supported",
+    description: "根拠として支持できる",
+    value: "supported",
+  },
+  {
+    label: "unsupported",
+    description: "根拠として支持できない",
+    value: "unsupported",
+  },
   { label: "mixed", description: "一部支持できるが留保がある", value: "mixed" },
   { label: "unknown", description: "現時点では判定保留", value: "unknown" },
 ];
@@ -150,7 +157,9 @@ async function openPreviewForEditor(editor: vscode.TextEditor): Promise<void> {
   await openPreviewForEditorInColumn(editor, editor.viewColumn);
 }
 
-async function openPreviewForEditorBeside(editor: vscode.TextEditor): Promise<void> {
+async function openPreviewForEditorBeside(
+  editor: vscode.TextEditor,
+): Promise<void> {
   await openPreviewForEditorInColumn(editor, vscode.ViewColumn.Beside);
 }
 
@@ -180,19 +189,20 @@ function defaultThoughtIdForDocument(document: vscode.TextDocument): string {
   return deriveThoughtIdFromDocumentId(toDocumentId(document));
 }
 
-function resolveThoughtBaseDir(document?: vscode.TextDocument): string | undefined {
-  const workspaceFolder = document
-    ? vscode.workspace.getWorkspaceFolder(document.uri)
-    : vscode.window.activeTextEditor
-      ? vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)
-      : undefined;
+function resolveThoughtBaseDir(
+  document?: vscode.TextDocument,
+): string | undefined {
+  const activeDocument = document ?? vscode.window.activeTextEditor?.document;
+  const workspaceFolder = activeDocument
+    ? vscode.workspace.getWorkspaceFolder(activeDocument.uri)
+    : undefined;
 
-  return (
-    workspaceFolder?.uri.fsPath ??
-    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
-    extensionContext?.storageUri?.fsPath ??
-    extensionContext?.globalStorageUri?.fsPath
-  );
+  return [
+    workspaceFolder?.uri.fsPath,
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+    extensionContext?.storageUri?.fsPath,
+    extensionContext?.globalStorageUri?.fsPath,
+  ].find((candidate) => candidate !== undefined);
 }
 
 function resolveThoughtStorageLocation(document?: vscode.TextDocument) {
@@ -272,10 +282,13 @@ async function promptReflectionKind(): Promise<
 async function promptSemanticAuditVerdict(): Promise<
   ThoughtSemanticAuditVerdict | undefined
 > {
-  const selected = await vscode.window.showQuickPick(SEMANTIC_AUDIT_VERDICT_ITEMS, {
-    placeHolder: "semantic audit verdict を選択してください",
-    ignoreFocusOut: true,
-  });
+  const selected = await vscode.window.showQuickPick(
+    SEMANTIC_AUDIT_VERDICT_ITEMS,
+    {
+      placeHolder: "semantic audit verdict を選択してください",
+      ignoreFocusOut: true,
+    },
+  );
   return selected?.value;
 }
 
@@ -326,7 +339,9 @@ async function auditThoughtFromActiveDocument(
     );
     return;
   }
-  const thoughtId = await promptThoughtId(defaultThoughtIdForDocument(editor.document));
+  const thoughtId = await promptThoughtId(
+    defaultThoughtIdForDocument(editor.document),
+  );
   if (!thoughtId) {
     return;
   }
@@ -365,7 +380,9 @@ async function finalizeThoughtFromActiveDocument(
     );
     return;
   }
-  const thoughtId = await promptThoughtId(defaultThoughtIdForDocument(editor.document));
+  const thoughtId = await promptThoughtId(
+    defaultThoughtIdForDocument(editor.document),
+  );
   if (!thoughtId) {
     return;
   }
@@ -403,9 +420,13 @@ async function searchThoughtsInOutput(
     return;
   }
   const includeReflections = await promptIncludeReflections();
-  const results = await searchThoughtRecords(query, resolveThoughtStorageLocation(), {
-    includeReflections,
-  });
+  const results = await searchThoughtRecords(
+    query,
+    resolveThoughtStorageLocation(),
+    {
+      includeReflections,
+    },
+  );
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Search: ${query} (include reflections: ${includeReflections ? "yes" : "no"})`,
@@ -499,7 +520,9 @@ async function saveThoughtSemanticAuditFromPrompt(
   outputChannel: vscode.OutputChannel,
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
-  const defaultThoughtId = editor ? defaultThoughtIdForDocument(editor.document) : undefined;
+  const defaultThoughtId = editor
+    ? defaultThoughtIdForDocument(editor.document)
+    : undefined;
   const thoughtId = await promptThoughtId(defaultThoughtId);
   if (!thoughtId) {
     return;
@@ -539,21 +562,27 @@ async function saveThoughtSemanticAuditFromPrompt(
   });
 
   const location = resolveThoughtStorageLocation(editor?.document);
-  saveThoughtSemanticAudit(thoughtId, {
-    decisionId,
-    supportId,
-    verdict,
-    reason,
-    reviewer: reviewer?.trim() || undefined,
-    model: model?.trim() || undefined,
-  }, location);
+  saveThoughtSemanticAudit(
+    thoughtId,
+    {
+      decisionId,
+      supportId,
+      verdict,
+      reason,
+      reviewer: reviewer?.trim() || undefined,
+      model: model?.trim() || undefined,
+    },
+    location,
+  );
   const snapshot = loadThought(thoughtId, location);
   showTextInOutput(
     outputChannel,
     `LLMThink Thought Semantic Audit: ${thoughtId}`,
     `${formatThoughtSemanticAuditSummary(snapshot)}\n${formatThoughtSemanticAuditPairs(snapshot)}`,
   );
-  vscode.window.showInformationMessage(`LLMThink semantic audit 保存完了: ${thoughtId}`);
+  vscode.window.showInformationMessage(
+    `LLMThink semantic audit 保存完了: ${thoughtId}`,
+  );
 }
 
 async function deleteThoughtFromPrompt(
@@ -575,26 +604,175 @@ async function deleteThoughtFromPrompt(
     vscode.window.showWarningMessage(`thought が見つかりません: ${thoughtId}`);
     return;
   }
-  showTextInOutput(outputChannel, "LLMThink Thought Delete", `Deleted thought: ${thoughtId}\n`);
-  vscode.window.showInformationMessage(`LLMThink thought 削除完了: ${thoughtId}`);
+  showTextInOutput(
+    outputChannel,
+    "LLMThink Thought Delete",
+    `Deleted thought: ${thoughtId}\n`,
+  );
+  vscode.window.showInformationMessage(
+    `LLMThink thought 削除完了: ${thoughtId}`,
+  );
 }
 
 async function runRegisteredAudit(
   text: string,
-  input: { thoughtId?: string; documentId?: string; document?: vscode.TextDocument },
+  input: {
+    thoughtId?: string;
+    documentId?: string;
+    document?: vscode.TextDocument;
+  },
 ) {
   const baseDir = resolveThoughtBaseDir(input.document);
   const core = await loadLlmthinkCore(baseDir);
-  const persisted = await core.auditAndPersistThought({
-    dslText: text,
-    thoughtId: input.thoughtId,
-    documentId: input.documentId,
-  }, {
-    fileBaseDir: baseDir,
-    storageRoot: resolveThoughtStorageLocation(input.document).storageRoot,
-  });
+  const persisted = await core.auditAndPersistThought(
+    {
+      dslText: text,
+      thoughtId: input.thoughtId,
+      documentId: input.documentId,
+    },
+    {
+      fileBaseDir: baseDir,
+      storageRoot: resolveThoughtStorageLocation(input.document).storageRoot,
+    },
+  );
   lastReport = persisted.report;
   return persisted;
+}
+
+type LoadedCore = Awaited<ReturnType<typeof loadLlmthinkCore>>;
+
+function textToolResult(text: string): vscode.LanguageModelToolResult {
+  return new vscode.LanguageModelToolResult([
+    new vscode.LanguageModelTextPart(text),
+  ]);
+}
+
+function dslHelpResult(
+  core: LoadedCore,
+  input: DslToolInput,
+): vscode.LanguageModelToolResult {
+  return textToolResult(
+    core.getDslSyntaxGuidanceText({
+      topic: input.topic?.trim(),
+      subtopic: input.subtopic?.trim(),
+      detail: input.detail,
+      channel: "vsix",
+    }),
+  );
+}
+
+async function invokeProvidedDslText(
+  core: LoadedCore,
+  input: DslToolInput,
+  providedText: string,
+  activeDocument: vscode.TextDocument | undefined,
+): Promise<vscode.LanguageModelToolResult> {
+  if (core.isDslHelpRequest(providedText)) {
+    const request = core.parseDslHelpRequest(providedText);
+    return dslHelpResult(core, { ...input, ...request });
+  }
+  const persisted = await runRegisteredAudit(providedText, {
+    thoughtId: input.thoughtId?.trim(),
+    documentId: input.documentId?.trim(),
+    document: activeDocument,
+  });
+  return renderToolResult(persisted);
+}
+
+function dslInvocationMessage(input: DslToolInput): string {
+  const thoughtId = input.thoughtId?.trim();
+  if (thoughtId) {
+    return `LLMThink で ${thoughtId} を再監査して保存しています`;
+  }
+  const documentId = input.documentId?.trim();
+  return documentId
+    ? `LLMThink で ${documentId} を監査して保存しています`
+    : "LLMThink で DSL を監査して保存しています";
+}
+
+function resolveThoughtToolId(
+  input: ThoughtToolInput,
+  editor: vscode.TextEditor | undefined,
+): string | undefined {
+  const explicitId = input.thoughtId?.trim();
+  if (explicitId) {
+    return explicitId;
+  }
+  return editor ? defaultThoughtIdForDocument(editor.document) : undefined;
+}
+
+function semanticAuditToolResult(
+  thoughtId: string,
+  input: ThoughtToolInput,
+  document: vscode.TextDocument | undefined,
+): vscode.LanguageModelToolResult {
+  if (
+    !input.decisionId ||
+    !input.supportId ||
+    !input.verdict ||
+    !input.reason
+  ) {
+    return textToolResult(
+      "semantic-audit には decisionId, supportId, verdict, reason が必要です。",
+    );
+  }
+  const storage = resolveThoughtStorageLocation(document);
+  saveThoughtSemanticAudit(
+    thoughtId,
+    {
+      auditId: input.auditId?.trim(),
+      decisionId: input.decisionId,
+      supportId: input.supportId,
+      verdict: input.verdict,
+      reason: input.reason,
+      reviewer: input.reviewer?.trim(),
+      model: input.model?.trim(),
+      auditedAt: input.auditedAt?.trim(),
+      sourceThoughtId: input.sourceThoughtId?.trim(),
+    },
+    storage,
+  );
+  const snapshot = loadThought(thoughtId, storage);
+  return textToolResult(
+    `${formatThoughtSemanticAuditSummary(snapshot)}\n${formatThoughtSemanticAuditPairs(snapshot)}`,
+  );
+}
+
+type LoadedThought = ReturnType<typeof loadThought>;
+
+function renderThoughtToolView(
+  snapshot: LoadedThought,
+  view: ThoughtToolInput["view"],
+): string {
+  switch (view) {
+    case "draft":
+      return snapshot.draftText ?? "";
+    case "final":
+      return snapshot.finalText ?? "";
+    case "audit":
+      return snapshot.latestAudit
+        ? formatAuditReportText(snapshot.latestAudit)
+        : "No audit yet.\n";
+    case "reflections":
+      return formatThoughtReflections(snapshot.reflections);
+    case "semantic-audit-pairs":
+      return formatThoughtSemanticAuditPairs(snapshot);
+    case "semantic-audit":
+      return formatThoughtSemanticAuditSummary(snapshot);
+    default:
+      return formatThoughtSummary(snapshot);
+  }
+}
+
+function thoughtInvocationMessage(input: ThoughtToolInput): string {
+  const thoughtId = input.thoughtId?.trim();
+  if (input.action === "semantic-audit") {
+    return thoughtId
+      ? `LLMThink で ${thoughtId} に semantic audit を保存しています`
+      : "LLMThink で thought に semantic audit を保存しています";
+  }
+  const subject = thoughtId ?? "thought";
+  return `LLMThink で ${subject} の ${input.view ?? "semantic-audit"} を表示しています`;
 }
 
 class DslTool implements vscode.LanguageModelTool<DslToolInput> {
@@ -605,54 +783,32 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
     const core = await loadLlmthinkCore(resolveThoughtBaseDir(activeDocument));
 
     if (options.input.action === "help") {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          core.getDslSyntaxGuidanceText({
-            topic: options.input.topic?.trim(),
-            subtopic: options.input.subtopic?.trim(),
-            detail: options.input.detail,
-            channel: "vsix",
-          }),
-        ),
-      ]);
+      return dslHelpResult(core, options.input);
     }
 
     const providedText = options.input.dslText?.trim();
     if (providedText) {
-      if (core.isDslHelpRequest(providedText)) {
-        const request = core.parseDslHelpRequest(providedText);
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            core.getDslSyntaxGuidanceText({
-              topic: request?.topic,
-              subtopic: request?.subtopic,
-              detail: request?.detail,
-              channel: "vsix",
-            }),
-          ),
-        ]);
-      }
-      const persisted = await runRegisteredAudit(providedText, {
-        thoughtId: options.input.thoughtId?.trim(),
-        documentId: options.input.documentId?.trim(),
-        document: activeDocument,
-      });
-      return renderToolResult(persisted);
+      return invokeProvidedDslText(
+        core,
+        options.input,
+        providedText,
+        activeDocument,
+      );
     }
 
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          "監査対象テキストが渡されておらず、アクティブエディタもありません。dslText を指定してください。",
-        ),
-      ]);
+      return textToolResult(
+        "監査対象テキストが渡されておらず、アクティブエディタもありません。dslText を指定してください。",
+      );
     }
 
     const persisted = await runRegisteredAudit(editor.document.getText(), {
       thoughtId:
-        options.input.thoughtId?.trim() || defaultThoughtIdForDocument(editor.document),
-      documentId: options.input.documentId?.trim() || toDocumentId(editor.document),
+        options.input.thoughtId?.trim() ||
+        defaultThoughtIdForDocument(editor.document),
+      documentId:
+        options.input.documentId?.trim() || toDocumentId(editor.document),
       document: editor.document,
     });
     return renderToolResult(persisted);
@@ -661,14 +817,8 @@ class DslTool implements vscode.LanguageModelTool<DslToolInput> {
   prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<DslToolInput>,
   ): vscode.PreparedToolInvocation {
-    const documentId = options.input.documentId?.trim();
-    const thoughtId = options.input.thoughtId?.trim();
     return {
-      invocationMessage: thoughtId
-        ? `LLMThink で ${thoughtId} を再監査して保存しています`
-        : documentId
-          ? `LLMThink で ${documentId} を監査して保存しています`
-          : "LLMThink で DSL を監査して保存しています",
+      invocationMessage: dslInvocationMessage(options.input),
     };
   }
 }
@@ -678,88 +828,38 @@ class ThoughtTool implements vscode.LanguageModelTool<ThoughtToolInput> {
     options: vscode.LanguageModelToolInvocationOptions<ThoughtToolInput>,
   ): Promise<vscode.LanguageModelToolResult> {
     const editor = vscode.window.activeTextEditor;
-    const thoughtId = options.input.thoughtId?.trim() || (
-      editor ? defaultThoughtIdForDocument(editor.document) : undefined
-    );
+    const thoughtId = resolveThoughtToolId(options.input, editor);
     if (!thoughtId) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          "thoughtId が指定されておらず、アクティブエディタからも導出できません。thoughtId を指定してください。",
-        ),
-      ]);
+      return textToolResult(
+        "thoughtId が指定されておらず、アクティブエディタからも導出できません。thoughtId を指定してください。",
+      );
     }
 
     const action = options.input.action ?? "show";
     if (action === "semantic-audit") {
-      if (!options.input.decisionId || !options.input.supportId || !options.input.verdict || !options.input.reason) {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            "semantic-audit には decisionId, supportId, verdict, reason が必要です。",
-          ),
-        ]);
-      }
-      saveThoughtSemanticAudit(thoughtId, {
-        auditId: options.input.auditId?.trim(),
-        decisionId: options.input.decisionId,
-        supportId: options.input.supportId,
-        verdict: options.input.verdict,
-        reason: options.input.reason,
-        reviewer: options.input.reviewer?.trim(),
-        model: options.input.model?.trim(),
-        auditedAt: options.input.auditedAt?.trim(),
-        sourceThoughtId: options.input.sourceThoughtId?.trim(),
-      }, resolveThoughtStorageLocation(editor?.document));
-      const savedSnapshot = loadThought(thoughtId, resolveThoughtStorageLocation(editor?.document));
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          `${formatThoughtSemanticAuditSummary(savedSnapshot)}\n${formatThoughtSemanticAuditPairs(savedSnapshot)}`,
-        ),
-      ]);
+      return semanticAuditToolResult(
+        thoughtId,
+        options.input,
+        editor?.document,
+      );
     }
 
     if (action !== "show") {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart("Unsupported thought tool action."),
-      ]);
+      return textToolResult("Unsupported thought tool action.");
     }
 
-    const snapshot = loadThought(thoughtId, resolveThoughtStorageLocation(editor?.document));
-    const view = options.input.view ?? "semantic-audit";
-    const text = view === "draft"
-      ? snapshot.draftText ?? ""
-      : view === "final"
-        ? snapshot.finalText ?? ""
-        : view === "audit"
-          ? snapshot.latestAudit
-            ? formatAuditReportText(snapshot.latestAudit)
-            : "No audit yet.\n"
-          : view === "reflections"
-            ? formatThoughtReflections(snapshot.reflections)
-            : view === "semantic-audit-pairs"
-              ? formatThoughtSemanticAuditPairs(snapshot)
-              : view === "semantic-audit"
-                ? formatThoughtSemanticAuditSummary(snapshot)
-                : formatThoughtSummary(snapshot);
-
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(text),
-    ]);
+    const snapshot = loadThought(
+      thoughtId,
+      resolveThoughtStorageLocation(editor?.document),
+    );
+    return textToolResult(renderThoughtToolView(snapshot, options.input.view));
   }
 
   prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<ThoughtToolInput>,
   ): vscode.PreparedToolInvocation {
-    const thoughtId = options.input.thoughtId?.trim();
-    const action = options.input.action ?? "show";
-    const view = options.input.view ?? "semantic-audit";
     return {
-      invocationMessage: action === "semantic-audit"
-        ? thoughtId
-          ? `LLMThink で ${thoughtId} に semantic audit を保存しています`
-          : "LLMThink で thought に semantic audit を保存しています"
-        : thoughtId
-          ? `LLMThink で ${thoughtId} の ${view} を表示しています`
-          : `LLMThink で thought の ${view} を表示しています`,
+      invocationMessage: thoughtInvocationMessage(options.input),
     };
   }
 }
@@ -768,7 +868,9 @@ export function activate(context: vscode.ExtensionContext): void {
   extensionContext = context;
   const outputChannel = vscode.window.createOutputChannel("LLMThink");
   const subscriptions: vscode.Disposable[] = [outputChannel];
-  const previewStrings = getPreviewStrings(resolvePreviewLocale(vscode.env.language));
+  const previewStrings = getPreviewStrings(
+    resolvePreviewLocale(vscode.env.language),
+  );
   const previewStatusItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     10,
@@ -800,7 +902,9 @@ export function activate(context: vscode.ExtensionContext): void {
   if (typeof vscode.lm.registerTool === "function") {
     try {
       subscriptions.push(vscode.lm.registerTool(DSL_TOOL_NAME, new DslTool()));
-      subscriptions.push(vscode.lm.registerTool(THOUGHT_TOOL_NAME, new ThoughtTool()));
+      subscriptions.push(
+        vscode.lm.registerTool(THOUGHT_TOOL_NAME, new ThoughtTool()),
+      );
     } catch (error) {
       outputChannel.appendLine(
         `Failed to register LLMThink language model tool: ${String(error)}`,
@@ -812,10 +916,12 @@ export function activate(context: vscode.ExtensionContext): void {
     );
   }
 
-  void startLspClient(context, outputChannel).catch((error: unknown) => {
-    outputChannel.appendLine(`Failed to start LLMThink language server: ${String(error)}`);
+  startLspClient(context, outputChannel).catch((error: unknown) => {
+    outputChannel.appendLine(
+      `Failed to start LLMThink language server: ${String(error)}`,
+    );
     outputChannel.show(true);
-    void vscode.window.showWarningMessage(
+    vscode.window.showWarningMessage(
       "LLMThink language server を開始できませんでした。llmthink.languageServer.path の設定、PATH 上の llmthink-lsp、または拡張機能同梱サーバを確認してください。",
     );
   });
@@ -870,9 +976,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llmthink.dslPreview", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage(
-          previewStrings.previewMissingEditor,
-        );
+        vscode.window.showWarningMessage(previewStrings.previewMissingEditor);
         return;
       }
 
@@ -881,9 +985,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llmthink.dslPreviewBeside", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage(
-          previewStrings.previewMissingEditor,
-        );
+        vscode.window.showWarningMessage(previewStrings.previewMissingEditor);
         return;
       }
 
@@ -904,9 +1006,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llmthink.thoughtReflect", async () => {
       await addThoughtReflectionFromPrompt(outputChannel);
     }),
-    vscode.commands.registerCommand("llmthink.thoughtSemanticAudit", async () => {
-      await saveThoughtSemanticAuditFromPrompt(outputChannel);
-    }),
+    vscode.commands.registerCommand(
+      "llmthink.thoughtSemanticAudit",
+      async () => {
+        await saveThoughtSemanticAuditFromPrompt(outputChannel);
+      },
+    ),
     vscode.commands.registerCommand("llmthink.thoughtReflections", async () => {
       await showThoughtReflectionsInOutput(outputChannel);
     }),

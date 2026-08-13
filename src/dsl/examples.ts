@@ -110,7 +110,10 @@ export function resolveDslExamplePath(
     return undefined;
   }
 
-  const candidates = [resolve(cwd, entry.path), ...candidateRoots.map((root) => resolve(root, entry.path))];
+  const candidates = [
+    resolve(cwd, entry.path),
+    ...candidateRoots.map((root) => resolve(root, entry.path)),
+  ];
   const seen = new Set<string>();
   return candidates.find((candidate) => {
     if (seen.has(candidate)) {

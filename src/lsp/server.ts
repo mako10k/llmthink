@@ -802,12 +802,9 @@ function metadataRange(
   const line = Number(issue.metadata?.line);
   const column = Number(issue.metadata?.column);
   const endColumn = Number(issue.metadata?.end_column);
-  if (
-    Number.isFinite(line) &&
-    line > 0 &&
-    Number.isFinite(column) &&
-    column > 0
-  ) {
+  const validLine = isPositiveFinite(line);
+  const validColumn = isPositiveFinite(column);
+  if (validLine && validColumn) {
     const lineText = lineTextAt(textDocument, line - 1);
     const resolvedEndColumn =
       Number.isFinite(endColumn) && endColumn > column ? endColumn : column + 1;
@@ -821,12 +818,7 @@ function metadataRange(
   }
 
   const unresolvedRef = issue.metadata?.unresolved_ref;
-  if (
-    Number.isFinite(line) &&
-    line > 0 &&
-    typeof unresolvedRef === "string" &&
-    unresolvedRef.length > 0
-  ) {
+  if (validLine && typeof unresolvedRef === "string" && unresolvedRef) {
     return identifierRangeOnLine(
       lineTextAt(textDocument, line - 1),
       line - 1,
@@ -835,6 +827,10 @@ function metadataRange(
   }
 
   return undefined;
+}
+
+function isPositiveFinite(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
@@ -1077,18 +1073,18 @@ function nextStepId(ast: DocumentAst): string {
 
 function inferStatementBlock(identifier: string): string {
   if (identifier.startsWith("PR")) {
-    return `premise ${identifier}:\n    \"TODO: add premise\"`;
+    return `premise ${identifier}:\n    "TODO: add premise"`;
   }
   if (identifier.startsWith("EV")) {
-    return `evidence ${identifier}:\n    \"TODO: add evidence\"`;
+    return `evidence ${identifier}:\n    "TODO: add evidence"`;
   }
   if (identifier.startsWith("PD")) {
-    return `pending ${identifier}:\n    \"TODO: add pending item\"`;
+    return `pending ${identifier}:\n    "TODO: add pending item"`;
   }
   if (identifier.startsWith("D")) {
-    return `decision ${identifier} based_on TODO:\n    \"TODO: add decision\"`;
+    return `decision ${identifier} based_on TODO:\n    "TODO: add decision"`;
   }
-  return `evidence ${identifier}:\n    \"TODO: define ${identifier}\"`;
+  return `evidence ${identifier}:\n    "TODO: define ${identifier}"`;
 }
 
 function formatDocumentAction(document: TextDocument): CodeAction | undefined {

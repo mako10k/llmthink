@@ -587,22 +587,21 @@ function metadataRange(textDocument, issue) {
     const line = Number(issue.metadata?.line);
     const column = Number(issue.metadata?.column);
     const endColumn = Number(issue.metadata?.end_column);
-    if (Number.isFinite(line) &&
-        line > 0 &&
-        Number.isFinite(column) &&
-        column > 0) {
+    const validLine = isPositiveFinite(line);
+    const validColumn = isPositiveFinite(column);
+    if (validLine && validColumn) {
         const lineText = lineTextAt(textDocument, line - 1);
         const resolvedEndColumn = Number.isFinite(endColumn) && endColumn > column ? endColumn : column + 1;
         return Range.create(Position.create(line - 1, Math.min(column - 1, lineText.length)), Position.create(line - 1, Math.min(resolvedEndColumn - 1, lineText.length)));
     }
     const unresolvedRef = issue.metadata?.unresolved_ref;
-    if (Number.isFinite(line) &&
-        line > 0 &&
-        typeof unresolvedRef === "string" &&
-        unresolvedRef.length > 0) {
+    if (validLine && typeof unresolvedRef === "string" && unresolvedRef) {
         return identifierRangeOnLine(lineTextAt(textDocument, line - 1), line - 1, unresolvedRef);
     }
     return undefined;
+}
+function isPositiveFinite(value) {
+    return Number.isFinite(value) && value > 0;
 }
 async function validateTextDocument(textDocument) {
     const diagnostics = [];
@@ -766,18 +765,18 @@ function nextStepId(ast) {
 }
 function inferStatementBlock(identifier) {
     if (identifier.startsWith("PR")) {
-        return `premise ${identifier}:\n    \"TODO: add premise\"`;
+        return `premise ${identifier}:\n    "TODO: add premise"`;
     }
     if (identifier.startsWith("EV")) {
-        return `evidence ${identifier}:\n    \"TODO: add evidence\"`;
+        return `evidence ${identifier}:\n    "TODO: add evidence"`;
     }
     if (identifier.startsWith("PD")) {
-        return `pending ${identifier}:\n    \"TODO: add pending item\"`;
+        return `pending ${identifier}:\n    "TODO: add pending item"`;
     }
     if (identifier.startsWith("D")) {
-        return `decision ${identifier} based_on TODO:\n    \"TODO: add decision\"`;
+        return `decision ${identifier} based_on TODO:\n    "TODO: add decision"`;
     }
-    return `evidence ${identifier}:\n    \"TODO: define ${identifier}\"`;
+    return `evidence ${identifier}:\n    "TODO: define ${identifier}"`;
 }
 function formatDocumentAction(document) {
     const formatted = formatDslText(document.getText());

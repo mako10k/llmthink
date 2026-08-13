@@ -3,7 +3,11 @@ import { relative, resolve } from "node:path";
 
 import { auditDslText } from "../analyzer/audit.js";
 import type { AuditReport } from "../model/diagnostics.js";
-import { draftThought, recordThoughtAudit, type ThoughtRecord } from "./store.js";
+import {
+  draftThought,
+  recordThoughtAudit,
+  type ThoughtRecord,
+} from "./store.js";
 
 export type ThoughtIdSource = "explicit" | "file" | "document" | "generated";
 
@@ -30,14 +34,41 @@ function generatedThoughtId(): string {
   return `thought-${new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")}`;
 }
 
+function normalizeThoughtIdCharacters(value: string): string {
+  let normalized = "";
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    const isAsciiLetter =
+      (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+    const isDigit = code >= 48 && code <= 57;
+    const normalizedCharacter =
+      isAsciiLetter || isDigit || character === "_" ? character : "-";
+    if (normalizedCharacter !== "-" || !normalized.endsWith("-")) {
+      normalized += normalizedCharacter;
+    }
+  }
+  return normalized;
+}
+
+function trimThoughtIdEdges(value: string): string {
+  let normalized = value;
+  while (normalized.startsWith("-") || normalized.startsWith("_")) {
+    normalized = normalized.slice(1);
+  }
+  while (normalized.endsWith("-") || normalized.endsWith("_")) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
 export function normalizeThoughtId(value: string): string {
-  const normalized = value
-    .trim()
-    .replace(/\.dsl$/i, "")
-    .replace(/[\\/]+/g, "-")
-    .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^[-_]+|[-_]+$/g, "");
+  const trimmed = value.trim();
+  const withoutExtension = trimmed.toLowerCase().endsWith(".dsl")
+    ? trimmed.slice(0, -4)
+    : trimmed;
+  const normalized = trimThoughtIdEdges(
+    normalizeThoughtIdCharacters(withoutExtension),
+  );
   return normalized || generatedThoughtId();
 }
 
@@ -53,7 +84,9 @@ export function deriveThoughtIdFromFilePath(
   const absolutePath = resolve(root, filePath);
   const relativePath = relative(root, absolutePath);
   const preferredPath =
-    relativePath && !relativePath.startsWith("..") ? relativePath : absolutePath;
+    relativePath && !relativePath.startsWith("..")
+      ? relativePath
+      : absolutePath;
   return normalizeThoughtId(preferredPath);
 }
 
@@ -93,7 +126,10 @@ function loadDslText(
     return request.dslText;
   }
   if (request.filePath) {
-    return readFileSync(resolve(baseDir ?? process.cwd(), request.filePath), "utf8");
+    return readFileSync(
+      resolve(baseDir ?? process.cwd(), request.filePath),
+      "utf8",
+    );
   }
   throw new Error("dslText or filePath is required to persist an audit.");
 }
@@ -107,7 +143,10 @@ export async function auditAndPersistThought(
     typeof contextOrBaseDir === "string"
       ? { fileBaseDir: contextOrBaseDir, storageRoot: legacyStorageRoot }
       : (contextOrBaseDir ?? {});
-  const { thoughtId, idSource } = resolveThoughtId(request, context.fileBaseDir);
+  const { thoughtId, idSource } = resolveThoughtId(
+    request,
+    context.fileBaseDir,
+  );
   const text = loadDslText(request, context.fileBaseDir);
   draftThought(thoughtId, text, { storageRoot: context.storageRoot });
   const report = await auditDslText(text, thoughtId);

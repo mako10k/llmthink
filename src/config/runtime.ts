@@ -1,8 +1,15 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { accessSync, constants, existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import {
+  basename,
+  delimiter,
+  dirname,
+  isAbsolute,
+  join,
+  resolve,
+} from "node:path";
 
 export type ConfigDomain = "workspace" | "user" | "system";
 export type ConfigEmbeddingProvider = "none" | "ollama" | "openai";
@@ -151,7 +158,75 @@ function trimTrailingSlash(value: string): string {
 }
 
 function resolveFrom(baseDir: string, maybePath: string): string {
-  return isAbsolute(maybePath) ? resolve(maybePath) : resolve(baseDir, maybePath);
+  return isAbsolute(maybePath)
+    ? resolve(maybePath)
+    : resolve(baseDir, maybePath);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function aliasedString(
+  record: Record<string, unknown>,
+  camelCaseKey: string,
+  snakeCaseKey: string,
+): string | undefined {
+  return normalizeString(
+    String(record[camelCaseKey] ?? record[snakeCaseKey] ?? ""),
+  );
+}
+
+function parseThoughtConfig(value: unknown): ConfigFile["thought"] {
+  const thought = asRecord(value);
+  if (!thought) {
+    return undefined;
+  }
+  return {
+    storageDomain: parseDomain(
+      aliasedString(thought, "storageDomain", "storage_domain"),
+    ),
+    storagePath: aliasedString(thought, "storagePath", "storage_path"),
+  };
+}
+
+function parseEmbeddingEndpoint(
+  value: unknown,
+): { baseUrl?: string; model?: string } | undefined {
+  const endpoint = asRecord(value);
+  if (!endpoint) {
+    return undefined;
+  }
+  return {
+    baseUrl: aliasedString(endpoint, "baseUrl", "base_url"),
+    model: normalizeString(String(endpoint.model ?? "")),
+  };
+}
+
+function parseEmbeddingsConfig(value: unknown): ConfigFile["embeddings"] {
+  const embeddings = asRecord(value);
+  if (!embeddings) {
+    return undefined;
+  }
+  const openaiRecord = asRecord(embeddings.openai);
+  const openai = parseEmbeddingEndpoint(openaiRecord);
+  return {
+    provider: parseProvider(normalizeString(String(embeddings.provider ?? ""))),
+    timeoutMs: parsePositiveNumber(
+      embeddings.timeoutMs ?? embeddings.timeout_ms,
+    ),
+    ollama: parseEmbeddingEndpoint(embeddings.ollama),
+    openai: openai
+      ? {
+          ...openai,
+          apiKey:
+            openaiRecord?.apiKey ??
+            (openaiRecord?.api_key as SecretReference | undefined),
+        }
+      : undefined,
+  };
 }
 
 function readConfigFile(filePath: string | undefined): ConfigLayer {
@@ -159,70 +234,15 @@ function readConfigFile(filePath: string | undefined): ConfigLayer {
     return {};
   }
 
-  const raw = JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
-  const thought =
-    raw.thought && typeof raw.thought === "object"
-      ? (raw.thought as Record<string, unknown>)
-      : undefined;
-  const embeddings =
-    raw.embeddings && typeof raw.embeddings === "object"
-      ? (raw.embeddings as Record<string, unknown>)
-      : undefined;
-  const ollama =
-    embeddings?.ollama && typeof embeddings.ollama === "object"
-      ? (embeddings.ollama as Record<string, unknown>)
-      : undefined;
-  const openai =
-    embeddings?.openai && typeof embeddings.openai === "object"
-      ? (embeddings.openai as Record<string, unknown>)
-      : undefined;
-
+  const raw = JSON.parse(readFileSync(filePath, "utf8")) as Record<
+    string,
+    unknown
+  >;
   return {
     path: filePath,
     config: {
-      thought: thought
-        ? {
-            storageDomain: parseDomain(
-              normalizeString(
-                String(
-                  thought.storageDomain ?? thought.storage_domain ?? "",
-                ),
-              ),
-            ),
-            storagePath: normalizeString(
-              String(thought.storagePath ?? thought.storage_path ?? ""),
-            ),
-          }
-        : undefined,
-      embeddings: embeddings
-        ? {
-            provider: parseProvider(
-              normalizeString(
-                String(embeddings.provider ?? ""),
-              ),
-            ),
-            timeoutMs: parsePositiveNumber(
-              embeddings.timeoutMs ?? embeddings.timeout_ms,
-            ),
-            ollama: ollama
-              ? {
-                  baseUrl: normalizeString(
-                    String(ollama.baseUrl ?? ollama.base_url ?? ""),
-                  ),
-                  model: normalizeString(String(ollama.model ?? "")),
-                }
-              : undefined,
-            openai: openai
-              ? {
-                  baseUrl: normalizeString(
-                    String(openai.baseUrl ?? openai.base_url ?? ""),
-                  ),
-                  model: normalizeString(String(openai.model ?? "")),
-                  apiKey: openai.apiKey ?? openai.api_key as SecretReference | undefined,
-                }
-              : undefined,
-          }
-        : undefined,
+      thought: parseThoughtConfig(raw.thought),
+      embeddings: parseEmbeddingsConfig(raw.embeddings),
     },
   };
 }
@@ -242,7 +262,9 @@ function findWorkspaceConfigPath(startDir: string): string | undefined {
   }
 }
 
-function resolveWorkspaceSearchDir(options: ResolveRuntimeConfigOptions): string {
+function resolveWorkspaceSearchDir(
+  options: ResolveRuntimeConfigOptions,
+): string {
   const cwd = resolve(options.cwd ?? process.cwd());
   if (options.filePath) {
     return dirname(resolveFrom(cwd, options.filePath));
@@ -303,10 +325,17 @@ function findWorkspaceDomainRoot(startDir: string): string | undefined {
 
 function sanitizeWorkspaceName(dir: string): string {
   const name = basename(dir).trim() || "workspace";
-  const sanitized = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  let sanitized = "";
+  for (const character of name.toLowerCase()) {
+    const code = character.codePointAt(0) ?? 0;
+    const isLetter = code >= 97 && code <= 122;
+    const isDigit = code >= 48 && code <= 57;
+    const normalized = isLetter || isDigit ? character : "-";
+    if (normalized !== "-" || !sanitized.endsWith("-")) {
+      sanitized += normalized;
+    }
+  }
+  sanitized = sanitized.replace(/^-|-$/g, "");
   return sanitized || "workspace";
 }
 
@@ -315,7 +344,9 @@ function workspaceDomainId(dir: string): string {
   return `${sanitizeWorkspaceName(dir)}-${digest}`;
 }
 
-function resolveWorkspaceDomainDir(options: ResolveRuntimeConfigOptions): string {
+function resolveWorkspaceDomainDir(
+  options: ResolveRuntimeConfigOptions,
+): string {
   const searchDir = resolveWorkspaceSearchDir(options);
   return findWorkspaceDomainRoot(searchDir) ?? searchDir;
 }
@@ -345,10 +376,16 @@ function systemStorageRoot(): string {
   return "/var/lib/llmthink/system";
 }
 
-function defaultWorkspaceStorageRoot(options: ResolveRuntimeConfigOptions): string {
+function defaultWorkspaceStorageRoot(
+  options: ResolveRuntimeConfigOptions,
+): string {
   const env = options.env ?? process.env;
   const workspaceDir = resolveWorkspaceDomainDir(options);
-  return join(datastoreBaseRoot(env), "workspace", workspaceDomainId(workspaceDir));
+  return join(
+    datastoreBaseRoot(env),
+    "workspace",
+    workspaceDomainId(workspaceDir),
+  );
 }
 
 function defaultStorageRootForDomain(
@@ -365,35 +402,64 @@ function defaultStorageRootForDomain(
   return systemStorageRoot();
 }
 
-function resolveConfigStorageRoot(
-  layer: ConfigLayer,
-  options: ResolveRuntimeConfigOptions,
-): string | undefined {
-  const thought = layer.config?.thought;
-  if (!thought) {
-    return undefined;
-  }
-  if (thought.storagePath) {
-    const baseDir = layer.path ? dirname(layer.path) : resolve(options.cwd ?? process.cwd());
-    return resolveFrom(baseDir, thought.storagePath);
-  }
-  if (thought.storageDomain) {
-    return defaultStorageRootForDomain(thought.storageDomain, options);
-  }
-  return undefined;
+function runCommand(command: string, cwd: string): string {
+  const windowsShell = "C:\\Windows\\System32\\cmd.exe";
+  const result =
+    process.platform === "win32"
+      ? execFileSync(windowsShell, ["/d", "/s", "/c", command], {
+          cwd,
+          encoding: "utf8",
+        })
+      : execFileSync("/bin/sh", ["-c", command], {
+          cwd,
+          encoding: "utf8",
+        });
+  return result.trim();
 }
 
-function runCommand(command: string, cwd: string): string {
-  const result = process.platform === "win32"
-    ? execFileSync("cmd.exe", ["/d", "/s", "/c", command], {
-        cwd,
-        encoding: "utf8",
-      })
-    : execFileSync("/bin/sh", ["-c", command], {
-        cwd,
-        encoding: "utf8",
-      });
-  return result.trim();
+function resolveExecutable(command: string, env: NodeJS.ProcessEnv): string {
+  const names =
+    process.platform === "win32"
+      ? [`${command}.exe`, `${command}.cmd`, command]
+      : [command];
+  for (const directory of (env.PATH ?? "").split(delimiter).filter(Boolean)) {
+    for (const name of names) {
+      const candidate = resolve(directory, name);
+      try {
+        accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch {
+        // Try the next fixed candidate from PATH.
+      }
+    }
+  }
+  throw new Error(`Executable '${command}' was not found on PATH.`);
+}
+
+function resolveSecdatReference(
+  specification: string | { key?: string; dir?: string },
+  layerPath: string | undefined,
+  env: NodeJS.ProcessEnv,
+): string | undefined {
+  const secdatSpec =
+    typeof specification === "string" ? { key: specification } : specification;
+  const key = normalizeString(secdatSpec.key);
+  if (!key) {
+    return undefined;
+  }
+  const args: string[] = [];
+  const dir = normalizeString(secdatSpec.dir);
+  if (dir) {
+    const resolvedDir = layerPath
+      ? resolveFrom(dirname(layerPath), dir)
+      : resolve(dir);
+    args.push("--dir", resolvedDir);
+  }
+  args.push("get", key);
+  const executable = resolveExecutable("secdat", env);
+  return normalizeString(
+    execFileSync(executable, args, { encoding: "utf8" }).trim(),
+  );
 }
 
 function resolveSecretReference(
@@ -417,33 +483,17 @@ function resolveSecretReference(
     return normalizeString(env[secret.env]);
   }
   if (typeof secret.command === "string") {
-    return normalizeString(runCommand(secret.command, layerPath ? dirname(layerPath) : process.cwd()));
-  }
-  if (secret.secdat) {
-    const secdatSpec =
-      typeof secret.secdat === "string"
-        ? { key: secret.secdat }
-        : secret.secdat;
-    const key = normalizeString(secdatSpec.key);
-    if (!key) {
-      return undefined;
-    }
-    const args: string[] = [];
-    const dir = normalizeString(secdatSpec.dir);
-    if (dir) {
-      const resolvedDir = layerPath ? resolveFrom(dirname(layerPath), dir) : resolve(dir);
-      args.push("--dir", resolvedDir);
-    }
-    args.push("get", key);
     return normalizeString(
-      execFileSync("secdat", args, { encoding: "utf8" }).trim(),
+      runCommand(
+        secret.command,
+        layerPath ? dirname(layerPath) : process.cwd(),
+      ),
     );
   }
+  if (secret.secdat) {
+    return resolveSecdatReference(secret.secdat, layerPath, env);
+  }
   return undefined;
-}
-
-function firstDefined<T>(...values: Array<T | undefined>): T | undefined {
-  return values.find((value) => value !== undefined);
 }
 
 function firstResolved<T>(
@@ -474,7 +524,9 @@ function resolveStorageFromLayer(
     return undefined;
   }
   if (thought.storagePath) {
-    const baseDir = layer.path ? dirname(layer.path) : resolve(options.cwd ?? process.cwd());
+    const baseDir = layer.path
+      ? dirname(layer.path)
+      : resolve(options.cwd ?? process.cwd());
     return {
       value: {
         root: resolveFrom(baseDir, thought.storagePath),
@@ -509,6 +561,184 @@ function resolveStorageDomainSource(
   return storageSource;
 }
 
+type ConfigLayers = ReturnType<typeof loadConfigLayers>;
+
+function sourceCandidate<T>(
+  value: T | undefined,
+  source: ResolvedValueSource,
+): ResolvedCandidate<T> | undefined {
+  return value === undefined ? undefined : { value, source };
+}
+
+function resolveLayeredSetting<T>(
+  layers: ConfigLayers,
+  key: string,
+  read: (layer: ConfigLayer) => T | undefined,
+  environmentCandidate: ResolvedCandidate<T> | undefined,
+  defaultCandidate: ResolvedCandidate<T>,
+): ResolvedCandidate<T> {
+  const layerNames: ConfigDomain[] = ["workspace", "user", "system"];
+  const layerCandidates = layerNames.map((name) => {
+    const layer = layers[name];
+    return sourceCandidate(read(layer), layerSource(name, key, layer.path));
+  });
+  return firstResolved(
+    ...layerCandidates,
+    environmentCandidate,
+    defaultCandidate,
+  )!;
+}
+
+function resolveStorageSetting(
+  options: ResolveRuntimeConfigOptions,
+  layers: ConfigLayers,
+  env: NodeJS.ProcessEnv,
+): ResolvedCandidate<ResolvedRuntimeConfig["storage"]> {
+  const envStoragePath = normalizeString(env.LLMTHINK_STORAGE_PATH);
+  const envStorageDomain = parseDomain(
+    normalizeString(env.LLMTHINK_STORAGE_DOMAIN),
+  );
+  const cwd = resolve(options.cwd ?? process.cwd());
+  return firstResolved<ResolvedRuntimeConfig["storage"]>(
+    sourceCandidate(
+      options.storagePath
+        ? {
+            root: resolveFrom(cwd, options.storagePath),
+            domain: options.storageDomain ?? "workspace",
+          }
+        : undefined,
+      { layer: "cli", key: "storagePath" },
+    ),
+    sourceCandidate(
+      options.storageDomain
+        ? {
+            root: defaultStorageRootForDomain(options.storageDomain, options),
+            domain: options.storageDomain,
+          }
+        : undefined,
+      { layer: "cli", key: "storageDomain" },
+    ),
+    resolveStorageFromLayer("workspace", layers.workspace, options),
+    resolveStorageFromLayer("user", layers.user, options),
+    resolveStorageFromLayer("system", layers.system, options),
+    sourceCandidate(
+      envStoragePath
+        ? {
+            root: resolveFrom(cwd, envStoragePath),
+            domain: envStorageDomain ?? "workspace",
+          }
+        : undefined,
+      { layer: "env", key: "LLMTHINK_STORAGE_PATH" },
+    ),
+    sourceCandidate(
+      envStorageDomain
+        ? {
+            root: defaultStorageRootForDomain(envStorageDomain, options),
+            domain: envStorageDomain,
+          }
+        : undefined,
+      { layer: "env", key: "LLMTHINK_STORAGE_DOMAIN" },
+    ),
+    {
+      value: {
+        root: defaultWorkspaceStorageRoot(options),
+        domain: "workspace",
+      },
+      source: { layer: "default", key: "workspace-default" },
+    },
+  )!;
+}
+
+function resolveProviderSetting(
+  layers: ConfigLayers,
+  env: NodeJS.ProcessEnv,
+): ResolvedCandidate<ConfigEmbeddingProvider> {
+  return resolveLayeredSetting(
+    layers,
+    "embeddings.provider",
+    (layer) => layer.config?.embeddings?.provider,
+    sourceCandidate(
+      parseProvider(normalizeString(env.LLMTHINK_EMBEDDING_PROVIDER)),
+      { layer: "env", key: "LLMTHINK_EMBEDDING_PROVIDER" },
+    ),
+    {
+      value: "ollama",
+      source: { layer: "default", key: "provider-default" },
+    },
+  );
+}
+
+function resolveTimeoutSetting(
+  layers: ConfigLayers,
+  env: NodeJS.ProcessEnv,
+): ResolvedCandidate<number> {
+  return resolveLayeredSetting(
+    layers,
+    "embeddings.timeoutMs",
+    (layer) => layer.config?.embeddings?.timeoutMs,
+    sourceCandidate(parsePositiveNumber(env.LLMTHINK_EMBEDDING_TIMEOUT_MS), {
+      layer: "env",
+      key: "LLMTHINK_EMBEDDING_TIMEOUT_MS",
+    }),
+    {
+      value: 3000,
+      source: { layer: "default", key: "timeout-default" },
+    },
+  );
+}
+
+function trimOptionalUrl(value: string | undefined): string | undefined {
+  return value ? trimTrailingSlash(value) : undefined;
+}
+
+function resolveStringSetting(
+  layers: ConfigLayers,
+  key: string,
+  read: (layer: ConfigLayer) => string | undefined,
+  environmentValue: string | undefined,
+  environmentKey: string,
+  defaultValue: string,
+  defaultKey: string,
+): ResolvedCandidate<string> {
+  return resolveLayeredSetting(
+    layers,
+    key,
+    read,
+    sourceCandidate(environmentValue, {
+      layer: "env",
+      key: environmentKey,
+    }),
+    {
+      value: defaultValue,
+      source: { layer: "default", key: defaultKey },
+    },
+  );
+}
+
+function resolveOpenaiApiKeySetting(
+  layers: ConfigLayers,
+  env: NodeJS.ProcessEnv,
+): ResolvedCandidate<string> {
+  return resolveLayeredSetting(
+    layers,
+    "embeddings.openai.apiKey",
+    (layer) =>
+      resolveSecretReference(
+        layer.config?.embeddings?.openai?.apiKey,
+        layer.path,
+        env,
+      ),
+    sourceCandidate(normalizeString(env.OPENAI_API_KEY), {
+      layer: "env",
+      key: "OPENAI_API_KEY",
+    }),
+    {
+      value: "",
+      source: { layer: "default", key: "openai-api-key-unset" },
+    },
+  );
+}
+
 export function resolveThoughtStorageRoot(
   options: ResolveRuntimeConfigOptions = {},
 ): string {
@@ -526,304 +756,53 @@ export function resolveRuntimeConfig(
 ): ResolvedRuntimeConfig {
   const env = options.env ?? process.env;
   const layers = loadConfigLayers(options);
-  const envStoragePath = normalizeString(env.LLMTHINK_STORAGE_PATH);
-  const envStorageDomain = parseDomain(normalizeString(env.LLMTHINK_STORAGE_DOMAIN));
-
-  const storageResolved =
-    firstResolved<ResolvedRuntimeConfig["storage"]>(
-      options.storagePath
-        ? {
-            value: {
-              root: resolveFrom(resolve(options.cwd ?? process.cwd()), options.storagePath),
-              domain: options.storageDomain ?? "workspace",
-            },
-            source: { layer: "cli", key: "storagePath" },
-          }
-        : undefined,
-      options.storageDomain
-        ? {
-            value: {
-              root: defaultStorageRootForDomain(options.storageDomain, options),
-              domain: options.storageDomain,
-            },
-            source: { layer: "cli", key: "storageDomain" },
-          }
-        : undefined,
-      resolveStorageFromLayer("workspace", layers.workspace, options),
-      resolveStorageFromLayer("user", layers.user, options),
-      resolveStorageFromLayer("system", layers.system, options),
-      envStoragePath
-        ? {
-            value: {
-              root: resolveFrom(resolve(options.cwd ?? process.cwd()), envStoragePath),
-              domain: envStorageDomain ?? "workspace",
-            },
-            source: { layer: "env", key: "LLMTHINK_STORAGE_PATH" },
-          }
-        : undefined,
-      envStorageDomain
-        ? {
-            value: {
-              root: defaultStorageRootForDomain(envStorageDomain, options),
-              domain: envStorageDomain,
-            },
-            source: { layer: "env", key: "LLMTHINK_STORAGE_DOMAIN" },
-          }
-        : undefined,
-      {
-        value: {
-          root: defaultWorkspaceStorageRoot(options),
-          domain: "workspace",
-        },
-        source: { layer: "default", key: "workspace-default" },
-      },
-    )!;
+  const storageResolved = resolveStorageSetting(options, layers, env);
   const storage = storageResolved.value;
+  const providerResolved = resolveProviderSetting(layers, env);
 
-  const providerResolved =
-    firstResolved<ConfigEmbeddingProvider>(
-      layers.workspace.config?.embeddings?.provider
-        ? {
-            value: layers.workspace.config.embeddings.provider,
-            source: layerSource("workspace", "embeddings.provider", layers.workspace.path),
-          }
-        : undefined,
-      layers.user.config?.embeddings?.provider
-        ? {
-            value: layers.user.config.embeddings.provider,
-            source: layerSource("user", "embeddings.provider", layers.user.path),
-          }
-        : undefined,
-      layers.system.config?.embeddings?.provider
-        ? {
-            value: layers.system.config.embeddings.provider,
-            source: layerSource("system", "embeddings.provider", layers.system.path),
-          }
-        : undefined,
-      parseProvider(normalizeString(env.LLMTHINK_EMBEDDING_PROVIDER))
-        ? {
-            value: parseProvider(normalizeString(env.LLMTHINK_EMBEDDING_PROVIDER))!,
-            source: { layer: "env", key: "LLMTHINK_EMBEDDING_PROVIDER" },
-          }
-        : undefined,
-      {
-        value: "ollama",
-        source: { layer: "default", key: "provider-default" },
-      },
-    )!;
+  const timeoutResolved = resolveTimeoutSetting(layers, env);
 
-  const timeoutResolved =
-    firstResolved<number>(
-      layers.workspace.config?.embeddings?.timeoutMs !== undefined
-        ? {
-            value: layers.workspace.config.embeddings.timeoutMs,
-            source: layerSource("workspace", "embeddings.timeoutMs", layers.workspace.path),
-          }
-        : undefined,
-      layers.user.config?.embeddings?.timeoutMs !== undefined
-        ? {
-            value: layers.user.config.embeddings.timeoutMs,
-            source: layerSource("user", "embeddings.timeoutMs", layers.user.path),
-          }
-        : undefined,
-      layers.system.config?.embeddings?.timeoutMs !== undefined
-        ? {
-            value: layers.system.config.embeddings.timeoutMs,
-            source: layerSource("system", "embeddings.timeoutMs", layers.system.path),
-          }
-        : undefined,
-      parsePositiveNumber(env.LLMTHINK_EMBEDDING_TIMEOUT_MS)
-        ? {
-            value: parsePositiveNumber(env.LLMTHINK_EMBEDDING_TIMEOUT_MS)!,
-            source: { layer: "env", key: "LLMTHINK_EMBEDDING_TIMEOUT_MS" },
-          }
-        : undefined,
-      {
-        value: 3000,
-        source: { layer: "default", key: "timeout-default" },
-      },
-    )!;
+  const ollamaBaseUrlResolved = resolveStringSetting(
+    layers,
+    "embeddings.ollama.baseUrl",
+    (layer) => trimOptionalUrl(layer.config?.embeddings?.ollama?.baseUrl),
+    trimOptionalUrl(normalizeString(env.OLLAMA_BASE_URL)),
+    "OLLAMA_BASE_URL",
+    "http://127.0.0.1:11434",
+    "ollama-base-url-default",
+  );
 
-  const ollamaBaseUrlResolved =
-    firstResolved<string>(
-      layers.workspace.config?.embeddings?.ollama?.baseUrl
-        ? {
-            value: trimTrailingSlash(layers.workspace.config.embeddings.ollama.baseUrl),
-            source: layerSource("workspace", "embeddings.ollama.baseUrl", layers.workspace.path),
-          }
-        : undefined,
-      layers.user.config?.embeddings?.ollama?.baseUrl
-        ? {
-            value: trimTrailingSlash(layers.user.config.embeddings.ollama.baseUrl),
-            source: layerSource("user", "embeddings.ollama.baseUrl", layers.user.path),
-          }
-        : undefined,
-      layers.system.config?.embeddings?.ollama?.baseUrl
-        ? {
-            value: trimTrailingSlash(layers.system.config.embeddings.ollama.baseUrl),
-            source: layerSource("system", "embeddings.ollama.baseUrl", layers.system.path),
-          }
-        : undefined,
-      normalizeString(env.OLLAMA_BASE_URL)
-        ? {
-            value: trimTrailingSlash(normalizeString(env.OLLAMA_BASE_URL)!),
-            source: { layer: "env", key: "OLLAMA_BASE_URL" },
-          }
-        : undefined,
-      {
-        value: "http://127.0.0.1:11434",
-        source: { layer: "default", key: "ollama-base-url-default" },
-      },
-    )!;
+  const ollamaModelResolved = resolveStringSetting(
+    layers,
+    "embeddings.ollama.model",
+    (layer) => layer.config?.embeddings?.ollama?.model,
+    normalizeString(env.OLLAMA_EMBED_MODEL),
+    "OLLAMA_EMBED_MODEL",
+    "nomic-embed-text",
+    "ollama-model-default",
+  );
 
-  const ollamaModelResolved =
-    firstResolved<string>(
-      layers.workspace.config?.embeddings?.ollama?.model
-        ? {
-            value: layers.workspace.config.embeddings.ollama.model,
-            source: layerSource("workspace", "embeddings.ollama.model", layers.workspace.path),
-          }
-        : undefined,
-      layers.user.config?.embeddings?.ollama?.model
-        ? {
-            value: layers.user.config.embeddings.ollama.model,
-            source: layerSource("user", "embeddings.ollama.model", layers.user.path),
-          }
-        : undefined,
-      layers.system.config?.embeddings?.ollama?.model
-        ? {
-            value: layers.system.config.embeddings.ollama.model,
-            source: layerSource("system", "embeddings.ollama.model", layers.system.path),
-          }
-        : undefined,
-      normalizeString(env.OLLAMA_EMBED_MODEL)
-        ? {
-            value: normalizeString(env.OLLAMA_EMBED_MODEL)!,
-            source: { layer: "env", key: "OLLAMA_EMBED_MODEL" },
-          }
-        : undefined,
-      {
-        value: "nomic-embed-text",
-        source: { layer: "default", key: "ollama-model-default" },
-      },
-    )!;
+  const openaiBaseUrlResolved = resolveStringSetting(
+    layers,
+    "embeddings.openai.baseUrl",
+    (layer) => trimOptionalUrl(layer.config?.embeddings?.openai?.baseUrl),
+    trimOptionalUrl(normalizeString(env.OPENAI_BASE_URL)),
+    "OPENAI_BASE_URL",
+    "https://api.openai.com/v1",
+    "openai-base-url-default",
+  );
 
-  const openaiBaseUrlResolved =
-    firstResolved<string>(
-      layers.workspace.config?.embeddings?.openai?.baseUrl
-        ? {
-            value: trimTrailingSlash(layers.workspace.config.embeddings.openai.baseUrl),
-            source: layerSource("workspace", "embeddings.openai.baseUrl", layers.workspace.path),
-          }
-        : undefined,
-      layers.user.config?.embeddings?.openai?.baseUrl
-        ? {
-            value: trimTrailingSlash(layers.user.config.embeddings.openai.baseUrl),
-            source: layerSource("user", "embeddings.openai.baseUrl", layers.user.path),
-          }
-        : undefined,
-      layers.system.config?.embeddings?.openai?.baseUrl
-        ? {
-            value: trimTrailingSlash(layers.system.config.embeddings.openai.baseUrl),
-            source: layerSource("system", "embeddings.openai.baseUrl", layers.system.path),
-          }
-        : undefined,
-      normalizeString(env.OPENAI_BASE_URL)
-        ? {
-            value: trimTrailingSlash(normalizeString(env.OPENAI_BASE_URL)!),
-            source: { layer: "env", key: "OPENAI_BASE_URL" },
-          }
-        : undefined,
-      {
-        value: "https://api.openai.com/v1",
-        source: { layer: "default", key: "openai-base-url-default" },
-      },
-    )!;
+  const openaiModelResolved = resolveStringSetting(
+    layers,
+    "embeddings.openai.model",
+    (layer) => layer.config?.embeddings?.openai?.model,
+    normalizeString(env.OPENAI_EMBED_MODEL),
+    "OPENAI_EMBED_MODEL",
+    "text-embedding-3-small",
+    "openai-model-default",
+  );
 
-  const openaiModelResolved =
-    firstResolved<string>(
-      layers.workspace.config?.embeddings?.openai?.model
-        ? {
-            value: layers.workspace.config.embeddings.openai.model,
-            source: layerSource("workspace", "embeddings.openai.model", layers.workspace.path),
-          }
-        : undefined,
-      layers.user.config?.embeddings?.openai?.model
-        ? {
-            value: layers.user.config.embeddings.openai.model,
-            source: layerSource("user", "embeddings.openai.model", layers.user.path),
-          }
-        : undefined,
-      layers.system.config?.embeddings?.openai?.model
-        ? {
-            value: layers.system.config.embeddings.openai.model,
-            source: layerSource("system", "embeddings.openai.model", layers.system.path),
-          }
-        : undefined,
-      normalizeString(env.OPENAI_EMBED_MODEL)
-        ? {
-            value: normalizeString(env.OPENAI_EMBED_MODEL)!,
-            source: { layer: "env", key: "OPENAI_EMBED_MODEL" },
-          }
-        : undefined,
-      {
-        value: "text-embedding-3-small",
-        source: { layer: "default", key: "openai-model-default" },
-      },
-    )!;
-
-  const openaiApiKeyResolved =
-    firstResolved<string>(
-      (() => {
-        const value = resolveSecretReference(
-          layers.workspace.config?.embeddings?.openai?.apiKey,
-          layers.workspace.path,
-          env,
-        );
-        return value
-          ? {
-              value,
-              source: layerSource("workspace", "embeddings.openai.apiKey", layers.workspace.path),
-            }
-          : undefined;
-      })(),
-      (() => {
-        const value = resolveSecretReference(
-          layers.user.config?.embeddings?.openai?.apiKey,
-          layers.user.path,
-          env,
-        );
-        return value
-          ? {
-              value,
-              source: layerSource("user", "embeddings.openai.apiKey", layers.user.path),
-            }
-          : undefined;
-      })(),
-      (() => {
-        const value = resolveSecretReference(
-          layers.system.config?.embeddings?.openai?.apiKey,
-          layers.system.path,
-          env,
-        );
-        return value
-          ? {
-              value,
-              source: layerSource("system", "embeddings.openai.apiKey", layers.system.path),
-            }
-          : undefined;
-      })(),
-      normalizeString(env.OPENAI_API_KEY)
-        ? {
-            value: normalizeString(env.OPENAI_API_KEY)!,
-            source: { layer: "env", key: "OPENAI_API_KEY" },
-          }
-        : undefined,
-      {
-        value: "",
-        source: { layer: "default", key: "openai-api-key-unset" },
-      },
-    )!;
+  const openaiApiKeyResolved = resolveOpenaiApiKeySetting(layers, env);
 
   return {
     configPaths: {

@@ -43,7 +43,9 @@ async function main(): Promise<void> {
     const input = getDslExample(exampleCase.inputId);
     const expectedOutput = getDslExample(exampleCase.expectedId);
     if (!input || !expectedOutput) {
-      process.stderr.write(`Missing example registry entry: ${exampleCase.inputId} / ${exampleCase.expectedId}\n`);
+      process.stderr.write(
+        `Missing example registry entry: ${exampleCase.inputId} / ${exampleCase.expectedId}\n`,
+      );
       failed = true;
       continue;
     }

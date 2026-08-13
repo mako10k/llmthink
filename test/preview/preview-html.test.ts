@@ -9,29 +9,30 @@ import test from "node:test";
 import { chromium } from "playwright";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const tsxCli = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
+
+function renderPreview(inputPath: string, outputPath: string): void {
+  execFileSync(
+    process.execPath,
+    [
+      tsxCli,
+      "vscode-extension/src/render-preview-html.ts",
+      inputPath,
+      "--out",
+      outputPath,
+      "--locale",
+      "ja",
+    ],
+    { cwd: repoRoot, stdio: "pipe" },
+  );
+}
 
 test("preview:html defaults to fit and keeps the outer map area stable on zoom", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-"));
   const outputPath = join(tempDir, "preview.html");
 
   try {
-    execFileSync(
-      "npm",
-      [
-        "run",
-        "preview:html",
-        "--",
-        "docs/process/help-navigation-design.dsl",
-        "--out",
-        outputPath,
-        "--locale",
-        "ja",
-      ],
-      {
-        cwd: repoRoot,
-        stdio: "pipe",
-      },
-    );
+    renderPreview("docs/process/help-navigation-design.dsl", outputPath);
 
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /ステップマップ/);
@@ -41,7 +42,9 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
 
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      const page = await browser.newPage({
+        viewport: { width: 1440, height: 1000 },
+      });
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector(".diagram-scroll");
 
@@ -50,7 +53,11 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
         const viewport = document.querySelector(".diagram-viewport");
         const scroll = document.querySelector(".diagram-scroll");
         const svg = document.querySelector(".diagram");
-        if (!(card instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(scroll instanceof HTMLElement)) {
+        if (
+          !(card instanceof HTMLElement) ||
+          !(viewport instanceof HTMLElement) ||
+          !(scroll instanceof HTMLElement)
+        ) {
           throw new Error("diagram-scroll not found");
         }
         if (!(svg instanceof SVGElement)) {
@@ -86,7 +93,10 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
 
       await page.click('.diagram-button[data-action="zoom-in"]');
       await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
       );
 
       const after = await page.evaluate(() => {
@@ -94,7 +104,11 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
         const viewport = document.querySelector(".diagram-viewport");
         const scroll = document.querySelector(".diagram-scroll");
         const svg = document.querySelector(".diagram");
-        if (!(card instanceof HTMLElement) || !(viewport instanceof HTMLElement) || !(scroll instanceof HTMLElement)) {
+        if (
+          !(card instanceof HTMLElement) ||
+          !(viewport instanceof HTMLElement) ||
+          !(scroll instanceof HTMLElement)
+        ) {
           throw new Error("preview controls not found");
         }
         if (!(svg instanceof SVGElement)) {
@@ -126,9 +140,9 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
       });
 
       assert.ok(after.scrollWidth > before.scrollWidth);
-  assert.equal(after.documentWidth, before.documentWidth);
-  assert.ok(Math.abs(after.viewportLeft - before.viewportLeft) < 1);
-  assert.ok(Math.abs(after.cardLeft - before.cardLeft) < 1);
+      assert.equal(after.documentWidth, before.documentWidth);
+      assert.ok(Math.abs(after.viewportLeft - before.viewportLeft) < 1);
+      assert.ok(Math.abs(after.cardLeft - before.cardLeft) < 1);
       assert.ok(Math.abs(after.svgAnchorX - before.svgAnchorX) < 24);
     } finally {
       await browser.close();
@@ -143,70 +157,70 @@ test("preview:html keeps cards aligned, hides scrollbars, and applies control op
   const outputPath = join(tempDir, "preview.html");
 
   try {
-    execFileSync(
-      "npm",
-      [
-        "run",
-        "preview:html",
-        "--",
-        "docs/process/help-navigation-design.dsl",
-        "--out",
-        outputPath,
-        "--locale",
-        "ja",
-      ],
-      {
-        cwd: repoRoot,
-        stdio: "pipe",
-      },
-    );
+    renderPreview("docs/process/help-navigation-design.dsl", outputPath);
 
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      const page = await browser.newPage({
+        viewport: { width: 1440, height: 1000 },
+      });
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector(".diagram-scroll");
 
-      const readMetrics = async () => page.evaluate(() => {
-        const hero = document.querySelector(".hero");
-        const card = document.querySelector(".diagram-card");
-        const markdown = document.querySelector(".markdown");
-        const viewport = document.querySelector(".diagram-viewport");
-        const controls = document.querySelector(".diagram-controls-overlay");
-        const minimap = document.querySelector(".diagram-minimap-card");
-        const scroll = document.querySelector(".diagram-scroll");
-        const zoomIn = document.querySelector('.diagram-button[data-action="zoom-in"]');
-        if (!(hero instanceof HTMLElement) || !(card instanceof HTMLElement) || !(markdown instanceof HTMLElement)) {
-          throw new Error("preview cards not found");
-        }
-        if (!(viewport instanceof HTMLElement) || !(controls instanceof HTMLElement) || !(minimap instanceof HTMLElement)) {
-          throw new Error("preview controls not found");
-        }
-        if (!(scroll instanceof HTMLElement) || !(zoomIn instanceof HTMLElement)) {
-          throw new Error("preview scroll or zoom button not found");
-        }
+      const readMetrics = async () =>
+        page.evaluate(() => {
+          const hero = document.querySelector(".hero");
+          const card = document.querySelector(".diagram-card");
+          const markdown = document.querySelector(".markdown");
+          const viewport = document.querySelector(".diagram-viewport");
+          const controls = document.querySelector(".diagram-controls-overlay");
+          const minimap = document.querySelector(".diagram-minimap-card");
+          const scroll = document.querySelector(".diagram-scroll");
+          const zoomIn = document.querySelector(
+            '.diagram-button[data-action="zoom-in"]',
+          );
+          if (
+            !(hero instanceof HTMLElement) ||
+            !(card instanceof HTMLElement) ||
+            !(markdown instanceof HTMLElement)
+          ) {
+            throw new Error("preview cards not found");
+          }
+          if (
+            !(viewport instanceof HTMLElement) ||
+            !(controls instanceof HTMLElement) ||
+            !(minimap instanceof HTMLElement)
+          ) {
+            throw new Error("preview controls not found");
+          }
+          if (
+            !(scroll instanceof HTMLElement) ||
+            !(zoomIn instanceof HTMLElement)
+          ) {
+            throw new Error("preview scroll or zoom button not found");
+          }
 
-        const heroRect = hero.getBoundingClientRect();
-        const cardRect = card.getBoundingClientRect();
-        const markdownRect = markdown.getBoundingClientRect();
-        const viewportRect = viewport.getBoundingClientRect();
+          const heroRect = hero.getBoundingClientRect();
+          const cardRect = card.getBoundingClientRect();
+          const markdownRect = markdown.getBoundingClientRect();
+          const viewportRect = viewport.getBoundingClientRect();
 
-        return {
-          heroLeft: heroRect.left,
-          cardLeft: cardRect.left,
-          markdownLeft: markdownRect.left,
-          heroWidth: heroRect.width,
-          cardWidth: cardRect.width,
-          markdownWidth: markdownRect.width,
-          viewportWidth: viewportRect.width,
-          controlsOpacity: Number(getComputedStyle(controls).opacity),
-          minimapOpacity: Number(getComputedStyle(minimap).opacity),
-          scrollClientWidth: scroll.clientWidth,
-          scrollOffsetWidth: scroll.offsetWidth,
-          scrollClientHeight: scroll.clientHeight,
-          scrollOffsetHeight: scroll.offsetHeight,
-        };
-      });
+          return {
+            heroLeft: heroRect.left,
+            cardLeft: cardRect.left,
+            markdownLeft: markdownRect.left,
+            heroWidth: heroRect.width,
+            cardWidth: cardRect.width,
+            markdownWidth: markdownRect.width,
+            viewportWidth: viewportRect.width,
+            controlsOpacity: Number(getComputedStyle(controls).opacity),
+            minimapOpacity: Number(getComputedStyle(minimap).opacity),
+            scrollClientWidth: scroll.clientWidth,
+            scrollOffsetWidth: scroll.offsetWidth,
+            scrollClientHeight: scroll.clientHeight,
+            scrollOffsetHeight: scroll.offsetHeight,
+          };
+        });
 
       const initial = await readMetrics();
       assert.ok(Math.abs(initial.heroLeft - initial.cardLeft) < 1);
@@ -241,7 +255,10 @@ test("preview:html keeps cards aligned, hides scrollbars, and applies control op
 
       await page.click('.diagram-button[data-action="zoom-in"]');
       await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
       );
 
       const zoomed = await readMetrics();
@@ -250,7 +267,10 @@ test("preview:html keeps cards aligned, hides scrollbars, and applies control op
 
       await page.setViewportSize({ width: 980, height: 1000 });
       await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
       );
 
       const narrow = await readMetrics();
@@ -272,23 +292,7 @@ test("preview:html renders problem references as problem nodes instead of unreso
   const outputPath = join(tempDir, "preview.html");
 
   try {
-    execFileSync(
-      "npm",
-      [
-        "run",
-        "preview:html",
-        "--",
-        "docs/process/license-model-review.dsl",
-        "--out",
-        outputPath,
-        "--locale",
-        "ja",
-      ],
-      {
-        cwd: repoRoot,
-        stdio: "pipe",
-      },
-    );
+    renderPreview("docs/process/license-model-review.dsl", outputPath);
 
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /node-problem/);
@@ -298,13 +302,19 @@ test("preview:html renders problem references as problem nodes instead of unreso
 
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      const page = await browser.newPage({
+        viewport: { width: 1440, height: 1000 },
+      });
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector('.node-problem[data-node-key="P4"]');
 
       const metrics = await page.evaluate(() => {
-        const problemNode = document.querySelector('.node-problem[data-node-key="P4"]');
-        const unresolvedNode = document.querySelector('.node-external[data-node-key="P4"]');
+        const problemNode = document.querySelector(
+          '.node-problem[data-node-key="P4"]',
+        );
+        const unresolvedNode = document.querySelector(
+          '.node-external[data-node-key="P4"]',
+        );
         return {
           hasProblemNode: problemNode instanceof SVGGElement,
           hasUnresolvedNode: unresolvedNode instanceof SVGGElement,
@@ -355,11 +365,7 @@ test("preview:html renders comparison statements and comparison section", async 
   );
 
   try {
-    execFileSync(
-      "npm",
-      ["run", "preview:html", "--", inputPath, "--out", outputPath, "--locale", "ja"],
-      { cwd: repoRoot, stdio: "pipe" },
-    );
+    renderPreview(inputPath, outputPath);
 
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /node-comparison/);
@@ -370,23 +376,33 @@ test("preview:html renders comparison statements and comparison section", async 
 
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      const page = await browser.newPage({
+        viewport: { width: 1440, height: 1000 },
+      });
       await page.goto(`file://${outputPath}`);
-      await page.locator('.node-comparison[data-comparison-id="CMP1"]').dispatchEvent("pointerenter");
+      await page
+        .locator('.node-comparison[data-comparison-id="CMP1"]')
+        .dispatchEvent("pointerenter");
 
       const hoverMetrics = await page.evaluate(() => {
-        const link = document.querySelector('.comparison-link[data-comparison-id="CMP1"]');
+        const link = document.querySelector(
+          '.comparison-link[data-comparison-id="CMP1"]',
+        );
         const left = document.querySelector('.node[data-node-key="D2"]');
         const right = document.querySelector('.node[data-node-key="D1"]');
-        const rightBadge = right?.querySelector('.node-status-badge');
-        const minimapRight = document.querySelector('.minimap-node[data-target-node="D1"]');
+        const rightBadge = right?.querySelector(".node-status-badge");
+        const minimapRight = document.querySelector(
+          '.minimap-node[data-target-node="D1"]',
+        );
         return {
-          linkActive: link?.classList.contains("comparison-link-active") ?? false,
+          linkActive:
+            link?.classList.contains("comparison-link-active") ?? false,
           leftActive: left?.classList.contains("node-edge-active") ?? false,
           rightActive: right?.classList.contains("node-edge-active") ?? false,
           rightRejected: right?.classList.contains("status-rejected") ?? false,
           badgeText: rightBadge?.textContent?.trim() ?? "",
-          minimapRejected: minimapRight?.classList.contains("status-rejected") ?? false,
+          minimapRejected:
+            minimapRight?.classList.contains("status-rejected") ?? false,
         };
       });
 
@@ -397,13 +413,18 @@ test("preview:html renders comparison statements and comparison section", async 
       assert.equal(hoverMetrics.badgeText, "rejected");
       assert.equal(hoverMetrics.minimapRejected, true);
 
-      await page.locator('.node-comparison[data-comparison-id="CMP1"]').dispatchEvent("pointerleave");
+      await page
+        .locator('.node-comparison[data-comparison-id="CMP1"]')
+        .dispatchEvent("pointerleave");
       await page.waitForTimeout(650);
 
       const cleared = await page.evaluate(() => {
-        const link = document.querySelector('.comparison-link[data-comparison-id="CMP1"]');
+        const link = document.querySelector(
+          '.comparison-link[data-comparison-id="CMP1"]',
+        );
         return {
-          linkActive: link?.classList.contains("comparison-link-active") ?? false,
+          linkActive:
+            link?.classList.contains("comparison-link-active") ?? false,
         };
       });
 
@@ -444,23 +465,7 @@ test("preview:html marks intentional orphan nodes with a weak visual class", asy
   );
 
   try {
-    execFileSync(
-      "npm",
-      [
-        "run",
-        "preview:html",
-        "--",
-        inputPath,
-        "--out",
-        outputPath,
-        "--locale",
-        "ja",
-      ],
-      {
-        cwd: repoRoot,
-        stdio: "pipe",
-      },
-    );
+    renderPreview(inputPath, outputPath);
 
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /node-intentional-orphan/);
@@ -499,30 +504,34 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
   );
 
   try {
-    execFileSync(
-      "npm",
-      ["run", "preview:html", "--", inputPath, "--out", outputPath, "--locale", "ja"],
-      { cwd: repoRoot, stdio: "pipe" },
-    );
+    renderPreview(inputPath, outputPath);
 
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      const page = await browser.newPage({
+        viewport: { width: 1440, height: 1000 },
+      });
       await page.goto(`file://${outputPath}`);
-      await page.waitForSelector('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]');
+      await page.waitForSelector(
+        '.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]',
+      );
 
       const initialSvgWidth = await page.evaluate(() => {
-        const svg = document.querySelector('.diagram');
+        const svg = document.querySelector(".diagram");
         if (!(svg instanceof SVGSVGElement)) {
-          throw new Error('diagram svg not found');
+          throw new Error("diagram svg not found");
         }
         return svg.getBoundingClientRect().width;
       });
 
-      await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("pointerenter");
+      await page
+        .locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]')
+        .dispatchEvent("pointerenter");
 
       const hovered = await page.evaluate(() => {
-        const edge = document.querySelector('.edge[data-edge-from="PR1"][data-edge-to="D1"]');
+        const edge = document.querySelector(
+          '.edge[data-edge-from="PR1"][data-edge-to="D1"]',
+        );
         const source = document.querySelector('.node[data-node-key="PR1"]');
         const target = document.querySelector('.node[data-node-key="D1"]');
         return {
@@ -536,19 +545,31 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       assert.equal(hovered.sourceActive, true);
       assert.equal(hovered.targetActive, true);
 
-      await page.locator('.diagram-scroll .edge[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("dblclick", {
-        bubbles: true,
-      });
+      await page
+        .locator(
+          '.diagram-scroll .edge[data-edge-from="PR1"][data-edge-to="D1"]',
+        )
+        .dispatchEvent("dblclick", {
+          bubbles: true,
+        });
       await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
       );
 
       const fitMetrics = await page.evaluate(() => {
-        const scroll = document.querySelector('.diagram-scroll');
-        const svg = document.querySelector('.diagram');
+        const scroll = document.querySelector(".diagram-scroll");
+        const svg = document.querySelector(".diagram");
         const source = document.querySelector('.node[data-node-key="PR1"]');
         const target = document.querySelector('.node[data-node-key="D1"]');
-        if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGSVGElement) || !(source instanceof SVGGElement) || !(target instanceof SVGGElement)) {
+        if (
+          !(scroll instanceof HTMLElement) ||
+          !(svg instanceof SVGSVGElement) ||
+          !(source instanceof SVGGElement) ||
+          !(target instanceof SVGGElement)
+        ) {
           throw new Error("edge fit elements not found");
         }
         const scrollRect = scroll.getBoundingClientRect();
@@ -576,17 +597,27 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       assert.equal(fitMetrics.fillsWholeWidth, false);
       assert.equal(fitMetrics.svgWidth > initialSvgWidth + 8, true);
 
-      await page.locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]').dispatchEvent("pointerleave");
-      await page.locator('.diagram-scroll').dispatchEvent("dblclick", { bubbles: true });
+      await page
+        .locator('.edge-hit[data-edge-from="PR1"][data-edge-to="D1"]')
+        .dispatchEvent("pointerleave");
+      await page
+        .locator(".diagram-scroll")
+        .dispatchEvent("dblclick", { bubbles: true });
       await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
       );
 
       const graceMetrics = await page.evaluate(() => {
-        const scroll = document.querySelector('.diagram-scroll');
-        const svg = document.querySelector('.diagram');
-        const activeEdge = document.querySelector('.edge.edge-active');
-        if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGSVGElement)) {
+        const scroll = document.querySelector(".diagram-scroll");
+        const svg = document.querySelector(".diagram");
+        const activeEdge = document.querySelector(".edge.edge-active");
+        if (
+          !(scroll instanceof HTMLElement) ||
+          !(svg instanceof SVGSVGElement)
+        ) {
           throw new Error("grace fit elements not found");
         }
         const scrollRect = scroll.getBoundingClientRect();
@@ -601,16 +632,24 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
       assert.equal(graceMetrics.fillsWholeWidth, false);
 
       await page.waitForTimeout(650);
-      await page.locator('.diagram-scroll').dispatchEvent("dblclick", { bubbles: true });
+      await page
+        .locator(".diagram-scroll")
+        .dispatchEvent("dblclick", { bubbles: true });
       await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
       );
 
       const fallbackMetrics = await page.evaluate(() => {
-        const scroll = document.querySelector('.diagram-scroll');
-        const svg = document.querySelector('.diagram');
-        const activeEdge = document.querySelector('.edge.edge-active');
-        if (!(scroll instanceof HTMLElement) || !(svg instanceof SVGSVGElement)) {
+        const scroll = document.querySelector(".diagram-scroll");
+        const svg = document.querySelector(".diagram");
+        const activeEdge = document.querySelector(".edge.edge-active");
+        if (
+          !(scroll instanceof HTMLElement) ||
+          !(svg instanceof SVGSVGElement)
+        ) {
           throw new Error("fallback fit elements not found");
         }
         const scrollRect = scroll.getBoundingClientRect();

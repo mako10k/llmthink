@@ -21,6 +21,8 @@ import {
   type ViewpointStatement,
 } from "../model/ast.js";
 
+const IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
 function span(line: number, column = 1): SourceSpan {
   return { line, column };
 }
@@ -156,7 +158,9 @@ function parsePartitionMemberLine(line: string): PartitionMember | undefined {
 
 function parseAnnotationKind(header: string): AnnotationKind | undefined {
   const match =
-    /^annotation\s+(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference):$/.exec(header);
+    /^annotation\s+(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference):$/.exec(
+      header,
+    );
   return match?.[1] as AnnotationKind | undefined;
 }
 
@@ -196,7 +200,6 @@ function parseAnnotations(
       break;
     }
 
-    const textIndex = nextSignificantLineIndex(lines, index + 1);
     const { text, body, nextIndex } = parseIndentedTextBody(
       lines,
       index,
@@ -239,30 +242,62 @@ function parseDecisionHeader(
   return { id, basedOn };
 }
 
-function parseComparisonHeader(
-  header: string,
-): {
-  id: string;
-  problemId: string;
-  viewpointId: string;
-  relation: ComparisonStatement["relation"];
-  leftDecisionId: string;
-  rightDecisionId: string;
-} | undefined {
-  const match =
-    /^comparison\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+viewpoint\s+([A-Za-z][A-Za-z0-9_-]*)\s+relation\s+(preferred_over|weaker_than|incomparable|counterexample_to)\s+([A-Za-z][A-Za-z0-9_-]*)\s*,\s*([A-Za-z][A-Za-z0-9_-]*):$/.exec(
-      header,
-    );
-  if (!match) {
+function parseComparisonHeader(header: string):
+  | {
+      id: string;
+      problemId: string;
+      viewpointId: string;
+      relation: ComparisonStatement["relation"];
+      leftDecisionId: string;
+      rightDecisionId: string;
+    }
+  | undefined {
+  if (!header.endsWith(":")) {
+    return undefined;
+  }
+  const body = header.slice(0, -1);
+  const commaIndex = body.indexOf(",");
+  if (commaIndex < 0 || body.indexOf(",", commaIndex + 1) >= 0) {
+    return undefined;
+  }
+  const tokens = body.slice(0, commaIndex).trim().split(/\s+/u);
+  const rightDecisionId = body.slice(commaIndex + 1).trim();
+  if (
+    tokens.length !== 9 ||
+    tokens[0] !== "comparison" ||
+    tokens[2] !== "on" ||
+    tokens[4] !== "viewpoint" ||
+    tokens[6] !== "relation"
+  ) {
+    return undefined;
+  }
+  const [, id, , problemId, , viewpointId, , relation, leftDecisionId] = tokens;
+  const identifiers = [
+    id,
+    problemId,
+    viewpointId,
+    leftDecisionId,
+    rightDecisionId,
+  ];
+  const relations: ComparisonStatement["relation"][] = [
+    "preferred_over",
+    "weaker_than",
+    "incomparable",
+    "counterexample_to",
+  ];
+  if (
+    identifiers.some((value) => !value || !IDENTIFIER_PATTERN.test(value)) ||
+    !relations.includes(relation as ComparisonStatement["relation"])
+  ) {
     return undefined;
   }
   return {
-    id: match[1],
-    problemId: match[2],
-    viewpointId: match[3],
-    relation: match[4] as ComparisonStatement["relation"],
-    leftDecisionId: match[5],
-    rightDecisionId: match[6],
+    id: id!,
+    problemId: problemId!,
+    viewpointId: viewpointId!,
+    relation: relation as ComparisonStatement["relation"],
+    leftDecisionId: leftDecisionId!,
+    rightDecisionId,
   };
 }
 
@@ -539,7 +574,12 @@ function parseDescriptionBody(
   }
 
   if (line === "description |") {
-    return parseBlockText(lines, lineIndex, currentIndent(rawLine), "Domain description is required");
+    return parseBlockText(
+      lines,
+      lineIndex,
+      currentIndent(rawLine),
+      "Domain description is required",
+    );
   }
 
   throw new ParseError(
@@ -566,7 +606,10 @@ function parseDomain(
     );
   }
   const descriptionIndex = nextSignificantLineIndex(lines, startIndex + 1);
-  const { text, body, nextIndex } = parseDescriptionBody(lines, descriptionIndex);
+  const { text, body, nextIndex } = parseDescriptionBody(
+    lines,
+    descriptionIndex,
+  );
   return [
     {
       name: match[1],
@@ -593,11 +636,11 @@ function parseProblem(
       rawHeader.length + 1,
     );
   }
-  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
-    lines,
-    startIndex,
-    "Problem text is required",
-  );
+  const {
+    text,
+    body,
+    nextIndex: textNextIndex,
+  } = parseIndentedTextBody(lines, startIndex, "Problem text is required");
   const { annotations, nextIndex } = parseAnnotations(
     lines,
     textNextIndex,
@@ -695,7 +738,14 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
   role: T,
   lines: string[],
   startIndex: number,
-): { role: T; id: string; text: string; textBody: TextBody; annotations: Annotation[]; span: SourceSpan } & {
+): {
+  role: T;
+  id: string;
+  text: string;
+  textBody: TextBody;
+  annotations: Annotation[];
+  span: SourceSpan;
+} & {
   nextIndex: number;
 } {
   const header = lines[startIndex]?.trim() ?? "";
@@ -709,11 +759,11 @@ function parseTextStatement<T extends "premise" | "evidence" | "pending">(
       rawHeader.length + 1,
     );
   }
-  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
-    lines,
-    startIndex,
-    `${role} text is required`,
-  );
+  const {
+    text,
+    body,
+    nextIndex: textNextIndex,
+  } = parseIndentedTextBody(lines, startIndex, `${role} text is required`);
   const { annotations, nextIndex } = parseAnnotations(
     lines,
     textNextIndex,
@@ -833,11 +883,11 @@ function parseDecision(
       rawHeader.length + 1,
     );
   }
-  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
-    lines,
-    startIndex,
-    "Decision text is required",
-  );
+  const {
+    text,
+    body,
+    nextIndex: textNextIndex,
+  } = parseIndentedTextBody(lines, startIndex, "Decision text is required");
   const { annotations, nextIndex } = parseAnnotations(
     lines,
     textNextIndex,
@@ -870,11 +920,11 @@ function parseComparison(
       rawHeader.length + 1,
     );
   }
-  const { text, body, nextIndex: textNextIndex } = parseIndentedTextBody(
-    lines,
-    startIndex,
-    "Comparison text is required",
-  );
+  const {
+    text,
+    body,
+    nextIndex: textNextIndex,
+  } = parseIndentedTextBody(lines, startIndex, "Comparison text is required");
   const { annotations, nextIndex } = parseAnnotations(
     lines,
     textNextIndex,

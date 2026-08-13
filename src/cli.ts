@@ -102,7 +102,10 @@ function appendSuppressedCategories(
   options: CliOptions,
   remainingArgs: string[],
 ): void {
-  const rawValue = readRequiredOptionValue("--suppress-category", remainingArgs);
+  const rawValue = readRequiredOptionValue(
+    "--suppress-category",
+    remainingArgs,
+  );
   const rawCategories = rawValue.split(",").map((category) => category.trim());
   const categories = rawCategories.map((rawCategory) => {
     const category = AUDIT_RESULT_CATEGORIES.find(
@@ -244,7 +247,9 @@ function resolveSemanticAuditVerdict(
       `semantic-audit requires --verdict. Use one of ${SEMANTIC_AUDIT_VERDICTS.join(", ")}.`,
     );
   }
-  if (SEMANTIC_AUDIT_VERDICTS.includes(verdict as ThoughtSemanticAuditVerdict)) {
+  if (
+    SEMANTIC_AUDIT_VERDICTS.includes(verdict as ThoughtSemanticAuditVerdict)
+  ) {
     return verdict as ThoughtSemanticAuditVerdict;
   }
   throw new Error(
@@ -344,7 +349,9 @@ function printResolvedConfig(options: CliOptions): void {
         embeddings: {
           ...runtimeConfig.embeddings,
           openaiApiKey: maskSecret(runtimeConfig.embeddings.openaiApiKey),
-          openaiApiKeyConfigured: Boolean(runtimeConfig.embeddings.openaiApiKey),
+          openaiApiKeyConfigured: Boolean(
+            runtimeConfig.embeddings.openaiApiKey,
+          ),
         },
       },
       null,
@@ -368,7 +375,9 @@ function thoughtLocation(options: CliOptions, filePath?: string) {
 }
 
 function printThoughtSummary(id: string, options: CliOptions): void {
-  process.stdout.write(formatThoughtSummary(loadThought(id, thoughtLocation(options))));
+  process.stdout.write(
+    formatThoughtSummary(loadThought(id, thoughtLocation(options))),
+  );
 }
 
 function printThoughtHistory(id: string, options: CliOptions): void {
@@ -384,13 +393,17 @@ async function printThoughtSearch(
   includeReflections = false,
 ): Promise<void> {
   const results = (
-    await searchThoughtRecords(query, thoughtLocation(options), { includeReflections })
+    await searchThoughtRecords(query, thoughtLocation(options), {
+      includeReflections,
+    })
   ).slice(0, limit);
   process.stdout.write(formatThoughtSearchResults(results));
 }
 
 function printThoughtList(options: CliOptions): void {
-  process.stdout.write(formatThoughtList(listThoughts(thoughtLocation(options))));
+  process.stdout.write(
+    formatThoughtList(listThoughts(thoughtLocation(options))),
+  );
 }
 
 function readTextFromSource(options: CliOptions): string | undefined {
@@ -448,15 +461,18 @@ async function handleDslCommand(options: CliOptions): Promise<void> {
     process.exit(1);
   }
 
-  const persisted = await auditAndPersistThought({
-    dslText: options.text,
-    filePath,
-    thoughtId: options.thoughtId,
-    documentId: options.documentId,
-  }, {
-    fileBaseDir: process.cwd(),
-    storageRoot: resolveCliStorageRoot(options, filePath),
-  });
+  const persisted = await auditAndPersistThought(
+    {
+      dslText: options.text,
+      filePath,
+      thoughtId: options.thoughtId,
+      documentId: options.documentId,
+    },
+    {
+      fileBaseDir: process.cwd(),
+      storageRoot: resolveCliStorageRoot(options, filePath),
+    },
+  );
 
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
@@ -482,39 +498,46 @@ async function handleDslCommand(options: CliOptions): Promise<void> {
   }
 }
 
+type ThoughtIdHandler = (
+  thoughtId: string,
+  options: CliOptions,
+) => void | Promise<void>;
+
+const THOUGHT_ID_HANDLERS: Readonly<Record<string, ThoughtIdHandler>> = {
+  draft: handleThoughtDraft,
+  relate: handleThoughtRelate,
+  audit: handleThoughtAudit,
+  finalize: handleThoughtFinalize,
+  "semantic-audit": handleThoughtSemanticAudit,
+  reflect: handleThoughtReflect,
+  delete: handleThoughtDelete,
+  show: handleThoughtShow,
+  history: handleThoughtHistory,
+};
+
 async function handleThoughtCommand(options: CliOptions): Promise<void> {
   const thoughtId = options.thoughtId;
   if (isThoughtIdRequired(options.subcommand) && !thoughtId) {
     throw new Error("--id <thought-id> is required for this thought command.");
   }
 
-  switch (options.subcommand) {
-    case "draft":
-      return handleThoughtDraft(thoughtId!, options);
-    case "relate":
-      return handleThoughtRelate(thoughtId!, options);
-    case "audit":
-      return handleThoughtAudit(thoughtId!, options);
-    case "finalize":
-      return handleThoughtFinalize(thoughtId!, options);
-    case "semantic-audit":
-      return handleThoughtSemanticAudit(thoughtId!, options);
-    case "reflect":
-      return handleThoughtReflect(thoughtId!, options);
-    case "delete":
-      return handleThoughtDelete(thoughtId!, options);
-    case "show":
-      return handleThoughtShow(thoughtId!, options);
-    case "history":
-      return handleThoughtHistory(thoughtId!, options);
-    case "search":
-      return handleThoughtSearch(options);
-    case "list":
-      return handleThoughtList(options);
-    default:
-      printUsage();
-      process.exit(1);
+  const handler = options.subcommand
+    ? THOUGHT_ID_HANDLERS[options.subcommand]
+    : undefined;
+  if (handler) {
+    await handler(thoughtId!, options);
+    return;
   }
+  if (options.subcommand === "search") {
+    handleThoughtSearch(options);
+    return;
+  }
+  if (options.subcommand === "list") {
+    handleThoughtList(options);
+    return;
+  }
+  printUsage();
+  process.exit(1);
 }
 
 function handleThoughtDraft(thoughtId: string, options: CliOptions): void {
@@ -539,13 +562,16 @@ async function handleThoughtAudit(
   options: CliOptions,
 ): Promise<void> {
   const text = readTextFromSource(options);
-  const persisted = await auditAndPersistThought({
-    dslText: text ?? readCurrentThoughtDraft(thoughtId, options),
-    thoughtId,
-  }, {
-    fileBaseDir: process.cwd(),
-    storageRoot: resolveCliStorageRoot(options),
-  });
+  const persisted = await auditAndPersistThought(
+    {
+      dslText: text ?? readCurrentThoughtDraft(thoughtId, options),
+      thoughtId,
+    },
+    {
+      fileBaseDir: process.cwd(),
+      storageRoot: resolveCliStorageRoot(options),
+    },
+  );
   if (options.pretty) {
     process.stdout.write(formatPersistedThoughtAudit(persisted));
     process.stdout.write(
@@ -591,7 +617,10 @@ function handleThoughtReflect(thoughtId: string, options: CliOptions): void {
   printThoughtSummary(thoughtId, options);
 }
 
-function handleThoughtSemanticAudit(thoughtId: string, options: CliOptions): void {
+function handleThoughtSemanticAudit(
+  thoughtId: string,
+  options: CliOptions,
+): void {
   if (!options.decisionId || !options.supportId) {
     throw new Error("semantic-audit requires --decision and --support.");
   }
@@ -599,17 +628,21 @@ function handleThoughtSemanticAudit(thoughtId: string, options: CliOptions): voi
     throw new Error("semantic-audit requires --reason.");
   }
 
-  saveThoughtSemanticAudit(thoughtId, {
-    auditId: options.auditId,
-    decisionId: options.decisionId,
-    supportId: options.supportId,
-    verdict: resolveSemanticAuditVerdict(options.verdict),
-    reason: options.reason,
-    reviewer: options.reviewer,
-    model: options.model,
-    auditedAt: options.auditedAt,
-    sourceThoughtId: options.sourceThoughtId,
-  }, thoughtLocation(options));
+  saveThoughtSemanticAudit(
+    thoughtId,
+    {
+      auditId: options.auditId,
+      decisionId: options.decisionId,
+      supportId: options.supportId,
+      verdict: resolveSemanticAuditVerdict(options.verdict),
+      reason: options.reason,
+      reviewer: options.reviewer,
+      model: options.model,
+      auditedAt: options.auditedAt,
+      sourceThoughtId: options.sourceThoughtId,
+    },
+    thoughtLocation(options),
+  );
   printThoughtSummary(thoughtId, options);
 }
 

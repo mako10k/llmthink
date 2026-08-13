@@ -66,7 +66,8 @@ async function main(): Promise<void> {
   const inputPath = resolve(process.cwd(), options.inputPath);
   const text = readFileSync(inputPath, "utf8");
   const title =
-    options.title ?? (basename(options.inputPath).replace(/\.dsl$/i, "") || "preview");
+    options.title ??
+    (basename(options.inputPath).replace(/\.dsl$/i, "") || "preview");
   const html = await renderDslPreview(text, title, options.locale);
 
   if (options.outPath) {

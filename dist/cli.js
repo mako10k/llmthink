@@ -258,7 +258,9 @@ function printThoughtHistory(id, options) {
     process.stdout.write(formatThoughtHistory(loadThought(id, thoughtLocation(options)).history));
 }
 async function printThoughtSearch(query, options, limit = 5, includeReflections = false) {
-    const results = (await searchThoughtRecords(query, thoughtLocation(options), { includeReflections })).slice(0, limit);
+    const results = (await searchThoughtRecords(query, thoughtLocation(options), {
+        includeReflections,
+    })).slice(0, limit);
     process.stdout.write(formatThoughtSearchResults(results));
 }
 function printThoughtList(options) {
@@ -330,38 +332,39 @@ async function handleDslCommand(options) {
         }, null, 2)}\n`);
     }
 }
+const THOUGHT_ID_HANDLERS = {
+    draft: handleThoughtDraft,
+    relate: handleThoughtRelate,
+    audit: handleThoughtAudit,
+    finalize: handleThoughtFinalize,
+    "semantic-audit": handleThoughtSemanticAudit,
+    reflect: handleThoughtReflect,
+    delete: handleThoughtDelete,
+    show: handleThoughtShow,
+    history: handleThoughtHistory,
+};
 async function handleThoughtCommand(options) {
     const thoughtId = options.thoughtId;
     if (isThoughtIdRequired(options.subcommand) && !thoughtId) {
         throw new Error("--id <thought-id> is required for this thought command.");
     }
-    switch (options.subcommand) {
-        case "draft":
-            return handleThoughtDraft(thoughtId, options);
-        case "relate":
-            return handleThoughtRelate(thoughtId, options);
-        case "audit":
-            return handleThoughtAudit(thoughtId, options);
-        case "finalize":
-            return handleThoughtFinalize(thoughtId, options);
-        case "semantic-audit":
-            return handleThoughtSemanticAudit(thoughtId, options);
-        case "reflect":
-            return handleThoughtReflect(thoughtId, options);
-        case "delete":
-            return handleThoughtDelete(thoughtId, options);
-        case "show":
-            return handleThoughtShow(thoughtId, options);
-        case "history":
-            return handleThoughtHistory(thoughtId, options);
-        case "search":
-            return handleThoughtSearch(options);
-        case "list":
-            return handleThoughtList(options);
-        default:
-            printUsage();
-            process.exit(1);
+    const handler = options.subcommand
+        ? THOUGHT_ID_HANDLERS[options.subcommand]
+        : undefined;
+    if (handler) {
+        await handler(thoughtId, options);
+        return;
     }
+    if (options.subcommand === "search") {
+        handleThoughtSearch(options);
+        return;
+    }
+    if (options.subcommand === "list") {
+        handleThoughtList(options);
+        return;
+    }
+    printUsage();
+    process.exit(1);
 }
 function handleThoughtDraft(thoughtId, options) {
     const text = readTextFromSource(options);

@@ -5,7 +5,6 @@ import { promisify } from "node:util";
 import * as vscode from "vscode";
 import {
   LanguageClient,
-  LanguageClientOptions,
   ServerOptions,
   Trace,
   TransportKind,
@@ -56,7 +55,9 @@ async function resolveServerCandidates(
 ): Promise<ResolvedServerOption[]> {
   const candidates: ResolvedServerOption[] = [];
   const configuration = vscode.workspace.getConfiguration("llmthink");
-  const configuredPath = configuration.get<string>("languageServer.path")?.trim();
+  const configuredPath = configuration
+    .get<string>("languageServer.path")
+    ?.trim();
 
   if (configuredPath) {
     if (path.isAbsolute(configuredPath)) {
@@ -105,7 +106,9 @@ function isMissingCommandError(error: unknown): boolean {
     return false;
   }
   const errnoError = error as NodeJS.ErrnoException;
-  return errnoError.code === "ENOENT" || /ENOENT|not found/i.test(error.message);
+  return (
+    errnoError.code === "ENOENT" || /ENOENT|not found/i.test(error.message)
+  );
 }
 
 async function startResolvedClient(
@@ -132,19 +135,25 @@ async function startResolvedClient(
 
     try {
       await resolvedClient.start();
-      outputChannel.appendLine(`LLMThink LSP connected via ${candidate.label}.`);
+      outputChannel.appendLine(
+        `LLMThink LSP connected via ${candidate.label}.`,
+      );
       return resolvedClient;
     } catch (error) {
       await resolvedClient.stop().catch(() => undefined);
       const message = error instanceof Error ? error.message : String(error);
       failures.push(`${candidate.label}: ${message}`);
       if (!isMissingCommandError(error)) {
-        throw new Error(`Failed to start LLMThink language server via ${candidate.label}: ${message}`);
+        throw new Error(
+          `Failed to start LLMThink language server via ${candidate.label}: ${message}`,
+        );
       }
     }
   }
 
-  throw new Error(`Failed to resolve an LLMThink language server. ${failures.join(" | ")}`);
+  throw new Error(
+    `Failed to resolve an LLMThink language server. ${failures.join(" | ")}`,
+  );
 }
 
 function registerClientLifecycle(

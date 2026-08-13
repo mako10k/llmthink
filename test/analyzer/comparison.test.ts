@@ -18,11 +18,15 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("viewpoint VP9 を解決できない")),
+    report.results.some((issue) =>
+      issue.message.includes("viewpoint VP9 を解決できない"),
+    ),
     true,
   );
   assert.equal(
-    report.results.some((issue) => issue.message.includes("decision D2 を解決できない")),
+    report.results.some((issue) =>
+      issue.message.includes("decision D2 を解決できない"),
+    ),
     true,
   );
 });
@@ -54,7 +58,9 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("incomparable と preference")),
+    report.results.some((issue) =>
+      issue.message.includes("incomparable と preference"),
+    ),
     true,
   );
 });
@@ -86,7 +92,9 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("incomparable と preference")),
+    report.results.some((issue) =>
+      issue.message.includes("incomparable と preference"),
+    ),
     false,
   );
 });
@@ -116,7 +124,9 @@ step:
 `);
 
   assert.equal(
-    report.results.some((issue) => issue.message.includes("向きと status が逆転")),
+    report.results.some((issue) =>
+      issue.message.includes("向きと status が逆転"),
+    ),
     true,
   );
 });

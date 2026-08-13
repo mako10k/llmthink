@@ -1,18 +1,39 @@
 import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { auditDslText } from "../analyzer/audit.js";
-import { draftThought, recordThoughtAudit } from "./store.js";
+import { draftThought, recordThoughtAudit, } from "./store.js";
 function generatedThoughtId() {
     return `thought-${new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")}`;
 }
+function normalizeThoughtIdCharacters(value) {
+    let normalized = "";
+    for (const character of value) {
+        const code = character.codePointAt(0) ?? 0;
+        const isAsciiLetter = (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+        const isDigit = code >= 48 && code <= 57;
+        const normalizedCharacter = isAsciiLetter || isDigit || character === "_" ? character : "-";
+        if (normalizedCharacter !== "-" || !normalized.endsWith("-")) {
+            normalized += normalizedCharacter;
+        }
+    }
+    return normalized;
+}
+function trimThoughtIdEdges(value) {
+    let normalized = value;
+    while (normalized.startsWith("-") || normalized.startsWith("_")) {
+        normalized = normalized.slice(1);
+    }
+    while (normalized.endsWith("-") || normalized.endsWith("_")) {
+        normalized = normalized.slice(0, -1);
+    }
+    return normalized;
+}
 export function normalizeThoughtId(value) {
-    const normalized = value
-        .trim()
-        .replace(/\.dsl$/i, "")
-        .replace(/[\\/]+/g, "-")
-        .replace(/[^A-Za-z0-9_-]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^[-_]+|[-_]+$/g, "");
+    const trimmed = value.trim();
+    const withoutExtension = trimmed.toLowerCase().endsWith(".dsl")
+        ? trimmed.slice(0, -4)
+        : trimmed;
+    const normalized = trimThoughtIdEdges(normalizeThoughtIdCharacters(withoutExtension));
     return normalized || generatedThoughtId();
 }
 export function deriveThoughtIdFromDocumentId(documentId) {
@@ -22,7 +43,9 @@ export function deriveThoughtIdFromFilePath(filePath, baseDir) {
     const root = resolve(baseDir ?? process.cwd());
     const absolutePath = resolve(root, filePath);
     const relativePath = relative(root, absolutePath);
-    const preferredPath = relativePath && !relativePath.startsWith("..") ? relativePath : absolutePath;
+    const preferredPath = relativePath && !relativePath.startsWith("..")
+        ? relativePath
+        : absolutePath;
     return normalizeThoughtId(preferredPath);
 }
 function resolveThoughtId(request, baseDir) {

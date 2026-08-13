@@ -152,7 +152,10 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function thoughtPaths(id: string, location?: ThoughtStoreLocationLike): ThoughtPaths {
+function thoughtPaths(
+  id: string,
+  location?: ThoughtStoreLocationLike,
+): ThoughtPaths {
   const rootDir = resolveStoreRoot(location);
   const thoughtsDir = join(rootDir, "thoughts");
   const thoughtDir = join(thoughtsDir, id);
@@ -170,7 +173,10 @@ function thoughtPaths(id: string, location?: ThoughtStoreLocationLike): ThoughtP
   };
 }
 
-function ensureThoughtDir(id: string, location?: ThoughtStoreLocationLike): ThoughtPaths {
+function ensureThoughtDir(
+  id: string,
+  location?: ThoughtStoreLocationLike,
+): ThoughtPaths {
   const paths = thoughtPaths(id, location);
   mkdirSync(paths.auditsDir, { recursive: true });
   return paths;
@@ -218,7 +224,10 @@ function formatSemanticAuditBlock(input: ThoughtSemanticAuditInput): string {
   ].join("\n");
 }
 
-function matchesSemanticAuditBlock(block: string, input: ThoughtSemanticAuditInput): boolean {
+function matchesSemanticAuditBlock(
+  block: string,
+  input: ThoughtSemanticAuditInput,
+): boolean {
   const header = block.split(/\r?\n/, 1)[0]?.trim() ?? "";
   const match = header.match(SEMANTIC_AUDIT_HEADER);
   if (!match) {
@@ -268,7 +277,10 @@ function readTextIfExists(filePath: string): string | undefined {
   return readFileSync(filePath, "utf8");
 }
 
-function relativeToRoot(absolutePath: string, location?: ThoughtStoreLocationLike): string {
+function relativeToRoot(
+  absolutePath: string,
+  location?: ThoughtStoreLocationLike,
+): string {
   const root = resolveStoreRoot(location);
   return absolutePath.startsWith(root)
     ? absolutePath.slice(root.length + 1)
@@ -300,7 +312,10 @@ export function ensureThoughtRecord(
   return record;
 }
 
-function writeThoughtRecord(record: ThoughtRecord, location?: ThoughtStoreLocationLike): void {
+function writeThoughtRecord(
+  record: ThoughtRecord,
+  location?: ThoughtStoreLocationLike,
+): void {
   const paths = ensureThoughtDir(record.id, location);
   writeJsonFile(paths.recordPath, record);
 }
@@ -526,7 +541,10 @@ export function saveThoughtSemanticAudit(
   return updated;
 }
 
-export function loadThought(id: string, location?: ThoughtStoreLocationLike): ThoughtSnapshot {
+export function loadThought(
+  id: string,
+  location?: ThoughtStoreLocationLike,
+): ThoughtSnapshot {
   const paths = thoughtPaths(id, location);
   if (!existsSync(paths.recordPath)) {
     throw new Error(`Thought ${id} was not found.`);
@@ -553,7 +571,10 @@ export function loadThought(id: string, location?: ThoughtStoreLocationLike): Th
   };
 }
 
-export function deleteThought(id: string, location?: ThoughtStoreLocationLike): boolean {
+export function deleteThought(
+  id: string,
+  location?: ThoughtStoreLocationLike,
+): boolean {
   const paths = thoughtPaths(id, location);
   if (!existsSync(paths.recordPath)) {
     return false;
@@ -562,7 +583,9 @@ export function deleteThought(id: string, location?: ThoughtStoreLocationLike): 
   return true;
 }
 
-export function listThoughts(location?: ThoughtStoreLocationLike): ThoughtRecord[] {
+export function listThoughts(
+  location?: ThoughtStoreLocationLike,
+): ThoughtRecord[] {
   const root = join(resolveStoreRoot(location), "thoughts");
   if (!existsSync(root)) {
     return [];

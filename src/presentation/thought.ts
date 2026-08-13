@@ -31,7 +31,68 @@ function stripQuotedValue(value: string): string {
   return value.replace(/^"/, "").replace(/"$/, "");
 }
 
-function parseSemanticAuditEntries(text: string | undefined): SemanticAuditEntry[] {
+function parseSemanticAuditMetadata(
+  line: string,
+): [key: string, value: string] | undefined {
+  const separatorIndex = line.search(/\s/u);
+  if (separatorIndex <= 0) {
+    return undefined;
+  }
+  const key = line.slice(0, separatorIndex);
+  const rawValue = line.slice(separatorIndex).trim();
+  if (!/^[a-z][a-z0-9_]*$/i.test(key) || !rawValue) {
+    return undefined;
+  }
+  const value =
+    rawValue.startsWith('"') && rawValue.endsWith('"')
+      ? stripQuotedValue(rawValue)
+      : rawValue;
+  return [key, value];
+}
+
+function parseSemanticAuditEntry(
+  lines: string[],
+  headerIndex: number,
+  header: RegExpMatchArray,
+): { entry: SemanticAuditEntry; nextIndex: number } {
+  const rawHeader = lines[headerIndex] ?? "";
+  const [, auditId, decisionId, supportId, verdict] = header;
+  const entry: SemanticAuditEntry = {
+    auditId,
+    decisionId,
+    supportId,
+    verdict: verdict as SemanticAuditVerdict,
+    metadata: {},
+  };
+  const baseIndent = rawHeader.search(/\S/u);
+  let index = headerIndex + 1;
+  while (index < lines.length) {
+    const rawLine = lines[index] ?? "";
+    const line = rawLine.trim();
+    if (!line) {
+      index += 1;
+      continue;
+    }
+    const indent = rawLine.search(/\S/u);
+    if (indent <= baseIndent) {
+      break;
+    }
+    if (line.startsWith('"') && line.endsWith('"') && !entry.reason) {
+      entry.reason = stripQuotedValue(line);
+    } else {
+      const metadata = parseSemanticAuditMetadata(line);
+      if (metadata) {
+        entry.metadata[metadata[0]] = metadata[1];
+      }
+    }
+    index += 1;
+  }
+  return { entry, nextIndex: index };
+}
+
+function parseSemanticAuditEntries(
+  text: string | undefined,
+): SemanticAuditEntry[] {
   if (!text) {
     return [];
   }
@@ -49,62 +110,26 @@ function parseSemanticAuditEntries(text: string | undefined): SemanticAuditEntry
       continue;
     }
 
-    const [, auditId, decisionId, supportId, verdict] = header;
-    const entry: SemanticAuditEntry = {
-      auditId,
-      decisionId,
-      supportId,
-      verdict: verdict as SemanticAuditVerdict,
-      metadata: {},
-    };
-    const baseIndent = rawLine.match(/^\s*/)?.[0].length ?? 0;
-    index += 1;
-
-    while (index < lines.length) {
-      const childRawLine = lines[index] ?? "";
-      const childLine = childRawLine.trim();
-      const childIndent = childRawLine.match(/^\s*/)?.[0].length ?? 0;
-      if (!childLine) {
-        index += 1;
-        continue;
-      }
-      if (childIndent <= baseIndent) {
-        break;
-      }
-
-      if (childLine.startsWith("\"") && childLine.endsWith("\"")) {
-        if (!entry.reason) {
-          entry.reason = stripQuotedValue(childLine);
-        }
-        index += 1;
-        continue;
-      }
-
-      const metadataMatch = childLine.match(/^([a-z][a-z0-9_]*)\s+(.+)$/i);
-      if (metadataMatch) {
-        const [, key, rawValue] = metadataMatch;
-        entry.metadata[key] =
-          rawValue.startsWith("\"") && rawValue.endsWith("\"")
-            ? stripQuotedValue(rawValue)
-            : rawValue;
-      }
-      index += 1;
-    }
-
-    entries.push(entry);
+    const parsed = parseSemanticAuditEntry(lines, index, header);
+    entries.push(parsed.entry);
+    index = parsed.nextIndex;
   }
 
   return entries;
 }
 
-function collectThoughtSupportPairs(text: string | undefined): Array<{ decisionId: string; supportId: string }> {
+function collectThoughtSupportPairs(
+  text: string | undefined,
+): Array<{ decisionId: string; supportId: string }> {
   if (!text) {
     return [];
   }
 
   const document = parseDocument(text);
   const statementRoles = new Map(
-    document.steps.map((step) => [step.statement.id, step.statement.role] as const),
+    document.steps.map(
+      (step) => [step.statement.id, step.statement.role] as const,
+    ),
   );
 
   return document.steps.flatMap((step) => {
@@ -123,18 +148,25 @@ function collectThoughtSupportPairs(text: string | undefined): Array<{ decisionI
   });
 }
 
-function buildSemanticAuditOverview(snapshot: ThoughtSnapshot): SemanticAuditOverview {
+function buildSemanticAuditOverview(
+  snapshot: ThoughtSnapshot,
+): SemanticAuditOverview {
   const entries = parseSemanticAuditEntries(snapshot.semanticAuditText);
   const currentText = snapshot.finalText ?? snapshot.draftText;
   const supportPairs = collectThoughtSupportPairs(currentText);
-  const reviewedPairs = new Set(entries.map((entry) => `${entry.decisionId}::${entry.supportId}`));
+  const reviewedPairs = new Set(
+    entries.map((entry) => `${entry.decisionId}::${entry.supportId}`),
+  );
   const unreviewedPairs = supportPairs.filter(
     (pair) => !reviewedPairs.has(`${pair.decisionId}::${pair.supportId}`),
   );
   return { entries, unreviewedPairs };
 }
 
-function verdictCount(entries: SemanticAuditEntry[], verdict: SemanticAuditVerdict): number {
+function verdictCount(
+  entries: SemanticAuditEntry[],
+  verdict: SemanticAuditVerdict,
+): number {
   return entries.filter((entry) => entry.verdict === verdict).length;
 }
 
@@ -219,7 +251,9 @@ export function formatThoughtReflections(
   );
 }
 
-export function formatThoughtSemanticAuditSummary(snapshot: ThoughtSnapshot): string {
+export function formatThoughtSemanticAuditSummary(
+  snapshot: ThoughtSnapshot,
+): string {
   const overview = buildSemanticAuditOverview(snapshot);
   if (!snapshot.semanticAuditText) {
     return "No semantic audit yet.\n";
@@ -238,7 +272,9 @@ export function formatThoughtSemanticAuditSummary(snapshot: ThoughtSnapshot): st
   );
 }
 
-export function formatThoughtSemanticAuditPairs(snapshot: ThoughtSnapshot): string {
+export function formatThoughtSemanticAuditPairs(
+  snapshot: ThoughtSnapshot,
+): string {
   const overview = buildSemanticAuditOverview(snapshot);
   if (!snapshot.semanticAuditText) {
     return "No semantic audit yet.\n";
@@ -247,7 +283,9 @@ export function formatThoughtSemanticAuditPairs(snapshot: ThoughtSnapshot): stri
   const lines: string[] = [];
   for (const entry of overview.entries) {
     const reason = entry.reason ? ` reason=${entry.reason}` : "";
-    lines.push(`- ${entry.auditId} ${entry.decisionId}<-${entry.supportId} [${entry.verdict}]${reason}`);
+    lines.push(
+      `- ${entry.auditId} ${entry.decisionId}<-${entry.supportId} [${entry.verdict}]${reason}`,
+    );
   }
 
   if (overview.unreviewedPairs.length > 0) {

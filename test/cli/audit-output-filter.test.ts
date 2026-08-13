@@ -15,7 +15,10 @@ interface CliAuditOutput {
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-function runAudit(storagePath: string, ...outputArgs: string[]): CliAuditOutput {
+function runAudit(
+  storagePath: string,
+  ...outputArgs: string[]
+): CliAuditOutput {
   const output = execFileSync(
     process.execPath,
     [
@@ -40,11 +43,7 @@ function runAudit(storagePath: string, ...outputArgs: string[]): CliAuditOutput 
 test("dsl audit accepts minimum severity and category suppression options", () => {
   const storagePath = mkdtempSync(join(tmpdir(), "llmthink-cli-filter-"));
   try {
-    const severityFiltered = runAudit(
-      storagePath,
-      "--min-severity",
-      "warning",
-    );
+    const severityFiltered = runAudit(storagePath, "--min-severity", "warning");
     assert.deepEqual(severityFiltered.report.results, []);
     assert.deepEqual(severityFiltered.report.query_results, []);
 
