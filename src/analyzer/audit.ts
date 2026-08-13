@@ -21,6 +21,7 @@ import type {
   QueryResult,
 } from "../model/diagnostics.js";
 import { createDocumentDeclarationIndex } from "../model/declarations.js";
+import { stripLlmthinkFileExtension } from "../dsl/file-extension.js";
 import {
   createDslGuidanceReport,
   createParseErrorReport,
@@ -1453,6 +1454,6 @@ export async function auditDslFile(
   options?: AuditOptions,
 ): Promise<AuditReport> {
   const input = readFileSync(filePath, "utf8");
-  const documentId = basename(filePath).replace(/\.dsl$/, "");
+  const documentId = stripLlmthinkFileExtension(basename(filePath));
   return auditDslText(input, documentId, options);
 }

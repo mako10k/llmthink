@@ -15,6 +15,14 @@
 - 役割キーワードでブロック種別を明示する
 - 参照は識別子ベースで行う
 
+### 2.1 ファイル拡張子
+
+- 標準拡張子は `.think`
+- `.dsl` は同じ構文・AST・意味論を持つ互換 alias
+- 両拡張子の VS Code language ID は `llmthink`
+- 拡張子は parser 入力の構文を変えず、文書 ID と暗黙 thought ID の導出時には取り除く
+- 同じ directory に同名の `.think` と `.dsl` が共存する場合だけ、履歴混在を避けるため暗黙 thought ID 導出を拒否する
+
 ---
 
 ## 3. 字句規則

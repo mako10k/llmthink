@@ -27,7 +27,7 @@ function runAudit(
       "src/cli.ts",
       "dsl",
       "audit",
-      "docs/examples/query-assist.dsl",
+      "docs/examples/query-assist.think",
       "--storage-path",
       storagePath,
       ...outputArgs,

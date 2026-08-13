@@ -118,11 +118,14 @@ interface ThoughtPaths {
   thoughtDir: string;
   auditsDir: string;
   semanticAuditPath: string;
+  legacySemanticAuditPath: string;
   recordPath: string;
   historyPath: string;
   reflectionsPath: string;
   draftPath: string;
+  legacyDraftPath: string;
   finalPath: string;
+  legacyFinalPath: string;
 }
 
 export interface ThoughtStoreLocation {
@@ -164,12 +167,15 @@ function thoughtPaths(
     thoughtsDir,
     thoughtDir,
     auditsDir: join(thoughtDir, "audits"),
-    semanticAuditPath: join(thoughtDir, "semantic-audit.dsl"),
+    semanticAuditPath: join(thoughtDir, "semantic-audit.think"),
+    legacySemanticAuditPath: join(thoughtDir, "semantic-audit.dsl"),
     recordPath: join(thoughtDir, "thought.json"),
     historyPath: join(thoughtDir, "history.json"),
     reflectionsPath: join(thoughtDir, "reflections.json"),
-    draftPath: join(thoughtDir, "draft.dsl"),
-    finalPath: join(thoughtDir, "final.dsl"),
+    draftPath: join(thoughtDir, "draft.think"),
+    legacyDraftPath: join(thoughtDir, "draft.dsl"),
+    finalPath: join(thoughtDir, "final.think"),
+    legacyFinalPath: join(thoughtDir, "final.dsl"),
   };
 }
 
@@ -277,6 +283,58 @@ function readTextIfExists(filePath: string): string | undefined {
   return readFileSync(filePath, "utf8");
 }
 
+function recordedThoughtTextPath(
+  paths: ThoughtPaths,
+  recordedPath: string | undefined,
+  canonicalPath: string,
+  legacyPath: string,
+): string | undefined {
+  if (!recordedPath) {
+    return undefined;
+  }
+  const resolvedPath = resolve(paths.rootDir, recordedPath);
+  return resolvedPath === canonicalPath || resolvedPath === legacyPath
+    ? resolvedPath
+    : undefined;
+}
+
+function thoughtTextWritePath(
+  paths: ThoughtPaths,
+  recordedPath: string | undefined,
+  canonicalPath: string,
+  legacyPath: string,
+): string {
+  const recorded = recordedThoughtTextPath(
+    paths,
+    recordedPath,
+    canonicalPath,
+    legacyPath,
+  );
+  if (recorded || existsSync(canonicalPath)) {
+    return recorded ?? canonicalPath;
+  }
+  return existsSync(legacyPath) ? legacyPath : canonicalPath;
+}
+
+function readThoughtText(
+  paths: ThoughtPaths,
+  recordedPath: string | undefined,
+  canonicalPath: string,
+  legacyPath: string,
+): string | undefined {
+  const recorded = recordedThoughtTextPath(
+    paths,
+    recordedPath,
+    canonicalPath,
+    legacyPath,
+  );
+  return (
+    (recorded ? readTextIfExists(recorded) : undefined) ??
+    readTextIfExists(canonicalPath) ??
+    readTextIfExists(legacyPath)
+  );
+}
+
 function relativeToRoot(
   absolutePath: string,
   location?: ThoughtStoreLocationLike,
@@ -359,12 +417,18 @@ export function draftThought(
 ): ThoughtRecord {
   const paths = ensureThoughtDir(id, location);
   const record = ensureThoughtRecord(id, location);
-  writeFileSync(paths.draftPath, text, "utf8");
+  const draftPath = thoughtTextWritePath(
+    paths,
+    record.current_draft_path,
+    paths.draftPath,
+    paths.legacyDraftPath,
+  );
+  writeFileSync(draftPath, text, "utf8");
   const updated: ThoughtRecord = {
     ...record,
     updated_at: nowIso(),
     status: record.status === "finalized" ? "finalized" : "draft",
-    current_draft_path: relativeToRoot(paths.draftPath, location),
+    current_draft_path: relativeToRoot(draftPath, location),
   };
   writeThoughtRecord(updated, location);
   appendThoughtEvent(
@@ -395,13 +459,19 @@ export function relateThought(
 
   const paths = ensureThoughtDir(id, location);
   const existing = ensureThoughtRecord(id, location);
-  writeFileSync(paths.draftPath, text, "utf8");
+  const draftPath = thoughtTextWritePath(
+    paths,
+    existing.current_draft_path,
+    paths.draftPath,
+    paths.legacyDraftPath,
+  );
+  writeFileSync(draftPath, text, "utf8");
   const updatedAt = nowIso();
   const updated: ThoughtRecord = {
     ...existing,
     updated_at: updatedAt,
     derived_from: fromThoughtId,
-    current_draft_path: relativeToRoot(paths.draftPath, location),
+    current_draft_path: relativeToRoot(draftPath, location),
   };
   writeThoughtRecord(updated, location);
   appendThoughtEvent(
@@ -424,13 +494,19 @@ export function finalizeThought(
 ): ThoughtRecord {
   const paths = ensureThoughtDir(id, location);
   const record = ensureThoughtRecord(id, location);
-  writeFileSync(paths.finalPath, text, "utf8");
+  const finalPath = thoughtTextWritePath(
+    paths,
+    record.final_path,
+    paths.finalPath,
+    paths.legacyFinalPath,
+  );
+  writeFileSync(finalPath, text, "utf8");
   const updatedAt = nowIso();
   const updated: ThoughtRecord = {
     ...record,
     updated_at: updatedAt,
     status: "finalized",
-    final_path: relativeToRoot(paths.finalPath, location),
+    final_path: relativeToRoot(finalPath, location),
   };
   writeThoughtRecord(updated, location);
   appendThoughtEvent(
@@ -517,11 +593,17 @@ export function saveThoughtSemanticAudit(
 ): ThoughtRecord {
   const paths = ensureThoughtDir(id, location);
   const record = ensureThoughtRecord(id, location);
+  const semanticAuditPath = thoughtTextWritePath(
+    paths,
+    undefined,
+    paths.semanticAuditPath,
+    paths.legacySemanticAuditPath,
+  );
   const nextText = upsertSemanticAuditText(
-    readTextIfExists(paths.semanticAuditPath),
+    readTextIfExists(semanticAuditPath),
     input,
   );
-  writeFileSync(paths.semanticAuditPath, nextText, "utf8");
+  writeFileSync(semanticAuditPath, nextText, "utf8");
   const updatedAt = nowIso();
   const updated: ThoughtRecord = {
     ...record,
@@ -534,7 +616,7 @@ export function saveThoughtSemanticAudit(
       at: updatedAt,
       kind: "semantic_audit_saved",
       summary: `semantic audit を保存した。${input.supportId}->${input.decisionId} verdict=${input.verdict}`,
-      path: relativeToRoot(paths.semanticAuditPath, location),
+      path: relativeToRoot(semanticAuditPath, location),
     },
     location,
   );
@@ -562,9 +644,24 @@ export function loadThought(
     : undefined;
   return {
     record,
-    draftText: readTextIfExists(paths.draftPath),
-    finalText: readTextIfExists(paths.finalPath),
-    semanticAuditText: readTextIfExists(paths.semanticAuditPath),
+    draftText: readThoughtText(
+      paths,
+      record.current_draft_path,
+      paths.draftPath,
+      paths.legacyDraftPath,
+    ),
+    finalText: readThoughtText(
+      paths,
+      record.final_path,
+      paths.finalPath,
+      paths.legacyFinalPath,
+    ),
+    semanticAuditText: readThoughtText(
+      paths,
+      undefined,
+      paths.semanticAuditPath,
+      paths.legacySemanticAuditPath,
+    ),
     latestAudit,
     history,
     reflections: readThoughtReflections(id, location),

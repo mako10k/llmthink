@@ -1,0 +1,77 @@
+framework ThinkExtensionMigration:
+  requires problem and decision
+  warns pending
+
+domain LLMThinkFileIdentity:
+  description "LLMThink 文書の標準拡張子を .think へ移し、.dsl 互換と既存 thought 履歴を維持する"
+
+problem P1:
+  "一般用語である .dsl だけでは LLMThink 文書の所有言語と責務がファイル名から判別しにくい"
+
+problem P2:
+  "標準拡張子の変更で既存 .dsl 文書、VSIX、LSP、preview、CLI、sample、thought store を壊してはならない"
+
+problem P3:
+  "同じ directory に同名の .think と .dsl がある場合、暗黙 thought-id が衝突して異なる文書の履歴を混在させ得る"
+
+problem P4:
+  "拡張子移行と DSL 文法、language ID、command ID の名称変更を混同すると互換範囲が不必要に広がる"
+
+step S1:
+  premise PR1:
+    |
+      .think は llmthink、将来の .recog は llmrecog、.pert は perttool という artifact ownership を短く表現できる
+
+step S2:
+  evidence EV1:
+    |
+      v1.1.1 は VSIX language association、custom editor selector、explorer menu、document title、sample registry、
+      audit document ID、thought-id、preview CLI、thought store file 名の複数箇所で .dsl を個別に扱っている
+
+step S3:
+  evidence EV2:
+    |
+      parser と audit core は入力 text を処理し、構文自体は file extension に依存しない。LSP client も
+      language ID llmthink を document selector に使うため、同じ language ID へ二つの拡張子を関連付けられる
+
+step S4:
+  decision D1 based_on P1, PR1:
+    |
+      .think を LLMThink 文書の canonical extension とする。.dsl は完全互換の legacy alias として受理し、
+      当面 deprecated warning を出さず、削除を検討する場合も major release の明示判断を必須とする
+
+step S5:
+  decision D2 based_on P2, EV1, EV2, D1:
+    |
+      VSIX は extensions と custom editor selector に .think、.dsl の順で登録し、両方を language ID llmthink で扱う。
+      CLI、audit、preview、formatter は両拡張子を同じ文法として処理し、ファイル名を暗黙 rename しない
+
+step S6:
+  decision D3 based_on P2, EV1, D1:
+    |
+      public example は .think へ移し、内部の既存 design/history document は .dsl のまま互換 corpus として残す。
+      新規 thought store は draft.think、final.think、semantic-audit.think を使い、既存 record が指す .dsl file は
+      rename せず読み書きを継続する
+
+step S7:
+  decision D4 based_on P3, D1:
+    |
+      .think と .dsl は単独なら同じ basename から同じ thought-id を導出し、rename 前後の履歴連続性を保つ。
+      同じ directory に両方が存在する場合だけ暗黙 ID 導出を拒否し、利用者に explicit --id を要求して混在を防ぐ
+
+step S8:
+  decision D5 based_on P4, EV2, D1, D2:
+    |
+      language ID llmthink、CLI resource 名 dsl、MCP field dslText、既存 command ID llmthink.dsl*、DSLQL の名称は維持する。
+      今回は file extension の標準化であり、公開 API や操作語彙の破壊的 rename は行わない
+
+step S9:
+  decision D6 based_on P1, P2, P3, P4, D1, D2, D3, D4, D5:
+    |
+      受入条件は両拡張子の parse/audit、同一 document ID、単独時の同一 thought-id、同名共存時の fail-closed、
+      legacy thought store read/write、新規 .think store、VSIX manifest/custom editor/menu、LSP/preview、Help、examples、
+      formatter、tests、generated artifacts の一貫性とし、後方互換な language surface 追加として 1.2.0 にする
+
+step S10:
+  pending PD1:
+    ".dsl alias の廃止時期は定めず、実利用と major release 計画が揃うまで無期限に維持する"

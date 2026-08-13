@@ -2,7 +2,9 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は [1.1.1](https://github.com/mako10k/llmthink/releases/tag/v1.1.1)。
+LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法・language ID の互換 alias として、警告や暗黙 rename なしで引き続き利用できる。
+
+現行 release version は [1.2.0](https://github.com/mako10k/llmthink/releases/tag/v1.2.0)。
 
 ## 構成
 
@@ -42,11 +44,11 @@
 - npm install
 - npm run typecheck
 - npm run build
-- npm run cli -- dsl audit docs/examples/contradiction-pending.dsl
-- npm run cli -- dsl audit docs/examples/contradiction-pending.dsl --pretty
+- npm run cli -- dsl audit docs/examples/contradiction-pending.think
+- npm run cli -- dsl audit docs/examples/contradiction-pending.think --pretty
 - npm run cli -- dsl help
 - npm run cli -- dsl help samples query-assist detail
-- npm run preview:html -- docs/process/help-navigation-design.dsl --out /tmp/llmthink-preview.html
+- npm run preview:html -- docs/examples/contradiction-pending.think --out /tmp/llmthink-preview.html
 - npm run verify-examples
 - npm run mcp
 - npm run typecheck:extension
@@ -55,10 +57,10 @@
 
 ## 配布
 
-- npm package の現行公開版は [llmthink@1.1.1](https://www.npmjs.com/package/llmthink/v/1.1.1)
-- npm package は `npm install -g llmthink@1.1.1` で CLI / MCP / LSP をインストールできる
+- npm package の現行公開版は [llmthink@1.2.0](https://www.npmjs.com/package/llmthink/v/1.2.0)
+- npm package は `npm install -g llmthink@1.2.0` で CLI / MCP / LSP をインストールできる
 - library として利用する場合は `npm install llmthink` を使う
-- VS Code 拡張の現行配布物は [GitHub Release v1.1.1](https://github.com/mako10k/llmthink/releases/tag/v1.1.1) の `llmthink.vsix`
+- VS Code 拡張の現行配布物は [GitHub Release v1.2.0](https://github.com/mako10k/llmthink/releases/tag/v1.2.0) の `llmthink.vsix`
 - ローカルで VS Code 拡張を生成する場合は vscode-extension/llmthink.vsix を使う
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
@@ -93,10 +95,10 @@ CLI は resource-first に `dsl` と `thought` の 2 系統へ寄せる。
 
 ```bash
 # fatal / error / warning だけを表示
-llmthink dsl audit input.dsl --pretty --min-severity warning
+llmthink dsl audit input.think --pretty --min-severity warning
 
 # semantic_hint と query_result を表示しない
-llmthink dsl audit input.dsl --suppress-category semantic_hint,query_result
+llmthink dsl audit input.think --suppress-category semantic_hint,query_result
 ```
 
 - `--min-severity fatal|error|warning|info|hint`: 指定値以上の severity を表示する
@@ -122,24 +124,27 @@ runtime data は `.llmthink/` 配下に保存する。
 		<thought-id>/
 			thought.json
 			history.json
-			draft.dsl
-			final.dsl
+			draft.think
+			final.think
+			semantic-audit.think
 			audits/
 				<timestamp>.json
 ```
 
 - `thought.json`: 現在状態、latest audit、draft/final の参照
 - `history.json`: draft 保存、監査保存、finalize などの履歴
-- `draft.dsl`: 現在の思考ドラフト
-- `final.dsl`: 最終保存された思考
+- `draft.think`: 現在の思考ドラフト
+- `final.think`: 最終保存された思考
+- `semantic-audit.think`: semantic audit の記録
 - `audits/*.json`: 各監査レポートのスナップショット
+- 既存 record が `draft.dsl` / `final.dsl` / `semantic-audit.dsl` を指す場合は、そのファイルを rename せず読み書きする
 
 ### シナリオ
 
 自動登録付き監査 -> 修正 -> 再監査 -> 最終保存:
 
 ```bash
-llmthink dsl audit docs/examples/query-assist.dsl --pretty
+llmthink dsl audit docs/examples/query-assist.think --pretty
 llmthink thought draft --id review-001 --text "...fixed dsl..."
 llmthink thought audit --id review-001 --pretty
 llmthink thought finalize --id review-001
@@ -192,7 +197,7 @@ hostAddressLoopback=true
 
 - `curl http://127.0.0.1:11434/api/version`
 - `curl http://127.0.0.1:11434/api/tags`
-- `npm run cli -- dsl audit docs/examples/query-assist.dsl --pretty`
+- `npm run cli -- dsl audit docs/examples/query-assist.think --pretty`
 
 ## Runtime Config
 
@@ -217,7 +222,7 @@ CLI では保存先を直接上書きできます。
 現在どの設定が解決されているかは `llmthink config show` で確認できます。対象ファイルを付けると、そのファイル基準のワークスペース探索結果を表示します。
 
 - `llmthink config show`
-- `llmthink config show docs/examples/query-assist.dsl`
+- `llmthink config show docs/examples/query-assist.think`
 - `llmthink config show --config ./docs/examples/llmthinkrc.sample.json`
 
 出力の `sources` には、各値を最終的に供給したレイヤが入ります。`layer` は `workspace` / `user` / `system` / `env` / `cli` / `default` のいずれかで、`key` は採用された設定キーです。
@@ -269,8 +274,8 @@ secret は次の形式で指定できます。
 - `npm run cli -- thought list --storage-domain user`
 - `LLMTHINK_STORAGE_DOMAIN=user npm run cli -- thought list`
 - `LLMTHINK_STORAGE_PATH=/srv/llmthink/shared npm run cli -- thought list`
-- `npm run cli -- dsl audit docs/examples/query-assist.dsl --config ./.llmthinkrc --pretty`
-- `LLMTHINK_EMBEDDING_PROVIDER=openai OPENAI_API_KEY=... npm run cli -- dsl audit docs/examples/query-assist.dsl --pretty`
+- `npm run cli -- dsl audit docs/examples/query-assist.think --config ./.llmthinkrc --pretty`
+- `LLMTHINK_EMBEDDING_PROVIDER=openai OPENAI_API_KEY=... npm run cli -- dsl audit docs/examples/query-assist.think --pretty`
 - `LLMTHINK_EMBEDDING_PROVIDER=none npm run verify-examples`
 
 ## DSLQL query result と埋め込みの扱い
@@ -292,7 +297,7 @@ evidence EV1:
 - resource は匿名 value で、宣言 ID、`based_on`、`@ID`、semantic operand にはしない
 - DSLQL では evidence の `.resources[]` から `locator_kind`、`locator`、`digest`、`mime`、`label`、`span` を取得できる
 - named/shared resource、resource-only evidence、sha256 以外の digest、resource の自動取得・抽出・embedding は未導入
-- 完全な例は [docs/examples/evidence-resource.dsl](docs/examples/evidence-resource.dsl) を参照する
+- 完全な例は [docs/examples/evidence-resource.think](docs/examples/evidence-resource.think) を参照する
 
 - query block の評価結果は `query_results[].values` に順序どおり格納し、boolean、string、object、semantic match を decision 候補へ暗黙変換しない
 - query expression 自体や参照先本文を補助 embedding せず、固定 score、lexical fallback、暗黙再順位付けを行わない。順位が必要な場合だけ `nearest_to()` を式に明示する
@@ -330,6 +335,7 @@ evidence EV1:
 - 1.0.0 は DSLQL の構文、公開 AST、評価意味論、document runtime を一貫した v2 契約へ破壊的に再構成する major release とする
 - 1.1.0 は evidence resource の匿名 0..N payload、構造検証、DSLQL projection、Help/LSP/preview/VSIX 同期をまとめた minor release とする
 - 1.1.1 は 1.1.0 公開文書と VSIX 同梱 README の version 整合、および fail-closed release gate の整備をまとめた patch release とする
+- 1.2.0 は `.think` 標準拡張子、`.dsl` 互換 alias、既存 thought store の in-place 互換をまとめた minor release とする
 
 ## ライセンス
 

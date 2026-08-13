@@ -13,47 +13,47 @@ const candidateRoots = (() => {
 const DSL_EXAMPLES = [
     {
         id: "decision-comparison",
-        path: "docs/examples/decision-comparison.dsl",
+        path: "docs/examples/decision-comparison.think",
         summary: "同一 problem / viewpoint 内の decision comparison 例",
     },
     {
         id: "ideation-profile",
-        path: "docs/examples/ideation-profile.dsl",
+        path: "docs/examples/ideation-profile.think",
         summary: "発想支援 profile の代表例",
     },
     {
         id: "problem-solving-profile",
-        path: "docs/examples/problem-solving-profile.dsl",
+        path: "docs/examples/problem-solving-profile.think",
         summary: "課題解決 profile の代表例",
     },
     {
         id: "framework-requires-and",
-        path: "docs/examples/framework-requires-and.dsl",
+        path: "docs/examples/framework-requires-and.think",
         summary: "framework の requires and/or を含む最小例",
     },
     {
         id: "decision-minimal",
-        path: "docs/examples/decision-minimal.dsl",
+        path: "docs/examples/decision-minimal.think",
         summary: "decision と based_on の最小例",
     },
     {
         id: "evidence-resource",
-        path: "docs/examples/evidence-resource.dsl",
+        path: "docs/examples/evidence-resource.think",
         summary: "evidence に複数の匿名 resource を付ける代表例",
     },
     {
         id: "contradiction-pending",
-        path: "docs/examples/contradiction-pending.dsl",
+        path: "docs/examples/contradiction-pending.think",
         summary: "decision と pending が同居する監査例",
     },
     {
         id: "query-assist",
-        path: "docs/examples/query-assist.dsl",
+        path: "docs/examples/query-assist.think",
         summary: "解決済み query の代表例",
     },
     {
         id: "query-unresolved",
-        path: "docs/examples/query-unresolved.dsl",
+        path: "docs/examples/query-unresolved.think",
         summary: "未解決参照を含む対比例",
     },
     {

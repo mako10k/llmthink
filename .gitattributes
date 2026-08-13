@@ -1,0 +1,2 @@
+# Minified bundles can preserve trailing spaces inside dependency string literals.
+vscode-extension/dist/*.js whitespace=-trailing-space

@@ -1,7 +1,11 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
 import { auditDslText } from "../analyzer/audit.js";
+import {
+  alternateLlmthinkFilePath,
+  stripLlmthinkFileExtension,
+} from "../dsl/file-extension.js";
 import type { AuditReport } from "../model/diagnostics.js";
 import {
   draftThought,
@@ -63,9 +67,7 @@ function trimThoughtIdEdges(value: string): string {
 
 export function normalizeThoughtId(value: string): string {
   const trimmed = value.trim();
-  const withoutExtension = trimmed.toLowerCase().endsWith(".dsl")
-    ? trimmed.slice(0, -4)
-    : trimmed;
+  const withoutExtension = stripLlmthinkFileExtension(trimmed);
   const normalized = trimThoughtIdEdges(
     normalizeThoughtIdCharacters(withoutExtension),
   );
@@ -82,6 +84,12 @@ export function deriveThoughtIdFromFilePath(
 ): string {
   const root = resolve(baseDir ?? process.cwd());
   const absolutePath = resolve(root, filePath);
+  const alternatePath = alternateLlmthinkFilePath(absolutePath);
+  if (alternatePath && existsSync(absolutePath) && existsSync(alternatePath)) {
+    throw new Error(
+      `Both ${absolutePath} and ${alternatePath} exist; pass --id to keep their thought histories distinct.`,
+    );
+  }
   const relativePath = relative(root, absolutePath);
   const preferredPath =
     relativePath && !relativePath.startsWith("..")

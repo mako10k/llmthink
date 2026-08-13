@@ -72,7 +72,7 @@ test("preview:html renders evidence resource provenance", () => {
   const outputPath = join(tempDir, "preview.html");
 
   try {
-    renderPreview("docs/examples/evidence-resource.dsl", outputPath);
+    renderPreview("docs/examples/evidence-resource.think", outputPath);
     const html = readFileSync(outputPath, "utf8");
     assert.match(html, /公開仕様/);
     assert.match(html, /https:\/\/example\.test\/specification\.pdf/);

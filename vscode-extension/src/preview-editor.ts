@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { stripLlmthinkFileExtension } from "../../dist/index.js";
 import { resolvePreviewLocale, getPreviewStrings } from "./i18n";
 import { renderDslPreview } from "./preview";
 
@@ -7,7 +8,7 @@ export const DSL_PREVIEW_VIEW_TYPE = "llmthink.preview";
 
 function previewTitle(document: vscode.TextDocument): string {
   const baseName = path.basename(document.fileName || document.uri.path);
-  return baseName.replace(/\.dsl$/i, "") || "active-document";
+  return stripLlmthinkFileExtension(baseName) || "active-document";
 }
 
 export class DslPreviewEditorProvider

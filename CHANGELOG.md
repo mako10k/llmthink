@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-08-13
+
+- LLMThink 文書の標準拡張子を `.think` とし、`.dsl` を警告や暗黙 rename のない互換 alias として維持
+- parser/audit/thought ID、thought store、Help/examples、preview、LSP/VSIX の拡張子契約を同期
+- 新規 thought store を `draft.think` / `final.think` / `semantic-audit.think` とし、既存 `.dsl` store は記録済みパスで読み書きを継続
+- 同じ directory に同名の `.think` と `.dsl` が共存するとき、暗黙 thought ID 導出を拒否して履歴混在を防止
+
 ## 1.1.1 - 2026-08-13
 
 - 1.1.0 公開後の README / VSIX README の version 表記と npm / GitHub Release 配布導線を同期

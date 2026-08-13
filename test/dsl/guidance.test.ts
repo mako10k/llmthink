@@ -36,6 +36,18 @@ test("getDslSyntaxGuidanceText returns indexed overview by default", () => {
   assert.match(text, /query: DSLQL の root/);
 });
 
+test("getDslSyntaxGuidanceText documents .think and .dsl file compatibility", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "syntax",
+    subtopic: "files",
+    detail: "detail",
+  });
+  assert.match(text, /\.think/);
+  assert.match(text, /\.dsl/);
+  assert.match(text, /language ID `llmthink`/);
+  assert.match(text, /暗黙 rename しない/);
+});
+
 test("getDslSyntaxGuidanceText returns query function detail with next requests", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "query",
@@ -75,7 +87,7 @@ test("getDslSyntaxGuidanceText exposes sample detail help", () => {
   });
   assert.match(text, /Topic: samples.query-assist/);
   assert.match(text, /解決済み query の代表例/);
-  assert.match(text, /docs\/examples\/query-assist\.dsl/);
+  assert.match(text, /docs\/examples\/query-assist\.think/);
   assert.match(text, /resolved_path:/);
 });
 
@@ -146,5 +158,5 @@ test("getDslSyntaxGuidanceText exposes ideation profile aliases and samples", ()
   assert.match(text, /idea seed/);
   assert.match(text, /cluster/);
   assert.match(text, /ideation-profile/);
-  assert.match(text, /docs\/examples\/ideation-profile\.dsl/);
+  assert.match(text, /docs\/examples\/ideation-profile\.think/);
 });

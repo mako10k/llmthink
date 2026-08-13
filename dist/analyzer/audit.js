@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { createDocumentDeclarationIndex } from "../model/declarations.js";
+import { stripLlmthinkFileExtension } from "../dsl/file-extension.js";
 import { createDslGuidanceReport, createParseErrorReport, isDslHelpRequest, } from "../dsl/guidance.js";
 import { collectDslqlReferences, createDocumentDslqlRuntime, createSemanticDocumentDslqlRuntime, DslqlEvaluationError, DslqlParseError, DslqlSemanticError, DslqlSemanticUnavailableError, evaluateDslqlExpression, parseDslqlExpression, usesSemanticDslql, } from "../dslql/query.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
@@ -1029,7 +1030,7 @@ export async function auditDslText(input, documentId = "document", options) {
 }
 export async function auditDslFile(filePath, options) {
     const input = readFileSync(filePath, "utf8");
-    const documentId = basename(filePath).replace(/\.dsl$/, "");
+    const documentId = stripLlmthinkFileExtension(basename(filePath));
     return auditDslText(input, documentId, options);
 }
 //# sourceMappingURL=audit.js.map

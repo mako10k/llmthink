@@ -31,6 +31,7 @@ import {
   relateThought,
   saveThoughtSemanticAudit,
   searchThoughtRecords,
+  stripLlmthinkFileExtension,
   type PersistedThoughtAudit,
   type ThoughtReflectionKind,
   type ThoughtSemanticAuditVerdict,
@@ -150,7 +151,7 @@ function showReportPanel(
 
 function toDocumentId(document: vscode.TextDocument): string {
   const baseName = path.basename(document.fileName || document.uri.path);
-  return baseName.replace(/\.dsl$/i, "") || "active-document";
+  return stripLlmthinkFileExtension(baseName) || "active-document";
 }
 
 async function openPreviewForEditor(editor: vscode.TextEditor): Promise<void> {

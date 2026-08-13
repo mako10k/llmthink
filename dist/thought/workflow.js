@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { auditDslText } from "../analyzer/audit.js";
+import { alternateLlmthinkFilePath, stripLlmthinkFileExtension, } from "../dsl/file-extension.js";
 import { draftThought, recordThoughtAudit, } from "./store.js";
 function generatedThoughtId() {
     return `thought-${new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")}`;
@@ -30,9 +31,7 @@ function trimThoughtIdEdges(value) {
 }
 export function normalizeThoughtId(value) {
     const trimmed = value.trim();
-    const withoutExtension = trimmed.toLowerCase().endsWith(".dsl")
-        ? trimmed.slice(0, -4)
-        : trimmed;
+    const withoutExtension = stripLlmthinkFileExtension(trimmed);
     const normalized = trimThoughtIdEdges(normalizeThoughtIdCharacters(withoutExtension));
     return normalized || generatedThoughtId();
 }
@@ -42,6 +41,10 @@ export function deriveThoughtIdFromDocumentId(documentId) {
 export function deriveThoughtIdFromFilePath(filePath, baseDir) {
     const root = resolve(baseDir ?? process.cwd());
     const absolutePath = resolve(root, filePath);
+    const alternatePath = alternateLlmthinkFilePath(absolutePath);
+    if (alternatePath && existsSync(absolutePath) && existsSync(alternatePath)) {
+        throw new Error(`Both ${absolutePath} and ${alternatePath} exist; pass --id to keep their thought histories distinct.`);
+    }
     const relativePath = relative(root, absolutePath);
     const preferredPath = relativePath && !relativePath.startsWith("..")
         ? relativePath

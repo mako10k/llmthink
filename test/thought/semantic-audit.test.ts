@@ -110,7 +110,7 @@ test("formatThoughtSemanticAuditSummary reports absence cleanly", () => {
   );
 });
 
-test("saveThoughtSemanticAudit writes and upserts semantic-audit.dsl", () => {
+test("saveThoughtSemanticAudit writes and upserts semantic-audit.think", () => {
   const baseDir = mkdtempSync(join(tmpdir(), "llmthink-semantic-audit-"));
   try {
     draftThought(
@@ -172,7 +172,7 @@ test("saveThoughtSemanticAudit writes and upserts semantic-audit.dsl", () => {
         ".llmthink",
         "thoughts",
         "sample-thought",
-        "semantic-audit.dsl",
+        "semantic-audit.think",
       ),
       "utf8",
     );

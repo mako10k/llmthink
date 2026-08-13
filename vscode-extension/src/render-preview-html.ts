@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
+import { stripLlmthinkFileExtension } from "../../dist/index.js";
 import { type PreviewLocale } from "./i18n";
 import { renderDslPreview } from "./preview";
 
@@ -17,7 +18,7 @@ function printUsage(): void {
   process.stdout.write(
     [
       "Usage:",
-      "  npm run preview:html -- <file.dsl> [--out preview.html] [--title name] [--locale ja|en]",
+      "  npm run preview:html -- <file.think> [--out preview.html] [--title name] [--locale ja|en]",
     ].join("\n") + "\n",
   );
 }
@@ -67,7 +68,7 @@ async function main(): Promise<void> {
   const text = readFileSync(inputPath, "utf8");
   const title =
     options.title ??
-    (basename(options.inputPath).replace(/\.dsl$/i, "") || "preview");
+    (stripLlmthinkFileExtension(basename(options.inputPath)) || "preview");
   const html = await renderDslPreview(text, title, options.locale);
 
   if (options.outPath) {

@@ -60,6 +60,7 @@ const HELP_NODES = [
         title: "Syntax Index",
         summary: "DSL の top-level block と各 statement の基本文法。",
         quick: [
+            "標準拡張子は `.think`。既存の `.dsl` も同じ文法の互換 alias として使える。",
             "top-level では framework / domain / problem / step / query に加え、statement role を直接置く flatten 記法も使える。",
             "step は `step S1:`、`step:`、`evidence EV1:` の 3 形を受理する。",
             "text-bearing field は 1 行 quoted text か block text を使い分ける。",
@@ -71,6 +72,11 @@ const HELP_NODES = [
             "decision based_on は任意だが、未指定 decision は監査対象になりうる。",
         ],
         index: [
+            {
+                key: "syntax.files",
+                label: "files",
+                summary: ".think 標準拡張子と .dsl 互換 alias",
+            },
             {
                 key: "syntax.top-level",
                 label: "top-level",
@@ -108,6 +114,22 @@ const HELP_NODES = [
             },
         ],
         related: ["query", "usecases"],
+    },
+    {
+        key: "syntax.files",
+        title: "File Extensions",
+        summary: "LLMThink 文書の標準拡張子と互換 alias。",
+        quick: [
+            "新規文書には `.think` を使う。",
+            "既存の `.dsl` は警告なしで同じ文法・language ID `llmthink` として扱う。",
+            "ツールは `.dsl` を暗黙 rename しない。",
+        ],
+        detail: [
+            "`.think` と `.dsl` は単独なら同じ basename から同じ document ID / thought ID を導出する。",
+            "同じ directory に同名の両拡張子が共存するときだけ、履歴混在を避けるため暗黙 thought ID 導出を拒否する。明示 `--id` で別履歴を指定できる。",
+            "language ID、CLI の `dsl` resource 名、MCP の `dslText`、既存 command ID は変更しない。",
+        ],
+        related: ["syntax", "channels", "samples"],
     },
     {
         key: "syntax.top-level",

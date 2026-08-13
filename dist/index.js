@@ -1,5 +1,6 @@
 export { auditDslFile, auditDslText } from "./analyzer/audit.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
+export { alternateLlmthinkFilePath, isLlmthinkFilePath, llmthinkFileExtension, stripLlmthinkFileExtension, LLMTHINK_CANONICAL_FILE_EXTENSION, LLMTHINK_FILE_EXTENSIONS, LLMTHINK_LEGACY_FILE_EXTENSIONS, } from "./dsl/file-extension.js";
 export { getDslSyntaxGuidanceText, isDslHelpRequest, parseDslHelpRequest, } from "./dsl/guidance.js";
 export { parseDocument, ParseError } from "./parser/parser.js";
 export * from "./dslql/query.js";

@@ -162,6 +162,15 @@
 
 ## 7. 中核要求
 
+### 7.0 ファイル識別と互換性
+
+- LLMThink 文書の標準拡張子は `.think` とする
+- `.dsl` は同じ文法を使う互換 alias とし、当面 deprecation warning を出さない
+- parser、formatter、audit、CLI、LSP、VS Code extension は両拡張子を同じ language ID `llmthink` で扱う
+- ツールは既存 `.dsl` 文書や thought store を暗黙 rename しない
+- `.think` と `.dsl` の単独利用では basename 由来の文書 ID と thought ID を同一に保つ
+- 同じ directory に同名の `.think` と `.dsl` が共存する場合、暗黙 thought ID 導出は拒否し、明示 ID を要求する
+
 ### 7.1 最重要要求
 
 Must:
