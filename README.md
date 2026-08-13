@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 1.0.0。
+現行 release version は 1.1.0。
 
 ## 構成
 
@@ -326,6 +326,7 @@ evidence EV1:
 - 0.5.1 は bundled LSP の起動回帰修正を含む patch release とする
 - 0.5.2 は後方互換な監査出力フィルタ、配布成果物の同期、npm への初回公開をまとめた patch release とする
 - 1.0.0 は DSLQL の構文、公開 AST、評価意味論、document runtime を一貫した v2 契約へ破壊的に再構成する major release とする
+- 1.1.0 は evidence resource の匿名 0..N payload、構造検証、DSLQL projection、Help/LSP/preview/VSIX 同期をまとめた minor release とする
 
 ## ライセンス
 

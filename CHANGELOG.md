@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0 - 2026-08-13
+
 - evidence に匿名の resource block を 0..N 個追加し、URL / file / blob locator、sha256 digest、MIME type、label を I/O なしで構造検証する
 - evidence resource を formatter、DSLQL projection、Help/LSP、TextMate、preview、examples、VSIX と配布生成物へ同期する
 - resource を宣言 ID、`based_on`、semantic operand へ昇格させず、外部取得と content verification を将来の明示的 resolver capability へ分離する
