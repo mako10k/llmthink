@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-export interface DslExampleEntry {
+interface DslExampleEntry {
   id: string;
   path: string;
   summary: string;
@@ -18,7 +18,7 @@ const candidateRoots = (() => {
   return roots;
 })();
 
-export const DSL_EXAMPLES: DslExampleEntry[] = [
+const DSL_EXAMPLES: DslExampleEntry[] = [
   {
     id: "decision-comparison",
     path: "docs/examples/decision-comparison.dsl",

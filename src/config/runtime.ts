@@ -12,7 +12,7 @@ import {
 } from "node:path";
 
 export type ConfigDomain = "workspace" | "user" | "system";
-export type ConfigEmbeddingProvider = "none" | "ollama" | "openai";
+type ConfigEmbeddingProvider = "none" | "ollama" | "openai";
 
 export interface ResolveRuntimeConfigOptions {
   cwd?: string;

@@ -6,6 +6,7 @@ import {
   CompletionItemKind,
   DocumentHighlight,
   DocumentHighlightKind,
+  DocumentSymbol,
   DiagnosticSeverity,
   DidChangeConfigurationNotification,
   Hover,
@@ -13,21 +14,18 @@ import {
   InitializeResult,
   Location,
   MarkupKind,
+  Position,
   ProposedFeatures,
+  Range,
   SymbolKind,
+  TextEdit,
   TextDocumentSyncKind,
+  WorkspaceEdit,
   createConnection,
   InsertTextFormat,
 } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import {
-  DocumentSymbol,
-  Position,
-  Range,
-  TextEdit,
-  WorkspaceEdit,
-} from "vscode-languageserver-types";
 import { auditDslText } from "../analyzer/audit.js";
 import { formatDslText } from "../dsl/format.js";
 import {

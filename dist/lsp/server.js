@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { CodeActionKind, CompletionItemKind, DocumentHighlightKind, DiagnosticSeverity, DidChangeConfigurationNotification, Location, MarkupKind, ProposedFeatures, SymbolKind, TextDocumentSyncKind, createConnection, InsertTextFormat, } from "vscode-languageserver/node.js";
+import { CodeActionKind, CompletionItemKind, DocumentHighlightKind, DiagnosticSeverity, DidChangeConfigurationNotification, Location, MarkupKind, Position, ProposedFeatures, Range, SymbolKind, TextEdit, TextDocumentSyncKind, createConnection, InsertTextFormat, } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { Position, Range, TextEdit, } from "vscode-languageserver-types";
 import { auditDslText } from "../analyzer/audit.js";
 import { formatDslText } from "../dsl/format.js";
 import { assertDslqlFunctionImplementationCoverage, collectDslqlReferences, DSLQL_FUNCTION_SPECS, } from "../dslql/query.js";

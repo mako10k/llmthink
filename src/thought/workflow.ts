@@ -18,14 +18,14 @@ export interface PersistedThoughtAudit {
   record: ThoughtRecord;
 }
 
-export interface PersistedThoughtAuditRequest {
+interface PersistedThoughtAuditRequest {
   dslText?: string;
   filePath?: string;
   thoughtId?: string;
   documentId?: string;
 }
 
-export interface PersistedThoughtContext {
+interface PersistedThoughtContext {
   fileBaseDir?: string;
   storageRoot?: string;
 }

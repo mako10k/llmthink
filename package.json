@@ -34,7 +34,7 @@
     "llmthink-lsp": "dist/lsp/server.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node ./scripts/prepare-build-dir.mjs",
+    "build": "tsc -p tsconfig.json",
     "test": "node --import tsx --test test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "cli": "tsx src/cli.ts",

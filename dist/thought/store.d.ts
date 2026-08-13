@@ -55,7 +55,7 @@ export interface ThoughtSearchResult {
     explanation?: string;
 }
 export type ThoughtSearchSource = "draft" | "final" | "reflection" | "draft+final" | "draft+reflection" | "final+reflection" | "draft+final+reflection";
-export interface ThoughtSearchOptions extends EmbeddingRequestOptions {
+interface ThoughtSearchOptions extends EmbeddingRequestOptions {
     includeReflections?: boolean;
 }
 export interface ThoughtStoreLocation {

@@ -101,7 +101,7 @@ export type ThoughtSearchSource =
   | "final+reflection"
   | "draft+final+reflection";
 
-export interface ThoughtSearchOptions extends EmbeddingRequestOptions {
+interface ThoughtSearchOptions extends EmbeddingRequestOptions {
   includeReflections?: boolean;
 }
 

@@ -7,13 +7,13 @@ export interface PersistedThoughtAudit {
     report: AuditReport;
     record: ThoughtRecord;
 }
-export interface PersistedThoughtAuditRequest {
+interface PersistedThoughtAuditRequest {
     dslText?: string;
     filePath?: string;
     thoughtId?: string;
     documentId?: string;
 }
-export interface PersistedThoughtContext {
+interface PersistedThoughtContext {
     fileBaseDir?: string;
     storageRoot?: string;
 }
@@ -21,3 +21,4 @@ export declare function normalizeThoughtId(value: string): string;
 export declare function deriveThoughtIdFromDocumentId(documentId: string): string;
 export declare function deriveThoughtIdFromFilePath(filePath: string, baseDir?: string): string;
 export declare function auditAndPersistThought(request: PersistedThoughtAuditRequest, contextOrBaseDir?: PersistedThoughtContext | string, legacyStorageRoot?: string): Promise<PersistedThoughtAudit>;
+export {};

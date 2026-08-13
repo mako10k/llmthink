@@ -10,7 +10,7 @@ const candidateRoots = (() => {
     }
     return roots;
 })();
-export const DSL_EXAMPLES = [
+const DSL_EXAMPLES = [
     {
         id: "decision-comparison",
         path: "docs/examples/decision-comparison.dsl",

@@ -6,7 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const tsxCli = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
@@ -25,6 +25,46 @@ function renderPreview(inputPath: string, outputPath: string): void {
     ],
     { cwd: repoRoot, stdio: "pipe" },
   );
+}
+
+async function readDiagramMetrics(page: Page) {
+  return page.evaluate(() => {
+    const card = document.querySelector(".diagram-card");
+    const viewport = document.querySelector(".diagram-viewport");
+    const scroll = document.querySelector(".diagram-scroll");
+    const svg = document.querySelector(".diagram");
+    if (
+      !(card instanceof HTMLElement) ||
+      !(viewport instanceof HTMLElement) ||
+      !(scroll instanceof HTMLElement) ||
+      !(svg instanceof SVGElement)
+    ) {
+      throw new Error("diagram metrics source not found");
+    }
+    const scrollRect = scroll.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    const baseWidth = Number(scroll.dataset.baseWidth || 0);
+    const baseHeight = Number(scroll.dataset.baseHeight || 0);
+    const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
+    const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
+    const visibleCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
+    const visibleCenterY = scroll.scrollTop + scroll.clientHeight / 2;
+    const logicalScaleX = baseWidth > 0 ? baseWidth / svgRect.width : 1;
+    const logicalScaleY = baseHeight > 0 ? baseHeight / svgRect.height : 1;
+    return {
+      documentWidth: document.documentElement.scrollWidth,
+      viewportLeft: viewport.getBoundingClientRect().left,
+      cardLeft: card.getBoundingClientRect().left,
+      scrollLeft: scroll.scrollLeft,
+      scrollTop: scroll.scrollTop,
+      clientWidth: scroll.clientWidth,
+      clientHeight: scroll.clientHeight,
+      scrollWidth: scroll.scrollWidth,
+      scrollHeight: scroll.scrollHeight,
+      svgAnchorX: (visibleCenterX - svgOffsetX) * logicalScaleX,
+      svgAnchorY: (visibleCenterY - svgOffsetY) * logicalScaleY,
+    };
+  });
 }
 
 test("preview:html defaults to fit and keeps the outer map area stable on zoom", async () => {
@@ -48,45 +88,7 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector(".diagram-scroll");
 
-      const before = await page.evaluate(() => {
-        const card = document.querySelector(".diagram-card");
-        const viewport = document.querySelector(".diagram-viewport");
-        const scroll = document.querySelector(".diagram-scroll");
-        const svg = document.querySelector(".diagram");
-        if (
-          !(card instanceof HTMLElement) ||
-          !(viewport instanceof HTMLElement) ||
-          !(scroll instanceof HTMLElement)
-        ) {
-          throw new Error("diagram-scroll not found");
-        }
-        if (!(svg instanceof SVGElement)) {
-          throw new Error("diagram svg not found");
-        }
-        const scrollRect = scroll.getBoundingClientRect();
-        const svgRect = svg.getBoundingClientRect();
-        const baseWidth = Number(scroll.dataset.baseWidth || 0);
-        const baseHeight = Number(scroll.dataset.baseHeight || 0);
-        const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
-        const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
-        const visibleCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
-        const visibleCenterY = scroll.scrollTop + scroll.clientHeight / 2;
-        const logicalScaleX = baseWidth > 0 ? baseWidth / svgRect.width : 1;
-        const logicalScaleY = baseHeight > 0 ? baseHeight / svgRect.height : 1;
-        return {
-          documentWidth: document.documentElement.scrollWidth,
-          viewportLeft: viewport.getBoundingClientRect().left,
-          cardLeft: card.getBoundingClientRect().left,
-          scrollLeft: scroll.scrollLeft,
-          scrollTop: scroll.scrollTop,
-          clientWidth: scroll.clientWidth,
-          clientHeight: scroll.clientHeight,
-          scrollWidth: scroll.scrollWidth,
-          scrollHeight: scroll.scrollHeight,
-          svgAnchorX: (visibleCenterX - svgOffsetX) * logicalScaleX,
-          svgAnchorY: (visibleCenterY - svgOffsetY) * logicalScaleY,
-        };
-      });
+      const before = await readDiagramMetrics(page);
 
       assert.ok(before.scrollWidth <= before.clientWidth + 2);
       assert.ok(before.scrollHeight <= before.clientHeight + 2);
@@ -99,45 +101,7 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
           ),
       );
 
-      const after = await page.evaluate(() => {
-        const card = document.querySelector(".diagram-card");
-        const viewport = document.querySelector(".diagram-viewport");
-        const scroll = document.querySelector(".diagram-scroll");
-        const svg = document.querySelector(".diagram");
-        if (
-          !(card instanceof HTMLElement) ||
-          !(viewport instanceof HTMLElement) ||
-          !(scroll instanceof HTMLElement)
-        ) {
-          throw new Error("preview controls not found");
-        }
-        if (!(svg instanceof SVGElement)) {
-          throw new Error("diagram svg not found");
-        }
-        const scrollRect = scroll.getBoundingClientRect();
-        const svgRect = svg.getBoundingClientRect();
-        const baseWidth = Number(scroll.dataset.baseWidth || 0);
-        const baseHeight = Number(scroll.dataset.baseHeight || 0);
-        const svgOffsetX = svgRect.left - scrollRect.left + scroll.scrollLeft;
-        const svgOffsetY = svgRect.top - scrollRect.top + scroll.scrollTop;
-        const visibleCenterX = scroll.scrollLeft + scroll.clientWidth / 2;
-        const visibleCenterY = scroll.scrollTop + scroll.clientHeight / 2;
-        const logicalScaleX = baseWidth > 0 ? baseWidth / svgRect.width : 1;
-        const logicalScaleY = baseHeight > 0 ? baseHeight / svgRect.height : 1;
-        return {
-          documentWidth: document.documentElement.scrollWidth,
-          viewportLeft: viewport.getBoundingClientRect().left,
-          cardLeft: card.getBoundingClientRect().left,
-          scrollLeft: scroll.scrollLeft,
-          scrollTop: scroll.scrollTop,
-          clientWidth: scroll.clientWidth,
-          clientHeight: scroll.clientHeight,
-          scrollWidth: scroll.scrollWidth,
-          scrollHeight: scroll.scrollHeight,
-          svgAnchorX: (visibleCenterX - svgOffsetX) * logicalScaleX,
-          svgAnchorY: (visibleCenterY - svgOffsetY) * logicalScaleY,
-        };
-      });
+      const after = await readDiagramMetrics(page);
 
       assert.ok(after.scrollWidth > before.scrollWidth);
       assert.equal(after.documentWidth, before.documentWidth);

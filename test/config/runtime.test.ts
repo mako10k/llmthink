@@ -36,21 +36,9 @@ function writeExecutable(filePath: string, body: string): void {
   chmodSync(filePath, 0o755);
 }
 
-function workspaceDomainId(dir: string): string {
-  const name = dir.split(/[/\\]/).filter(Boolean).at(-1) ?? "workspace";
-  let sanitized = "";
-  for (const character of name.toLowerCase()) {
-    const code = character.codePointAt(0) ?? 0;
-    const isLetter = code >= 97 && code <= 122;
-    const isDigit = code >= 48 && code <= 57;
-    const normalized = isLetter || isDigit ? character : "-";
-    if (normalized !== "-" || !sanitized.endsWith("-")) {
-      sanitized += normalized;
-    }
-  }
-  sanitized = sanitized.replace(/^-|-$/g, "") || "workspace";
+function expectedWorkspaceDomainId(dir: string): string {
   const digest = createHash("sha256").update(dir).digest("hex").slice(0, 12);
-  return `${sanitized}-${digest}`;
+  return `workspace-${digest}`;
 }
 
 function expectedWorkspaceStorageRoot(
@@ -61,25 +49,32 @@ function expectedWorkspaceStorageRoot(
     xdgStateHome,
     "llmthink",
     "workspace",
-    workspaceDomainId(workspaceDir),
+    expectedWorkspaceDomainId(workspaceDir),
   );
+}
+
+function createWorkspaceConfigFixture(dir: string) {
+  const workspaceDir = join(dir, "workspace", "nested");
+  const workspaceRoot = join(dir, "workspace");
+  const xdgConfigHome = join(dir, "xdg-config");
+  const xdgStateHome = join(dir, "xdg-state");
+
+  mkdirSync(workspaceDir, { recursive: true });
+  mkdirSync(join(workspaceRoot, ".git"), { recursive: true });
+  writeJson(join(workspaceRoot, ".llmthinkrc"), {
+    thought: { storageDomain: "workspace" },
+  });
+  writeJson(join(xdgConfigHome, "llmthink", "config.json"), {
+    thought: { storageDomain: "user" },
+  });
+
+  return { workspaceDir, workspaceRoot, xdgConfigHome, xdgStateHome };
 }
 
 test("resolveThoughtStorageRoot prefers workspace config over user XDG config", () => {
   withTempDir((dir) => {
-    const workspaceDir = join(dir, "workspace", "nested");
-    const workspaceRoot = join(dir, "workspace");
-    const xdgConfigHome = join(dir, "xdg-config");
-    const xdgStateHome = join(dir, "xdg-state");
-
-    mkdirSync(workspaceDir, { recursive: true });
-    mkdirSync(join(workspaceRoot, ".git"), { recursive: true });
-    writeJson(join(dir, "workspace", ".llmthinkrc"), {
-      thought: { storageDomain: "workspace" },
-    });
-    writeJson(join(xdgConfigHome, "llmthink", "config.json"), {
-      thought: { storageDomain: "user" },
-    });
+    const { workspaceDir, workspaceRoot, xdgConfigHome, xdgStateHome } =
+      createWorkspaceConfigFixture(dir);
 
     const storageRoot = resolveThoughtStorageRoot({
       cwd: workspaceDir,
@@ -228,19 +223,8 @@ test("resolveEmbeddingConfig loads api key via secdat", () => {
 
 test("resolveRuntimeConfig reports discovered config paths and selected storage domain", () => {
   withTempDir((dir) => {
-    const workspaceDir = join(dir, "workspace", "nested");
-    const workspaceRoot = join(dir, "workspace");
-    const xdgConfigHome = join(dir, "xdg-config");
-    const xdgStateHome = join(dir, "xdg-state");
-
-    mkdirSync(workspaceDir, { recursive: true });
-    mkdirSync(join(workspaceRoot, ".git"), { recursive: true });
-    writeJson(join(dir, "workspace", ".llmthinkrc"), {
-      thought: { storageDomain: "workspace" },
-    });
-    writeJson(join(xdgConfigHome, "llmthink", "config.json"), {
-      thought: { storageDomain: "user" },
-    });
+    const { workspaceDir, workspaceRoot, xdgConfigHome, xdgStateHome } =
+      createWorkspaceConfigFixture(dir);
 
     const runtimeConfig = resolveRuntimeConfig({
       cwd: workspaceDir,
