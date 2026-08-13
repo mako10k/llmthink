@@ -108,7 +108,7 @@ task ACCEPT_EVIDENCE_RESOURCES RESOURCE_SURFACES_SYNCHRONIZED -> EVIDENCE_RESOUR
     optimistic 0.5d
     most_likely 1d
     pessimistic 2d
-  status planned
+  status done
   priority 100
   requires:
     CODEX 1
@@ -178,3 +178,16 @@ work_event FINISH_SYNCHRONIZE_RESOURCE_SURFACES:
   task SYNCHRONIZE_RESOURCE_SURFACES
   kind finish
   occurred_at 2026-08-13T16:09:07+09:00
+
+work_event START_ACCEPT_EVIDENCE_RESOURCES:
+  model 1
+  task ACCEPT_EVIDENCE_RESOURCES
+  kind start
+  occurred_at 2026-08-13T16:09:51+09:00
+  planned_value 13/12d
+
+work_event FINISH_ACCEPT_EVIDENCE_RESOURCES:
+  model 1
+  task ACCEPT_EVIDENCE_RESOURCES
+  kind finish
+  occurred_at 2026-08-13T16:12:52+09:00
