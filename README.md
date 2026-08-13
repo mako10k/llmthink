@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は 1.1.0。
+現行 release version は [1.1.0](https://github.com/mako10k/llmthink/releases/tag/v1.1.0)。
 
 ## 構成
 
@@ -55,9 +55,11 @@
 
 ## 配布
 
-- npm package は `npm install -g llmthink` で CLI / MCP / LSP をインストールできる
+- npm package の現行公開版は [llmthink@1.1.0](https://www.npmjs.com/package/llmthink/v/1.1.0)
+- npm package は `npm install -g llmthink@1.1.0` で CLI / MCP / LSP をインストールできる
 - library として利用する場合は `npm install llmthink` を使う
-- VS Code 拡張の配布物は vscode-extension/llmthink.vsix を生成して配布する
+- VS Code 拡張の現行配布物は [GitHub Release v1.1.0](https://github.com/mako10k/llmthink/releases/tag/v1.1.0) の `llmthink.vsix`
+- ローカルで VS Code 拡張を生成する場合は vscode-extension/llmthink.vsix を使う
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
 - 変更内容の公開履歴は CHANGELOG.md を正とする

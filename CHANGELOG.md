@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 1.1.0 公開後の README / VSIX README の version 表記と npm / GitHub Release 配布導線を同期し、release checklist に再発防止確認を追加
+
 ## 1.1.0 - 2026-08-13
 
 - evidence に匿名の resource block を 0..N 個追加し、URL / file / blob locator、sha256 digest、MIME type、label を I/O なしで構造検証する

@@ -16,7 +16,7 @@
 1. working tree が clean であることを確認する
 2. release version を docs/process/version-bump-rules.dsl に従って決める
 3. package.json、package-lock.json、vscode-extension/package.json、vscode-extension/package-lock.json、src/mcp/server.ts を同じ version へ揃える
-4. CHANGELOG.md と README.md を release 内容に合わせて更新する
+4. CHANGELOG.md、README.md、vscode-extension/README.md を release 内容と version に合わせて更新する
 
 ## 機密情報チェック
 
@@ -55,3 +55,4 @@
 2. origin の tag 一覧に release tag が載っていることを確認する
 3. npm registry の version と dist-tag が release version を指すことを確認する
 4. public repository の README と GitHub Release / npm / VSIX の配布導線が崩れていないことを確認する
+5. README.md と vscode-extension/README.md の現行 release version が package / MCP / VSIX と一致することを確認する
