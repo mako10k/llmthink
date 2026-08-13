@@ -3,9 +3,11 @@ import test from "node:test";
 
 import {
   auditDslText,
+  EvidenceResourceValidationError,
   formatDslText,
   ParseError,
   parseDocument,
+  validateEvidenceResource,
 } from "../../src/index.ts";
 
 const SHA256_HEX =
@@ -311,5 +313,58 @@ evidence EV1:
       column: report.results[0]?.metadata?.column,
     },
     { line: 4, column: 3 },
+  );
+});
+
+test("validateEvidenceResource rejects malformed hand-built AST values", () => {
+  assert.throws(
+    () =>
+      validateEvidenceResource({
+        locator: {
+          kind: "url",
+          value: "relative/path",
+          span: { line: 4, column: 5 },
+        },
+        span: { line: 3, column: 3 },
+      }),
+    EvidenceResourceValidationError,
+  );
+
+  assert.throws(
+    () =>
+      validateEvidenceResource({
+        locator: {
+          kind: "blob",
+          value: `sha256:${SHA256_HEX}`,
+          span: { line: 4, column: 5 },
+        },
+        digest: {
+          algorithm: "sha256",
+          value: SHA256_HEX,
+          span: { line: 5, column: 5 },
+        },
+        span: { line: 3, column: 3 },
+      }),
+    /blob locator cannot be combined/,
+  );
+});
+
+test("default text audit performs no resource resolution", async () => {
+  const report = await auditDslText(`
+evidence EV1:
+  "Resource resolution remains opt-in"
+  resource:
+    url "https://unreachable.invalid/evidence"
+  resource:
+    file "missing/outside-runtime.txt"
+`);
+
+  assert.equal(report.summary.fatal_count, 0);
+  assert.equal(report.summary.error_count, 0);
+  assert.equal(
+    report.results.some((issue) =>
+      /unreachable|missing|file existence|URL reachability/.test(issue.message),
+    ),
+    false,
   );
 });

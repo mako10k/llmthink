@@ -13,6 +13,8 @@ export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot
 export type { ConfigDomain, ResolveRuntimeConfigOptions, ResolvedRuntimeConfig, ResolvedValueSource, ResolvedEmbeddingConfig, } from "./config/runtime.js";
 export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
+export { createEvidenceResource, EvidenceResourceValidationError, validateEvidenceResource, } from "./model/evidence-resource.js";
+export type { EvidenceResourceInput } from "./model/evidence-resource.js";
 export type * from "./model/diagnostics.js";
 export { collectDocumentDeclarations, createDocumentDeclarationIndex, DocumentDeclarationIndex, DOCUMENT_DECLARATION_KINDS, DuplicateDocumentDeclarationError, } from "./model/declarations.js";
 export type { DocumentDeclaration, DocumentDeclarationKind, DocumentDeclarationNode, } from "./model/declarations.js";

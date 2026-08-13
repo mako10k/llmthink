@@ -1,3 +1,4 @@
+import { validateEvidenceResource } from "../model/evidence-resource.js";
 import { parseDocument } from "../parser/parser.js";
 function quote(value) {
     return JSON.stringify(value);
@@ -45,6 +46,7 @@ function formatQuotedStepBody(keyword, statement) {
     ];
 }
 function formatEvidenceResource(resource) {
+    validateEvidenceResource(resource);
     const digestValue = resource.digest
         ? `${resource.digest.algorithm}:${resource.digest.value}`
         : undefined;

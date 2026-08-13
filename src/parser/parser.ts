@@ -6,7 +6,6 @@ import {
   type DocumentAst,
   type DomainDecl,
   type EvidenceResource,
-  type EvidenceResourceDigest,
   type EvidenceResourceLocator,
   type EvidenceResourceMetadataValue,
   type EvidenceStatement,
@@ -28,6 +27,10 @@ import {
   createDocumentDeclarationIndex,
   DuplicateDocumentDeclarationError,
 } from "../model/declarations.js";
+import {
+  createEvidenceResource,
+  EvidenceResourceValidationError,
+} from "../model/evidence-resource.js";
 
 const IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
@@ -281,53 +284,6 @@ function parseEvidenceResourceField(
   };
 }
 
-function parseSha256(
-  value: string,
-  spanValue: SourceSpan,
-  kind: "blob" | "digest",
-): EvidenceResourceDigest {
-  const match = /^sha256:([0-9a-fA-F]{64})$/.exec(value);
-  if (!match) {
-    throw new ParseError(
-      `Evidence resource ${kind} must use sha256:<64 hex>`,
-      spanValue.line,
-      spanValue.column,
-      spanValue.column + value.length,
-    );
-  }
-  return {
-    algorithm: "sha256",
-    value: (match[1] ?? "").toLowerCase(),
-    span: spanValue,
-  };
-}
-
-function validateEvidenceResourceUrl(
-  value: string,
-  spanValue: SourceSpan,
-): void {
-  let parsed: URL;
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new ParseError(
-      "Evidence resource URL must be an absolute http or https URL",
-      spanValue.line,
-      spanValue.column,
-      spanValue.column + value.length,
-    );
-  }
-  const scheme = parsed.protocol.replace(/:$/, "");
-  if (scheme !== "http" && scheme !== "https") {
-    throw new ParseError(
-      `Unsupported evidence resource URL scheme '${scheme}'`,
-      spanValue.line,
-      spanValue.column,
-      spanValue.column + value.length,
-    );
-  }
-}
-
 function validateEvidenceResourceHeader(
   rawHeader: string,
   startIndex: number,
@@ -429,87 +385,31 @@ function requireEvidenceResourceLocatorField(
   return locatorFields[0]!;
 }
 
-function validateEvidenceResourceFile(
-  field: ParsedEvidenceResourceField,
-): void {
-  if (!field.value) {
-    throw new ParseError(
-      "Evidence resource file path must not be empty",
-      field.span.line,
-      field.span.column,
-      field.span.column,
-    );
-  }
-  if (field.value.includes("\0")) {
-    throw new ParseError(
-      "Evidence resource file path must not contain NUL",
-      field.span.line,
-      field.span.column,
-      field.span.column + field.value.length,
-    );
-  }
-}
-
-function parseEvidenceResourceLocator(
+function toEvidenceResourceLocator(
   field: ParsedEvidenceResourceField,
 ): EvidenceResourceLocator {
-  const kind = field.name as EvidenceResourceLocator["kind"];
-  if (kind === "url") validateEvidenceResourceUrl(field.value, field.span);
-  if (kind === "file") validateEvidenceResourceFile(field);
-  const value =
-    kind === "blob"
-      ? `sha256:${parseSha256(field.value, field.span, "blob").value}`
-      : field.value;
-  return { kind, value, span: field.span };
+  return {
+    kind: field.name as EvidenceResourceLocator["kind"],
+    value: field.value,
+    span: field.span,
+  };
 }
 
-function parseEvidenceResourceDigest(
-  fields: Map<EvidenceResourceField, ParsedEvidenceResourceField>,
-  locator: EvidenceResourceLocator,
-): EvidenceResourceDigest | undefined {
-  const field = fields.get("digest");
-  if (locator.kind === "blob" && field) {
-    throw new ParseError(
-      "Evidence resource blob locator cannot be combined with digest metadata",
-      field.span.line,
-      field.span.column,
-      field.span.column + field.value.length,
-    );
-  }
-  return field ? parseSha256(field.value, field.span, "digest") : undefined;
-}
-
-function parseEvidenceResourceMime(
-  fields: Map<EvidenceResourceField, ParsedEvidenceResourceField>,
+function toEvidenceResourceMetadata(
+  field: ParsedEvidenceResourceField | undefined,
 ): EvidenceResourceMetadataValue | undefined {
-  const field = fields.get("mime");
-  if (
-    field &&
-    !/^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+$/.test(field.value)
-  ) {
-    throw new ParseError(
-      "Evidence resource MIME type must be type/subtype without parameters",
-      field.span.line,
-      field.span.column,
-      field.span.column + field.value.length,
-    );
-  }
   return field ? { value: field.value, span: field.span } : undefined;
 }
 
-function parseEvidenceResourceLabel(
-  fields: Map<EvidenceResourceField, ParsedEvidenceResourceField>,
-): EvidenceResourceMetadataValue | undefined {
-  const field = fields.get("label");
-  if (field && !field.value.trim()) {
-    throw new ParseError(
-      "Evidence resource label must not be empty",
-      field.span.line,
-      field.span.column,
-      field.span.column,
-    );
-  }
-  return field ? { value: field.value, span: field.span } : undefined;
+function evidenceResourceParseError(
+  error: EvidenceResourceValidationError,
+): ParseError {
+  return new ParseError(
+    error.message,
+    error.span.line,
+    error.span.column,
+    error.endColumn,
+  );
 }
 
 function parseEvidenceResource(
@@ -524,22 +424,29 @@ function parseEvidenceResource(
     startIndex,
     expectedIndent,
   );
-  const locator = parseEvidenceResourceLocator(
-    requireEvidenceResourceLocatorField(fields, rawHeader, startIndex),
+  const resourceSpan = span(
+    startIndex + 1,
+    firstNonWhitespaceColumn(rawHeader),
   );
-  const digest = parseEvidenceResourceDigest(fields, locator);
-  const mime = parseEvidenceResourceMime(fields);
-  const label = parseEvidenceResourceLabel(fields);
-  return {
-    resource: {
-      locator,
-      ...(digest ? { digest } : {}),
-      ...(mime ? { mime } : {}),
-      ...(label ? { label } : {}),
-      span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
-    },
-    nextIndex,
-  };
+  try {
+    return {
+      resource: createEvidenceResource({
+        locator: toEvidenceResourceLocator(
+          requireEvidenceResourceLocatorField(fields, rawHeader, startIndex),
+        ),
+        digest: toEvidenceResourceMetadata(fields.get("digest")),
+        mime: toEvidenceResourceMetadata(fields.get("mime")),
+        label: toEvidenceResourceMetadata(fields.get("label")),
+        span: resourceSpan,
+      }),
+      nextIndex,
+    };
+  } catch (error) {
+    if (error instanceof EvidenceResourceValidationError) {
+      throw evidenceResourceParseError(error);
+    }
+    throw error;
+  }
 }
 
 function parseEvidenceChildren(

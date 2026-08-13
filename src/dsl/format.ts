@@ -13,6 +13,7 @@ import type {
   TextBody,
   ViewpointStatement,
 } from "../model/ast.js";
+import { validateEvidenceResource } from "../model/evidence-resource.js";
 import { parseDocument } from "../parser/parser.js";
 
 function quote(value: string): string {
@@ -78,6 +79,7 @@ function formatQuotedStepBody(
 }
 
 function formatEvidenceResource(resource: EvidenceResource): string[] {
+  validateEvidenceResource(resource);
   const digestValue = resource.digest
     ? `${resource.digest.algorithm}:${resource.digest.value}`
     : undefined;

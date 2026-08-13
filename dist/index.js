@@ -9,5 +9,6 @@ export { addThoughtReflection, deleteThought, relateThought, ensureThoughtRecord
 export { auditAndPersistThought, deriveThoughtIdFromDocumentId, deriveThoughtIdFromFilePath, normalizeThoughtId, } from "./thought/workflow.js";
 export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
 export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
+export { createEvidenceResource, EvidenceResourceValidationError, validateEvidenceResource, } from "./model/evidence-resource.js";
 export { collectDocumentDeclarations, createDocumentDeclarationIndex, DocumentDeclarationIndex, DOCUMENT_DECLARATION_KINDS, DuplicateDocumentDeclarationError, } from "./model/declarations.js";
 //# sourceMappingURL=index.js.map

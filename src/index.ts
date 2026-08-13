@@ -64,6 +64,12 @@ export {
   AUDIT_SEVERITIES,
 } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
+export {
+  createEvidenceResource,
+  EvidenceResourceValidationError,
+  validateEvidenceResource,
+} from "./model/evidence-resource.js";
+export type { EvidenceResourceInput } from "./model/evidence-resource.js";
 export type * from "./model/diagnostics.js";
 export {
   collectDocumentDeclarations,

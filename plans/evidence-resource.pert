@@ -24,6 +24,7 @@ milestone RESOURCE_CORE_IMPLEMENTED:
 
 milestone RESOURCE_VALIDATION_IMPLEMENTED:
   title "Deterministic structural resource validation implemented"
+  state reached
 
 milestone RESOURCE_PROJECTION_IMPLEMENTED:
   title "Resource values projected without semantic expansion"
@@ -67,7 +68,7 @@ task VALIDATE_RESOURCE_STRUCTURE RESOURCE_CORE_IMPLEMENTED -> RESOURCE_VALIDATIO
     optimistic 0.5d
     most_likely 1d
     pessimistic 2d
-  status planned
+  status done
   priority 100
   requires:
     CODEX 1
@@ -137,3 +138,16 @@ work_event FINISH_IMPLEMENT_RESOURCE_CORE:
   task IMPLEMENT_RESOURCE_CORE
   kind finish
   occurred_at 2026-08-13T15:52:39+09:00
+
+work_event START_VALIDATE_RESOURCE_STRUCTURE:
+  model 1
+  task VALIDATE_RESOURCE_STRUCTURE
+  kind start
+  occurred_at 2026-08-13T15:53:55+09:00
+  planned_value 13/12d
+
+work_event FINISH_VALIDATE_RESOURCE_STRUCTURE:
+  model 1
+  task VALIDATE_RESOURCE_STRUCTURE
+  kind finish
+  occurred_at 2026-08-13T15:56:34+09:00
