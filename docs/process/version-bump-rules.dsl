@@ -15,6 +15,11 @@ problem P2:
 problem P3:
   "DSL 文法、help 導線、UI surface、保存スキーマの変更は影響範囲が異なるため、patch/minor/major の判断基準が必要である"
 
+problem P4:
+  |
+    version と README を確定する前に成果物を生成すると、source、tag、npm package、VSIX、公開文書が
+    同じ release version でも異なる内容になり得る
+
 step S1:
   premise PR1:
     "利用者向けに一緒に配布・告知する成果物は、同じ release version を共有したほうが運用負荷と認知負荷が低い"
@@ -38,34 +43,52 @@ step S5:
     "thought reflect の設計判断でも、UI surface と永続化スキーマを増やす変更は patch ではなく minor 扱いが妥当だと整理している"
 
 step S6:
-  decision D1 based_on PR1, PR2, EV1, EV2:
+  evidence EV4:
+    |
+      1.1.0 公開時は VSIX の manifest が 1.1.0 である一方、同梱 README の現行 release version が 1.0.0 のまま残り、
+      公開後の main 修正で tag、公開 asset、main の内容が分岐した
+
+step S7:
+  decision D1 based_on P1, P2, PR1, PR2, EV1, EV2:
     |
       root package.json、vscode-extension/package.json、src/mcp/server.ts の version は同じ release version を共有し、
       main へ入る公開差分ごとに同時に bump する
 
-step S7:
-  decision D2 based_on PR2, EV2:
+step S8:
+  decision D2 based_on P2, P3, PR2, EV2:
     |
       user-visible な fix、help/preview/UI の改善、DSL examples や docs の追加更新など、
       公開成果物に反映される後方互換な差分は patch を 1 つ進める
 
-step S8:
-  decision D3 based_on EV3, D1, D2:
+step S9:
+  decision D3 based_on P3, EV3, D1, D2:
     |
       後方互換を保ちながらも DSL surface、CLI/MCP/VSIX command surface、保存 schema、query capability を増やす変更は
       minor を進め、patch を 0 に戻す
 
-step S9:
+step S10:
   decision D4 based_on D1, D3:
     "既存 DSL、CLI/MCP contract、保存 schema、または既存 VSIX workflow を破壊する変更は major を進める"
 
-step S10:
+step S11:
   decision D5 based_on D1, D2:
     |
       workspace 内部の refactor のみで利用者向け挙動も配布物も変わらない場合は version を動かさないが、
       その判断は release note に残せる程度に限定する
 
-step S11:
+step S12:
+  decision D6 based_on P4, EV4:
+    |
+      release では version、CHANGELOG、README を先に確定し、その source から npm package と VSIX を生成・検査した後に
+      release commit と tag を凍結する。公開には凍結済みの同一成果物だけを使い、公開先から version、digest、文面を読み戻す
+
+step S13:
+  decision D7 based_on D2, D6:
+    |
+      公開後に version、文書、成果物の不整合が判明した場合、公開済み tag や artifact を上書きせず、
+      後方互換な訂正を新しい patch release として公開する
+
+step S14:
   pending PD1:
     |
       将来 package publish と VSIX publish を別 cadence に分離する場合は、

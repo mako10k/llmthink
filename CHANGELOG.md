@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- 1.1.0 公開後の README / VSIX README の version 表記と npm / GitHub Release 配布導線を同期し、release checklist に再発防止確認を追加
+## 1.1.1 - 2026-08-13
+
+- 1.1.0 公開後の README / VSIX README の version 表記と npm / GitHub Release 配布導線を同期
+- release を source 確定、candidate 検査、commit/artifact 凍結、公開、readback の fail-closed gate に整理し、公開後の不整合は既存成果物の上書きでなく patch release とする
 
 ## 1.1.0 - 2026-08-13
 

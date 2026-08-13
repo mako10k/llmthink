@@ -48,7 +48,7 @@ import { auditAndPersistThought } from "../thought/workflow.js";
 
 const server = new McpServer({
   name: "llmthink",
-  version: "1.1.0",
+  version: "1.1.1",
 });
 
 interface McpAuditOutputOptions {

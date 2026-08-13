@@ -2,7 +2,7 @@
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
-現行 release version は [1.1.0](https://github.com/mako10k/llmthink/releases/tag/v1.1.0)。
+現行 release version は [1.1.1](https://github.com/mako10k/llmthink/releases/tag/v1.1.1)。
 
 ## 構成
 
@@ -55,10 +55,10 @@
 
 ## 配布
 
-- npm package の現行公開版は [llmthink@1.1.0](https://www.npmjs.com/package/llmthink/v/1.1.0)
-- npm package は `npm install -g llmthink@1.1.0` で CLI / MCP / LSP をインストールできる
+- npm package の現行公開版は [llmthink@1.1.1](https://www.npmjs.com/package/llmthink/v/1.1.1)
+- npm package は `npm install -g llmthink@1.1.1` で CLI / MCP / LSP をインストールできる
 - library として利用する場合は `npm install llmthink` を使う
-- VS Code 拡張の現行配布物は [GitHub Release v1.1.0](https://github.com/mako10k/llmthink/releases/tag/v1.1.0) の `llmthink.vsix`
+- VS Code 拡張の現行配布物は [GitHub Release v1.1.1](https://github.com/mako10k/llmthink/releases/tag/v1.1.1) の `llmthink.vsix`
 - ローカルで VS Code 拡張を生成する場合は vscode-extension/llmthink.vsix を使う
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
@@ -329,6 +329,7 @@ evidence EV1:
 - 0.5.2 は後方互換な監査出力フィルタ、配布成果物の同期、npm への初回公開をまとめた patch release とする
 - 1.0.0 は DSLQL の構文、公開 AST、評価意味論、document runtime を一貫した v2 契約へ破壊的に再構成する major release とする
 - 1.1.0 は evidence resource の匿名 0..N payload、構造検証、DSLQL projection、Help/LSP/preview/VSIX 同期をまとめた minor release とする
+- 1.1.1 は 1.1.0 公開文書と VSIX 同梱 README の version 整合、および fail-closed release gate の整備をまとめた patch release とする
 
 ## ライセンス
 

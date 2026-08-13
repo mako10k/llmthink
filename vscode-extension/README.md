@@ -2,7 +2,7 @@
 
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
-現行 release version は [1.1.0](https://github.com/mako10k/llmthink/releases/tag/v1.1.0)。
+現行 release version は [1.1.1](https://github.com/mako10k/llmthink/releases/tag/v1.1.1)。
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 
@@ -74,7 +74,7 @@ evidence の匿名 `resource:` block は URL / file / blob locator と任意の 
 
 ## インストール
 
-- 公開済み VSIX は [GitHub Release v1.1.0](https://github.com/mako10k/llmthink/releases/tag/v1.1.0) の `llmthink.vsix` を使う
+- 公開済み VSIX は [GitHub Release v1.1.1](https://github.com/mako10k/llmthink/releases/tag/v1.1.1) の `llmthink.vsix` を使う
 - VS Code で Extensions: Install from VSIX... を開き、取得または生成した llmthink.vsix を選ぶ
 - 配布物と release 手順は repo の docs/process/release-checklist.md と CHANGELOG.md を参照する
 

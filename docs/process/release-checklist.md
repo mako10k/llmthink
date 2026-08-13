@@ -1,58 +1,94 @@
 # Release Checklist
 
-この文書は llmthink の release を main から切るときの最小手順を定義する。
+この文書は llmthink の release を main から切るときの手順を定義する。
+各 gate は上から順に実行し、失敗した gate より後の公開操作へ進まない。
 
-## 対象
+## 対象と不変条件
 
-- root package
-- npm package
-- MCP server
-- VSIX extension
-- Git tag
-- GitHub repository visibility と binary 配布物
+対象は root/npm package、MCP server、VSIX extension、README、CHANGELOG、Git tag、GitHub Release とする。
 
-## 事前確認
+release ごとに次の値を一度だけ確定し、作業記録へ残す。
 
-1. working tree が clean であることを確認する
+- `RELEASE_VERSION`: `X.Y.Z`
+- `RELEASE_TAG`: `vX.Y.Z`
+- `RELEASE_SHA`: release commit の完全な SHA
+- `NPM_TARBALL` と SHA-512 integrity
+- `VSIX_FILE` と SHA-256 digest
+
+すべての version 表記、配布物、tag、公開先はこの組に一致させる。release commit 確定後は同じ release のソースや成果物を再生成・差し替えしない。
+
+## Gate 1: release source の確定
+
+1. working tree が clean で、対象 branch が `main` であることを確認する
 2. release version を docs/process/version-bump-rules.dsl に従って決める
 3. package.json、package-lock.json、vscode-extension/package.json、vscode-extension/package-lock.json、src/mcp/server.ts を同じ version へ揃える
-4. CHANGELOG.md、README.md、vscode-extension/README.md を release 内容と version に合わせて更新する
+4. CHANGELOG.md に同じ version と release 内容を記載する
+5. README.md と vscode-extension/README.md の現行 version、npm URL、GitHub Release URL を同じ version へ揃える
+6. version と文書を揃え終えてから `npm run build:extension` と `npm run package:vsix` を実行する
+7. 生成された vscode-extension/llmthink.vsix を release 差分へ含める
 
-## 機密情報チェック
+VSIX を生成した後に version、README、extension source を変更した場合、この gate の生成と検査を最初からやり直す。
 
-1. current tree を scan する
-2. git history 全体を scan する
-3. secret が見つかった場合は公開前に history rewrite を含めて除去する
-4. scan 結果と使用したコマンドを release note または作業記録に残す
+## Gate 2: release candidate の検査
 
-## 検証
+1. `npm run format:check`
+2. `npm run lint`
+3. `npm run typecheck`
+4. `npm run typecheck:extension`
+5. `npm test`
+6. `npm run build`
+7. `npm run verify-examples`
+8. `npm pack --dry-run` で npm 公開対象ファイルを確認する
+9. VSIX 内の extension/package.json と extension/readme.md を展開し、version と文面が source と一致することを確認する
+10. current tree と git history 全体を secret scan し、結果とコマンドを作業記録へ残す
+11. `git diff --check` と `git status --short` で想定外の差分がないことを確認する
 
-1. npm run typecheck
-2. npm test
-3. npm run build
-4. npm run build:extension で bundled LSP の shebang 重複と Node syntax check も通ることを確認する
-5. npm run package:vsix
-6. npm pack --dry-run で公開対象ファイルを確認する
+いずれかが不一致なら公開せず Gate 1 へ戻る。
 
-## 配布物
+## Gate 3: commit と配布物の凍結
 
-1. vscode-extension/llmthink.vsix を生成する
-2. 必要なら checksum を生成する
-3. 配布先に version と changelog を添える
+1. release 差分を 1 つの release commit として commit する
+2. working tree が clean であることを確認し、`RELEASE_SHA=$(git rev-parse HEAD)` を記録する
+3. `RELEASE_SHA` の状態から npm tarball を repository 外の artifact directory へ一度だけ生成し、以後は `npm publish` に同じ tarball を渡す
+4. npm tarball の SHA-512 integrity と vscode-extension/llmthink.vsix の SHA-256 digest を記録する
+5. annotated tag `RELEASE_TAG` を `RELEASE_SHA` に作成する
+6. tag 作成後も working tree が clean で、tag と `HEAD` が `RELEASE_SHA` に一致することを確認する
 
-## GitHub 操作
+この gate より後は build、package、文書修正を行わない。差分が必要なら tag を公開せず破棄して Gate 1 から新しい release candidate を作る。
 
-1. repository を public に変更する場合は visibility 変更を先に実施する
-2. release commit を main へ push する
-3. annotated tag を v<version> 形式で作成する
-4. tag を origin へ push する
-5. npm の認証主体を確認し、`npm publish --access public` で root package を公開する
-6. GitHub Release に changelog と VSIX を掲載する
+## Gate 4: 公開
 
-## 公開後確認
+公開前に target、version、SHA、artifact digest と最大 write 回数を固定する。通常の write は次の 3 回である。
 
-1. origin/main が release commit を指していることを確認する
-2. origin の tag 一覧に release tag が載っていることを確認する
-3. npm registry の version と dist-tag が release version を指すことを確認する
-4. public repository の README と GitHub Release / npm / VSIX の配布導線が崩れていないことを確認する
-5. README.md と vscode-extension/README.md の現行 release version が package / MCP / VSIX と一致することを確認する
+1. `main` と `RELEASE_TAG` を同一 `RELEASE_SHA` として origin へ atomic push する
+2. 凍結済み `NPM_TARBALL` を `npm publish <tarball> --access public` で一度だけ公開する
+3. `RELEASE_TAG` から GitHub Release を作り、凍結済み `VSIX_FILE` と CHANGELOG の該当内容を掲載する
+
+認証エラーや応答不明時は同じ write を直ちに再送しない。先に remote、npm registry、GitHub Release を読み戻し、未完了と確認できた操作だけを再開する。
+
+## Gate 5: 公開後 readback
+
+ローカル成果物ではなく、各公開先から読み戻した値を確認する。
+
+1. origin/main と annotated tag を peel した SHA が `RELEASE_SHA` に一致する
+2. npm registry の version と latest dist-tag が `RELEASE_VERSION` に一致する
+3. npm registry の integrity が凍結済み npm tarball と一致する
+4. GitHub Release が draft/prerelease でなく `RELEASE_TAG` を指す
+5. GitHub Release から再取得した VSIX の SHA-256 が凍結値に一致する
+6. 再取得した VSIX 内の manifest version と README の現行 version が `RELEASE_VERSION` に一致する
+7. public main の README.md と vscode-extension/README.md が同じ version と公開 URL を案内する
+8. local main が origin/main と一致し、working tree が clean である
+
+全項目と readback 値を release receipt に残して release 完了とする。
+
+## 公開後に不整合を発見した場合
+
+- 公開済み tag を移動しない
+- npm の同一 version を再公開しない
+- 公開済み GitHub Release asset を同名上書きして履歴を変えない
+- 不整合を修正し、version bump rule に従う新しい patch release として全 gate をやり直す
+- 部分公開の復旧では、既に正しく公開された対象を再送せず、不足している対象だけを完成させる
+
+## Repository visibility
+
+repository visibility の変更は通常の release と別の承認対象とする。必要な場合は Gate 4 より前に実施し、公開状態を読み戻してから release を続行する。
