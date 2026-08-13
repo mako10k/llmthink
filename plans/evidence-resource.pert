@@ -1,0 +1,111 @@
+project EVIDENCE_RESOURCE:
+  version 5
+  title "Resource-backed evidence support"
+  description "Implement GitHub Issue #5 from the accepted evidence-resource LLMThink design: anonymous nested resources with one typed url, file, or blob locator, optional sha256 integrity metadata, deterministic structural validation, lossless DSLQL projection, synchronized tooling surfaces, and end-to-end acceptance. External resource I/O, resolver capabilities, resource embedding, semantic functions or views, named or shared resources, resource-only evidence, non-sha256 digests, release, publication, remote writes, and Issue mutation remain outside this plan."
+  as_of 2026-08-13
+  duration_unit day
+  finish EVIDENCE_RESOURCE_ACCEPTED
+
+resource CODEX:
+  title "Evidence resource implementation capacity"
+  capacity 1
+
+milestone RESOURCE_DESIGN_REVIEWED:
+  title "Issue #5 resource design reviewed"
+  state reached
+
+milestone RESOURCE_CONTRACT_CAPTURED:
+  title "Resource grammar and regression contract captured"
+
+milestone RESOURCE_CORE_IMPLEMENTED:
+  title "Resource AST parser and formatter implemented"
+
+milestone RESOURCE_VALIDATION_IMPLEMENTED:
+  title "Deterministic structural resource validation implemented"
+
+milestone RESOURCE_PROJECTION_IMPLEMENTED:
+  title "Resource values projected without semantic expansion"
+
+milestone RESOURCE_SURFACES_SYNCHRONIZED:
+  title "Documentation and tooling surfaces synchronized"
+
+milestone EVIDENCE_RESOURCE_ACCEPTED:
+  title "Resource-backed evidence support accepted"
+
+task CAPTURE_RESOURCE_CONTRACT RESOURCE_DESIGN_REVIEWED -> RESOURCE_CONTRACT_CAPTURED:
+  title "Capture the resource grammar and executable regressions"
+  description "Freeze EvidenceResource, tagged locator, digest, MIME, label, span, mixed resource and annotation ordering, and canonical formatter contracts. Add failing tests for zero and multiple resources, exactly-one locator, duplicate fields, invalid URL schemes, malformed sha256 and MIME values, blob plus digest conflict, legacy evidence compatibility, and anonymous non-referenceability. Do not add external I/O or embedding fixtures."
+  estimate:
+    optimistic 0.5d
+    most_likely 1d
+    pessimistic 1.5d
+  status planned
+  priority 100
+  requires:
+    CODEX 1
+  source "docs/process/evidence-resource-plan.dsl D1-D6,D9; GitHub Issue #5"
+
+task IMPLEMENT_RESOURCE_CORE RESOURCE_CONTRACT_CAPTURED -> RESOURCE_CORE_IMPLEMENTED:
+  title "Implement anonymous nested resource values"
+  description "Extend the public AST and exports with EvidenceResource and typed url, file, or blob locator values. Parse zero or more anonymous resource blocks alongside annotations, preserve mandatory evidence text, and format resource fields canonically as locator, digest, MIME, and label while retaining legacy evidence output unchanged."
+  estimate:
+    optimistic 1d
+    most_likely 2d
+    pessimistic 3d
+  status planned
+  priority 100
+  requires:
+    CODEX 1
+  source "D1-D3"
+
+task VALIDATE_RESOURCE_STRUCTURE RESOURCE_CORE_IMPLEMENTED -> RESOURCE_VALIDATION_IMPLEMENTED:
+  title "Add deterministic structural resource validation"
+  description "Validate exactly one locator, absolute http or https URLs, nonempty NUL-free file paths, sha256 blob and digest forms, parameter-free MIME type/subtype, nonempty labels, field uniqueness, and blob plus digest exclusion. Keep default audit free of URL fetches, file reads, MIME sniffing, digest verification, process.cwd fallback, and other resolver behavior."
+  estimate:
+    optimistic 0.5d
+    most_likely 1d
+    pessimistic 2d
+  status planned
+  priority 100
+  requires:
+    CODEX 1
+  source "D2-D5"
+
+task PROJECT_RESOURCE_VALUES RESOURCE_VALIDATION_IMPLEMENTED -> RESOURCE_PROJECTION_IMPLEMENTED:
+  title "Project resource values through the document runtime"
+  description "Expose evidence.resources as ordered lossless DSLQL object values containing locator_kind, locator, digest, MIME, label, and span. Preserve evidence text as the only current semantic text; do not add resource declarations, @ID targets, based_on targets, new DSLQL functions, resource embeddings, ranking, or semantic views."
+  estimate:
+    optimistic 0.5d
+    most_likely 1d
+    pessimistic 1.5d
+  status planned
+  priority 100
+  requires:
+    CODEX 1
+  source "D6,D8"
+
+task SYNCHRONIZE_RESOURCE_SURFACES RESOURCE_PROJECTION_IMPLEMENTED -> RESOURCE_SURFACES_SYNCHRONIZED:
+  title "Synchronize resource documentation and tooling surfaces"
+  description "Update grammar, requirements, README, examples, CLI and MCP Help, LSP hover and completion, TextMate syntax, preview rendering, VSIX assets, and generated dist artifacts. Document structural presence versus external reachability, anonymous identity, file base behavior without cwd fallback, DSLQL projection, compatibility, and every deferred non-goal."
+  estimate:
+    optimistic 1d
+    most_likely 2d
+    pessimistic 3d
+  status planned
+  priority 100
+  requires:
+    CODEX 1
+  source "D5-D8"
+
+task ACCEPT_EVIDENCE_RESOURCES RESOURCE_SURFACES_SYNCHRONIZED -> EVIDENCE_RESOURCE_ACCEPTED:
+  title "Accept resource-backed evidence end to end"
+  description "Run perttool document validation, schedule and frontier checks, LLMThink audit, focused parser, formatter, analyzer, runtime, LSP and preview regressions, format, lint, typecheck, complete tests, build, examples, VSIX packaging, package dry run, generated-artifact diff review, and repository status review. Verify legacy evidence output remains unchanged and no default resource I/O occurs. Record exact results without committing, pushing, releasing, closing Issue #5, or starting Issue #6 unless separately authorized."
+  estimate:
+    optimistic 0.5d
+    most_likely 1d
+    pessimistic 2d
+  status planned
+  priority 100
+  requires:
+    CODEX 1
+  source "D9"
