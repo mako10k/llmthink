@@ -1,21 +1,30 @@
 project LLMTHINK_SERVER_IMPLEMENTATION:
-  version 5
+  version 7
   title "LLMThink hosted server implementation"
   description "Implement the proposed hosted-server design through a transport-independent Application Service, revision-aware server file repository, versioned REST API, Streamable HTTP MCP, preserved local adapters, and local Plugin/Skills acceptance. Production deployment, public Plugin submission, production OAuth configuration, database migration, refgraph-core or sealgraph adoption, MCP Apps UI, release, publication, remote writes, and unrelated llmthink changes remain outside this plan."
   as_of 2026-08-18
   duration_unit point
   finish SERVER_IMPLEMENTATION_ACCEPTED
 
+
+milestone_acceptance_migration GRAMMAR_7_BASELINE:
+  model 1
+  repository git:sha1:5a9a3caff14f1bfa682f9e7ecd80f1553aa7f770:index:f56d15b714cf32d1442f806810ea4c4c665b23fa
+  path "plans/server-implementation.pert"
+  object_format sha1
+  head 5a9a3caff14f1bfa682f9e7ecd80f1553aa7f770
+  blob f56d15b714cf32d1442f806810ea4c4c665b23fa
+  source_digest sha256:cc6bace055e928703933e6e64338c0d5883e30ad97988d4c6581ac2e013ba046
+  candidate_digest sha256:4b4c412b8d1344d9e8c5affa7679f39446e1f5209c46ccec402123bb10dfa45b
+  grandfathered SERVER_DESIGN_AUDITED
 resource CODEX:
   title "LLMThink server implementation capacity"
   capacity 1
 
-milestone SERVER_DESIGN_AUDITED:
-  title "Hosted server design and LLMThink audit completed"
-  state reached
 
 milestone SERVER_CONTRACTS_ACCEPTED:
   title "Application and repository contracts accepted"
+  state reached
 
 milestone SERVER_FOUNDATION_IMPLEMENTED:
   title "Application Service and server file repository implemented"
@@ -32,18 +41,6 @@ milestone SERVER_ACCEPTANCE_READY:
 milestone SERVER_IMPLEMENTATION_ACCEPTED:
   title "Hosted server implementation accepted locally"
 
-task CAPTURE_SERVER_CONTRACTS SERVER_DESIGN_AUDITED -> SERVER_CONTRACTS_ACCEPTED:
-  title "Freeze executable server contracts and remaining local decisions"
-  description "Turn ADR-0007 through ADR-0009 and the server architecture specification into failing contract tests and public TypeScript types. Fix RequestContext, command/query results, ThoughtRepository operations, revision conflicts, idempotency scope, pure audit behavior, error codes, server file schema version, single-process crash recovery protocol, HTTP framework, and local anonymous bind policy. Record OAuth as an interface contract only; do not select or configure a production provider. Keep DB, refgraph-core, sealgraph, deployment, release, and publication outside the accepted basis."
-  estimate:
-    optimistic 1p
-    most_likely 2p
-    pessimistic 3p
-  status done
-  priority 100
-  requires:
-    CODEX 1
-  source "docs/specs/server-architecture.md sections 3-7,12-13; ADR-0007; ADR-0008"
 
 task IMPLEMENT_APPLICATION_SERVICE SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDATION_IMPLEMENTED:
   title "Extract transport-independent Application Service"
@@ -141,8 +138,21 @@ task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATI
     CODEX 1
   source "docs/specs/server-architecture.md section 12; docs/process/server-architecture-review.think D6,D7"
 
-work_event FINISH_CAPTURE_SERVER_CONTRACTS:
+milestone_criterion_set SERVER_CONTRACTS_R1:
+  milestone SERVER_CONTRACTS_ACCEPTED
+  revision R1
+  commitment sha256:333e5794dfbb9eed4c6ce89c3181cdea7da63a6af25b4ba7e92801b4937746d3
+  criterion CONTRACTS_VERIFIED required test "Public contracts and repository policy pass tests, typecheck, lint, build, examples, package dry run, and LLMThink audit"
+
+milestone_acceptance_receipt RCPT_SERVER_CONTRACTS_20260818:
   model 1
-  task CAPTURE_SERVER_CONTRACTS
-  kind finish
-  occurred_at 2026-08-18T19:27:13+09:00
+  set SERVER_CONTRACTS_R1
+  set_commitment sha256:333e5794dfbb9eed4c6ce89c3181cdea7da63a6af25b4ba7e92801b4937746d3
+  criterion CONTRACTS_VERIFIED
+  criterion_commitment sha256:4dbf555fd6a6ad8b6f3987e8da886f44fa23b3f0c81645bbd559d816bb2d4ac0
+  action verify
+  evidence_kind test
+  evidence_reference "npm test 124/124; typecheck; lint; build; verify-examples; package dry run; LLMThink audit fatal/error/warning 0"
+  evidence_revision 5a9a3caff14f1bfa682f9e7ecd80f1553aa7f770
+  verifier codex
+  occurred_at 2026-08-18T10:41:18Z
