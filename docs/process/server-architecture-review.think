@@ -1,0 +1,134 @@
+framework ServerArchitectureReview:
+  requires problem and decision
+  warns pending
+
+domain LLMThinkServer:
+  description "hosted llmthink の共通 service、file backend、API、MCP、Plugin 境界を設計する"
+
+problem P1:
+  "REST、HTTP MCP、CLI、stdio MCP、VSIX が意味規則を重複せず利用できる中心境界を決める"
+
+problem P2:
+  "最初は file backend を使いながら concurrent server write と将来の backend 交換を成立させる"
+
+problem P3:
+  "MCP tool、Plugin、Skills の利便性と server が強制すべき認証・認可を混同しない"
+
+problem P4:
+  "監査だけの操作と thought へ保存する操作を区別し、意図しない write を防ぐ"
+
+problem P5:
+  "実装、production deployment、public Plugin submission を設計承認から暗黙に進めない"
+
+step S1:
+  evidence EV1:
+    |
+      ADR-0004 は audit core を共有し、CLI、stdio MCP、VSIX を薄い interface とする方針を採用している。
+      現行 MCP server は stdio transport、schema、表示、store 操作を同一 module に持つ
+
+step S2:
+  evidence EV2:
+    |
+      現行 thought store は process-local な同期 file I/O で record、history、reflection、draft、final、audit を
+      複数 file に保存し、server concurrency、revision、tenant identity の契約を持たない
+
+step S3:
+  premise PR1:
+    |
+      transport と storage technology は core の思考監査意味論ではない。認証済み subject、tenant、workspace、
+      revision は hosted use case の入力文脈であり、client prompt や process cwd から推測しない
+
+step S4:
+  decision DA1 based_on P1, EV1:
+    "REST API を内部正本とし、MCP、CLI、VSIX は REST を呼ぶ"
+    annotation status:
+      "rejected"
+    annotation rationale:
+      "local interface まで server と network に依存し、ADR-0004 の direct common API 方針を壊す"
+
+step S5:
+  decision D1 based_on P1, EV1, PR1:
+    |
+      transport 非依存 Application Service を中心に置き、REST、Streamable HTTP MCP、stdio MCP、CLI、VSIX を
+      並列 adapter とする。adapter は同じ command/query と repository port を利用し、相互に loopback 呼出ししない
+
+step S6:
+  decision DA2 based_on P2, EV2:
+    "現行 file store 関数へ HTTP handler から直接接続する"
+    annotation status:
+      "rejected"
+    annotation rationale:
+      "tenant 分離、競合検出、partial write recovery を use case contract として強制できない"
+
+step S7:
+  decision D2 based_on P2, EV2, PR1:
+    |
+      ThoughtRepository を file CRUD ではなく domain operation の port とし、tenantId、workspaceId、thoughtId、revision を
+      identity とする。更新は expectedRevision と idempotency key を受け、server file backend は同一 thought の write を
+      直列化し、temporary file、fsync、atomic rename と append-only event により整合性を保つ
+
+step S8:
+  pending PD1:
+    |
+      DB、refgraph-core、sealgraph の採否と、snapshot 正本、relation projection、immutable provenance の分担は
+      repository contract test と個別 PoC の後に別 ADR で決める
+
+step S9:
+  decision D3 based_on P3, PR1:
+    |
+      hosted MCP は /mcp の Streamable HTTP、REST は /api/v1 とし、Plugin と Skills は外側の client integration とする。
+      Skills は authoring、audit、reflection の手順を提供できるが、認証、認可、tenant 分離、validation、revision、
+      confirmation を変更できず、すべて server が強制する
+
+step S10:
+  decision D4 based_on P3, D3:
+    |
+      hosted MCP tool は user goal 単位に分け、read-only、write、consequential write を metadata で区別する。
+      delete は初期公開 tool から除外し、optional UI は tool と machine-readable result の受入後まで導入しない
+
+step S11:
+  decision D5 based_on P4, EV1:
+    |
+      text の pure audit と thought への audit record 保存を別 use case とする。pure audit は thought store を変更せず、
+      保存操作だけが明示 thought identity、scope、expected revision を要求する
+
+step S12:
+  decision D6 based_on P5, D1, D2, D3, D4, D5:
+    |
+      今回の完了条件は ADR、server architecture specification、LLMThink audit とする。Application Service、file backend、
+      HTTP server、Plugin package の実装、production deployment、public submission は含めず、別の明示承認を必要とする
+
+step S13:
+  pending PD2:
+    |
+      production OAuth provider、token audience、DB、refgraph-core、sealgraph の役割は
+      hosted core のローカル受入後に別判断する
+
+step S13A:
+  decision D8 based_on D2, D3, PD2:
+    |
+      初期 HTTP stack は Node http と MCP SDK の Node 用 StreamableHTTPServerTransport とする。
+      file commit は immutable revision directory と atomic CURRENT pointer を使い、orphan を自動昇格しない。
+      idempotency は subject、operation、resource、request digest で scope し、既定24時間、1時間から7日とする
+
+step S14:
+  decision D7 based_on P1, P2, P3, P4, P5, D1, D2, D3, D4, D5, D6:
+    |
+      first implementation gate は Application Service の transport 非依存、path traversal 拒否、revision conflict、
+      concurrent write と crash recovery、pure audit の無永続化、REST/MCP contract 同値、既存 local interface の回帰なし、
+      authentication 無効時の non-loopback bind 拒否を検証することとする
+
+query Q1:
+  .document.problems[] | select(.id == @P1) | related_decisions()
+
+query Q2:
+  .document.problems[] | select(.id == @P2) | related_decisions()
+
+query Q3:
+  .document.problems[] | select(.id == @P3) | related_decisions()
+
+query Q4:
+  .document.problems[] | select(.id == @P4) | related_decisions()
+
+query Q5:
+  .document.problems[] | select(.id == @P5) | related_decisions()

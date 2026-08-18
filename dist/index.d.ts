@@ -22,3 +22,7 @@ export { collectDocumentDeclarations, createDocumentDeclarationIndex, DocumentDe
 export type { DocumentDeclaration, DocumentDeclarationKind, DocumentDeclarationNode, } from "./model/declarations.js";
 export type { ThoughtStoreLocation, ThoughtReflection, ThoughtReflectionKind, ThoughtSemanticAuditInput, ThoughtSemanticAuditVerdict, ThoughtSnapshot, } from "./thought/store.js";
 export type { PersistedThoughtAudit, ThoughtIdSource, } from "./thought/workflow.js";
+export { assertCommandIdentity, assertHostedId, assertIdempotencyRetention, assertRevision, assertThoughtRef, DEFAULT_IDEMPOTENCY_RETENTION_SECONDS, LLMTHINK_SERVER_API_VERSION, LLMTHINK_SERVER_ERROR_CODES, LLMTHINK_SERVER_FILE_SCHEMA_VERSION, LLMTHINK_SERVER_SCOPES, LlmthinkServerError, MAX_IDEMPOTENCY_RETENTION_SECONDS, MIN_IDEMPOTENCY_RETENTION_SECONDS, } from "./server/contracts.js";
+export type { AddReflectionCommand, AuditTextCommand, CommandIdentity, CreateThoughtCommand, FinalizeThoughtCommand, NewThoughtRevision, PureAuditResult, RecordAuditCommand, RequestContext, RevisionPrecondition, SaveDraftCommand, ServerThoughtCurrentPointer, ServerThoughtFileRecord, ServerThoughtSnapshot, StoredIdempotencyRecord, ThoughtListQuery, ThoughtPage, ThoughtRef, ThoughtRepository, ThoughtSearchQuery, } from "./server/contracts.js";
+export { assertServerBindPolicy, isExplicitLoopbackHostname, LLMTHINK_SERVER_HTTP_STACK, } from "./server/policy.js";
+export type { ServerBindPolicyInput } from "./server/policy.js";

@@ -426,7 +426,28 @@ Could:
 - graph storeを補助可視化に使えること
 - recencyを最近の論点把握に使えること
 
-### 12.3 監査結果モデル
+### 12.3 Hosted server 境界
+
+Hosted server は proposed scope とし、実装時には次を満たす。
+
+Must:
+
+- Core の意味規則を transport 非依存 Application Service から利用すること
+- REST、Streamable HTTP MCP、stdio MCP を相互呼び出しではなく並列 adapter とすること
+- thought 永続化を domain operation 単位の repository port へ分離すること
+- server が確定した tenant、workspace、thought identity と revision により更新を検査すること
+- pure audit と永続化を伴う audit record を別 use case とすること
+- Skills、tool metadata、client UI を authorization boundary として扱わないこと
+- file backend の更新を原子的に行い、競合を黙って上書きしないこと
+
+Must not:
+
+- process cwd または client supplied path から hosted tenant/workspace authority を暗黙導出しないこと
+- Plugin 接続を production deployment または public submission の承認として扱わないこと
+
+詳細は [server architecture](server-architecture.md) と ADR-0007、ADR-0008、ADR-0009 に定める。
+
+### 12.4 監査結果モデル
 
 最低限、次のカテゴリを持つ。
 

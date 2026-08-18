@@ -1,0 +1,148 @@
+project LLMTHINK_SERVER_IMPLEMENTATION:
+  version 5
+  title "LLMThink hosted server implementation"
+  description "Implement the proposed hosted-server design through a transport-independent Application Service, revision-aware server file repository, versioned REST API, Streamable HTTP MCP, preserved local adapters, and local Plugin/Skills acceptance. Production deployment, public Plugin submission, production OAuth configuration, database migration, refgraph-core or sealgraph adoption, MCP Apps UI, release, publication, remote writes, and unrelated llmthink changes remain outside this plan."
+  as_of 2026-08-18
+  duration_unit point
+  finish SERVER_IMPLEMENTATION_ACCEPTED
+
+resource CODEX:
+  title "LLMThink server implementation capacity"
+  capacity 1
+
+milestone SERVER_DESIGN_AUDITED:
+  title "Hosted server design and LLMThink audit completed"
+  state reached
+
+milestone SERVER_CONTRACTS_ACCEPTED:
+  title "Application and repository contracts accepted"
+
+milestone SERVER_FOUNDATION_IMPLEMENTED:
+  title "Application Service and server file repository implemented"
+
+milestone HOSTED_ADAPTERS_IMPLEMENTED:
+  title "REST API and Streamable HTTP MCP implemented"
+
+milestone SERVER_SECURITY_ACCEPTED:
+  title "Hosted identity authorization and observability accepted"
+
+milestone SERVER_ACCEPTANCE_READY:
+  title "Hosted server implementation ready for final local acceptance"
+
+milestone SERVER_IMPLEMENTATION_ACCEPTED:
+  title "Hosted server implementation accepted locally"
+
+task CAPTURE_SERVER_CONTRACTS SERVER_DESIGN_AUDITED -> SERVER_CONTRACTS_ACCEPTED:
+  title "Freeze executable server contracts and remaining local decisions"
+  description "Turn ADR-0007 through ADR-0009 and the server architecture specification into failing contract tests and public TypeScript types. Fix RequestContext, command/query results, ThoughtRepository operations, revision conflicts, idempotency scope, pure audit behavior, error codes, server file schema version, single-process crash recovery protocol, HTTP framework, and local anonymous bind policy. Record OAuth as an interface contract only; do not select or configure a production provider. Keep DB, refgraph-core, sealgraph, deployment, release, and publication outside the accepted basis."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "docs/specs/server-architecture.md sections 3-7,12-13; ADR-0007; ADR-0008"
+
+task IMPLEMENT_APPLICATION_SERVICE SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDATION_IMPLEMENTED:
+  title "Extract transport-independent Application Service"
+  description "Implement the audited command/query use cases over llmthink Core and injected ports. Separate pure audit from audit persistence; pass explicit RequestContext; centralize authorization requirements, revision checks, transaction boundaries, and stable domain errors. Do not import HTTP or MCP SDK types, access process cwd for hosted authority, or change audit meaning. Add direct use-case tests for allowed, denied, missing, conflicting, and idempotent requests."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 100
+  requires:
+    CODEX 1
+  source "ADR-0007; docs/process/server-architecture-review.think D1,D5,D7"
+
+task IMPLEMENT_SERVER_FILE_REPOSITORY SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDATION_IMPLEMENTED:
+  title "Implement the isolated revision-aware server file repository"
+  description "Implement validated tenant, workspace, and thought identities under an explicit data root; monotonic immutable revision directories; expected-revision rejection; subject-operation-resource-request scoped idempotency; per-thought write serialization; fsync and atomic CURRENT pointer replacement; append-only event history; schema-version checks; and fail-closed bounded recovery without orphan promotion. Test traversal and absolute-path rejection, tenant isolation, concurrent updates, interrupted writes, restart recovery, legacy-format non-mutation, and absence of cwd fallback. Limit the guarantee to the documented single-host single-process topology."
+  estimate:
+    optimistic 3p
+    most_likely 5p
+    pessimistic 8p
+  priority 100
+  requires:
+    CODEX 1
+  source "ADR-0008; docs/specs/server-architecture.md sections 5-6"
+
+task IMPLEMENT_REST_API SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPTERS_IMPLEMENTED:
+  title "Implement the versioned REST JSON adapter"
+  description "Add health and readiness endpoints plus the accepted /api/v1 audit, thought, draft, audit-record, finalize, reflection, event, list, and search routes. Validate all external input, map stable domain errors to fixed status and JSON envelopes, require expected revision and idempotency where specified, bound request and response sizes, and prove POST /audits does not persist. Keep deployment manifests and production authentication configuration out of scope."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 90
+  requires:
+    CODEX 1
+  source "docs/specs/server-architecture.md section 7"
+
+task IMPLEMENT_STREAMABLE_HTTP_MCP SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPTERS_IMPLEMENTED:
+  title "Implement the Streamable HTTP MCP adapter"
+  description "Expose /mcp with user-goal tools for pure audit, create draft, get, list, search, finalize, reflect, and history. Return structured machine-readable results with bounded text presentation; annotate read-only, write, and consequential-write effects; exclude delete; enforce RequestContext and server-side authorization; and test initialization, schema, invalid input, revision conflict, idempotency, confirmation, and disconnect behavior with MCP Inspector-compatible fixtures. Do not add custom UI."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 90
+  requires:
+    CODEX 1
+  source "ADR-0009; docs/specs/server-architecture.md section 8"
+
+task PRESERVE_LOCAL_INTERFACES SERVER_FOUNDATION_IMPLEMENTED -> SERVER_ACCEPTANCE_READY:
+  title "Preserve CLI stdio MCP and VSIX local behavior"
+  description "Adapt existing CLI and stdio MCP paths to shared use cases where appropriate without requiring an HTTP server. Preserve .think and .dsl handling, workspace/user/system local storage behavior, existing stdio tool contract, audit presentation, thought lifecycle, LSP, preview, and VSIX behavior. Add parity regressions that distinguish the existing LocalFileThoughtStore contract from the new ServerFileThoughtStore safety contract."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  priority 80
+  requires:
+    CODEX 1
+  source "ADR-0007; ADR-0008; ADR-0004"
+
+task HARDEN_SERVER_BOUNDARIES HOSTED_ADAPTERS_IMPLEMENTED -> SERVER_SECURITY_ACCEPTED:
+  title "Accept hosted identity authorization privacy and observability boundaries"
+  description "Apply one authentication adapter boundary to REST and MCP; derive subject, tenant, workspace, and scopes only from verified context; reject non-loopback bind when authentication is disabled; enforce thought read, write, finalize, and audit scopes; redact tokens and thought bodies from logs; add request IDs, bounded metrics, rate and size limits, timeout handling, and negative cross-tenant tests. Test the production OAuth interface with fakes only and do not configure an external provider."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 100
+  requires:
+    CODEX 1
+  source "docs/specs/server-architecture.md sections 4,11-12; ADR-0009"
+
+task ACCEPT_PLUGIN_AND_SKILLS SERVER_SECURITY_ACCEPTED -> SERVER_ACCEPTANCE_READY:
+  title "Accept local Plugin metadata Skills and tool selection"
+  description "Package local Plugin metadata and the llmthink-author, llmthink-auditor, and llmthink-reflector Skills against the accepted MCP tools. Verify Skills cannot widen scopes, bypass revision or confirmation, collect secrets, or change authorization outcomes. Run direct, indirect, follow-up, write-confirmation, unknown, and out-of-scope tool-selection evaluations. Use local or developer-mode testing only; do not deploy, submit, publish, or add MCP Apps UI."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  priority 70
+  requires:
+    CODEX 1
+  source "docs/specs/server-architecture.md sections 9,12; ADR-0009"
+
+task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATION_ACCEPTED:
+  title "Accept the hosted server implementation locally"
+  description "Run perttool document validation, schedule and frontier checks, LLMThink design audit, focused Application Service and repository contract suites, path and concurrency fault tests, REST and MCP parity tests, authentication and privacy negatives, MCP Inspector checks, Plugin tool-selection evaluations, format, lint, typecheck, complete tests, build, examples, package dry run, generated-artifact review, and repository status review. Confirm production deployment, external OAuth configuration, DB or graph backend work, release, publication, remote writes, and public Plugin submission remain undone unless separately authorized."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  priority 100
+  requires:
+    CODEX 1
+  source "docs/specs/server-architecture.md section 12; docs/process/server-architecture-review.think D6,D7"
+
+work_event FINISH_CAPTURE_SERVER_CONTRACTS:
+  model 1
+  task CAPTURE_SERVER_CONTRACTS
+  kind finish
+  occurred_at 2026-08-18T19:27:13+09:00
