@@ -148,3 +148,5 @@ export {
   LLMTHINK_SERVER_HTTP_STACK,
 } from "./server/policy.js";
 export type { ServerBindPolicyInput } from "./server/policy.js";
+export { ServerFileThoughtRepository } from "./server/file-repository.js";
+export type { ServerFileThoughtRepositoryOptions } from "./server/file-repository.js";

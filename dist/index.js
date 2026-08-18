@@ -14,4 +14,5 @@ export { createEvidenceResource, EvidenceResourceValidationError, validateEviden
 export { collectDocumentDeclarations, createDocumentDeclarationIndex, DocumentDeclarationIndex, DOCUMENT_DECLARATION_KINDS, DuplicateDocumentDeclarationError, } from "./model/declarations.js";
 export { assertCommandIdentity, assertHostedId, assertIdempotencyRetention, assertRevision, assertThoughtRef, DEFAULT_IDEMPOTENCY_RETENTION_SECONDS, LLMTHINK_SERVER_API_VERSION, LLMTHINK_SERVER_ERROR_CODES, LLMTHINK_SERVER_FILE_SCHEMA_VERSION, LLMTHINK_SERVER_SCOPES, LlmthinkServerError, MAX_IDEMPOTENCY_RETENTION_SECONDS, MIN_IDEMPOTENCY_RETENTION_SECONDS, } from "./server/contracts.js";
 export { assertServerBindPolicy, isExplicitLoopbackHostname, LLMTHINK_SERVER_HTTP_STACK, } from "./server/policy.js";
+export { ServerFileThoughtRepository } from "./server/file-repository.js";
 //# sourceMappingURL=index.js.map

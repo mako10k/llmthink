@@ -26,3 +26,5 @@ export { assertCommandIdentity, assertHostedId, assertIdempotencyRetention, asse
 export type { AddReflectionCommand, AuditTextCommand, CommandIdentity, CreateThoughtCommand, FinalizeThoughtCommand, NewThoughtRevision, PureAuditResult, RecordAuditCommand, RequestContext, RevisionPrecondition, SaveDraftCommand, ServerThoughtCurrentPointer, ServerThoughtFileRecord, ServerThoughtSnapshot, StoredIdempotencyRecord, ThoughtListQuery, ThoughtPage, ThoughtRef, ThoughtRepository, ThoughtSearchQuery, } from "./server/contracts.js";
 export { assertServerBindPolicy, isExplicitLoopbackHostname, LLMTHINK_SERVER_HTTP_STACK, } from "./server/policy.js";
 export type { ServerBindPolicyInput } from "./server/policy.js";
+export { ServerFileThoughtRepository } from "./server/file-repository.js";
+export type { ServerFileThoughtRepositoryOptions } from "./server/file-repository.js";

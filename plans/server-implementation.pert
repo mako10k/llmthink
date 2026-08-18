@@ -61,6 +61,7 @@ task IMPLEMENT_SERVER_FILE_REPOSITORY SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDA
     optimistic 3p
     most_likely 5p
     pessimistic 8p
+  status done
   priority 100
   requires:
     CODEX 1
@@ -156,3 +157,16 @@ milestone_acceptance_receipt RCPT_SERVER_CONTRACTS_20260818:
   evidence_revision 5a9a3caff14f1bfa682f9e7ecd80f1553aa7f770
   verifier codex
   occurred_at 2026-08-18T10:41:18Z
+
+work_event START_IMPLEMENT_SERVER_FILE_REPOSITORY:
+  model 1
+  task IMPLEMENT_SERVER_FILE_REPOSITORY
+  kind start
+  occurred_at 2026-08-18T19:57:29+09:00
+  planned_value 31/6p
+
+work_event FINISH_IMPLEMENT_SERVER_FILE_REPOSITORY:
+  model 1
+  task IMPLEMENT_SERVER_FILE_REPOSITORY
+  kind finish
+  occurred_at 2026-08-18T20:09:45+09:00
