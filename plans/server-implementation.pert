@@ -119,3 +119,13 @@ milestone_acceptance_receipt RCPT_READY_REGRESSION_20260819:
   evidence_revision 241938c105eb5f1671a30a7961254ce2e6c9062c
   verifier codex
   occurred_at 2026-08-19T04:15:02Z
+
+milestone_criterion_set SERVER_IMPLEMENTATION_R1:
+  milestone SERVER_IMPLEMENTATION_ACCEPTED
+  revision R1
+  commitment sha256:813c2c3795058a994be7727247b6d89c02cb4382bd0065a75727e3f3665aa257
+  criterion CORE_REPOSITORY_SAFETY required test "Application Service and server repository focused tests prove pure audit non-persistence, authorization, tenant and workspace isolation, immutable revisions, expected-revision conflicts, idempotency, path safety, concurrency, atomic CURRENT, and fail-closed recovery"
+  criterion HOSTED_TRANSPORT_SECURITY required test "REST and Streamable HTTP MCP parity, MCP Inspector initialization schema positive and negative calls, verified authentication, scope enforcement, bounded requests, rate limits, timeouts, privacy-safe observations, and stable errors pass"
+  criterion LOCAL_PLUGIN_COMPATIBILITY required test "CLI, stdio MCP, LSP, preview, VSIX, local storage, Plugin metadata, three Skills, and direct indirect follow-up write-confirmation unknown and out-of-scope tool-selection evaluations remain compatible without authority widening"
+  criterion FINAL_REGRESSION required test "Complete tests, typecheck, lint, format check, builds, examples, VSIX packaging, npm package dry run, Plugin and Skill validators, generated-artifact review, PERT validation, and LLMThink audit pass with no fatal error or warning"
+  criterion SCOPE_CONTAINMENT required artifact "Repository and operation review confirms production deployment, external OAuth configuration, DB or graph backend migration, release, publication, remote writes, MCP Apps UI, and public Plugin submission remain unperformed unless separately authorized"
