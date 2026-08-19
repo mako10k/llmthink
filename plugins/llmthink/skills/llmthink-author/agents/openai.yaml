@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLMThink Author"
+  short_description: "Structure a draft without inventing evidence"
+  default_prompt: "Use $llmthink-author to structure this problem as a reviewable LLMThink draft."

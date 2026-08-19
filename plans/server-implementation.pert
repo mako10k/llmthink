@@ -64,6 +64,7 @@ task ACCEPT_PLUGIN_AND_SKILLS SERVER_SECURITY_ACCEPTED -> SERVER_ACCEPTANCE_READ
     optimistic 1p
     most_likely 2p
     pessimistic 3p
+  status done
   priority 70
   requires:
     CODEX 1
@@ -255,3 +256,16 @@ milestone_acceptance_receipt RCPT_READY_STORE_BOUNDARY_20260819:
   evidence_revision 62767254f1a8f5bff1de5c14aeb4a61b6348173e
   verifier codex
   occurred_at 2026-08-19T03:10:01Z
+
+work_event START_ACCEPT_PLUGIN_AND_SKILLS:
+  model 1
+  task ACCEPT_PLUGIN_AND_SKILLS
+  kind start
+  occurred_at 2026-08-19T12:14:18+09:00
+  planned_value 2p
+
+work_event FINISH_ACCEPT_PLUGIN_AND_SKILLS:
+  model 1
+  task ACCEPT_PLUGIN_AND_SKILLS
+  kind finish
+  occurred_at 2026-08-19T13:10:52+09:00

@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLMThink Reflector"
+  short_description: "Append a scoped reflection to a thought"
+  default_prompt: "Use $llmthink-reflector to add this reflection to an existing thought."
