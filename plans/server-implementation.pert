@@ -27,12 +27,10 @@ milestone SERVER_FOUNDATION_IMPLEMENTED:
   title "Application Service and server file repository implemented"
   state reached
 
-milestone HOSTED_ADAPTERS_IMPLEMENTED:
-  title "REST API and Streamable HTTP MCP implemented"
-  state reached
 
 milestone SERVER_SECURITY_ACCEPTED:
   title "Hosted identity authorization and observability accepted"
+  state reached
 
 milestone SERVER_ACCEPTANCE_READY:
   title "Hosted server implementation ready for final local acceptance"
@@ -57,18 +55,6 @@ task PRESERVE_LOCAL_INTERFACES SERVER_FOUNDATION_IMPLEMENTED -> SERVER_ACCEPTANC
     CODEX 1
   source "ADR-0007; ADR-0008; ADR-0004"
 
-task HARDEN_SERVER_BOUNDARIES HOSTED_ADAPTERS_IMPLEMENTED -> SERVER_SECURITY_ACCEPTED:
-  title "Accept hosted identity authorization privacy and observability boundaries"
-  description "Apply one authentication adapter boundary to REST and MCP; derive subject, tenant, workspace, and scopes only from verified context; reject non-loopback bind when authentication is disabled; enforce thought read, write, finalize, and audit scopes; redact tokens and thought bodies from logs; add request IDs, bounded metrics, rate and size limits, timeout handling, and negative cross-tenant tests. Test the production OAuth interface with fakes only and do not configure an external provider."
-  estimate:
-    optimistic 2p
-    most_likely 3p
-    pessimistic 5p
-  status done
-  priority 100
-  requires:
-    CODEX 1
-  source "docs/specs/server-architecture.md sections 4,11-12; ADR-0009"
 
 task ACCEPT_PLUGIN_AND_SKILLS SERVER_SECURITY_ACCEPTED -> SERVER_ACCEPTANCE_READY:
   title "Accept local Plugin metadata Skills and tool selection"
@@ -159,68 +145,6 @@ milestone_acceptance_receipt RCPT_FOUNDATION_REGRESSION_20260819:
   verifier codex
   occurred_at 2026-08-19T00:54:44Z
 
-milestone_criterion_set HOSTED_ADAPTERS_R1:
-  milestone HOSTED_ADAPTERS_IMPLEMENTED
-  revision R1
-  commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
-  criterion REST_CONTRACT required test "Versioned REST routes prove health and readiness, pure audit non-persistence, thought command and query behavior, stable success and error envelopes, bounded payloads, revision and idempotency handling, and disconnect-safe responses"
-  criterion MCP_CONTRACT required test "Streamable HTTP MCP proves initialization, schemas, structured tool results, effect annotations, authorization, invalid input, revision conflict, idempotency, confirmation, and disconnect handling without REST loopback"
-  criterion ADAPTER_PARITY required test "Direct Application Service, REST, and MCP contract tests prove equivalent domain results and state transitions for shared use cases"
-  criterion HOSTED_ADAPTER_REGRESSION required test "Focused adapter tests and complete tests, typecheck, lint, format check, build, examples, package dry run, PERT validation, and LLMThink audit pass"
-
-
-milestone_acceptance_receipt RCPT_HOSTED_REST_20260819:
-  model 1
-  set HOSTED_ADAPTERS_R1
-  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
-  criterion REST_CONTRACT
-  criterion_commitment sha256:f88bbf784695600a9bcffb76b2ab7cd9bb300b0f1fe40ec13d8d26c558c5bd46
-  action verify
-  evidence_kind test
-  evidence_reference "REST direct tests 9/9; health and readiness, authentication, pure audit non-persistence, thought routes, stable envelopes, size bounds, revision and idempotency conflicts, disconnect recovery"
-  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
-  verifier codex
-  occurred_at 2026-08-19T02:16:32Z
-
-milestone_acceptance_receipt RCPT_HOSTED_MCP_20260819:
-  model 1
-  set HOSTED_ADAPTERS_R1
-  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
-  criterion MCP_CONTRACT
-  criterion_commitment sha256:9b2df44838a59d693119d14d3456288ddc25e832254912b54e78c84f6e12888a
-  action verify
-  evidence_kind test
-  evidence_reference "MCP direct tests 6/6; initialization, eight tool schemas and effect annotations, structured results, authorization, invalid input, revision and idempotency conflicts, confirmation, request bounds, disconnect recovery, no REST loopback"
-  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
-  verifier codex
-  occurred_at 2026-08-19T02:16:33Z
-
-milestone_acceptance_receipt RCPT_HOSTED_PARITY_20260819:
-  model 1
-  set HOSTED_ADAPTERS_R1
-  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
-  criterion ADAPTER_PARITY
-  criterion_commitment sha256:fa48497d0190919360b012616bdf37510d3f06cb824bf3746ce81317dc029ae4
-  action verify
-  evidence_kind test
-  evidence_reference "adapter parity direct test 1/1 plus direct Application Service 7/7, REST 9/9, MCP 6/6; equivalent create transition and shared pure audit and repository semantics"
-  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
-  verifier codex
-  occurred_at 2026-08-19T02:16:34Z
-
-milestone_acceptance_receipt RCPT_HOSTED_REGRESSION_20260819:
-  model 1
-  set HOSTED_ADAPTERS_R1
-  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
-  criterion HOSTED_ADAPTER_REGRESSION
-  criterion_commitment sha256:9502094b08d93f87b0799e10b8678f1420cacf084eb02e414b1a051ea6a6f740
-  action verify
-  evidence_kind test
-  evidence_reference "focused adapters 16/16; complete tests 155/155; typecheck, lint, format check, build, 4 examples, package dry run 129 files including 6 adapter artifacts, PERT check, LLMThink fatal/error/warning 0, diff check"
-  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
-  verifier codex
-  occurred_at 2026-08-19T02:16:35Z
-
 milestone_criterion_set SERVER_SECURITY_R1:
   milestone SERVER_SECURITY_ACCEPTED
   revision R1
@@ -230,18 +154,6 @@ milestone_criterion_set SERVER_SECURITY_R1:
   criterion PRIVACY_OBSERVABILITY required test "Bounded request IDs metrics rate limits timeouts and size limits are observable while tokens authorization headers thought bodies audit text and reflection text are absent from normal logs"
   criterion SECURITY_REGRESSION required test "Focused boundary tests and complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
 
-work_event START_HARDEN_SERVER_BOUNDARIES:
-  model 1
-  task HARDEN_SERVER_BOUNDARIES
-  kind start
-  occurred_at 2026-08-19T11:21:20+09:00
-  planned_value 19/6p
-
-work_event FINISH_HARDEN_SERVER_BOUNDARIES:
-  model 1
-  task HARDEN_SERVER_BOUNDARIES
-  kind finish
-  occurred_at 2026-08-19T11:46:39+09:00
 
 milestone_acceptance_receipt RCPT_SECURITY_IDENTITY_20260819:
   model 1
