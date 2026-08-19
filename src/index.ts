@@ -126,6 +126,7 @@ export type {
   CommandIdentity,
   CreateThoughtCommand,
   FinalizeThoughtCommand,
+  LlmthinkServerScope,
   NewThoughtRevision,
   PureAuditResult,
   RecordAuditCommand,
@@ -150,3 +151,8 @@ export {
 export type { ServerBindPolicyInput } from "./server/policy.js";
 export { ServerFileThoughtRepository } from "./server/file-repository.js";
 export type { ServerFileThoughtRepositoryOptions } from "./server/file-repository.js";
+export { LlmthinkApplicationService } from "./server/application-service.js";
+export type {
+  LlmthinkApplicationServiceOptions,
+  LlmthinkAuditRunner,
+} from "./server/application-service.js";

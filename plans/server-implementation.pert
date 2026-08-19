@@ -49,6 +49,7 @@ task IMPLEMENT_APPLICATION_SERVICE SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDATIO
     optimistic 2p
     most_likely 3p
     pessimistic 5p
+  status done
   priority 100
   requires:
     CODEX 1
@@ -170,3 +171,25 @@ work_event FINISH_IMPLEMENT_SERVER_FILE_REPOSITORY:
   task IMPLEMENT_SERVER_FILE_REPOSITORY
   kind finish
   occurred_at 2026-08-18T20:09:45+09:00
+
+work_event START_IMPLEMENT_APPLICATION_SERVICE:
+  model 1
+  task IMPLEMENT_APPLICATION_SERVICE
+  kind start
+  occurred_at 2026-08-19T09:30:34+09:00
+  planned_value 19/6p
+
+work_event FINISH_IMPLEMENT_APPLICATION_SERVICE:
+  model 1
+  task IMPLEMENT_APPLICATION_SERVICE
+  kind finish
+  occurred_at 2026-08-19T09:37:21+09:00
+
+milestone_criterion_set SERVER_FOUNDATION_R1:
+  milestone SERVER_FOUNDATION_IMPLEMENTED
+  revision R1
+  commitment sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af
+  criterion APPLICATION_USE_CASES required test "Direct use case tests prove pure audit is non-persistent, authorization is centralized, and allowed, denied, missing, revision-conflict, idempotent, and confirmation outcomes use stable domain results"
+  criterion REPOSITORY_SAFETY required test "Repository tests prove validated identities, tenant isolation, immutable monotonic revisions, expected-revision conflicts, scoped idempotency, serialized writes, atomic CURRENT, fail-closed recovery, unsupported-schema rejection, and no cwd fallback"
+  criterion TRANSPORT_INDEPENDENCE required artifact "Application Service depends only on Core and injected ports, imports no HTTP or MCP transport types, preserves Core audit meaning, and exposes no backend path as public identity"
+  criterion FOUNDATION_REGRESSION required test "Focused foundation tests and complete tests, typecheck, lint, format check, build, examples, package dry run, PERT validation, and LLMThink audit pass"
