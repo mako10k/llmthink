@@ -1,0 +1,32 @@
+[Unit]
+Description=LLMThink hosted MCP server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=llmthink
+Group=llmthink
+WorkingDirectory=/var/lib/llmthink
+EnvironmentFile=/etc/llmthink/hosted.env
+Environment=NODE_OPTIONS=--max-old-space-size=384
+ExecStart=/usr/bin/node /opt/llmthink/current/node_modules/llmthink/dist/server/hosted-main.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0077
+MemoryHigh=480M
+MemoryMax=640M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/llmthink
+
+[Install]
+WantedBy=multi-user.target

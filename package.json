@@ -30,6 +30,7 @@
   ],
   "bin": {
     "llmthink": "dist/cli.js",
+    "llmthink-hosted-mcp": "dist/server/hosted-main.js",
     "llmthink-mcp": "dist/mcp/server.js",
     "llmthink-lsp": "dist/lsp/server.js"
   },
