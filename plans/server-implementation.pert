@@ -26,100 +26,14 @@ resource CODEX:
 
 
 
-milestone SERVER_ACCEPTANCE_READY:
-  title "Hosted server implementation ready for final local acceptance"
-  state reached
 
 milestone SERVER_IMPLEMENTATION_ACCEPTED:
   title "Hosted server implementation accepted locally"
+  state reached
 
 
 
 
-
-
-
-
-
-task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATION_ACCEPTED:
-  title "Accept the hosted server implementation locally"
-  description "Run perttool document validation, schedule and frontier checks, LLMThink design audit, focused Application Service and repository contract suites, path and concurrency fault tests, REST and MCP parity tests, authentication and privacy negatives, MCP Inspector checks, Plugin tool-selection evaluations, format, lint, typecheck, complete tests, build, examples, package dry run, generated-artifact review, and repository status review. Confirm production deployment, external OAuth configuration, DB or graph backend work, release, publication, remote writes, and public Plugin submission remain undone unless separately authorized."
-  estimate:
-    optimistic 1p
-    most_likely 2p
-    pessimistic 3p
-  status done
-  priority 100
-  requires:
-    CODEX 1
-  source "docs/specs/server-architecture.md section 12; docs/process/server-architecture-review.think D6,D7"
-
-
-
-
-
-milestone_criterion_set SERVER_ACCEPTANCE_READY_R1:
-  milestone SERVER_ACCEPTANCE_READY
-  revision R1
-  commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
-  criterion LOCAL_INTERFACE_COMPATIBILITY required test "CLI stdio MCP LSP preview and VSIX retain local execution without requiring hosted HTTP and preserve think and dsl storage and presentation behavior"
-  criterion LOCAL_HOSTED_STORE_BOUNDARY required test "Regression tests distinguish LocalFileThoughtStore workspace user and system semantics from explicit-root tenant-isolated ServerFileThoughtRepository semantics without authority leakage"
-  criterion PLUGIN_SKILLS_CONTRACT required test "Local Plugin metadata and author auditor reflector Skills match accepted MCP tools and cannot widen scopes bypass revision or confirmation collect secrets or alter authorization outcomes"
-  criterion ACCEPTANCE_READY_REGRESSION required test "Focused local-interface and Plugin evaluations plus complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
-
-
-milestone_acceptance_receipt RCPT_READY_LOCAL_INTERFACES_20260819:
-  model 1
-  set SERVER_ACCEPTANCE_READY_R1
-  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
-  criterion LOCAL_INTERFACE_COMPATIBILITY
-  criterion_commitment sha256:18136952aa838be30ffdfc4a2f3076db0a48cbf63ce0da63b7895d36f0752f8d
-  action verify
-  evidence_kind test
-  evidence_reference "commit 62767254f1a8f5bff1de5c14aeb4a61b6348173e; local compatibility focused tests 14/14; CLI pure audit runs locally, stdio MCP initializes and retains dsl and thought tools, local adapters contain no hosted HTTP loopback, think and dsl behavior and VSIX manifest remain compatible"
-  evidence_revision 62767254f1a8f5bff1de5c14aeb4a61b6348173e
-  verifier codex
-  occurred_at 2026-08-19T03:10:00Z
-
-milestone_acceptance_receipt RCPT_READY_STORE_BOUNDARY_20260819:
-  model 1
-  set SERVER_ACCEPTANCE_READY_R1
-  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
-  criterion LOCAL_HOSTED_STORE_BOUNDARY
-  criterion_commitment sha256:3226ca8447ea8026eaad92bc11af20751744b923eeb9d30c8d07612f4bad3171
-  action verify
-  evidence_kind test
-  evidence_reference "commit 62767254f1a8f5bff1de5c14aeb4a61b6348173e; Local store and ServerFileThoughtRepository retain distinct layout authority and same-ID content; existing runtime config workspace user system tests 8/8 and repository isolation tests pass"
-  evidence_revision 62767254f1a8f5bff1de5c14aeb4a61b6348173e
-  verifier codex
-  occurred_at 2026-08-19T03:10:01Z
-
-
-milestone_acceptance_receipt RCPT_READY_PLUGIN_SKILLS_20260819:
-  model 1
-  set SERVER_ACCEPTANCE_READY_R1
-  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
-  criterion PLUGIN_SKILLS_CONTRACT
-  criterion_commitment sha256:ba17412acf6cc94de6fe9390fb0dd21db9de882f676f0cc2c1ab4802a68aa3d1
-  action verify
-  evidence_kind test
-  evidence_reference "commit 241938c105eb5f1671a30a7961254ce2e6c9062c; Plugin manifest and loopback MCP metadata validated; author auditor reflector Skills validated; six tool-selection cases; focused Plugin policy tests 4/4 prove no scope, tenant, revision, confirmation, secret, or authorization widening"
-  evidence_revision 241938c105eb5f1671a30a7961254ce2e6c9062c
-  verifier codex
-  occurred_at 2026-08-19T04:12:02Z
-
-milestone_acceptance_receipt RCPT_READY_REGRESSION_20260819:
-  model 1
-  set SERVER_ACCEPTANCE_READY_R1
-  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
-  criterion ACCEPTANCE_READY_REGRESSION
-  criterion_commitment sha256:7afd215b03e14e8923a88b11a8ccb3943564ba6cfbfeca12abbfa3d864d4d113
-  action verify
-  evidence_kind test
-  evidence_reference "commit 241938c105eb5f1671a30a7961254ce2e6c9062c; focused Plugin and hosted boundary tests 17/17; complete tests 170/170; typecheck, lint, format check, build, 4 examples, extension checks, package dry run 132 files, Plugin and Skill validators, PERT check, LLMThink fatal/error/warning 0, diff check"
-  evidence_revision 241938c105eb5f1671a30a7961254ce2e6c9062c
-  verifier codex
-  occurred_at 2026-08-19T04:15:02Z
 
 milestone_criterion_set SERVER_IMPLEMENTATION_R1:
   milestone SERVER_IMPLEMENTATION_ACCEPTED
@@ -131,12 +45,6 @@ milestone_criterion_set SERVER_IMPLEMENTATION_R1:
   criterion FINAL_REGRESSION required test "Complete tests, typecheck, lint, format check, builds, examples, VSIX packaging, npm package dry run, Plugin and Skill validators, generated-artifact review, PERT validation, and LLMThink audit pass with no fatal error or warning"
   criterion SCOPE_CONTAINMENT required artifact "Repository and operation review confirms production deployment, external OAuth configuration, DB or graph backend migration, release, publication, remote writes, MCP Apps UI, and public Plugin submission remain unperformed unless separately authorized"
 
-work_event START_ACCEPT_SERVER_IMPLEMENTATION:
-  model 1
-  task ACCEPT_SERVER_IMPLEMENTATION
-  kind start
-  occurred_at 2026-08-19T13:38:19+09:00
-  planned_value 2p
 
 milestone_acceptance_receipt RCPT_IMPLEMENTATION_CORE_20260819:
   model 1
@@ -202,9 +110,3 @@ milestone_acceptance_receipt RCPT_IMPLEMENTATION_SCOPE_20260819:
   evidence_revision f69cb39036cfcfad1ecdf1056d473bd0f18ea461
   verifier codex
   occurred_at 2026-08-19T04:49:14Z
-
-work_event FINISH_ACCEPT_SERVER_IMPLEMENTATION:
-  model 1
-  task ACCEPT_SERVER_IMPLEMENTATION
-  kind finish
-  occurred_at 2026-08-19T13:49:43+09:00
