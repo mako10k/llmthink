@@ -4,6 +4,10 @@ This deployment runs the packaged `llmthink-hosted-mcp` entry point as a
 dedicated unprivileged user. The Node process binds only to loopback; Caddy owns
 public ports and TLS.
 
+The service expects an official supported Node.js LTS installation at
+`/opt/node/current`. Caddy uses Let's Encrypt's production ACME endpoint and
+automatically renews the certificate before expiry.
+
 Required `/etc/llmthink/hosted.env` values:
 
 ```text

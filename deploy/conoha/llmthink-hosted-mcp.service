@@ -10,7 +10,7 @@ Group=llmthink
 WorkingDirectory=/var/lib/llmthink
 EnvironmentFile=/etc/llmthink/hosted.env
 Environment=NODE_OPTIONS=--max-old-space-size=384
-ExecStart=/usr/bin/node /opt/llmthink/current/node_modules/llmthink/dist/server/hosted-main.js
+ExecStart=/opt/node/current/bin/node /opt/llmthink/current/node_modules/llmthink/dist/server/hosted-main.js
 Restart=on-failure
 RestartSec=5s
 TimeoutStopSec=30s
