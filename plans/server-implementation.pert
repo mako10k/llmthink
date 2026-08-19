@@ -242,3 +242,55 @@ work_event FINISH_HARDEN_SERVER_BOUNDARIES:
   task HARDEN_SERVER_BOUNDARIES
   kind finish
   occurred_at 2026-08-19T11:46:39+09:00
+
+milestone_acceptance_receipt RCPT_SECURITY_IDENTITY_20260819:
+  model 1
+  set SERVER_SECURITY_R1
+  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
+  criterion VERIFIED_IDENTITY
+  criterion_commitment sha256:6772810a6ee3e7e017f0fdf9658b7e0ac0bf518a70cde0578a88a659a5721473
+  action verify
+  evidence_kind test
+  evidence_reference "Bearer verifier fake and verified-context tests prove subject tenant workspace scopes and generated request ID come from the authentication boundary; missing identity and unsupported scopes fail before use cases"
+  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
+  verifier codex
+  occurred_at 2026-08-19T02:55:06Z
+
+milestone_acceptance_receipt RCPT_SECURITY_ISOLATION_20260819:
+  model 1
+  set SERVER_SECURITY_R1
+  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
+  criterion AUTHORIZATION_ISOLATION
+  criterion_commitment sha256:3c67a73bef46701c95dc7c50133716199b209e2323a6057b516e5ff749c4cbeb
+  action verify
+  evidence_kind test
+  evidence_reference "focused server security suite 46/46; scope enforcement, authentication-disabled non-loopback rejection, traversal rejection, negative cross-tenant and cross-workspace repository isolation, and shared REST/MCP rate boundary"
+  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
+  verifier codex
+  occurred_at 2026-08-19T02:55:07Z
+
+milestone_acceptance_receipt RCPT_SECURITY_PRIVACY_20260819:
+  model 1
+  set SERVER_SECURITY_R1
+  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
+  criterion PRIVACY_OBSERVABILITY
+  criterion_commitment sha256:a8b7e5b6529e0f6901cb3cc90d56f34ce2de08d4e3947c943de15026d5cd8d58
+  action verify
+  evidence_kind test
+  evidence_reference "security tests prove pseudonymous observations omit token authorization identity and content values; bounded non-identity metrics, request IDs, per-subject rate bounds, request and response size bounds, and authentication and execution timeout handling"
+  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
+  verifier codex
+  occurred_at 2026-08-19T02:55:08Z
+
+milestone_acceptance_receipt RCPT_SECURITY_REGRESSION_20260819:
+  model 1
+  set SERVER_SECURITY_R1
+  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
+  criterion SECURITY_REGRESSION
+  criterion_commitment sha256:88650794471ffe4f43486eba43d613756b6a67be6b050b394f0a06c47c79a7a6
+  action verify
+  evidence_kind test
+  evidence_reference "complete tests 162/162 after existing preview width timing failure passed focused 1/1 and full rerun; typecheck, lint, format check, build, 4 examples, package dry run 132 files including 3 security artifacts, PERT check, LLMThink fatal/error/warning 0, diff check"
+  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
+  verifier codex
+  occurred_at 2026-08-19T02:55:09Z
