@@ -215,3 +215,55 @@ work_event FINISH_IMPLEMENT_STREAMABLE_HTTP_MCP:
   task IMPLEMENT_STREAMABLE_HTTP_MCP
   kind finish
   occurred_at 2026-08-19T11:07:24+09:00
+
+milestone_acceptance_receipt RCPT_HOSTED_REST_20260819:
+  model 1
+  set HOSTED_ADAPTERS_R1
+  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
+  criterion REST_CONTRACT
+  criterion_commitment sha256:f88bbf784695600a9bcffb76b2ab7cd9bb300b0f1fe40ec13d8d26c558c5bd46
+  action verify
+  evidence_kind test
+  evidence_reference "REST direct tests 9/9; health and readiness, authentication, pure audit non-persistence, thought routes, stable envelopes, size bounds, revision and idempotency conflicts, disconnect recovery"
+  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
+  verifier codex
+  occurred_at 2026-08-19T02:16:32Z
+
+milestone_acceptance_receipt RCPT_HOSTED_MCP_20260819:
+  model 1
+  set HOSTED_ADAPTERS_R1
+  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
+  criterion MCP_CONTRACT
+  criterion_commitment sha256:9b2df44838a59d693119d14d3456288ddc25e832254912b54e78c84f6e12888a
+  action verify
+  evidence_kind test
+  evidence_reference "MCP direct tests 6/6; initialization, eight tool schemas and effect annotations, structured results, authorization, invalid input, revision and idempotency conflicts, confirmation, request bounds, disconnect recovery, no REST loopback"
+  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
+  verifier codex
+  occurred_at 2026-08-19T02:16:33Z
+
+milestone_acceptance_receipt RCPT_HOSTED_PARITY_20260819:
+  model 1
+  set HOSTED_ADAPTERS_R1
+  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
+  criterion ADAPTER_PARITY
+  criterion_commitment sha256:fa48497d0190919360b012616bdf37510d3f06cb824bf3746ce81317dc029ae4
+  action verify
+  evidence_kind test
+  evidence_reference "adapter parity direct test 1/1 plus direct Application Service 7/7, REST 9/9, MCP 6/6; equivalent create transition and shared pure audit and repository semantics"
+  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
+  verifier codex
+  occurred_at 2026-08-19T02:16:34Z
+
+milestone_acceptance_receipt RCPT_HOSTED_REGRESSION_20260819:
+  model 1
+  set HOSTED_ADAPTERS_R1
+  set_commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
+  criterion HOSTED_ADAPTER_REGRESSION
+  criterion_commitment sha256:9502094b08d93f87b0799e10b8678f1420cacf084eb02e414b1a051ea6a6f740
+  action verify
+  evidence_kind test
+  evidence_reference "focused adapters 16/16; complete tests 155/155; typecheck, lint, format check, build, 4 examples, package dry run 129 files including 6 adapter artifacts, PERT check, LLMThink fatal/error/warning 0, diff check"
+  evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
+  verifier codex
+  occurred_at 2026-08-19T02:16:35Z
