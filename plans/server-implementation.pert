@@ -64,6 +64,7 @@ task HARDEN_SERVER_BOUNDARIES HOSTED_ADAPTERS_IMPLEMENTED -> SERVER_SECURITY_ACC
     optimistic 2p
     most_likely 3p
     pessimistic 5p
+  status active
   priority 100
   requires:
     CODEX 1
@@ -228,3 +229,10 @@ milestone_criterion_set SERVER_SECURITY_R1:
   criterion AUTHORIZATION_ISOLATION required test "Scope enforcement non-loopback safety and negative cross-tenant and cross-workspace tests prevent read write finalize and audit authority widening"
   criterion PRIVACY_OBSERVABILITY required test "Bounded request IDs metrics rate limits timeouts and size limits are observable while tokens authorization headers thought bodies audit text and reflection text are absent from normal logs"
   criterion SECURITY_REGRESSION required test "Focused boundary tests and complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
+
+work_event START_HARDEN_SERVER_BOUNDARIES:
+  model 1
+  task HARDEN_SERVER_BOUNDARIES
+  kind start
+  occurred_at 2026-08-19T11:21:20+09:00
+  planned_value 19/6p
