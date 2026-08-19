@@ -7,7 +7,7 @@
 - Criterion-set commitment: `sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af`
 - Collected at: `2026-08-19T09:47:22+09:00`
 - Repository HEAD: `bcc090a7f7b53c0d4bfbfb74160ef92158dda56c`
-- Evidence state: candidate only; the implementation and this record are not committed, so no milestone acceptance receipt has been issued.
+- Evidence basis: commit `4eb6362b5834d3e3fc79980ffd6d22dedefeac48`; all criteria were revalidated on its clean tree before receipts were issued.
 
 ## APPLICATION_USE_CASES
 
@@ -87,6 +87,13 @@ Results:
 - LLMThink audit reported fatal/error/warning/info/hint counts all zero.
 - Git whitespace validation passed.
 
-## Receipt boundary
+## Acceptance receipts
 
-All four criteria have passing candidate evidence. Acceptance remains pending because the evidence-bearing implementation and this record do not yet have a committed Git revision. After a bounded commit, rerun or reconcile the exact committed artifacts before issuing criterion receipts. Do not use the pre-existing HEAD alone as the evidence revision.
+All receipts bind to evidence revision `4eb6362b5834d3e3fc79980ffd6d22dedefeac48`:
+
+- `RCPT_FOUNDATION_APPLICATION_20260819`
+- `RCPT_FOUNDATION_REPOSITORY_20260819`
+- `RCPT_FOUNDATION_TRANSPORT_20260819`
+- `RCPT_FOUNDATION_REGRESSION_20260819`
+
+The first full-suite run on the committed basis had one intermittent failure in the existing Preview width measurement test. The same test then passed alone, and the complete 139-test suite passed on immediate rerun without source changes. This retry history is retained in the regression receipt rather than being hidden.
