@@ -156,3 +156,20 @@ export type {
   LlmthinkApplicationServiceOptions,
   LlmthinkAuditRunner,
 } from "./server/application-service.js";
+export {
+  createLlmthinkHttpHandler,
+  createLlmthinkHttpServer,
+  DEFAULT_HTTP_REQUEST_LIMIT_BYTES,
+  DEFAULT_HTTP_RESPONSE_LIMIT_BYTES,
+} from "./server/http.js";
+export {
+  createLlmthinkHostedMcpHandler,
+  createLlmthinkHostedMcpServer,
+  DEFAULT_MCP_REQUEST_LIMIT_BYTES,
+  DEFAULT_MCP_TEXT_LIMIT_BYTES,
+  type LlmthinkHostedMcpHandlerOptions,
+} from "./server/hosted-mcp.js";
+export type {
+  LlmthinkHttpAuthenticator,
+  LlmthinkHttpHandlerOptions,
+} from "./server/http.js";

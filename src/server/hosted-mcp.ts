@@ -1,0 +1,455 @@
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
+
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { z } from "zod";
+
+import { LlmthinkApplicationService } from "./application-service.js";
+import {
+  LlmthinkServerError,
+  type RequestContext,
+  type ServerThoughtSnapshot,
+  type ThoughtRef,
+} from "./contracts.js";
+import type { LlmthinkHttpAuthenticator } from "./http.js";
+
+export const DEFAULT_MCP_REQUEST_LIMIT_BYTES = 1024 * 1024;
+export const DEFAULT_MCP_TEXT_LIMIT_BYTES = 64 * 1024;
+
+export interface LlmthinkHostedMcpHandlerOptions {
+  readonly application: LlmthinkApplicationService;
+  readonly authenticate: LlmthinkHttpAuthenticator;
+  readonly requestLimitBytes?: number;
+  readonly textLimitBytes?: number;
+}
+
+const identityShape = {
+  idempotency_key: z.string().min(1).max(200),
+  request_digest: z.custom<`sha256:${string}`>(
+    (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value),
+  ),
+};
+const revisionShape = { expected_revision: z.number().int().nonnegative() };
+const thoughtIdShape = { thought_id: z.string().min(1).max(128) };
+
+const READ_ONLY = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+const WRITE = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+const CONSEQUENTIAL_WRITE = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+
+function ref(context: RequestContext, thoughtId: string): ThoughtRef {
+  return {
+    tenantId: context.tenantId,
+    workspaceId: context.workspaceId,
+    thoughtId,
+  };
+}
+
+function snapshot(value: ServerThoughtSnapshot): Record<string, unknown> {
+  return {
+    tenant_id: value.tenantId,
+    workspace_id: value.workspaceId,
+    thought_id: value.record.id,
+    revision: value.revision,
+    status: value.record.status,
+    created_at: value.record.created_at,
+    updated_at: value.record.updated_at,
+    draft_text: value.draftText,
+    final_text: value.finalText,
+    latest_audit: value.latestAudit,
+    history: value.history,
+    reflections: value.reflections,
+  };
+}
+
+function boundedText(value: unknown, limit: number): string {
+  const text = JSON.stringify(value, null, 2);
+  if (Buffer.byteLength(text) <= limit) return text;
+  return JSON.stringify({
+    truncated: true,
+    message: "Structured result exceeds text presentation limit",
+  });
+}
+
+function toolResult(value: Record<string, unknown>, limit: number) {
+  return {
+    content: [{ type: "text" as const, text: boundedText(value, limit) }],
+    structuredContent: value,
+  };
+}
+
+function toolError(error: unknown, limit: number) {
+  const serverError =
+    error instanceof LlmthinkServerError
+      ? error
+      : new LlmthinkServerError("internal", "Internal server error");
+  const value = {
+    error: {
+      code: serverError.code,
+      message: serverError.message,
+      retryable: serverError.retryable,
+      ...(serverError.details ? { details: serverError.details } : {}),
+    },
+  };
+  return { ...toolResult(value, limit), isError: true };
+}
+
+function registerTools(
+  server: McpServer,
+  application: LlmthinkApplicationService,
+  context: RequestContext,
+  textLimit: number,
+): void {
+  const run = async (operation: () => Promise<Record<string, unknown>>) => {
+    try {
+      return toolResult(await operation(), textLimit);
+    } catch (error) {
+      return toolError(error, textLimit);
+    }
+  };
+
+  server.registerTool(
+    "audit_thought",
+    {
+      description: "Audit LLMThink text without persisting it.",
+      inputSchema: {
+        text: z.string().min(1),
+        document_id: z.string().optional(),
+      },
+      annotations: READ_ONLY,
+    },
+    ({ text, document_id }) =>
+      run(async () => ({
+        ...(await application.audit(
+          { text, documentId: document_id },
+          context,
+        )),
+      })),
+  );
+  server.registerTool(
+    "create_thought_draft",
+    {
+      description:
+        "Create a new thought draft with an idempotent command identity.",
+      inputSchema: {
+        ...thoughtIdShape,
+        draft_text: z.string(),
+        ...identityShape,
+      },
+      annotations: WRITE,
+    },
+    ({ thought_id, draft_text, idempotency_key, request_digest }) =>
+      run(async () =>
+        snapshot(
+          await application.createThought(
+            {
+              thoughtId: thought_id,
+              draftText: draft_text,
+              identity: {
+                idempotencyKey: idempotency_key,
+                requestDigest: request_digest,
+              },
+            },
+            context,
+          ),
+        ),
+      ),
+  );
+  server.registerTool(
+    "get_thought",
+    {
+      description: "Get one thought snapshot.",
+      inputSchema: thoughtIdShape,
+      annotations: READ_ONLY,
+    },
+    ({ thought_id }) =>
+      run(async () =>
+        snapshot(
+          await application.getThought(ref(context, thought_id), context),
+        ),
+      ),
+  );
+  server.registerTool(
+    "list_thoughts",
+    {
+      description: "List thought snapshots in the authenticated workspace.",
+      inputSchema: {
+        cursor: z.string().optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+        status: z.enum(["draft", "finalized"]).optional(),
+      },
+      annotations: READ_ONLY,
+    },
+    ({ cursor, limit, status }) =>
+      run(async () => {
+        const page = await application.listThoughts(
+          { cursor, limit, status },
+          context,
+        );
+        return {
+          items: page.items.map(snapshot),
+          next_cursor: page.nextCursor,
+        };
+      }),
+  );
+  server.registerTool(
+    "search_thoughts",
+    {
+      description: "Search thoughts in the authenticated workspace.",
+      inputSchema: {
+        query: z.string().min(1),
+        cursor: z.string().optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+        include_reflections: z.boolean().default(false),
+      },
+      annotations: READ_ONLY,
+    },
+    ({ query, cursor, limit, include_reflections }) =>
+      run(async () => {
+        const page = await application.searchThoughts(
+          { query, cursor, limit, includeReflections: include_reflections },
+          context,
+        );
+        return {
+          items: page.items.map(snapshot),
+          next_cursor: page.nextCursor,
+        };
+      }),
+  );
+  server.registerTool(
+    "finalize_thought",
+    {
+      description: "Finalize a thought after explicit confirmation.",
+      inputSchema: {
+        ...thoughtIdShape,
+        ...revisionShape,
+        final_text: z.string(),
+        confirmation_token: z.string(),
+        ...identityShape,
+      },
+      annotations: CONSEQUENTIAL_WRITE,
+    },
+    ({
+      thought_id,
+      expected_revision,
+      final_text,
+      confirmation_token,
+      idempotency_key,
+      request_digest,
+    }) =>
+      run(async () =>
+        snapshot(
+          await application.finalizeThought(
+            {
+              ref: ref(context, thought_id),
+              expectedRevision: expected_revision,
+              finalText: final_text,
+              confirmationToken: confirmation_token,
+              identity: {
+                idempotencyKey: idempotency_key,
+                requestDigest: request_digest,
+              },
+            },
+            context,
+          ),
+        ),
+      ),
+  );
+  server.registerTool(
+    "add_thought_reflection",
+    {
+      description: "Append a reflection to a thought.",
+      inputSchema: {
+        ...thoughtIdShape,
+        ...revisionShape,
+        kind: z.enum([
+          "note",
+          "concern",
+          "decision",
+          "follow_up",
+          "audit_response",
+        ]),
+        text: z.string().min(1),
+        ...identityShape,
+      },
+      annotations: WRITE,
+    },
+    ({
+      thought_id,
+      expected_revision,
+      kind,
+      text,
+      idempotency_key,
+      request_digest,
+    }) =>
+      run(async () =>
+        snapshot(
+          await application.addReflection(
+            {
+              ref: ref(context, thought_id),
+              expectedRevision: expected_revision,
+              kind,
+              text,
+              identity: {
+                idempotencyKey: idempotency_key,
+                requestDigest: request_digest,
+              },
+            },
+            context,
+          ),
+        ),
+      ),
+  );
+  server.registerTool(
+    "get_thought_history",
+    {
+      description: "Get the append-only event history for a thought.",
+      inputSchema: thoughtIdShape,
+      annotations: READ_ONLY,
+    },
+    ({ thought_id }) =>
+      run(async () => ({
+        events: await application.events(ref(context, thought_id), context),
+      })),
+  );
+}
+
+async function readBoundedJson(
+  request: IncomingMessage,
+  limit: number,
+): Promise<unknown> {
+  const declared = Number(request.headers["content-length"]);
+  if (Number.isFinite(declared) && declared > limit) {
+    throw new LlmthinkServerError(
+      "payload_too_large",
+      "MCP request body is too large",
+    );
+  }
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > limit)
+      throw new LlmthinkServerError(
+        "payload_too_large",
+        "MCP request body is too large",
+      );
+    chunks.push(buffer);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new LlmthinkServerError(
+      "invalid_argument",
+      "MCP request body must be valid JSON",
+    );
+  }
+}
+
+function sendRpcError(
+  response: ServerResponse,
+  status: number,
+  error: unknown,
+): void {
+  if (response.destroyed || response.writableEnded) return;
+  const value =
+    error instanceof LlmthinkServerError
+      ? error
+      : new LlmthinkServerError("internal", "Internal server error");
+  const body = `${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32000, message: value.message, data: { code: value.code, retryable: value.retryable } } })}\n`;
+  response.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+    "cache-control": "no-store",
+  });
+  response.end(body);
+}
+
+function errorStatus(error: unknown): number {
+  if (!(error instanceof LlmthinkServerError)) return 500;
+  if (error.code === "unauthenticated") return 401;
+  if (error.code === "forbidden") return 403;
+  if (error.code === "payload_too_large") return 413;
+  return 400;
+}
+
+async function handleMcpRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  options: LlmthinkHostedMcpHandlerOptions,
+  requestLimit: number,
+  textLimit: number,
+): Promise<void> {
+  let transport: StreamableHTTPServerTransport | undefined;
+  let server: McpServer | undefined;
+  try {
+    const context = await options.authenticate(request);
+    const body =
+      request.method === "POST"
+        ? await readBoundedJson(request, requestLimit)
+        : undefined;
+    server = new McpServer({ name: "llmthink-hosted", version: "1.2.0" });
+    registerTools(server, options.application, context, textLimit);
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
+    await server.connect(transport);
+    await transport.handleRequest(request, response, body);
+  } catch (error) {
+    sendRpcError(response, errorStatus(error), error);
+  } finally {
+    await transport?.close().catch(() => undefined);
+    await server?.close().catch(() => undefined);
+  }
+}
+
+export function createLlmthinkHostedMcpHandler(
+  options: LlmthinkHostedMcpHandlerOptions,
+) {
+  const requestLimit =
+    options.requestLimitBytes ?? DEFAULT_MCP_REQUEST_LIMIT_BYTES;
+  const textLimit = options.textLimitBytes ?? DEFAULT_MCP_TEXT_LIMIT_BYTES;
+  return async (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
+    const pathname = new URL(request.url ?? "/", "https://llmthink.invalid")
+      .pathname;
+    if (pathname !== "/mcp") {
+      sendRpcError(
+        response,
+        404,
+        new LlmthinkServerError("not_found", "MCP endpoint not found"),
+      );
+      return;
+    }
+    await handleMcpRequest(request, response, options, requestLimit, textLimit);
+  };
+}
+
+export function createLlmthinkHostedMcpServer(
+  options: LlmthinkHostedMcpHandlerOptions,
+): Server {
+  return createServer(createLlmthinkHostedMcpHandler(options));
+}

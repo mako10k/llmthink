@@ -22,12 +22,10 @@ resource CODEX:
   capacity 1
 
 
-milestone SERVER_CONTRACTS_ACCEPTED:
-  title "Application and repository contracts accepted"
-  state reached
 
 milestone SERVER_FOUNDATION_IMPLEMENTED:
   title "Application Service and server file repository implemented"
+  state reached
 
 milestone HOSTED_ADAPTERS_IMPLEMENTED:
   title "REST API and Streamable HTTP MCP implemented"
@@ -42,31 +40,7 @@ milestone SERVER_IMPLEMENTATION_ACCEPTED:
   title "Hosted server implementation accepted locally"
 
 
-task IMPLEMENT_APPLICATION_SERVICE SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDATION_IMPLEMENTED:
-  title "Extract transport-independent Application Service"
-  description "Implement the audited command/query use cases over llmthink Core and injected ports. Separate pure audit from audit persistence; pass explicit RequestContext; centralize authorization requirements, revision checks, transaction boundaries, and stable domain errors. Do not import HTTP or MCP SDK types, access process cwd for hosted authority, or change audit meaning. Add direct use-case tests for allowed, denied, missing, conflicting, and idempotent requests."
-  estimate:
-    optimistic 2p
-    most_likely 3p
-    pessimistic 5p
-  status done
-  priority 100
-  requires:
-    CODEX 1
-  source "ADR-0007; docs/process/server-architecture-review.think D1,D5,D7"
 
-task IMPLEMENT_SERVER_FILE_REPOSITORY SERVER_CONTRACTS_ACCEPTED -> SERVER_FOUNDATION_IMPLEMENTED:
-  title "Implement the isolated revision-aware server file repository"
-  description "Implement validated tenant, workspace, and thought identities under an explicit data root; monotonic immutable revision directories; expected-revision rejection; subject-operation-resource-request scoped idempotency; per-thought write serialization; fsync and atomic CURRENT pointer replacement; append-only event history; schema-version checks; and fail-closed bounded recovery without orphan promotion. Test traversal and absolute-path rejection, tenant isolation, concurrent updates, interrupted writes, restart recovery, legacy-format non-mutation, and absence of cwd fallback. Limit the guarantee to the documented single-host single-process topology."
-  estimate:
-    optimistic 3p
-    most_likely 5p
-    pessimistic 8p
-  status done
-  priority 100
-  requires:
-    CODEX 1
-  source "ADR-0008; docs/specs/server-architecture.md sections 5-6"
 
 task IMPLEMENT_REST_API SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPTERS_IMPLEMENTED:
   title "Implement the versioned REST JSON adapter"
@@ -75,6 +49,7 @@ task IMPLEMENT_REST_API SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPTERS_IMPLEME
     optimistic 2p
     most_likely 3p
     pessimistic 5p
+  status done
   priority 90
   requires:
     CODEX 1
@@ -87,6 +62,7 @@ task IMPLEMENT_STREAMABLE_HTTP_MCP SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPT
     optimistic 2p
     most_likely 3p
     pessimistic 5p
+  status done
   priority 90
   requires:
     CODEX 1
@@ -140,50 +116,9 @@ task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATI
     CODEX 1
   source "docs/specs/server-architecture.md section 12; docs/process/server-architecture-review.think D6,D7"
 
-milestone_criterion_set SERVER_CONTRACTS_R1:
-  milestone SERVER_CONTRACTS_ACCEPTED
-  revision R1
-  commitment sha256:333e5794dfbb9eed4c6ce89c3181cdea7da63a6af25b4ba7e92801b4937746d3
-  criterion CONTRACTS_VERIFIED required test "Public contracts and repository policy pass tests, typecheck, lint, build, examples, package dry run, and LLMThink audit"
 
-milestone_acceptance_receipt RCPT_SERVER_CONTRACTS_20260818:
-  model 1
-  set SERVER_CONTRACTS_R1
-  set_commitment sha256:333e5794dfbb9eed4c6ce89c3181cdea7da63a6af25b4ba7e92801b4937746d3
-  criterion CONTRACTS_VERIFIED
-  criterion_commitment sha256:4dbf555fd6a6ad8b6f3987e8da886f44fa23b3f0c81645bbd559d816bb2d4ac0
-  action verify
-  evidence_kind test
-  evidence_reference "npm test 124/124; typecheck; lint; build; verify-examples; package dry run; LLMThink audit fatal/error/warning 0"
-  evidence_revision 5a9a3caff14f1bfa682f9e7ecd80f1553aa7f770
-  verifier codex
-  occurred_at 2026-08-18T10:41:18Z
 
-work_event START_IMPLEMENT_SERVER_FILE_REPOSITORY:
-  model 1
-  task IMPLEMENT_SERVER_FILE_REPOSITORY
-  kind start
-  occurred_at 2026-08-18T19:57:29+09:00
-  planned_value 31/6p
 
-work_event FINISH_IMPLEMENT_SERVER_FILE_REPOSITORY:
-  model 1
-  task IMPLEMENT_SERVER_FILE_REPOSITORY
-  kind finish
-  occurred_at 2026-08-18T20:09:45+09:00
-
-work_event START_IMPLEMENT_APPLICATION_SERVICE:
-  model 1
-  task IMPLEMENT_APPLICATION_SERVICE
-  kind start
-  occurred_at 2026-08-19T09:30:34+09:00
-  planned_value 19/6p
-
-work_event FINISH_IMPLEMENT_APPLICATION_SERVICE:
-  model 1
-  task IMPLEMENT_APPLICATION_SERVICE
-  kind finish
-  occurred_at 2026-08-19T09:37:21+09:00
 
 milestone_criterion_set SERVER_FOUNDATION_R1:
   milestone SERVER_FOUNDATION_IMPLEMENTED
@@ -245,3 +180,38 @@ milestone_acceptance_receipt RCPT_FOUNDATION_REGRESSION_20260819:
   evidence_revision 4eb6362b5834d3e3fc79980ffd6d22dedefeac48
   verifier codex
   occurred_at 2026-08-19T00:54:44Z
+
+milestone_criterion_set HOSTED_ADAPTERS_R1:
+  milestone HOSTED_ADAPTERS_IMPLEMENTED
+  revision R1
+  commitment sha256:d20d2e5a176b624acf75191429609b57d7f6e3b1f33693ae0d1bc62f1abbbb55
+  criterion REST_CONTRACT required test "Versioned REST routes prove health and readiness, pure audit non-persistence, thought command and query behavior, stable success and error envelopes, bounded payloads, revision and idempotency handling, and disconnect-safe responses"
+  criterion MCP_CONTRACT required test "Streamable HTTP MCP proves initialization, schemas, structured tool results, effect annotations, authorization, invalid input, revision conflict, idempotency, confirmation, and disconnect handling without REST loopback"
+  criterion ADAPTER_PARITY required test "Direct Application Service, REST, and MCP contract tests prove equivalent domain results and state transitions for shared use cases"
+  criterion HOSTED_ADAPTER_REGRESSION required test "Focused adapter tests and complete tests, typecheck, lint, format check, build, examples, package dry run, PERT validation, and LLMThink audit pass"
+
+work_event START_IMPLEMENT_REST_API:
+  model 1
+  task IMPLEMENT_REST_API
+  kind start
+  occurred_at 2026-08-19T10:24:45+09:00
+  planned_value 19/6p
+
+work_event FINISH_IMPLEMENT_REST_API:
+  model 1
+  task IMPLEMENT_REST_API
+  kind finish
+  occurred_at 2026-08-19T10:44:11+09:00
+
+work_event START_IMPLEMENT_STREAMABLE_HTTP_MCP:
+  model 1
+  task IMPLEMENT_STREAMABLE_HTTP_MCP
+  kind start
+  occurred_at 2026-08-19T10:56:40+09:00
+  planned_value 19/6p
+
+work_event FINISH_IMPLEMENT_STREAMABLE_HTTP_MCP:
+  model 1
+  task IMPLEMENT_STREAMABLE_HTTP_MCP
+  kind finish
+  occurred_at 2026-08-19T11:07:24+09:00
