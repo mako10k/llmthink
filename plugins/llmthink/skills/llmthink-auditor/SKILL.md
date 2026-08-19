@@ -8,6 +8,7 @@ description: Run a non-persistent LLMThink audit and report findings without res
 Use `audit_thought` for the exact text the user supplied or approved for review.
 
 - Keep `persisted: false` as a meaningful result boundary. Do not create a thought or record an audit as a side effect.
+- The audit is processed by the external llmthink server but is not persisted; state this when it is relevant without requiring acknowledgement.
 - Report fatal, error, and warning findings first. Keep unknown and ambiguous claims explicit rather than guessing a repair.
 - Distinguish tool findings from your interpretation and proposed edits.
 - Do not collect secrets or add credentials to audit text.

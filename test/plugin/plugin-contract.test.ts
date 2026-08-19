@@ -39,22 +39,31 @@ interface SelectionCase {
   readonly requires: readonly string[];
 }
 
-test("plugin manifest exposes only local skills and loopback hosted MCP", async () => {
+test("plugin manifest exposes local skills and authenticated hosted MCP", async () => {
   const manifest = JSON.parse(
     await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"),
   ) as Record<string, unknown>;
   const mcp = JSON.parse(
     await readFile(join(pluginRoot, ".mcp.json"), "utf8"),
-  ) as { mcpServers: { llmthink: { type: string; url: string } } };
+  ) as {
+    mcpServers: {
+      llmthink: {
+        type: string;
+        url: string;
+        bearer_token_env_var: string;
+      };
+    };
+  };
   assert.equal(manifest.name, "llmthink");
-  assert.equal(manifest.version, "1.2.0");
+  assert.equal(manifest.version, "1.2.0+codex.20260819081527");
   assert.equal(manifest.skills, "./skills/");
   assert.equal(manifest.mcpServers, "./.mcp.json");
   assert.equal("apps" in manifest, false);
   assert.equal("hooks" in manifest, false);
   assert.deepEqual(mcp.mcpServers.llmthink, {
     type: "http",
-    url: "http://127.0.0.1:3000/mcp",
+    url: "https://llmthink.mk10.org/mcp",
+    bearer_token_env_var: "LLMTHINK_MCP_TOKEN",
   });
 });
 
@@ -69,7 +78,7 @@ test("tool-selection evaluations stay inside the accepted MCP surface", async ()
       "direct",
       "indirect",
       "follow_up",
-      "write_confirmation",
+      "direct_finalize",
       "unknown",
       "out_of_scope",
     ]),
@@ -89,7 +98,7 @@ test("tool-selection evaluations stay inside the accepted MCP surface", async ()
     }
     if (entry.expected_tools.includes("finalize_thought")) {
       assert.equal(entry.requires.includes("expected_revision"), true);
-      assert.equal(entry.requires.includes("confirmation_token"), true);
+      assert.equal(entry.requires.includes("confirmation_token"), false);
     }
   }
 });

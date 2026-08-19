@@ -11,12 +11,18 @@ import { z } from "zod";
 
 import { LlmthinkApplicationService } from "./application-service.js";
 import {
+  LLMTHINK_SERVER_ERROR_CODES,
   LlmthinkServerError,
   type RequestContext,
   type ServerThoughtSnapshot,
   type ThoughtRef,
 } from "./contracts.js";
 import type { LlmthinkHttpAuthenticator } from "./http.js";
+import {
+  errorNavigation,
+  EXTERNAL_STORAGE_NOTICE,
+  mcpHelp,
+} from "./mcp-guidance.js";
 import { LlmthinkSecurityBoundary } from "./security.js";
 
 export const DEFAULT_MCP_REQUEST_LIMIT_BYTES = 1024 * 1024;
@@ -110,6 +116,7 @@ function toolError(error: unknown, limit: number) {
       message: serverError.message,
       retryable: serverError.retryable,
       ...(serverError.details ? { details: serverError.details } : {}),
+      navigation: errorNavigation(serverError.code),
     },
   };
   return { ...toolResult(value, limit), isError: true };
@@ -137,9 +144,46 @@ function registerTools(
   };
 
   server.registerTool(
+    "llmthink_help",
+    {
+      description:
+        "Get CLI-equivalent LLMThink tool, error-recovery, DSL, storage, and authentication guidance.",
+      inputSchema: {
+        topic: z
+          .enum(["overview", "tools", "errors", "dsl", "storage", "auth"])
+          .default("overview"),
+        tool: z
+          .enum([
+            "audit_thought",
+            "create_thought_draft",
+            "get_thought",
+            "list_thoughts",
+            "search_thoughts",
+            "finalize_thought",
+            "add_thought_reflection",
+            "get_thought_history",
+          ])
+          .optional(),
+        error_code: z.enum(LLMTHINK_SERVER_ERROR_CODES).optional(),
+        dsl_topic: z.string().optional(),
+      },
+      annotations: READ_ONLY,
+    },
+    ({ topic, tool, error_code, dsl_topic }) =>
+      run("llmthink_help", async () =>
+        mcpHelp({
+          topic,
+          tool,
+          errorCode: error_code,
+          dslTopic: dsl_topic,
+        }),
+      ),
+  );
+  server.registerTool(
     "audit_thought",
     {
-      description: "Audit LLMThink text without persisting it.",
+      description:
+        "Audit LLMThink text without persisting it. Authentication confines execution to the logged-in account boundary.",
       inputSchema: {
         text: z.string().min(1),
         document_id: z.string().optional(),
@@ -157,8 +201,7 @@ function registerTools(
   server.registerTool(
     "create_thought_draft",
     {
-      description:
-        "Create a new thought draft with an idempotent command identity.",
+      description: `Create and externally persist a draft in the authenticated llmthink tenant/workspace. ${EXTERNAL_STORAGE_NOTICE}`,
       inputSchema: {
         ...thoughtIdShape,
         draft_text: z.string(),
@@ -186,7 +229,8 @@ function registerTools(
   server.registerTool(
     "get_thought",
     {
-      description: "Get one thought snapshot.",
+      description:
+        "Get one thought snapshot from the authenticated llmthink tenant/workspace.",
       inputSchema: thoughtIdShape,
       annotations: READ_ONLY,
     },
@@ -200,7 +244,8 @@ function registerTools(
   server.registerTool(
     "list_thoughts",
     {
-      description: "List thought snapshots in the authenticated workspace.",
+      description:
+        "List thought snapshots in the authenticated llmthink workspace.",
       inputSchema: {
         cursor: z.string().optional(),
         limit: z.number().int().min(1).max(100).default(20),
@@ -223,7 +268,7 @@ function registerTools(
   server.registerTool(
     "search_thoughts",
     {
-      description: "Search thoughts in the authenticated workspace.",
+      description: "Search thoughts in the authenticated llmthink workspace.",
       inputSchema: {
         query: z.string().min(1),
         cursor: z.string().optional(),
@@ -247,12 +292,12 @@ function registerTools(
   server.registerTool(
     "finalize_thought",
     {
-      description: "Finalize a thought after explicit confirmation.",
+      description: `Finalize and externally persist the current thought when finalization is the user's current request. Do not require a second confirmation exchange. ${EXTERNAL_STORAGE_NOTICE}`,
       inputSchema: {
         ...thoughtIdShape,
         ...revisionShape,
         final_text: z.string(),
-        confirmation_token: z.string(),
+        confirmation_token: z.string().optional(),
         ...identityShape,
       },
       annotations: CONSEQUENTIAL_WRITE,
@@ -272,7 +317,7 @@ function registerTools(
               ref: ref(context, thought_id),
               expectedRevision: expected_revision,
               finalText: final_text,
-              confirmationToken: confirmation_token,
+              confirmationToken: confirmation_token ?? "mcp-direct-user-intent",
               identity: {
                 idempotencyKey: idempotency_key,
                 requestDigest: request_digest,
@@ -286,7 +331,7 @@ function registerTools(
   server.registerTool(
     "add_thought_reflection",
     {
-      description: "Append a reflection to a thought.",
+      description: `Append and externally persist a reflection in the authenticated llmthink tenant/workspace. ${EXTERNAL_STORAGE_NOTICE}`,
       inputSchema: {
         ...thoughtIdShape,
         ...revisionShape,
@@ -331,7 +376,8 @@ function registerTools(
   server.registerTool(
     "get_thought_history",
     {
-      description: "Get the append-only event history for a thought.",
+      description:
+        "Get the append-only event history from the authenticated llmthink tenant/workspace.",
       inputSchema: thoughtIdShape,
       annotations: READ_ONLY,
     },
@@ -421,6 +467,7 @@ function mcpOperation(body: unknown): string {
 }
 
 const MCP_TOOL_NAMES = new Set([
+  "llmthink_help",
   "audit_thought",
   "create_thought_draft",
   "get_thought",

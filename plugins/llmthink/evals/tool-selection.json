@@ -35,15 +35,14 @@
       ]
     },
     {
-      "id": "confirmed-finalize",
-      "kind": "write_confirmation",
-      "request": "Finalize the current thought after showing its latest revision and receiving confirmation.",
+      "id": "direct-finalize",
+      "kind": "direct_finalize",
+      "request": "Finalize the current thought.",
       "expected_tools": ["get_thought", "finalize_thought"],
       "forbidden_tools": [],
       "requires": [
         "thought_id",
         "expected_revision",
-        "confirmation_token",
         "idempotency_key",
         "request_digest"
       ]

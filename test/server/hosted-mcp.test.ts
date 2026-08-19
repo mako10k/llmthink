@@ -26,6 +26,7 @@ interface RpcBody {
     readonly serverInfo: { readonly name: string };
     readonly tools: Array<{
       name: string;
+      description: string;
       annotations: Record<string, boolean>;
     }>;
     readonly isError?: boolean;
@@ -35,7 +36,15 @@ interface RpcBody {
       readonly items?: readonly unknown[];
       readonly revision?: number;
       readonly draft_text?: string;
-      readonly error?: { readonly code: string };
+      readonly error?: {
+        readonly code: string;
+        readonly navigation?: {
+          readonly next_actions: readonly string[];
+          readonly help: { readonly tool: string };
+        };
+      };
+      readonly topic?: string;
+      readonly storage_notice?: string;
     };
   };
   readonly error: { readonly data: { readonly code: string } };
@@ -117,7 +126,7 @@ async function callTool(
   return rpc(baseUrl, "tools/call", { name, arguments: args }, scopes);
 }
 
-test("hosted MCP initializes and publishes eight goal-oriented tools with effect annotations", async (t) => {
+test("hosted MCP publishes help and eight goal-oriented tools with effect annotations", async (t) => {
   const { baseUrl } = await fixture(t);
   const initialized = await rpc(baseUrl, "initialize", {
     protocolVersion: "2025-06-18",
@@ -130,11 +139,13 @@ test("hosted MCP initializes and publishes eight goal-oriented tools with effect
   const listed = await rpc(baseUrl, "tools/list", {});
   const tools = listed.body.result.tools as Array<{
     name: string;
+    description: string;
     annotations: Record<string, boolean>;
   }>;
   assert.deepEqual(
     tools.map((tool) => tool.name),
     [
+      "llmthink_help",
       "audit_thought",
       "create_thought_draft",
       "get_thought",
@@ -150,6 +161,11 @@ test("hosted MCP initializes and publishes eight goal-oriented tools with effect
       .readOnlyHint,
     true,
   );
+  assert.match(
+    tools.find((tool) => tool.name === "create_thought_draft")?.description ??
+      "",
+    /externally persist/,
+  );
   assert.equal(
     tools.find((tool) => tool.name === "finalize_thought")?.annotations
       .destructiveHint,
@@ -158,6 +174,32 @@ test("hosted MCP initializes and publishes eight goal-oriented tools with effect
   assert.equal(
     tools.some((tool) => tool.name.includes("delete")),
     false,
+  );
+});
+
+test("help mirrors CLI guidance and errors include actionable navigation", async (t) => {
+  const { baseUrl } = await fixture(t);
+  const help = await callTool(
+    baseUrl,
+    "llmthink_help",
+    { topic: "overview" },
+    [],
+  );
+  assert.equal(help.body.result.structuredContent.topic, "overview");
+  assert.match(
+    help.body.result.structuredContent.storage_notice ?? "",
+    /external llmthink server/,
+  );
+
+  const denied = await callTool(baseUrl, "list_thoughts", { limit: 20 }, []);
+  assert.equal(denied.body.result.structuredContent.error?.code, "forbidden");
+  assert.equal(
+    denied.body.result.structuredContent.error?.navigation?.help.tool,
+    "llmthink_help",
+  );
+  assert.ok(
+    (denied.body.result.structuredContent.error?.navigation?.next_actions
+      .length ?? 0) > 0,
   );
 });
 
@@ -209,7 +251,7 @@ test("write and read tools share Application Service state without REST loopback
   assert.equal(searched.body.result.structuredContent.items.length, 1);
 });
 
-test("authorization, schema, revision, idempotency, and confirmation failures are structured", async (t) => {
+test("authorization, schema, revision, and idempotency failures are structured", async (t) => {
   const { baseUrl } = await fixture(t);
   const denied = await callTool(baseUrl, "list_thoughts", { limit: 20 }, []);
   assert.equal(denied.body.result.isError, true);
@@ -229,24 +271,19 @@ test("authorization, schema, revision, idempotency, and confirmation failures ar
     },
     ["thought:write"],
   );
-  const confirmation = await callTool(
+  const finalized = await callTool(
     baseUrl,
     "finalize_thought",
     {
       thought_id: "thought-1",
       expected_revision: 1,
       final_text: "final",
-      confirmation_token: "",
       idempotency_key: "final-1",
       request_digest: DIGEST_B,
     },
     ["thought:finalize"],
   );
-  assert.equal(confirmation.body.result.isError, true);
-  assert.equal(
-    confirmation.body.result.structuredContent.error?.code,
-    "confirmation_required",
-  );
+  assert.equal(finalized.body.result.structuredContent.revision, 2);
 
   const idempotency = await callTool(
     baseUrl,
@@ -269,10 +306,9 @@ test("authorization, schema, revision, idempotency, and confirmation failures ar
     "finalize_thought",
     {
       thought_id: "thought-1",
-      expected_revision: 0,
+      expected_revision: 1,
       final_text: "final",
-      confirmation_token: "confirmed",
-      idempotency_key: "final-1",
+      idempotency_key: "final-2",
       request_digest: DIGEST_B,
     },
     ["thought:finalize"],
