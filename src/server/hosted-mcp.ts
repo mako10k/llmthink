@@ -22,6 +22,8 @@ import {
   errorNavigation,
   EXTERNAL_STORAGE_NOTICE,
   mcpHelp,
+  REQUEST_DIGEST_DESCRIPTION,
+  REQUEST_DIGEST_PATTERN,
 } from "./mcp-guidance.js";
 import { LlmthinkSecurityBoundary } from "./security.js";
 
@@ -38,9 +40,13 @@ export interface LlmthinkHostedMcpHandlerOptions {
 
 const identityShape = {
   idempotency_key: z.string().min(1).max(200),
-  request_digest: z.custom<`sha256:${string}`>(
-    (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value),
-  ),
+  request_digest: z
+    .string()
+    .regex(
+      new RegExp(REQUEST_DIGEST_PATTERN),
+      "expected sha256:<64 lowercase hex>",
+    )
+    .describe(REQUEST_DIGEST_DESCRIPTION) as z.ZodType<`sha256:${string}`>,
 };
 const revisionShape = { expected_revision: z.number().int().nonnegative() };
 const thoughtIdShape = { thought_id: z.string().min(1).max(128) };

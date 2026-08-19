@@ -28,6 +28,12 @@ interface RpcBody {
       name: string;
       description: string;
       annotations: Record<string, boolean>;
+      inputSchema: {
+        properties?: Record<
+          string,
+          { type?: string; pattern?: string; description?: string }
+        >;
+      };
     }>;
     readonly isError?: boolean;
     readonly structuredContent: {
@@ -45,9 +51,23 @@ interface RpcBody {
       };
       readonly topic?: string;
       readonly storage_notice?: string;
+      readonly tools?: Record<
+        string,
+        {
+          readonly request_digest?: {
+            readonly format: string;
+            readonly pattern: string;
+            readonly mutation_fields: readonly string[];
+            readonly example: string;
+          };
+        }
+      >;
     };
   };
-  readonly error: { readonly data: { readonly code: string } };
+  readonly error: {
+    readonly message: string;
+    readonly data: { readonly code: string };
+  };
 }
 
 async function fixture(
@@ -201,6 +221,82 @@ test("help mirrors CLI guidance and errors include actionable navigation", async
     (denied.body.result.structuredContent.error?.navigation?.next_actions
       .length ?? 0) > 0,
   );
+});
+
+test("write tools expose actionable request_digest contracts", async (t) => {
+  const { baseUrl } = await fixture(t);
+  const listed = await rpc(baseUrl, "tools/list", {});
+  for (const name of [
+    "create_thought_draft",
+    "add_thought_reflection",
+    "finalize_thought",
+  ]) {
+    const property = listed.body.result.tools.find((tool) => tool.name === name)
+      ?.inputSchema.properties?.request_digest;
+    assert.equal(property?.type, "string", name);
+    assert.equal(property?.pattern, "^sha256:[a-f0-9]{64}$", name);
+    assert.match(
+      property?.description ?? "",
+      /sha256:<64 lowercase hex>/,
+      name,
+    );
+  }
+
+  const help = await callTool(
+    baseUrl,
+    "llmthink_help",
+    { topic: "tools", tool: "create_thought_draft" },
+    [],
+  );
+  const digest =
+    help.body.result.structuredContent.tools?.create_thought_draft
+      ?.request_digest;
+  assert.equal(digest?.format, "sha256:<64 lowercase hex>");
+  assert.equal(digest?.pattern, "^sha256:[a-f0-9]{64}$");
+  assert.deepEqual(digest?.mutation_fields, ["thought_id", "draft_text"]);
+  assert.match(digest?.example ?? "", /^sha256:[a-f0-9]{64}$/);
+});
+
+test("request_digest validation explains malformed values consistently", async (t) => {
+  const { baseUrl } = await fixture(t);
+  for (const name of [
+    "create_thought_draft",
+    "add_thought_reflection",
+    "finalize_thought",
+  ]) {
+    for (const request_digest of ["unprefixed", "sha256:xyz"]) {
+      let args: Record<string, unknown> = {
+        thought_id: "t",
+        expected_revision: 0,
+        final_text: "f",
+      };
+      if (name === "create_thought_draft") {
+        args = { thought_id: "t", draft_text: "d" };
+      } else if (name === "add_thought_reflection") {
+        args = {
+          thought_id: "t",
+          expected_revision: 0,
+          kind: "note",
+          text: "n",
+        };
+      }
+      const result = await callTool(
+        baseUrl,
+        name,
+        {
+          ...args,
+          idempotency_key: "key",
+          request_digest,
+        },
+        ["thought:write", "thought:finalize"],
+      );
+      assert.match(
+        JSON.stringify(result.body),
+        /expected sha256:<64 lowercase hex>/,
+        `${name}: ${request_digest}`,
+      );
+    }
+  }
 });
 
 test("pure audit returns structured content and does not persist", async (t) => {

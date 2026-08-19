@@ -1,8 +1,23 @@
 import { getDslSyntaxGuidanceText } from "../dsl/guidance.js";
 export const EXTERNAL_STORAGE_NOTICE = "Thought tools use an external llmthink server outside the current ChatGPT/Codex workspace. Writes remain confined to the authenticated tenant and workspace, but are externally persisted.";
+export const REQUEST_DIGEST_FORMAT = "sha256:<64 lowercase hex>";
+export const REQUEST_DIGEST_PATTERN = "^sha256:[a-f0-9]{64}$";
+export const REQUEST_DIGEST_DESCRIPTION = "Request identity digest. Expected sha256:<64 lowercase hex> (pattern ^sha256:[a-f0-9]{64}$). Compute SHA-256 over a stable UTF-8 representation of the mutation fields; exclude idempotency_key and request_digest.";
+const REQUEST_DIGEST_GUIDANCE = {
+    format: REQUEST_DIGEST_FORMAT,
+    pattern: REQUEST_DIGEST_PATTERN,
+    procedure: [
+        "Build an object from the mutation fields listed for the selected tool.",
+        "Serialize it deterministically as UTF-8 (for example, canonical JSON with lexicographically sorted object keys and no insignificant whitespace).",
+        "Compute SHA-256 over those bytes and prefix the 64-character lowercase hexadecimal result with sha256:.",
+    ],
+    excludes: ["idempotency_key", "request_digest"],
+    server_behavior: "The server validates the digest format and uses it to distinguish idempotent replays; it does not rederive the digest from request fields.",
+    example: `sha256:${"a".repeat(64)}`,
+};
 const ERROR_ACTIONS = {
     invalid_argument: [
-        "Correct the named field or request llmthink_help with topic=tools.",
+        `Correct the named field. request_digest expects ${REQUEST_DIGEST_FORMAT}. Request llmthink_help with topic=tools for computation guidance.`,
     ],
     unauthenticated: ["Sign in or reconnect the llmthink MCP server."],
     forbidden: [
@@ -51,6 +66,10 @@ const TOOL_GUIDANCE = {
         effect: "external_write",
         use_when: "The user asks to persist a new draft.",
         required: ["thought_id", "draft_text", "idempotency_key", "request_digest"],
+        request_digest: {
+            ...REQUEST_DIGEST_GUIDANCE,
+            mutation_fields: ["thought_id", "draft_text"],
+        },
     },
     get_thought: {
         effect: "read_only",
@@ -77,6 +96,10 @@ const TOOL_GUIDANCE = {
             "idempotency_key",
             "request_digest",
         ],
+        request_digest: {
+            ...REQUEST_DIGEST_GUIDANCE,
+            mutation_fields: ["thought_id", "expected_revision", "final_text"],
+        },
     },
     add_thought_reflection: {
         effect: "external_write",
@@ -89,6 +112,10 @@ const TOOL_GUIDANCE = {
             "idempotency_key",
             "request_digest",
         ],
+        request_digest: {
+            ...REQUEST_DIGEST_GUIDANCE,
+            mutation_fields: ["thought_id", "expected_revision", "kind", "text"],
+        },
     },
     get_thought_history: {
         effect: "read_only",
