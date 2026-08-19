@@ -23,17 +23,12 @@ resource CODEX:
 
 
 
-milestone SERVER_FOUNDATION_IMPLEMENTED:
-  title "Application Service and server file repository implemented"
-  state reached
 
 
-milestone SERVER_SECURITY_ACCEPTED:
-  title "Hosted identity authorization and observability accepted"
-  state reached
 
 milestone SERVER_ACCEPTANCE_READY:
   title "Hosted server implementation ready for final local acceptance"
+  state reached
 
 milestone SERVER_IMPLEMENTATION_ACCEPTED:
   title "Hosted server implementation accepted locally"
@@ -43,32 +38,8 @@ milestone SERVER_IMPLEMENTATION_ACCEPTED:
 
 
 
-task PRESERVE_LOCAL_INTERFACES SERVER_FOUNDATION_IMPLEMENTED -> SERVER_ACCEPTANCE_READY:
-  title "Preserve CLI stdio MCP and VSIX local behavior"
-  description "Adapt existing CLI and stdio MCP paths to shared use cases where appropriate without requiring an HTTP server. Preserve .think and .dsl handling, workspace/user/system local storage behavior, existing stdio tool contract, audit presentation, thought lifecycle, LSP, preview, and VSIX behavior. Add parity regressions that distinguish the existing LocalFileThoughtStore contract from the new ServerFileThoughtStore safety contract."
-  estimate:
-    optimistic 1p
-    most_likely 2p
-    pessimistic 3p
-  status done
-  priority 80
-  requires:
-    CODEX 1
-  source "ADR-0007; ADR-0008; ADR-0004"
 
 
-task ACCEPT_PLUGIN_AND_SKILLS SERVER_SECURITY_ACCEPTED -> SERVER_ACCEPTANCE_READY:
-  title "Accept local Plugin metadata Skills and tool selection"
-  description "Package local Plugin metadata and the llmthink-author, llmthink-auditor, and llmthink-reflector Skills against the accepted MCP tools. Verify Skills cannot widen scopes, bypass revision or confirmation, collect secrets, or change authorization outcomes. Run direct, indirect, follow-up, write-confirmation, unknown, and out-of-scope tool-selection evaluations. Use local or developer-mode testing only; do not deploy, submit, publish, or add MCP Apps UI."
-  estimate:
-    optimistic 1p
-    most_likely 2p
-    pessimistic 3p
-  status done
-  priority 70
-  requires:
-    CODEX 1
-  source "docs/specs/server-architecture.md sections 9,12; ADR-0009"
 
 task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATION_ACCEPTED:
   title "Accept the hosted server implementation locally"
@@ -86,129 +57,6 @@ task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATI
 
 
 
-milestone_criterion_set SERVER_FOUNDATION_R1:
-  milestone SERVER_FOUNDATION_IMPLEMENTED
-  revision R1
-  commitment sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af
-  criterion APPLICATION_USE_CASES required test "Direct use case tests prove pure audit is non-persistent, authorization is centralized, and allowed, denied, missing, revision-conflict, idempotent, and confirmation outcomes use stable domain results"
-  criterion REPOSITORY_SAFETY required test "Repository tests prove validated identities, tenant isolation, immutable monotonic revisions, expected-revision conflicts, scoped idempotency, serialized writes, atomic CURRENT, fail-closed recovery, unsupported-schema rejection, and no cwd fallback"
-  criterion TRANSPORT_INDEPENDENCE required artifact "Application Service depends only on Core and injected ports, imports no HTTP or MCP transport types, preserves Core audit meaning, and exposes no backend path as public identity"
-  criterion FOUNDATION_REGRESSION required test "Focused foundation tests and complete tests, typecheck, lint, format check, build, examples, package dry run, PERT validation, and LLMThink audit pass"
-
-milestone_acceptance_receipt RCPT_FOUNDATION_APPLICATION_20260819:
-  model 1
-  set SERVER_FOUNDATION_R1
-  set_commitment sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af
-  criterion APPLICATION_USE_CASES
-  criterion_commitment sha256:78455603e58debf41ecf864f92f35d4857624fd87a940402f2e40c241dabfa31
-  action verify
-  evidence_kind test
-  evidence_reference "commit 4eb6362b5834d3e3fc79980ffd6d22dedefeac48; application-service direct tests 7/7; pure audit non-persistence and Core equivalence; authorization, missing, revision conflict, idempotency, compound audit scope, confirmation"
-  evidence_revision 4eb6362b5834d3e3fc79980ffd6d22dedefeac48
-  verifier codex
-  occurred_at 2026-08-19T00:54:41Z
-
-milestone_acceptance_receipt RCPT_FOUNDATION_REPOSITORY_20260819:
-  model 1
-  set SERVER_FOUNDATION_R1
-  set_commitment sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af
-  criterion REPOSITORY_SAFETY
-  criterion_commitment sha256:53ebe565c4970b791632e73c7c2e8ba092e3bd2707e2acb986df9ac731674a34
-  action verify
-  evidence_kind test
-  evidence_reference "commit 4eb6362b5834d3e3fc79980ffd6d22dedefeac48; file-repository direct tests 8/8; explicit absolute root, immutable revisions, atomic CURRENT, tenant and traversal isolation, concurrency and revision conflict, idempotency, fail-closed orphan and schema behavior"
-  evidence_revision 4eb6362b5834d3e3fc79980ffd6d22dedefeac48
-  verifier codex
-  occurred_at 2026-08-19T00:54:42Z
-
-milestone_acceptance_receipt RCPT_FOUNDATION_TRANSPORT_20260819:
-  model 1
-  set SERVER_FOUNDATION_R1
-  set_commitment sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af
-  criterion TRANSPORT_INDEPENDENCE
-  criterion_commitment sha256:cf309e52ce647002c43e47b5be61a270a5e3c1673b7cfe224448e03fc009a4d7
-  action verify
-  evidence_kind artifact
-  evidence_reference "commit 4eb6362b5834d3e3fc79980ffd6d22dedefeac48; application-service imports Core and injected contracts only; forbidden node:http, MCP SDK, process.cwd and URL references absent; public identity has no backend path; npm pack contains 3 generated service artifacts"
-  evidence_revision 4eb6362b5834d3e3fc79980ffd6d22dedefeac48
-  verifier codex
-  occurred_at 2026-08-19T00:54:43Z
-
-milestone_acceptance_receipt RCPT_FOUNDATION_REGRESSION_20260819:
-  model 1
-  set SERVER_FOUNDATION_R1
-  set_commitment sha256:2844004e541ab190f6f3bdf50d5339e232250954fad61e0f4143da550250b7af
-  criterion FOUNDATION_REGRESSION
-  criterion_commitment sha256:f2507f408e28b512fea24a03502e0e85b097483b764b4a7915bf1702b8e672ea
-  action verify
-  evidence_kind test
-  evidence_reference "commit 4eb6362b5834d3e3fc79980ffd6d22dedefeac48; focused 7/7 and 8/8; full rerun 139/139 after one intermittent existing preview width failure passed focused 1/1; typecheck, lint, format, build, examples, package 123 files, PERT check, LLMThink all severity 0, diff check"
-  evidence_revision 4eb6362b5834d3e3fc79980ffd6d22dedefeac48
-  verifier codex
-  occurred_at 2026-08-19T00:54:44Z
-
-milestone_criterion_set SERVER_SECURITY_R1:
-  milestone SERVER_SECURITY_ACCEPTED
-  revision R1
-  commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
-  criterion VERIFIED_IDENTITY required test "REST and MCP derive subject tenant workspace scopes and request identity only from the injected verified authentication context and reject unauthenticated access"
-  criterion AUTHORIZATION_ISOLATION required test "Scope enforcement non-loopback safety and negative cross-tenant and cross-workspace tests prevent read write finalize and audit authority widening"
-  criterion PRIVACY_OBSERVABILITY required test "Bounded request IDs metrics rate limits timeouts and size limits are observable while tokens authorization headers thought bodies audit text and reflection text are absent from normal logs"
-  criterion SECURITY_REGRESSION required test "Focused boundary tests and complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
-
-
-milestone_acceptance_receipt RCPT_SECURITY_IDENTITY_20260819:
-  model 1
-  set SERVER_SECURITY_R1
-  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
-  criterion VERIFIED_IDENTITY
-  criterion_commitment sha256:6772810a6ee3e7e017f0fdf9658b7e0ac0bf518a70cde0578a88a659a5721473
-  action verify
-  evidence_kind test
-  evidence_reference "Bearer verifier fake and verified-context tests prove subject tenant workspace scopes and generated request ID come from the authentication boundary; missing identity and unsupported scopes fail before use cases"
-  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
-  verifier codex
-  occurred_at 2026-08-19T02:55:06Z
-
-milestone_acceptance_receipt RCPT_SECURITY_ISOLATION_20260819:
-  model 1
-  set SERVER_SECURITY_R1
-  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
-  criterion AUTHORIZATION_ISOLATION
-  criterion_commitment sha256:3c67a73bef46701c95dc7c50133716199b209e2323a6057b516e5ff749c4cbeb
-  action verify
-  evidence_kind test
-  evidence_reference "focused server security suite 46/46; scope enforcement, authentication-disabled non-loopback rejection, traversal rejection, negative cross-tenant and cross-workspace repository isolation, and shared REST/MCP rate boundary"
-  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
-  verifier codex
-  occurred_at 2026-08-19T02:55:07Z
-
-milestone_acceptance_receipt RCPT_SECURITY_PRIVACY_20260819:
-  model 1
-  set SERVER_SECURITY_R1
-  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
-  criterion PRIVACY_OBSERVABILITY
-  criterion_commitment sha256:a8b7e5b6529e0f6901cb3cc90d56f34ce2de08d4e3947c943de15026d5cd8d58
-  action verify
-  evidence_kind test
-  evidence_reference "security tests prove pseudonymous observations omit token authorization identity and content values; bounded non-identity metrics, request IDs, per-subject rate bounds, request and response size bounds, and authentication and execution timeout handling"
-  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
-  verifier codex
-  occurred_at 2026-08-19T02:55:08Z
-
-milestone_acceptance_receipt RCPT_SECURITY_REGRESSION_20260819:
-  model 1
-  set SERVER_SECURITY_R1
-  set_commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
-  criterion SECURITY_REGRESSION
-  criterion_commitment sha256:88650794471ffe4f43486eba43d613756b6a67be6b050b394f0a06c47c79a7a6
-  action verify
-  evidence_kind test
-  evidence_reference "complete tests 162/162 after existing preview width timing failure passed focused 1/1 and full rerun; typecheck, lint, format check, build, 4 examples, package dry run 132 files including 3 security artifacts, PERT check, LLMThink fatal/error/warning 0, diff check"
-  evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
-  verifier codex
-  occurred_at 2026-08-19T02:55:09Z
-
 milestone_criterion_set SERVER_ACCEPTANCE_READY_R1:
   milestone SERVER_ACCEPTANCE_READY
   revision R1
@@ -218,18 +66,6 @@ milestone_criterion_set SERVER_ACCEPTANCE_READY_R1:
   criterion PLUGIN_SKILLS_CONTRACT required test "Local Plugin metadata and author auditor reflector Skills match accepted MCP tools and cannot widen scopes bypass revision or confirmation collect secrets or alter authorization outcomes"
   criterion ACCEPTANCE_READY_REGRESSION required test "Focused local-interface and Plugin evaluations plus complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
 
-work_event START_PRESERVE_LOCAL_INTERFACES:
-  model 1
-  task PRESERVE_LOCAL_INTERFACES
-  kind start
-  occurred_at 2026-08-19T11:58:05+09:00
-  planned_value 2p
-
-work_event FINISH_PRESERVE_LOCAL_INTERFACES:
-  model 1
-  task PRESERVE_LOCAL_INTERFACES
-  kind finish
-  occurred_at 2026-08-19T12:09:00+09:00
 
 milestone_acceptance_receipt RCPT_READY_LOCAL_INTERFACES_20260819:
   model 1
@@ -257,18 +93,6 @@ milestone_acceptance_receipt RCPT_READY_STORE_BOUNDARY_20260819:
   verifier codex
   occurred_at 2026-08-19T03:10:01Z
 
-work_event START_ACCEPT_PLUGIN_AND_SKILLS:
-  model 1
-  task ACCEPT_PLUGIN_AND_SKILLS
-  kind start
-  occurred_at 2026-08-19T12:14:18+09:00
-  planned_value 2p
-
-work_event FINISH_ACCEPT_PLUGIN_AND_SKILLS:
-  model 1
-  task ACCEPT_PLUGIN_AND_SKILLS
-  kind finish
-  occurred_at 2026-08-19T13:10:52+09:00
 
 milestone_acceptance_receipt RCPT_READY_PLUGIN_SKILLS_20260819:
   model 1
