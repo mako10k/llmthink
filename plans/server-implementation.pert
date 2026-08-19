@@ -48,6 +48,7 @@ task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATI
     optimistic 1p
     most_likely 2p
     pessimistic 3p
+  status active
   priority 100
   requires:
     CODEX 1
@@ -129,3 +130,10 @@ milestone_criterion_set SERVER_IMPLEMENTATION_R1:
   criterion LOCAL_PLUGIN_COMPATIBILITY required test "CLI, stdio MCP, LSP, preview, VSIX, local storage, Plugin metadata, three Skills, and direct indirect follow-up write-confirmation unknown and out-of-scope tool-selection evaluations remain compatible without authority widening"
   criterion FINAL_REGRESSION required test "Complete tests, typecheck, lint, format check, builds, examples, VSIX packaging, npm package dry run, Plugin and Skill validators, generated-artifact review, PERT validation, and LLMThink audit pass with no fatal error or warning"
   criterion SCOPE_CONTAINMENT required artifact "Repository and operation review confirms production deployment, external OAuth configuration, DB or graph backend migration, release, publication, remote writes, MCP Apps UI, and public Plugin submission remain unperformed unless separately authorized"
+
+work_event START_ACCEPT_SERVER_IMPLEMENTATION:
+  model 1
+  task ACCEPT_SERVER_IMPLEMENTATION
+  kind start
+  occurred_at 2026-08-19T13:38:19+09:00
+  planned_value 2p
