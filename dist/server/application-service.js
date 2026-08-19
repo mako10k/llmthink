@@ -1,33 +1,8 @@
 import { auditDslText } from "../analyzer/audit.js";
-import { assertCommandIdentity, assertHostedId, assertRevision, assertThoughtRef, LLMTHINK_SERVER_SCOPES, LlmthinkServerError, } from "./contracts.js";
-const KNOWN_SCOPES = new Set(LLMTHINK_SERVER_SCOPES);
-function assertRequestContext(context) {
-    if (!context || typeof context !== "object") {
-        throw new LlmthinkServerError("unauthenticated", "Verified request context is required");
-    }
-    for (const [field, value] of [
-        ["subjectId", context.subjectId],
-        ["tenantId", context.tenantId],
-        ["workspaceId", context.workspaceId],
-    ]) {
-        if (typeof value !== "string" || value.length === 0) {
-            throw new LlmthinkServerError("unauthenticated", `Verified ${field} is required`);
-        }
-        assertHostedId(field, value);
-    }
-    if (typeof context.requestId !== "string" || context.requestId.length === 0) {
-        throw new LlmthinkServerError("invalid_argument", "requestId is required", {
-            field: "requestId",
-        });
-    }
-    assertHostedId("requestId", context.requestId);
-    if (!Array.isArray(context.scopes) ||
-        context.scopes.some((scope) => !KNOWN_SCOPES.has(scope))) {
-        throw new LlmthinkServerError("forbidden", "Request context contains an unsupported scope");
-    }
-}
+import { assertCommandIdentity, assertHostedId, assertRevision, assertThoughtRef, LlmthinkServerError, } from "./contracts.js";
+import { assertVerifiedRequestContext } from "./security.js";
 function requireScope(context, required) {
-    assertRequestContext(context);
+    assertVerifiedRequestContext(context);
     if (!context.scopes.includes(required)) {
         throw new LlmthinkServerError("forbidden", `Required scope is missing: ${required}`, { requiredScope: required });
     }

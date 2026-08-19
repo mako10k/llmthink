@@ -17,6 +17,7 @@ import {
   type ThoughtRef,
 } from "./contracts.js";
 import type { LlmthinkHttpAuthenticator } from "./http.js";
+import { LlmthinkSecurityBoundary } from "./security.js";
 
 export const DEFAULT_MCP_REQUEST_LIMIT_BYTES = 1024 * 1024;
 export const DEFAULT_MCP_TEXT_LIMIT_BYTES = 64 * 1024;
@@ -24,6 +25,7 @@ export const DEFAULT_MCP_TEXT_LIMIT_BYTES = 64 * 1024;
 export interface LlmthinkHostedMcpHandlerOptions {
   readonly application: LlmthinkApplicationService;
   readonly authenticate: LlmthinkHttpAuthenticator;
+  readonly security?: LlmthinkSecurityBoundary;
   readonly requestLimitBytes?: number;
   readonly textLimitBytes?: number;
 }
@@ -118,10 +120,17 @@ function registerTools(
   application: LlmthinkApplicationService,
   context: RequestContext,
   textLimit: number,
+  security: LlmthinkSecurityBoundary,
 ): void {
-  const run = async (operation: () => Promise<Record<string, unknown>>) => {
+  const run = async (
+    operation: string,
+    action: () => Promise<Record<string, unknown>>,
+  ) => {
     try {
-      return toolResult(await operation(), textLimit);
+      return toolResult(
+        await security.execute(context, "mcp", operation, action),
+        textLimit,
+      );
     } catch (error) {
       return toolError(error, textLimit);
     }
@@ -138,7 +147,7 @@ function registerTools(
       annotations: READ_ONLY,
     },
     ({ text, document_id }) =>
-      run(async () => ({
+      run("audit_thought", async () => ({
         ...(await application.audit(
           { text, documentId: document_id },
           context,
@@ -158,7 +167,7 @@ function registerTools(
       annotations: WRITE,
     },
     ({ thought_id, draft_text, idempotency_key, request_digest }) =>
-      run(async () =>
+      run("create_thought_draft", async () =>
         snapshot(
           await application.createThought(
             {
@@ -182,7 +191,7 @@ function registerTools(
       annotations: READ_ONLY,
     },
     ({ thought_id }) =>
-      run(async () =>
+      run("get_thought", async () =>
         snapshot(
           await application.getThought(ref(context, thought_id), context),
         ),
@@ -200,7 +209,7 @@ function registerTools(
       annotations: READ_ONLY,
     },
     ({ cursor, limit, status }) =>
-      run(async () => {
+      run("list_thoughts", async () => {
         const page = await application.listThoughts(
           { cursor, limit, status },
           context,
@@ -224,7 +233,7 @@ function registerTools(
       annotations: READ_ONLY,
     },
     ({ query, cursor, limit, include_reflections }) =>
-      run(async () => {
+      run("search_thoughts", async () => {
         const page = await application.searchThoughts(
           { query, cursor, limit, includeReflections: include_reflections },
           context,
@@ -256,7 +265,7 @@ function registerTools(
       idempotency_key,
       request_digest,
     }) =>
-      run(async () =>
+      run("finalize_thought", async () =>
         snapshot(
           await application.finalizeThought(
             {
@@ -301,7 +310,7 @@ function registerTools(
       idempotency_key,
       request_digest,
     }) =>
-      run(async () =>
+      run("add_thought_reflection", async () =>
         snapshot(
           await application.addReflection(
             {
@@ -327,7 +336,7 @@ function registerTools(
       annotations: READ_ONLY,
     },
     ({ thought_id }) =>
-      run(async () => ({
+      run("get_thought_history", async () => ({
         events: await application.events(ref(context, thought_id), context),
       })),
   );
@@ -390,8 +399,37 @@ function errorStatus(error: unknown): number {
   if (error.code === "unauthenticated") return 401;
   if (error.code === "forbidden") return 403;
   if (error.code === "payload_too_large") return 413;
+  if (error.code === "rate_limited") return 429;
   return 400;
 }
+
+function mcpOperation(body: unknown): string {
+  if (!body || typeof body !== "object") return "invalid";
+  const message = body as {
+    method?: unknown;
+    params?: { name?: unknown };
+  };
+  if (message.method === "initialize") return "initialize";
+  if (message.method === "tools/list") return "tools_list";
+  if (message.method === "tools/call") {
+    const name = message.params?.name;
+    return typeof name === "string" && MCP_TOOL_NAMES.has(name)
+      ? `tools_call ${name}`
+      : "tools_call unknown";
+  }
+  return "unknown";
+}
+
+const MCP_TOOL_NAMES = new Set([
+  "audit_thought",
+  "create_thought_draft",
+  "get_thought",
+  "list_thoughts",
+  "search_thoughts",
+  "finalize_thought",
+  "add_thought_reflection",
+  "get_thought_history",
+]);
 
 async function handleMcpRequest(
   request: IncomingMessage,
@@ -399,23 +437,27 @@ async function handleMcpRequest(
   options: LlmthinkHostedMcpHandlerOptions,
   requestLimit: number,
   textLimit: number,
+  security: LlmthinkSecurityBoundary,
 ): Promise<void> {
   let transport: StreamableHTTPServerTransport | undefined;
   let server: McpServer | undefined;
   try {
-    const context = await options.authenticate(request);
+    const context = await security.authenticate(request);
     const body =
       request.method === "POST"
         ? await readBoundedJson(request, requestLimit)
         : undefined;
     server = new McpServer({ name: "llmthink-hosted", version: "1.2.0" });
-    registerTools(server, options.application, context, textLimit);
+    registerTools(server, options.application, context, textLimit, security);
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
-    await server.connect(transport);
-    await transport.handleRequest(request, response, body);
+    const activeTransport = transport;
+    await server.connect(activeTransport);
+    await security.execute(context, "mcp", mcpOperation(body), () =>
+      activeTransport.handleRequest(request, response, body),
+    );
   } catch (error) {
     sendRpcError(response, errorStatus(error), error);
   } finally {
@@ -430,6 +472,9 @@ export function createLlmthinkHostedMcpHandler(
   const requestLimit =
     options.requestLimitBytes ?? DEFAULT_MCP_REQUEST_LIMIT_BYTES;
   const textLimit = options.textLimitBytes ?? DEFAULT_MCP_TEXT_LIMIT_BYTES;
+  const security =
+    options.security ??
+    new LlmthinkSecurityBoundary({ authenticate: options.authenticate });
   return async (
     request: IncomingMessage,
     response: ServerResponse,
@@ -444,7 +489,14 @@ export function createLlmthinkHostedMcpHandler(
       );
       return;
     }
-    await handleMcpRequest(request, response, options, requestLimit, textLimit);
+    await handleMcpRequest(
+      request,
+      response,
+      options,
+      requestLimit,
+      textLimit,
+      security,
+    );
   };
 }
 

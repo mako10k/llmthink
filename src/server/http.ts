@@ -22,17 +22,20 @@ import {
   type ServerThoughtSnapshot,
   type ThoughtRef,
 } from "./contracts.js";
+import {
+  LlmthinkSecurityBoundary,
+  type LlmthinkHostedAuthenticator,
+} from "./security.js";
 
 export const DEFAULT_HTTP_REQUEST_LIMIT_BYTES = 1024 * 1024;
 export const DEFAULT_HTTP_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 
-export type LlmthinkHttpAuthenticator = (
-  request: IncomingMessage,
-) => Promise<RequestContext>;
+export type LlmthinkHttpAuthenticator = LlmthinkHostedAuthenticator;
 
 export interface LlmthinkHttpHandlerOptions {
   readonly application: LlmthinkApplicationService;
   readonly authenticate: LlmthinkHttpAuthenticator;
+  readonly security?: LlmthinkSecurityBoundary;
   readonly isReady?: () => boolean | Promise<boolean>;
   readonly requestLimitBytes?: number;
   readonly responseLimitBytes?: number;
@@ -324,11 +327,28 @@ function parseListQuery(url: URL): {
   };
 }
 
+function restOperation(method: string | undefined, pathname: string): string {
+  const verb = method ?? "GET";
+  if (pathname === "/api/v1/audits") return `${verb} audits`;
+  if (pathname === "/api/v1/thoughts") return `${verb} thoughts`;
+  if (pathname === "/api/v1/thoughts/search") return `${verb} thought_search`;
+  if (pathname.endsWith("/draft")) return `${verb} thought_draft`;
+  if (pathname.endsWith("/audits")) return `${verb} thought_audit`;
+  if (pathname.endsWith("/finalize")) return `${verb} thought_finalize`;
+  if (pathname.endsWith("/reflections")) return `${verb} thought_reflection`;
+  if (pathname.endsWith("/events")) return `${verb} thought_events`;
+  if (pathname.startsWith("/api/v1/thoughts/")) return `${verb} thought`;
+  return `${verb} unknown`;
+}
+
 export function createLlmthinkHttpHandler(options: LlmthinkHttpHandlerOptions) {
   const requestLimit =
     options.requestLimitBytes ?? DEFAULT_HTTP_REQUEST_LIMIT_BYTES;
   const responseLimit =
     options.responseLimitBytes ?? DEFAULT_HTTP_RESPONSE_LIMIT_BYTES;
+  const security =
+    options.security ??
+    new LlmthinkSecurityBoundary({ authenticate: options.authenticate });
 
   return async (
     request: IncomingMessage,
@@ -357,14 +377,14 @@ export function createLlmthinkHttpHandler(options: LlmthinkHttpHandlerOptions) {
         return;
       }
 
-      const context = await options.authenticate(request);
+      const context = await security.authenticate(request);
       requestId = context.requestId;
-      const result = await dispatchApi(
-        options.application,
-        request,
-        url,
+      const result = await security.execute(
         context,
-        requestLimit,
+        "rest",
+        restOperation(request.method, url.pathname),
+        () =>
+          dispatchApi(options.application, request, url, context, requestLimit),
       );
       sendJson(
         response,

@@ -1,6 +1,7 @@
 import { createServer, } from "node:http";
 import { z } from "zod";
 import { LlmthinkServerError, } from "./contracts.js";
+import { LlmthinkSecurityBoundary, } from "./security.js";
 export const DEFAULT_HTTP_REQUEST_LIMIT_BYTES = 1024 * 1024;
 export const DEFAULT_HTTP_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const identitySchema = z.object({
@@ -221,9 +222,33 @@ function parseListQuery(url) {
         ...(status ? { status: status } : {}),
     };
 }
+function restOperation(method, pathname) {
+    const verb = method ?? "GET";
+    if (pathname === "/api/v1/audits")
+        return `${verb} audits`;
+    if (pathname === "/api/v1/thoughts")
+        return `${verb} thoughts`;
+    if (pathname === "/api/v1/thoughts/search")
+        return `${verb} thought_search`;
+    if (pathname.endsWith("/draft"))
+        return `${verb} thought_draft`;
+    if (pathname.endsWith("/audits"))
+        return `${verb} thought_audit`;
+    if (pathname.endsWith("/finalize"))
+        return `${verb} thought_finalize`;
+    if (pathname.endsWith("/reflections"))
+        return `${verb} thought_reflection`;
+    if (pathname.endsWith("/events"))
+        return `${verb} thought_events`;
+    if (pathname.startsWith("/api/v1/thoughts/"))
+        return `${verb} thought`;
+    return `${verb} unknown`;
+}
 export function createLlmthinkHttpHandler(options) {
     const requestLimit = options.requestLimitBytes ?? DEFAULT_HTTP_REQUEST_LIMIT_BYTES;
     const responseLimit = options.responseLimitBytes ?? DEFAULT_HTTP_RESPONSE_LIMIT_BYTES;
+    const security = options.security ??
+        new LlmthinkSecurityBoundary({ authenticate: options.authenticate });
     return async (request, response) => {
         let requestId = responseRequestId(request);
         try {
@@ -237,9 +262,9 @@ export function createLlmthinkHttpHandler(options) {
                 sendJson(response, ready ? 200 : 503, success({ status: ready ? "ready" : "not_ready" }, requestId), responseLimit);
                 return;
             }
-            const context = await options.authenticate(request);
+            const context = await security.authenticate(request);
             requestId = context.requestId;
-            const result = await dispatchApi(options.application, request, url, context, requestLimit);
+            const result = await security.execute(context, "rest", restOperation(request.method, url.pathname), () => dispatchApi(options.application, request, url, context, requestLimit));
             sendJson(response, result.status, success(result.data, requestId), responseLimit);
         }
         catch (caught) {

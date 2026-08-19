@@ -64,7 +64,7 @@ task HARDEN_SERVER_BOUNDARIES HOSTED_ADAPTERS_IMPLEMENTED -> SERVER_SECURITY_ACC
     optimistic 2p
     most_likely 3p
     pessimistic 5p
-  status active
+  status done
   priority 100
   requires:
     CODEX 1
@@ -236,3 +236,9 @@ work_event START_HARDEN_SERVER_BOUNDARIES:
   kind start
   occurred_at 2026-08-19T11:21:20+09:00
   planned_value 19/6p
+
+work_event FINISH_HARDEN_SERVER_BOUNDARIES:
+  model 1
+  task HARDEN_SERVER_BOUNDARIES
+  kind finish
+  occurred_at 2026-08-19T11:46:39+09:00

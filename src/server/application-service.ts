@@ -6,7 +6,6 @@ import {
   assertHostedId,
   assertRevision,
   assertThoughtRef,
-  LLMTHINK_SERVER_SCOPES,
   LlmthinkServerError,
   type AddReflectionCommand,
   type AuditTextCommand,
@@ -24,6 +23,7 @@ import {
   type ThoughtRepository,
   type ThoughtSearchQuery,
 } from "./contracts.js";
+import { assertVerifiedRequestContext } from "./security.js";
 
 export type LlmthinkAuditRunner = (
   command: AuditTextCommand,
@@ -34,50 +34,11 @@ export interface LlmthinkApplicationServiceOptions {
   readonly auditRunner?: LlmthinkAuditRunner;
 }
 
-const KNOWN_SCOPES = new Set<string>(LLMTHINK_SERVER_SCOPES);
-
-function assertRequestContext(context: RequestContext): void {
-  if (!context || typeof context !== "object") {
-    throw new LlmthinkServerError(
-      "unauthenticated",
-      "Verified request context is required",
-    );
-  }
-  for (const [field, value] of [
-    ["subjectId", context.subjectId],
-    ["tenantId", context.tenantId],
-    ["workspaceId", context.workspaceId],
-  ] as const) {
-    if (typeof value !== "string" || value.length === 0) {
-      throw new LlmthinkServerError(
-        "unauthenticated",
-        `Verified ${field} is required`,
-      );
-    }
-    assertHostedId(field, value);
-  }
-  if (typeof context.requestId !== "string" || context.requestId.length === 0) {
-    throw new LlmthinkServerError("invalid_argument", "requestId is required", {
-      field: "requestId",
-    });
-  }
-  assertHostedId("requestId", context.requestId);
-  if (
-    !Array.isArray(context.scopes) ||
-    context.scopes.some((scope) => !KNOWN_SCOPES.has(scope))
-  ) {
-    throw new LlmthinkServerError(
-      "forbidden",
-      "Request context contains an unsupported scope",
-    );
-  }
-}
-
 function requireScope(
   context: RequestContext,
   required: LlmthinkServerScope,
 ): void {
-  assertRequestContext(context);
+  assertVerifiedRequestContext(context);
   if (!context.scopes.includes(required)) {
     throw new LlmthinkServerError(
       "forbidden",
