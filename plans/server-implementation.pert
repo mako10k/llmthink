@@ -48,7 +48,7 @@ task ACCEPT_SERVER_IMPLEMENTATION SERVER_ACCEPTANCE_READY -> SERVER_IMPLEMENTATI
     optimistic 1p
     most_likely 2p
     pessimistic 3p
-  status active
+  status done
   priority 100
   requires:
     CODEX 1
@@ -137,3 +137,74 @@ work_event START_ACCEPT_SERVER_IMPLEMENTATION:
   kind start
   occurred_at 2026-08-19T13:38:19+09:00
   planned_value 2p
+
+milestone_acceptance_receipt RCPT_IMPLEMENTATION_CORE_20260819:
+  model 1
+  set SERVER_IMPLEMENTATION_R1
+  set_commitment sha256:813c2c3795058a994be7727247b6d89c02cb4382bd0065a75727e3f3665aa257
+  criterion CORE_REPOSITORY_SAFETY
+  criterion_commitment sha256:e4e82df25b370cace0e7845e151e998d2305f6cb014f8ab871926b8ca0c9c4bb
+  action verify
+  evidence_kind test
+  evidence_reference "commit f69cb39036cfcfad1ecdf1056d473bd0f18ea461; focused server acceptance suites 54/54 include Application Service, explicit-root repository, tenant and workspace isolation, traversal, immutable revisions, expected-revision conflicts, idempotency, concurrency, atomic CURRENT, and fail-closed recovery"
+  evidence_revision f69cb39036cfcfad1ecdf1056d473bd0f18ea461
+  verifier codex
+  occurred_at 2026-08-19T04:49:10Z
+
+milestone_acceptance_receipt RCPT_IMPLEMENTATION_HOSTED_20260819:
+  model 1
+  set SERVER_IMPLEMENTATION_R1
+  set_commitment sha256:813c2c3795058a994be7727247b6d89c02cb4382bd0065a75727e3f3665aa257
+  criterion HOSTED_TRANSPORT_SECURITY
+  criterion_commitment sha256:c40841c982bf7475e372c6f0073b005e9dd69845ea5a0c3cd5f88d223e1e6fad
+  action verify
+  evidence_kind test
+  evidence_reference "commit f69cb39036cfcfad1ecdf1056d473bd0f18ea461; REST and MCP parity and security focused suites pass; MCP Inspector 2.2.0 lists 8 tools, pure audit persisted false, missing scope returns forbidden, missing required argument returns -32602 and negative calls exit 5"
+  evidence_revision f69cb39036cfcfad1ecdf1056d473bd0f18ea461
+  verifier codex
+  occurred_at 2026-08-19T04:49:11Z
+
+milestone_acceptance_receipt RCPT_IMPLEMENTATION_LOCAL_PLUGIN_20260819:
+  model 1
+  set SERVER_IMPLEMENTATION_R1
+  set_commitment sha256:813c2c3795058a994be7727247b6d89c02cb4382bd0065a75727e3f3665aa257
+  criterion LOCAL_PLUGIN_COMPATIBILITY
+  criterion_commitment sha256:440bae8b6fbcbb5bf4a49538494f94d94646e9da1d5997cb43f51f2b13afb8e5
+  action verify
+  evidence_kind test
+  evidence_reference "commit f69cb39036cfcfad1ecdf1056d473bd0f18ea461; local compatibility and Plugin policy suites pass; CLI, stdio MCP, LSP, preview, local stores, Plugin manifest, three validated Skills, and six tool-selection cases retain authority boundaries"
+  evidence_revision f69cb39036cfcfad1ecdf1056d473bd0f18ea461
+  verifier codex
+  occurred_at 2026-08-19T04:49:12Z
+
+milestone_acceptance_receipt RCPT_IMPLEMENTATION_REGRESSION_20260819:
+  model 1
+  set SERVER_IMPLEMENTATION_R1
+  set_commitment sha256:813c2c3795058a994be7727247b6d89c02cb4382bd0065a75727e3f3665aa257
+  criterion FINAL_REGRESSION
+  criterion_commitment sha256:4a5f1d3d6ac5db69300a6400091508bcf89ef563b7a3efd555b93f9b17fd2d8e
+  action verify
+  evidence_kind test
+  evidence_reference "commit f69cb39036cfcfad1ecdf1056d473bd0f18ea461; complete tests 170/170, typecheck, lint, format, builds, 4 examples, extension typecheck and build, VSIX 14 files, npm pack 132 files, Plugin and Skill validators, PERT validation, LLMThink fatal/error/warning 0, generated-artifact and diff checks"
+  evidence_revision f69cb39036cfcfad1ecdf1056d473bd0f18ea461
+  verifier codex
+  occurred_at 2026-08-19T04:49:13Z
+
+milestone_acceptance_receipt RCPT_IMPLEMENTATION_SCOPE_20260819:
+  model 1
+  set SERVER_IMPLEMENTATION_R1
+  set_commitment sha256:813c2c3795058a994be7727247b6d89c02cb4382bd0065a75727e3f3665aa257
+  criterion SCOPE_CONTAINMENT
+  criterion_commitment sha256:830d322a757ece17b57517f9956cbb988431f1764c8d9ec10fc4f422b8d49b91
+  action verify
+  evidence_kind artifact
+  evidence_reference "commit f69cb39036cfcfad1ecdf1056d473bd0f18ea461; changed-path and Plugin authority review finds no deployment, external OAuth, DB or graph backend migration, release, tag, publication, MCP Apps UI, marketplace, or public submission artifacts; branch remains local and ahead of origin"
+  evidence_revision f69cb39036cfcfad1ecdf1056d473bd0f18ea461
+  verifier codex
+  occurred_at 2026-08-19T04:49:14Z
+
+work_event FINISH_ACCEPT_SERVER_IMPLEMENTATION:
+  model 1
+  task ACCEPT_SERVER_IMPLEMENTATION
+  kind finish
+  occurred_at 2026-08-19T13:49:43+09:00
