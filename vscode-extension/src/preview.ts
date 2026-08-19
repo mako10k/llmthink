@@ -1378,6 +1378,7 @@ function buildPreviewScript(): string {
                 scroll.scrollLeft = 0;
                 scroll.scrollTop = 0;
                 updateMinimapViewport();
+                scroll.dataset.fitReady = "true";
                 return;
               }
               if (anchor) {
@@ -1388,6 +1389,7 @@ function buildPreviewScript(): string {
         };
 
         const fitToViewport = () => {
+          delete scroll.dataset.fitReady;
           const horizontal = Math.max((scroll.clientWidth - 2) / baseWidth, 0.1);
           const vertical = Math.max((scroll.clientHeight - 2) / baseHeight, 0.1);
           applyZoom(Math.min(horizontal, vertical), { mode: "fit" });

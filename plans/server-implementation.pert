@@ -50,6 +50,7 @@ task PRESERVE_LOCAL_INTERFACES SERVER_FOUNDATION_IMPLEMENTED -> SERVER_ACCEPTANC
     optimistic 1p
     most_likely 2p
     pessimistic 3p
+  status done
   priority 80
   requires:
     CODEX 1
@@ -215,3 +216,16 @@ milestone_criterion_set SERVER_ACCEPTANCE_READY_R1:
   criterion LOCAL_HOSTED_STORE_BOUNDARY required test "Regression tests distinguish LocalFileThoughtStore workspace user and system semantics from explicit-root tenant-isolated ServerFileThoughtRepository semantics without authority leakage"
   criterion PLUGIN_SKILLS_CONTRACT required test "Local Plugin metadata and author auditor reflector Skills match accepted MCP tools and cannot widen scopes bypass revision or confirmation collect secrets or alter authorization outcomes"
   criterion ACCEPTANCE_READY_REGRESSION required test "Focused local-interface and Plugin evaluations plus complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
+
+work_event START_PRESERVE_LOCAL_INTERFACES:
+  model 1
+  task PRESERVE_LOCAL_INTERFACES
+  kind start
+  occurred_at 2026-08-19T11:58:05+09:00
+  planned_value 2p
+
+work_event FINISH_PRESERVE_LOCAL_INTERFACES:
+  model 1
+  task PRESERVE_LOCAL_INTERFACES
+  kind finish
+  occurred_at 2026-08-19T12:09:00+09:00

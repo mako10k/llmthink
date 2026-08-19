@@ -104,6 +104,12 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
       });
       await page.goto(`file://${outputPath}`);
       await page.waitForSelector(".diagram-scroll");
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector(".diagram-scroll")
+            ?.getAttribute("data-fit-ready") === "true",
+      );
 
       const before = await readDiagramMetrics(page);
 
