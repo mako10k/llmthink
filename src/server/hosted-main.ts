@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 import { timingSafeEqual } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { isAbsolute } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { LlmthinkApplicationService } from "./application-service.js";
 import {
@@ -138,7 +140,7 @@ export async function startHostedMcpServer(
 
 if (
   process.argv[1] &&
-  import.meta.url === new URL(`file://${process.argv[1]}`).href
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
 ) {
   await startHostedMcpServer(loadHostedMcpRuntimeConfig(process.env));
 }
