@@ -1,0 +1,121 @@
+project LLMTHINK_OAUTH_IMPLEMENTATION:
+  version 1
+  title "LLMThink managed OAuth implementation"
+  description "Replace the distributable static bearer token with MCP-compatible OAuth using WorkOS AuthKit as the managed authorization server and Google as the preferred upstream login. Preserve authenticated subject, tenant, workspace, scope, revision, and idempotency boundaries. Provider account creation, paid-plan acceptance, DNS changes, Google Cloud OAuth consent changes, production credential creation, production activation, static-token removal, public Plugin submission, and unrelated server changes require separate authority."
+  as_of 2026-08-19
+  duration_unit point
+  velocity 1p/1d
+  finish OAUTH_PRODUCTION_ACCEPTED
+
+resource CODEX:
+  title "LLMThink OAuth implementation capacity"
+  capacity 1
+
+milestone OAUTH_PLAN_ACCEPTED:
+  title "Recommended OAuth plan accepted"
+  state reached
+
+milestone PROVIDER_CONTRACT_FROZEN:
+  title "WorkOS AuthKit and Google identity contract frozen"
+
+milestone RESOURCE_DISCOVERY_IMPLEMENTED:
+  title "MCP protected-resource discovery implemented"
+
+milestone TOKEN_VALIDATION_IMPLEMENTED:
+  title "JWT validation and account mapping implemented"
+
+milestone STAGE_IDENTITY_CONFIGURED:
+  title "Stage AuthKit and Google login configured"
+
+milestone CLIENT_INTEROP_ACCEPTED:
+  title "ChatGPT and Codex OAuth interoperability accepted"
+
+milestone STATIC_TOKEN_MIGRATED:
+  title "Plugin migrated from static bearer to OAuth"
+
+milestone OAUTH_PRODUCTION_ACCEPTED:
+  title "Production OAuth migration accepted"
+
+task FREEZE_PROVIDER_CONTRACT OAUTH_PLAN_ACCEPTED -> PROVIDER_CONTRACT_FROZEN:
+  title "Freeze WorkOS AuthKit issuer and Google identity mapping"
+  description "Prototype WorkOS AuthKit MCP authorization without changing production. Verify protected-resource and authorization-server metadata, CIMD and any DCR fallback, Authorization Code with PKCE, refresh, token audience or resource, scope encoding, JWKS rotation, logout and revocation, and ChatGPT and Codex client behavior. Confirm Google login availability and freeze issuer, audience, subject, tenant, workspace, scope, email-verification, account-linking, and operator-break-glass rules in an accepted ADR. Stop if the provider requires unsafe shared secrets in the plugin or cannot bind tokens to the llmthink resource."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 100
+  requires:
+    CODEX 1
+  source "docs/process/hosted-mcp-ux-oauth-plan.md; WorkOS AuthKit MCP documentation; MCP authorization specification"
+
+task IMPLEMENT_RESOURCE_DISCOVERY PROVIDER_CONTRACT_FROZEN -> RESOURCE_DISCOVERY_IMPLEMENTED:
+  title "Implement OAuth discovery and authentication challenges"
+  description "Publish RFC 9728 protected-resource metadata for the llmthink MCP endpoint, identify the accepted AuthKit authorization server, and return a standards-compatible WWW-Authenticate challenge for missing or invalid credentials. Keep the static operator token behind an explicit migration-only server setting and never advertise it to distributable clients. Add bounded negative tests for missing, malformed, wrong-resource, and discovery-failure requests."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  priority 90
+  requires:
+    CODEX 1
+  source "PROVIDER_CONTRACT_FROZEN"
+
+task IMPLEMENT_TOKEN_VALIDATION RESOURCE_DISCOVERY_IMPLEMENTED -> TOKEN_VALIDATION_IMPLEMENTED:
+  title "Validate AuthKit access tokens and derive RequestContext"
+  description "Add an authenticator that validates signature, issuer, audience or resource, expiry, not-before, authorized party when applicable, and bounded scopes using cached metadata and JWKS with rotation-safe refresh. Derive subject, tenant, workspace, and scopes only from accepted claims and server-side mapping; ignore tool arguments and Skill text for identity. Preserve the existing security boundary, rate limit, timeout, privacy-safe observation, and static-token rollback adapter."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 90
+  requires:
+    CODEX 1
+  source "RESOURCE_DISCOVERY_IMPLEMENTED"
+
+task CONFIGURE_STAGE_IDENTITY TOKEN_VALIDATION_IMPLEMENTED -> STAGE_IDENTITY_CONFIGURED:
+  title "Configure Stage AuthKit application and Google login"
+  description "After explicit external-write approval, create only the frozen Stage resources, register exact ChatGPT and Codex callback behavior, configure Google as upstream login, store credentials in the approved secret boundary, and issue llmthink-specific audience and scopes. Do not change production DNS, production plugin auth, public visibility, billing plan, or the current static token. Read back metadata without printing client secrets, tokens, authorization codes, or personal claims."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 80
+  requires:
+    CODEX 1
+  source "TOKEN_VALIDATION_IMPLEMENTED; owner approval required"
+
+task ACCEPT_CLIENT_INTEROP STAGE_IDENTITY_CONFIGURED -> CLIENT_INTEROP_ACCEPTED:
+  title "Accept ChatGPT and Codex OAuth interoperability in Stage"
+  description "Test first login, Google account selection, consent, callback, token use, refresh, expiry, revocation, logout, canceled login, denied consent, wrong audience, changed signing key, concurrent clients, server restart, client restart, and OAuth reauthentication. Prove same-account persistence and cross-account, cross-tenant, and cross-workspace denial. Collect secret-free receipts from both Windows ChatGPT and Codex CLI or App."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 80
+  requires:
+    CODEX 1
+  source "STAGE_IDENTITY_CONFIGURED"
+
+task MIGRATE_PLUGIN_AUTH CLIENT_INTEROP_ACCEPTED -> STATIC_TOKEN_MIGRATED:
+  title "Migrate the distributable plugin to OAuth"
+  description "Remove bearer_token_env_var from the distributable plugin, select OAuth authentication, update help and recovery text, apply a single cachebuster, reinstall locally, and verify ChatGPT and Codex discover and reuse OAuth credentials without embedding secrets. Keep the operator static token server path available only for the bounded rollback window. Do not publish the plugin or remove the Windows user token until production acceptance authorizes those actions."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  priority 70
+  requires:
+    CODEX 1
+  source "CLIENT_INTEROP_ACCEPTED"
+
+task ACCEPT_PRODUCTION_OAUTH STATIC_TOKEN_MIGRATED -> OAUTH_PRODUCTION_ACCEPTED:
+  title "Accept and activate production OAuth with rollback evidence"
+  description "Freeze exact server and plugin revisions, repeat token-validation and account-isolation regressions, deploy the production OAuth configuration after explicit approval, verify public discovery and login from independent clients, exercise rollback without identity widening, and record issuer, audience, configuration revision, test matrix, service state, and remote SHA. Static-token removal, Windows registry cleanup, public Plugin submission, and provider billing changes remain separately authorized cleanup actions."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 60
+  requires:
+    CODEX 1
+  source "STATIC_TOKEN_MIGRATED; production approval required"
