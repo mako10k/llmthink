@@ -206,3 +206,12 @@ milestone_acceptance_receipt RCPT_SECURITY_REGRESSION_20260819:
   evidence_revision d58dbac0d633916ef2d80d82b8d956a3cc3f99b3
   verifier codex
   occurred_at 2026-08-19T02:55:09Z
+
+milestone_criterion_set SERVER_ACCEPTANCE_READY_R1:
+  milestone SERVER_ACCEPTANCE_READY
+  revision R1
+  commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
+  criterion LOCAL_INTERFACE_COMPATIBILITY required test "CLI stdio MCP LSP preview and VSIX retain local execution without requiring hosted HTTP and preserve think and dsl storage and presentation behavior"
+  criterion LOCAL_HOSTED_STORE_BOUNDARY required test "Regression tests distinguish LocalFileThoughtStore workspace user and system semantics from explicit-root tenant-isolated ServerFileThoughtRepository semantics without authority leakage"
+  criterion PLUGIN_SKILLS_CONTRACT required test "Local Plugin metadata and author auditor reflector Skills match accepted MCP tools and cannot widen scopes bypass revision or confirmation collect secrets or alter authorization outcomes"
+  criterion ACCEPTANCE_READY_REGRESSION required test "Focused local-interface and Plugin evaluations plus complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
