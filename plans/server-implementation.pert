@@ -269,3 +269,29 @@ work_event FINISH_ACCEPT_PLUGIN_AND_SKILLS:
   task ACCEPT_PLUGIN_AND_SKILLS
   kind finish
   occurred_at 2026-08-19T13:10:52+09:00
+
+milestone_acceptance_receipt RCPT_READY_PLUGIN_SKILLS_20260819:
+  model 1
+  set SERVER_ACCEPTANCE_READY_R1
+  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
+  criterion PLUGIN_SKILLS_CONTRACT
+  criterion_commitment sha256:ba17412acf6cc94de6fe9390fb0dd21db9de882f676f0cc2c1ab4802a68aa3d1
+  action verify
+  evidence_kind test
+  evidence_reference "commit 241938c105eb5f1671a30a7961254ce2e6c9062c; Plugin manifest and loopback MCP metadata validated; author auditor reflector Skills validated; six tool-selection cases; focused Plugin policy tests 4/4 prove no scope, tenant, revision, confirmation, secret, or authorization widening"
+  evidence_revision 241938c105eb5f1671a30a7961254ce2e6c9062c
+  verifier codex
+  occurred_at 2026-08-19T04:12:02Z
+
+milestone_acceptance_receipt RCPT_READY_REGRESSION_20260819:
+  model 1
+  set SERVER_ACCEPTANCE_READY_R1
+  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
+  criterion ACCEPTANCE_READY_REGRESSION
+  criterion_commitment sha256:7afd215b03e14e8923a88b11a8ccb3943564ba6cfbfeca12abbfa3d864d4d113
+  action verify
+  evidence_kind test
+  evidence_reference "commit 241938c105eb5f1671a30a7961254ce2e6c9062c; focused Plugin and hosted boundary tests 17/17; complete tests 170/170; typecheck, lint, format check, build, 4 examples, extension checks, package dry run 132 files, Plugin and Skill validators, PERT check, LLMThink fatal/error/warning 0, diff check"
+  evidence_revision 241938c105eb5f1671a30a7961254ce2e6c9062c
+  verifier codex
+  occurred_at 2026-08-19T04:15:02Z
