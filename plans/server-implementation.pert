@@ -29,6 +29,7 @@ milestone SERVER_FOUNDATION_IMPLEMENTED:
 
 milestone HOSTED_ADAPTERS_IMPLEMENTED:
   title "REST API and Streamable HTTP MCP implemented"
+  state reached
 
 milestone SERVER_SECURITY_ACCEPTED:
   title "Hosted identity authorization and observability accepted"
@@ -42,31 +43,7 @@ milestone SERVER_IMPLEMENTATION_ACCEPTED:
 
 
 
-task IMPLEMENT_REST_API SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPTERS_IMPLEMENTED:
-  title "Implement the versioned REST JSON adapter"
-  description "Add health and readiness endpoints plus the accepted /api/v1 audit, thought, draft, audit-record, finalize, reflection, event, list, and search routes. Validate all external input, map stable domain errors to fixed status and JSON envelopes, require expected revision and idempotency where specified, bound request and response sizes, and prove POST /audits does not persist. Keep deployment manifests and production authentication configuration out of scope."
-  estimate:
-    optimistic 2p
-    most_likely 3p
-    pessimistic 5p
-  status done
-  priority 90
-  requires:
-    CODEX 1
-  source "docs/specs/server-architecture.md section 7"
 
-task IMPLEMENT_STREAMABLE_HTTP_MCP SERVER_FOUNDATION_IMPLEMENTED -> HOSTED_ADAPTERS_IMPLEMENTED:
-  title "Implement the Streamable HTTP MCP adapter"
-  description "Expose /mcp with user-goal tools for pure audit, create draft, get, list, search, finalize, reflect, and history. Return structured machine-readable results with bounded text presentation; annotate read-only, write, and consequential-write effects; exclude delete; enforce RequestContext and server-side authorization; and test initialization, schema, invalid input, revision conflict, idempotency, confirmation, and disconnect behavior with MCP Inspector-compatible fixtures. Do not add custom UI."
-  estimate:
-    optimistic 2p
-    most_likely 3p
-    pessimistic 5p
-  status done
-  priority 90
-  requires:
-    CODEX 1
-  source "ADR-0009; docs/specs/server-architecture.md section 8"
 
 task PRESERVE_LOCAL_INTERFACES SERVER_FOUNDATION_IMPLEMENTED -> SERVER_ACCEPTANCE_READY:
   title "Preserve CLI stdio MCP and VSIX local behavior"
@@ -190,31 +167,6 @@ milestone_criterion_set HOSTED_ADAPTERS_R1:
   criterion ADAPTER_PARITY required test "Direct Application Service, REST, and MCP contract tests prove equivalent domain results and state transitions for shared use cases"
   criterion HOSTED_ADAPTER_REGRESSION required test "Focused adapter tests and complete tests, typecheck, lint, format check, build, examples, package dry run, PERT validation, and LLMThink audit pass"
 
-work_event START_IMPLEMENT_REST_API:
-  model 1
-  task IMPLEMENT_REST_API
-  kind start
-  occurred_at 2026-08-19T10:24:45+09:00
-  planned_value 19/6p
-
-work_event FINISH_IMPLEMENT_REST_API:
-  model 1
-  task IMPLEMENT_REST_API
-  kind finish
-  occurred_at 2026-08-19T10:44:11+09:00
-
-work_event START_IMPLEMENT_STREAMABLE_HTTP_MCP:
-  model 1
-  task IMPLEMENT_STREAMABLE_HTTP_MCP
-  kind start
-  occurred_at 2026-08-19T10:56:40+09:00
-  planned_value 19/6p
-
-work_event FINISH_IMPLEMENT_STREAMABLE_HTTP_MCP:
-  model 1
-  task IMPLEMENT_STREAMABLE_HTTP_MCP
-  kind finish
-  occurred_at 2026-08-19T11:07:24+09:00
 
 milestone_acceptance_receipt RCPT_HOSTED_REST_20260819:
   model 1
