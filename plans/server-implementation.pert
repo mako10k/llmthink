@@ -229,3 +229,29 @@ work_event FINISH_PRESERVE_LOCAL_INTERFACES:
   task PRESERVE_LOCAL_INTERFACES
   kind finish
   occurred_at 2026-08-19T12:09:00+09:00
+
+milestone_acceptance_receipt RCPT_READY_LOCAL_INTERFACES_20260819:
+  model 1
+  set SERVER_ACCEPTANCE_READY_R1
+  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
+  criterion LOCAL_INTERFACE_COMPATIBILITY
+  criterion_commitment sha256:18136952aa838be30ffdfc4a2f3076db0a48cbf63ce0da63b7895d36f0752f8d
+  action verify
+  evidence_kind test
+  evidence_reference "commit 62767254f1a8f5bff1de5c14aeb4a61b6348173e; local compatibility focused tests 14/14; CLI pure audit runs locally, stdio MCP initializes and retains dsl and thought tools, local adapters contain no hosted HTTP loopback, think and dsl behavior and VSIX manifest remain compatible"
+  evidence_revision 62767254f1a8f5bff1de5c14aeb4a61b6348173e
+  verifier codex
+  occurred_at 2026-08-19T03:10:00Z
+
+milestone_acceptance_receipt RCPT_READY_STORE_BOUNDARY_20260819:
+  model 1
+  set SERVER_ACCEPTANCE_READY_R1
+  set_commitment sha256:68ac76ccdd1387871f3501c610b57f96187b37003d1fdd118ddfd24cd7d63093
+  criterion LOCAL_HOSTED_STORE_BOUNDARY
+  criterion_commitment sha256:3226ca8447ea8026eaad92bc11af20751744b923eeb9d30c8d07612f4bad3171
+  action verify
+  evidence_kind test
+  evidence_reference "commit 62767254f1a8f5bff1de5c14aeb4a61b6348173e; Local store and ServerFileThoughtRepository retain distinct layout authority and same-ID content; existing runtime config workspace user system tests 8/8 and repository isolation tests pass"
+  evidence_revision 62767254f1a8f5bff1de5c14aeb4a61b6348173e
+  verifier codex
+  occurred_at 2026-08-19T03:10:01Z
