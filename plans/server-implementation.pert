@@ -219,3 +219,12 @@ milestone_acceptance_receipt RCPT_HOSTED_REGRESSION_20260819:
   evidence_revision 6a39b83a99831c73f9878fc9719e474896225d4d
   verifier codex
   occurred_at 2026-08-19T02:16:35Z
+
+milestone_criterion_set SERVER_SECURITY_R1:
+  milestone SERVER_SECURITY_ACCEPTED
+  revision R1
+  commitment sha256:7faeb9f2082de111c8e4f826510bb60777c7349da583ee54acd9c4f68e6e8fb4
+  criterion VERIFIED_IDENTITY required test "REST and MCP derive subject tenant workspace scopes and request identity only from the injected verified authentication context and reject unauthenticated access"
+  criterion AUTHORIZATION_ISOLATION required test "Scope enforcement non-loopback safety and negative cross-tenant and cross-workspace tests prevent read write finalize and audit authority widening"
+  criterion PRIVACY_OBSERVABILITY required test "Bounded request IDs metrics rate limits timeouts and size limits are observable while tokens authorization headers thought bodies audit text and reflection text are absent from normal logs"
+  criterion SECURITY_REGRESSION required test "Focused boundary tests and complete tests typecheck lint format check build examples package validation PERT validation and LLMThink audit pass"
