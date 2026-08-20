@@ -79,6 +79,7 @@ task APPROVE_TERMS_COPY LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
     optimistic 1p
     most_likely 3p
     pessimistic 8p
+  status suspended
   priority 90
   requires:
     CODEX 1
@@ -190,3 +191,30 @@ work_event FINISH_LIFECYCLE_CORE_20260820:
   occurred_at 2026-08-20T20:16:27+09:00
   active_time 1603/3600h
   effort 1603/3600ph
+
+work_event START_TERMS_COPY_20260820:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind start
+  occurred_at 2026-08-20T20:33:23+09:00
+  planned_value 3.5p
+
+work_event SUSPEND_TERMS_COPY_OWNER_FIELDS_20260820:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind suspend
+  occurred_at 2026-08-20T20:43:31+09:00
+  reason "Draft complete; exact operator identity, contact, status page, provider disclosures, retention periods, notification/archive periods, and owner review of exact text remain required before self-approval"
+
+work_event RESUME_TERMS_COPY_OWNER_FIELDS_20260820:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind resume
+  occurred_at 2026-08-20T20:50:13+09:00
+
+work_event SUSPEND_TERMS_COPY_ACTIVATION_GATES_20260820:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind suspend
+  occurred_at 2026-08-20T20:55:23+09:00
+  reason "Operator/contact/providers/retention/notification/archive terms are drafted; owner exact-text self-review, effective date, live status page, and confirmation of the actual backup configuration remain before approval"
