@@ -28,6 +28,7 @@ milestone TERMS_COPY_APPROVED:
 
 milestone SQLITE_SCHEMA_READY:
   title "Separated SQLite schema and operational profile designed"
+  state reached
 
 milestone LIFECYCLE_CORE_IMPLEMENTED:
   title "Agreement and provisioning core implemented locally"
@@ -89,6 +90,7 @@ task DESIGN_SQLITE_SCHEMA STORAGE_DECISION_ACCEPTED -> SQLITE_SCHEMA_READY:
     optimistic 1p
     most_likely 2p
     pessimistic 4p
+  status done
   priority 92
   requires:
     CODEX 1
@@ -156,3 +158,18 @@ task AUTHORIZE_TRIAL_ENROLLMENT STAGE_LIFECYCLE_ACCEPTED -> TRIAL_ENROLLMENT_REA
 
 gate TERMS_COPY_BEFORE_ONBOARDING TERMS_COPY_APPROVED -> ONBOARDING_IMPLEMENTED:
   reason "The onboarding surface cannot be accepted before the exact user-facing terms and summary are approved"
+
+work_event START_SQLITE_SCHEMA_20260820:
+  model 1
+  task DESIGN_SQLITE_SCHEMA
+  kind start
+  occurred_at 2026-08-20T19:29:25+09:00
+  planned_value 13/6p
+
+work_event FINISH_SQLITE_SCHEMA_20260820:
+  model 1
+  task DESIGN_SQLITE_SCHEMA
+  kind finish
+  occurred_at 2026-08-20T19:35:56+09:00
+  active_time 391/3600h
+  effort 391/3600ph

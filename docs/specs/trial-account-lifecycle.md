@@ -179,6 +179,8 @@ tenant per external identity. A conflicting retry re-reads the winning committed
 The lifecycle store must support atomic transactions and durable unique constraints.
 ADR-0012 selects a local SQLite database outside the distributable package and inside the
 existing protected service data boundary as the initial lifecycle control-plane authority.
+The implementation-ready logical schema, repository ports, transaction, outbox, migration,
+backup, and restore contracts are defined in [SQLite lifecycle control-plane schema](sqlite-lifecycle-schema.md).
 
 Registry, agreement, account state, tenant catalog, workspace catalog, scope-policy binding,
 recovery verification, and outbox are separate tables behind separate repository ports. They
