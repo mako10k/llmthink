@@ -113,7 +113,7 @@ task CONFIGURE_STAGE_IDENTITY TOKEN_VALIDATION_IMPLEMENTED -> STAGE_IDENTITY_CON
     optimistic 1p
     most_likely 2p
     pessimistic 4p
-  status active
+  status suspended
   priority 80
   requires:
     CODEX 1
@@ -230,3 +230,10 @@ work_event RESUME_STAGE_IDENTITY_DEPLOY_ROUTE_20260820:
   task CONFIGURE_STAGE_IDENTITY
   kind resume
   occurred_at 2026-08-20T17:48:47+09:00
+
+work_event SUSPEND_STAGE_IDENTITY_ACCOUNT_BOOTSTRAP_20260820:
+  model 1
+  task CONFIGURE_STAGE_IDENTITY
+  kind suspend
+  occurred_at 2026-08-20T18:03:26+09:00
+  reason "OAuth discovery and verifier are deployed with static-token compatibility; Google login and first exact subject-to-account mapping remain unconfigured"
