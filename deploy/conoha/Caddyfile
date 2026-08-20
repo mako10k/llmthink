@@ -4,7 +4,26 @@
 
 llmthink.mk10.org {
 	encode zstd gzip
-	reverse_proxy 127.0.0.1:3000
+
+	@status path /status /status/
+	handle @status {
+		root * /var/www/llmthink-status
+		rewrite * /index.html
+		header {
+			Cache-Control "no-store"
+			Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+			Permissions-Policy "camera=(), microphone=(), geolocation=()"
+			Referrer-Policy "no-referrer"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+		}
+		file_server
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+
 	log {
 		output file /var/log/caddy/llmthink-access.log {
 			roll_size 10MiB

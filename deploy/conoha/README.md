@@ -8,6 +8,29 @@ The service expects an official supported Node.js LTS installation at
 `/opt/node/current`. Caddy uses Let's Encrypt's production ACME endpoint and
 automatically renews the certificate before expiry.
 
+## Public status page
+
+Caddy serves `/status` directly from a static file so incident information
+remains available when the hosted MCP process is unavailable. Install the
+tracked page before installing or reloading the tracked Caddyfile:
+
+```sh
+install -d -o root -g root -m 0755 /var/www/llmthink-status
+install -o root -g root -m 0644 deploy/conoha/status/index.html \
+  /var/www/llmthink-status/index.html
+install -o root -g root -m 0644 deploy/conoha/Caddyfile /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile
+systemctl reload caddy
+curl --fail --silent --show-error https://llmthink.mk10.org/status >/dev/null
+```
+
+Update the page whenever service state, a material incident, planned
+maintenance, a material terms change, or a termination/archive deadline
+changes. The page intentionally uses no client-side script, external asset,
+cookie, or analytics service. A successful response proves only that the
+status page is reachable; it is not an SLA or proof that every MCP operation is
+healthy.
+
 Required `/etc/llmthink/hosted.env` values:
 
 ```text

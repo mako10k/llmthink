@@ -162,6 +162,19 @@ task AUTHORIZE_TRIAL_ENROLLMENT STAGE_LIFECYCLE_ACCEPTED -> TRIAL_ENROLLMENT_REA
 gate TERMS_COPY_BEFORE_ONBOARDING TERMS_COPY_APPROVED -> ONBOARDING_IMPLEMENTED:
   reason "The onboarding surface cannot be accepted before the exact user-facing terms and summary are approved"
 
+task IMPLEMENT_STATUS_PAGE LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
+  title "Implement public status page"
+  description "Implement and publish an unauthenticated static status page at the terms-notification URL, independent of the hosted MCP process, with current service state, incidents, maintenance, material-change and termination/archive notices, operator contact, privacy-safe delivery, and readback evidence. This does not authorize public enrollment or Production lifecycle activation."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  status active
+  priority 91
+  requires:
+    CODEX 1
+  source "trial terms activation gate; owner instruction 2026-08-20"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -218,3 +231,10 @@ work_event SUSPEND_TERMS_COPY_ACTIVATION_GATES_20260820:
   kind suspend
   occurred_at 2026-08-20T20:55:23+09:00
   reason "Operator/contact/providers/retention/notification/archive terms are drafted; owner exact-text self-review, effective date, live status page, and confirmation of the actual backup configuration remain before approval"
+
+work_event START_STATUS_PAGE_20260820:
+  model 1
+  task IMPLEMENT_STATUS_PAGE
+  kind start
+  occurred_at 2026-08-20T21:03:50+09:00
+  planned_value 13/24p
