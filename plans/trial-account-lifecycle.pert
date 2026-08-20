@@ -169,7 +169,7 @@ task IMPLEMENT_STATUS_PAGE LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
     optimistic 0.25p
     most_likely 0.5p
     pessimistic 1p
-  status active
+  status done
   priority 91
   requires:
     CODEX 1
@@ -238,3 +238,24 @@ work_event START_STATUS_PAGE_20260820:
   kind start
   occurred_at 2026-08-20T21:03:50+09:00
   planned_value 13/24p
+
+work_event FINISH_STATUS_PAGE_20260820:
+  model 1
+  task IMPLEMENT_STATUS_PAGE
+  kind finish
+  occurred_at 2026-08-20T21:08:13+09:00
+  active_time 263/3600h
+  effort 263/3600ph
+
+work_event RESUME_TERMS_AFTER_STATUS_20260820:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind resume
+  occurred_at 2026-08-20T21:08:14+09:00
+
+work_event SUSPEND_TERMS_FINAL_REVIEW_20260820:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind suspend
+  occurred_at 2026-08-20T21:08:15+09:00
+  reason "Public status page is live and verified; owner exact-text self-review, effective date, and confirmation of the actual backup configuration remain before approval"
