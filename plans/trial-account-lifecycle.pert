@@ -1,0 +1,158 @@
+project LLMTHINK_TRIAL_ACCOUNT_LIFECYCLE:
+  version 6
+  title "LLMThink trial account lifecycle"
+  description "Design and implement explicit terms agreement, minimal receipts, per-user tenant provisioning, recovery, re-consent, export-only lifecycle, and Stage acceptance under ADR-0011. Legal-copy approval, public enrollment, paid plans, billing, Production activation, shared tenants, invitations, cross-tenant access, and release remain separately authorized."
+  as_of 2026-08-20
+  duration_unit point
+  velocity 31p/6d
+  finish TRIAL_ENROLLMENT_READY
+
+resource CODEX:
+  title "LLMThink lifecycle design and implementation capacity"
+  capacity 1
+
+milestone ADR_0011_ACCEPTED:
+  title "Trial provisioning and terms boundary accepted"
+  state reached
+
+milestone LIFECYCLE_DESIGN_READY:
+  title "Lifecycle contracts designed"
+  state reached
+
+milestone STORAGE_DECISION_ACCEPTED:
+  title "Lifecycle store and recovery boundary accepted"
+  state reached
+
+milestone TERMS_COPY_APPROVED:
+  title "Versioned Japanese terms and privacy text approved"
+
+milestone SQLITE_SCHEMA_READY:
+  title "Separated SQLite schema and operational profile designed"
+
+milestone LIFECYCLE_CORE_IMPLEMENTED:
+  title "Agreement and provisioning core implemented locally"
+
+milestone ONBOARDING_IMPLEMENTED:
+  title "Onboarding and re-consent surface implemented locally"
+
+milestone RECOVERY_EXPORT_IMPLEMENTED:
+  title "Recovery and export-only lifecycle implemented locally"
+
+milestone STAGE_LIFECYCLE_ACCEPTED:
+  title "Trial lifecycle accepted in Stage"
+
+milestone TRIAL_ENROLLMENT_READY:
+  title "Public trial enrollment separately authorized"
+
+task DESIGN_LIFECYCLE_CONTRACT ADR_0011_ACCEPTED -> LIFECYCLE_DESIGN_READY:
+  title "Define terms, receipt, state, and provisioning contracts"
+  description "Define immutable versioned terms artifacts, minimal agreement receipts, account states, 401 versus 403 behavior, idempotent one-user-one-tenant provisioning, recovery credentials, export-only behavior, acceptance evidence, and unresolved decision gates without implementing or publishing enrollment."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 100
+  requires:
+    CODEX 1
+  source "ADR-0011; docs/specs/trial-account-lifecycle.md"
+
+task ACCEPT_LIFECYCLE_STORAGE LIFECYCLE_DESIGN_READY -> STORAGE_DECISION_ACCEPTED:
+  title "Accept lifecycle store, migration, backup, and recovery design"
+  description "Compare SQLite and bounded alternatives, then accept the lifecycle authority, serializable transaction and unique-constraint behavior, schema migrations, file permissions, encryption boundary, backup, restore, retention, and reconciliation. Do not migrate thought storage or deploy Production."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  status done
+  priority 95
+  requires:
+    CODEX 1
+  source "ADR-0012; owner acceptance 2026-08-20"
+
+task APPROVE_TERMS_COPY LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
+  title "Approve Japanese trial terms and privacy text"
+  description "Create immutable Japanese trial terms, important-summary copy, privacy notice, material-change classification, notification period, archive grace period, and retention schedule. Obtain appropriate legal review before marking this task done. No billing agreement or paid-plan launch is included."
+  estimate:
+    optimistic 1p
+    most_likely 3p
+    pessimistic 8p
+  priority 90
+  requires:
+    CODEX 1
+  source "ADR-0011 explicit agreement and terms lifecycle; external legal review required"
+
+task DESIGN_SQLITE_SCHEMA STORAGE_DECISION_ACCEPTED -> SQLITE_SCHEMA_READY:
+  title "Design separated SQLite schema and operational profile"
+  description "Define separate registry, agreement, account, tenant catalog, workspace catalog, scope-policy, recovery, and outbox tables; repository ports; foreign and unique constraints; transaction modes; WAL and busy handling; migration; backup and restore checks; crash reconciliation; and static-registry cutover without mixing thought content into the control plane."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 92
+  requires:
+    CODEX 1
+  source "ADR-0012"
+
+task IMPLEMENT_LIFECYCLE_CORE SQLITE_SCHEMA_READY -> LIFECYCLE_CORE_IMPLEMENTED:
+  title "Implement agreement receipt and idempotent provisioning core"
+  description "Implement lifecycle-store migrations and repository, exact external identity mapping, immutable terms records, append-only receipts, fixed scope-policy binding, account transitions, cryptographic internal IDs, concurrency-safe one-account-one-tenant provisioning, and privacy-safe errors and logs with focused negative tests. Preserve static registry rollback and do not enable public enrollment."
+  estimate:
+    optimistic 3p
+    most_likely 5p
+    pessimistic 8p
+  priority 85
+  requires:
+    CODEX 1
+  source "STORAGE_DECISION_ACCEPTED; docs/specs/trial-account-lifecycle.md"
+
+task IMPLEMENT_ONBOARDING LIFECYCLE_CORE_IMPLEMENTED -> ONBOARDING_IMPLEMENTED:
+  title "Implement explicit onboarding and re-consent surface"
+  description "After terms copy approval, implement authenticated display, same-origin bounded onboarding URLs, identity-bound short-lived nonce, CSRF defense, explicit agreement POST, changed-version rejection, re-consent, stable MCP guidance, and accessibility and localization checks. Do not interpret login or link display as agreement."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 80
+  requires:
+    CODEX 1
+  source "LIFECYCLE_CORE_IMPLEMENTED; TERMS_COPY_APPROVED; docs/specs/trial-account-lifecycle.md"
+
+task IMPLEMENT_RECOVERY_EXPORT ONBOARDING_IMPLEMENTED -> RECOVERY_EXPORT_IMPLEMENTED:
+  title "Implement recovery and export-only lifecycle"
+  description "Implement one-time recovery credential presentation with hashed verification, operator-reviewed identity migration, credential rotation, suspension, export-only access, closure, retention transitions, archive receipts, and secret-free audit evidence. Do not email recovery secrets or allow possession alone to return data."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 6p
+  priority 75
+  requires:
+    CODEX 1
+  source "ONBOARDING_IMPLEMENTED; ADR-0011"
+
+task ACCEPT_STAGE_LIFECYCLE RECOVERY_EXPORT_IMPLEMENTED -> STAGE_LIFECYCLE_ACCEPTED:
+  title "Accept trial account lifecycle in Stage"
+  description "With explicit Stage authority, test first agreement, retries, concurrent enrollment, changed terms, re-consent, suspension, restart, reconciliation, recovery, export-only, closure, cross-account and cross-tenant denial, privacy-safe logging, backup, and restore. Keep public enrollment and Production activation disabled."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 70
+  requires:
+    CODEX 1
+  source "RECOVERY_EXPORT_IMPLEMENTED; Stage authority required"
+
+task AUTHORIZE_TRIAL_ENROLLMENT STAGE_LIFECYCLE_ACCEPTED -> TRIAL_ENROLLMENT_READY:
+  title "Authorize public trial enrollment"
+  description "Freeze exact code, terms versions, scope policy, capacity and abuse limits, notification and archive periods, operational owners, rollback, support route, and Stage evidence. Require explicit owner approval before changing public availability or Production configuration. Paid plans, billing, release, and publication remain separate."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  priority 60
+  requires:
+    CODEX 1
+  source "STAGE_LIFECYCLE_ACCEPTED; explicit owner approval required"
+
+gate TERMS_COPY_BEFORE_ONBOARDING TERMS_COPY_APPROVED -> ONBOARDING_IMPLEMENTED:
+  reason "The onboarding surface cannot be accepted before the exact user-facing terms and summary are approved"
