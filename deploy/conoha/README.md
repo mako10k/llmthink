@@ -39,6 +39,15 @@ The registry must be a root-owned, service-group-readable (`root:llmthink
 0640`) regular file with this bounded schema. Group write and all world access
 are rejected:
 
+```sh
+install -d -o root -g llmthink -m 0710 /etc/llmthink
+install -o root -g llmthink -m 0640 oauth-accounts.json \
+  /etc/llmthink/oauth-accounts.json
+```
+
+The directory grants the service group traversal without directory listing;
+the existing root-only `hosted.env` remains unreadable by the service user.
+
 ```json
 {
   "version": 1,
