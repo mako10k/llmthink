@@ -33,3 +33,40 @@ test("hosted runtime fails closed for incomplete or unsafe configuration", () =>
     assert.throws(() => loadHostedMcpRuntimeConfig(env));
   }
 });
+
+test("hosted runtime enables provider-neutral OAuth discovery only with a complete pair", () => {
+  const base = {
+    LLMTHINK_HOSTED_DATA_ROOT: "/var/lib/llmthink",
+    LLMTHINK_HOSTED_BEARER_TOKEN: "x".repeat(32),
+  };
+  const configured = loadHostedMcpRuntimeConfig({
+    ...base,
+    LLMTHINK_OAUTH_RESOURCE: "https://llmthink.mk10.org/mcp",
+    LLMTHINK_OAUTH_AUTHORIZATION_SERVER: "https://example.authkit.app",
+    LLMTHINK_OAUTH_JWKS_URI: "https://example.authkit.app/oauth2/jwks",
+    LLMTHINK_OAUTH_ACCOUNT_REGISTRY_PATH: "/etc/llmthink/oauth-accounts.json",
+  });
+  assert.equal(
+    configured.oauthDiscovery?.resource,
+    "https://llmthink.mk10.org/mcp",
+  );
+  assert.deepEqual(configured.oauthDiscovery?.authorizationServers, [
+    "https://example.authkit.app",
+  ]);
+  assert.equal(
+    configured.oauthJwksUri,
+    "https://example.authkit.app/oauth2/jwks",
+  );
+  assert.equal(
+    configured.oauthAccountRegistryPath,
+    "/etc/llmthink/oauth-accounts.json",
+  );
+  assert.throws(
+    () =>
+      loadHostedMcpRuntimeConfig({
+        ...base,
+        LLMTHINK_OAUTH_RESOURCE: "https://llmthink.mk10.org/mcp",
+      }),
+    /must be configured together/,
+  );
+});

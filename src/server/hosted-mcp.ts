@@ -25,6 +25,12 @@ import {
   REQUEST_DIGEST_DESCRIPTION,
   REQUEST_DIGEST_PATTERN,
 } from "./mcp-guidance.js";
+import {
+  oauthBearerChallenge,
+  oauthProtectedResourceMetadata,
+  OAUTH_PROTECTED_RESOURCE_PATH,
+  type LlmthinkOAuthDiscovery,
+} from "./oauth-discovery.js";
 import { LlmthinkSecurityBoundary } from "./security.js";
 
 export const DEFAULT_MCP_REQUEST_LIMIT_BYTES = 1024 * 1024;
@@ -34,6 +40,7 @@ export interface LlmthinkHostedMcpHandlerOptions {
   readonly application: LlmthinkApplicationService;
   readonly authenticate: LlmthinkHttpAuthenticator;
   readonly security?: LlmthinkSecurityBoundary;
+  readonly oauthDiscovery?: LlmthinkOAuthDiscovery;
   readonly requestLimitBytes?: number;
   readonly textLimitBytes?: number;
 }
@@ -431,6 +438,7 @@ function sendRpcError(
   response: ServerResponse,
   status: number,
   error: unknown,
+  oauthDiscovery?: LlmthinkOAuthDiscovery,
 ): void {
   if (response.destroyed || response.writableEnded) return;
   const value =
@@ -442,6 +450,9 @@ function sendRpcError(
     "content-type": "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(body),
     "cache-control": "no-store",
+    ...(status === 401 && oauthDiscovery
+      ? { "www-authenticate": oauthBearerChallenge(oauthDiscovery) }
+      : {}),
   });
   response.end(body);
 }
@@ -512,7 +523,7 @@ async function handleMcpRequest(
       activeTransport.handleRequest(request, response, body),
     );
   } catch (error) {
-    sendRpcError(response, errorStatus(error), error);
+    sendRpcError(response, errorStatus(error), error, options.oauthDiscovery);
   } finally {
     await transport?.close().catch(() => undefined);
     await server?.close().catch(() => undefined);
@@ -534,11 +545,26 @@ export function createLlmthinkHostedMcpHandler(
   ): Promise<void> => {
     const pathname = new URL(request.url ?? "/", "https://llmthink.invalid")
       .pathname;
+    if (
+      request.method === "GET" &&
+      pathname === OAUTH_PROTECTED_RESOURCE_PATH &&
+      options.oauthDiscovery
+    ) {
+      const body = `${JSON.stringify(oauthProtectedResourceMetadata(options.oauthDiscovery))}\n`;
+      response.writeHead(200, {
+        "content-type": "application/json; charset=utf-8",
+        "content-length": Buffer.byteLength(body),
+        "cache-control": "no-store",
+      });
+      response.end(body);
+      return;
+    }
     if (pathname !== "/mcp") {
       sendRpcError(
         response,
         404,
         new LlmthinkServerError("not_found", "MCP endpoint not found"),
+        options.oauthDiscovery,
       );
       return;
     }

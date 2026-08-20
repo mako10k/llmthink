@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { LLMTHINK_SERVER_ERROR_CODES, LlmthinkServerError, } from "./contracts.js";
 import { errorNavigation, EXTERNAL_STORAGE_NOTICE, mcpHelp, REQUEST_DIGEST_DESCRIPTION, REQUEST_DIGEST_PATTERN, } from "./mcp-guidance.js";
+import { oauthBearerChallenge, oauthProtectedResourceMetadata, OAUTH_PROTECTED_RESOURCE_PATH, } from "./oauth-discovery.js";
 import { LlmthinkSecurityBoundary } from "./security.js";
 export const DEFAULT_MCP_REQUEST_LIMIT_BYTES = 1024 * 1024;
 export const DEFAULT_MCP_TEXT_LIMIT_BYTES = 64 * 1024;
@@ -261,7 +262,7 @@ async function readBoundedJson(request, limit) {
         throw new LlmthinkServerError("invalid_argument", "MCP request body must be valid JSON");
     }
 }
-function sendRpcError(response, status, error) {
+function sendRpcError(response, status, error, oauthDiscovery) {
     if (response.destroyed || response.writableEnded)
         return;
     const value = error instanceof LlmthinkServerError
@@ -272,6 +273,9 @@ function sendRpcError(response, status, error) {
         "content-type": "application/json; charset=utf-8",
         "content-length": Buffer.byteLength(body),
         "cache-control": "no-store",
+        ...(status === 401 && oauthDiscovery
+            ? { "www-authenticate": oauthBearerChallenge(oauthDiscovery) }
+            : {}),
     });
     response.end(body);
 }
@@ -334,7 +338,7 @@ async function handleMcpRequest(request, response, options, requestLimit, textLi
         await security.execute(context, "mcp", mcpOperation(body), () => activeTransport.handleRequest(request, response, body));
     }
     catch (error) {
-        sendRpcError(response, errorStatus(error), error);
+        sendRpcError(response, errorStatus(error), error, options.oauthDiscovery);
     }
     finally {
         await transport?.close().catch(() => undefined);
@@ -349,8 +353,20 @@ export function createLlmthinkHostedMcpHandler(options) {
     return async (request, response) => {
         const pathname = new URL(request.url ?? "/", "https://llmthink.invalid")
             .pathname;
+        if (request.method === "GET" &&
+            pathname === OAUTH_PROTECTED_RESOURCE_PATH &&
+            options.oauthDiscovery) {
+            const body = `${JSON.stringify(oauthProtectedResourceMetadata(options.oauthDiscovery))}\n`;
+            response.writeHead(200, {
+                "content-type": "application/json; charset=utf-8",
+                "content-length": Buffer.byteLength(body),
+                "cache-control": "no-store",
+            });
+            response.end(body);
+            return;
+        }
         if (pathname !== "/mcp") {
-            sendRpcError(response, 404, new LlmthinkServerError("not_found", "MCP endpoint not found"));
+            sendRpcError(response, 404, new LlmthinkServerError("not_found", "MCP endpoint not found"), options.oauthDiscovery);
             return;
         }
         await handleMcpRequest(request, response, options, requestLimit, textLimit, security);

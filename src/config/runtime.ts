@@ -335,7 +335,7 @@ function sanitizeWorkspaceName(dir: string): string {
       sanitized += normalized;
     }
   }
-  sanitized = sanitized.replace(/^-|-$/g, "");
+  sanitized = sanitized.replace(/(?:^-)|(?:-$)/g, "");
   return sanitized || "workspace";
 }
 

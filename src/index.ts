@@ -174,6 +174,27 @@ export type {
   LlmthinkHttpHandlerOptions,
 } from "./server/http.js";
 export {
+  loadOAuthAccountRegistry,
+  OAUTH_ACCOUNT_REGISTRY_MAX_BYTES,
+  OAUTH_ACCOUNT_REGISTRY_VERSION,
+} from "./server/oauth-account-registry.js";
+export {
+  createLlmthinkOAuthDiscovery,
+  oauthBearerChallenge,
+  oauthProtectedResourceMetadata,
+  OAUTH_PROTECTED_RESOURCE_PATH,
+  type LlmthinkOAuthDiscovery,
+  type LlmthinkOAuthDiscoveryOptions,
+} from "./server/oauth-discovery.js";
+export {
+  createLlmthinkJwtTokenVerifier,
+  createLlmthinkRemoteJwks,
+  type LlmthinkExternalOAuthIdentity,
+  type LlmthinkJwtVerifierOptions,
+  type LlmthinkOAuthAccountResolver,
+  type LlmthinkRemoteJwksOptions,
+} from "./server/oauth-jwt.js";
+export {
   assertVerifiedRequestContext,
   BoundedLlmthinkSecurityMetrics,
   DEFAULT_HOSTED_RATE_LIMIT,

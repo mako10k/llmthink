@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,6 +31,12 @@ const CONTEXT: RequestContext = {
 
 function fakeRequest(authorization?: string): IncomingMessage {
   return { headers: { authorization } } as IncomingMessage;
+}
+
+function closeServer(server: Server): Promise<void> {
+  return new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 }
 
 test("bearer authentication derives hosted identity only from verified token claims", async () => {
@@ -217,14 +223,7 @@ test("REST and MCP can share one verified rate boundary", async (t) => {
     new Promise<void>((resolve) => mcp.listen(0, "127.0.0.1", resolve)),
   ]);
   t.after(async () => {
-    await Promise.all(
-      [rest, mcp].map(
-        (server) =>
-          new Promise<void>((resolve, reject) =>
-            server.close((error) => (error ? reject(error) : resolve())),
-          ),
-      ),
-    );
+    await Promise.all([rest, mcp].map(closeServer));
     await rm(root, { recursive: true, force: true });
   });
   const restPort = (rest.address() as AddressInfo).port;

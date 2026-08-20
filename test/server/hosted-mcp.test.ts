@@ -7,6 +7,7 @@ import test from "node:test";
 
 import {
   createLlmthinkHostedMcpServer,
+  createLlmthinkOAuthDiscovery,
   LlmthinkApplicationService,
   LlmthinkServerError,
   ServerFileThoughtRepository,
@@ -73,6 +74,7 @@ interface RpcBody {
 async function fixture(
   t: test.TestContext,
   requestLimitBytes?: number,
+  oauth = false,
 ): Promise<Fixture> {
   const root = await mkdtemp(join(tmpdir(), "llmthink-hosted-mcp-"));
   const application = new LlmthinkApplicationService({
@@ -81,6 +83,15 @@ async function fixture(
   const server = createLlmthinkHostedMcpServer({
     application,
     requestLimitBytes,
+    ...(oauth
+      ? {
+          oauthDiscovery: createLlmthinkOAuthDiscovery({
+            resource: "https://llmthink.mk10.org/mcp",
+            authorizationServers: ["https://example.authkit.app"],
+            scopesSupported: ["thought:read", "thought:write"],
+          }),
+        }
+      : {}),
     authenticate: async (request): Promise<RequestContext> => {
       if (request.headers.authorization !== "Bearer test") {
         throw new LlmthinkServerError(
@@ -109,6 +120,39 @@ async function fixture(
   });
   return { baseUrl: `http://127.0.0.1:${port}` };
 }
+
+test("hosted MCP publishes protected-resource metadata and challenges unauthenticated clients", async (t) => {
+  const { baseUrl } = await fixture(t, undefined, true);
+  const metadataResponse = await fetch(
+    `${baseUrl}/.well-known/oauth-protected-resource`,
+  );
+  assert.equal(metadataResponse.status, 200);
+  assert.deepEqual(await metadataResponse.json(), {
+    resource: "https://llmthink.mk10.org/mcp",
+    authorization_servers: ["https://example.authkit.app"],
+    scopes_supported: ["thought:read", "thought:write"],
+    bearer_methods_supported: ["header"],
+  });
+
+  const unauthorized = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list",
+      params: {},
+    }),
+  });
+  assert.equal(unauthorized.status, 401);
+  assert.equal(
+    unauthorized.headers.get("www-authenticate"),
+    'Bearer resource_metadata="https://llmthink.mk10.org/.well-known/oauth-protected-resource", error="invalid_token", scope="thought:read thought:write"',
+  );
+});
 
 function headers(
   scopes: readonly LlmthinkServerScope[] = [],

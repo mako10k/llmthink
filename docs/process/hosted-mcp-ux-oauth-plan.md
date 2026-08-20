@@ -1,7 +1,8 @@
 # Hosted MCP UX and OAuth plan
 
-Status: implementation acceptance for MCP guidance; OAuth provider decision is
-still pending.
+Status: implementation acceptance for MCP guidance; managed OAuth identity and
+authorization boundary is accepted in ADR-0010. WorkOS remains the provisional
+provider pending interoperability evidence and separate provider acceptance.
 
 ## Acceptance criteria
 
@@ -26,6 +27,9 @@ still pending.
   explicit confirmation contract.
 - Tenant, workspace, scope, revision, and idempotency checks remain enforced by
   the server and cannot be changed by Skill text.
+- Tenant is a hard isolation boundary. Project-scoped access may cross only
+  explicitly granted workspaces in the same tenant and fails closed whenever
+  membership or authorization cannot be verified.
 - Before or while reporting a write, the agent briefly identifies llmthink as
   an external persistence boundary. This is a disclosure, not a question that
   blocks execution.
@@ -77,3 +81,8 @@ refresh, and ChatGPT/Codex login behavior end to end.
    issuer.
 5. Replace plugin static bearer configuration only after restart, expiry,
    revocation, cross-account denial, and recovery evidence pass.
+
+`think://<server-identity>/<path>`, cross-server references, non-MCP public API
+identity, and cross-tenant publication or delegation are unstarted non-goals.
+They require a separate requirements and authority decision before any design
+or implementation work.

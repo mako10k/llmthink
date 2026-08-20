@@ -13,6 +13,15 @@ import {
 } from "./contracts.js";
 import { ServerFileThoughtRepository } from "./file-repository.js";
 import { createLlmthinkHostedMcpServer } from "./hosted-mcp.js";
+import {
+  createLlmthinkOAuthDiscovery,
+  type LlmthinkOAuthDiscovery,
+} from "./oauth-discovery.js";
+import { loadOAuthAccountRegistry } from "./oauth-account-registry.js";
+import {
+  createLlmthinkJwtTokenVerifier,
+  createLlmthinkRemoteJwks,
+} from "./oauth-jwt.js";
 import { assertServerBindPolicy } from "./policy.js";
 import { createBearerTokenAuthenticator } from "./security.js";
 
@@ -25,6 +34,9 @@ export interface HostedMcpRuntimeConfig {
   readonly tenantId: string;
   readonly workspaceId: string;
   readonly scopes: readonly LlmthinkServerScope[];
+  readonly oauthDiscovery?: LlmthinkOAuthDiscovery;
+  readonly oauthJwksUri?: string;
+  readonly oauthAccountRegistryPath?: string;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -55,6 +67,38 @@ function parseScopes(
   return requested as LlmthinkServerScope[];
 }
 
+function parseOAuthRuntime(
+  env: NodeJS.ProcessEnv,
+  scopes: readonly LlmthinkServerScope[],
+): Pick<
+  HostedMcpRuntimeConfig,
+  "oauthDiscovery" | "oauthJwksUri" | "oauthAccountRegistryPath"
+> {
+  const resource = env.LLMTHINK_OAUTH_RESOURCE;
+  const issuer = env.LLMTHINK_OAUTH_AUTHORIZATION_SERVER;
+  const jwksUri = env.LLMTHINK_OAUTH_JWKS_URI;
+  const registryPath = env.LLMTHINK_OAUTH_ACCOUNT_REGISTRY_PATH;
+  const values = [resource, issuer, jwksUri, registryPath];
+  if (!values.some(Boolean)) return {};
+  if (!resource || !issuer || !jwksUri || !registryPath) {
+    throw new Error(
+      "OAuth resource, authorization server, JWKS URI, and account registry path must be configured together",
+    );
+  }
+  return {
+    oauthDiscovery: createLlmthinkOAuthDiscovery({
+      resource,
+      authorizationServers: [issuer],
+      scopesSupported: scopes,
+      ...(env.LLMTHINK_OAUTH_RESOURCE_DOCUMENTATION
+        ? { resourceDocumentation: env.LLMTHINK_OAUTH_RESOURCE_DOCUMENTATION }
+        : {}),
+    }),
+    oauthJwksUri: jwksUri,
+    oauthAccountRegistryPath: registryPath,
+  };
+}
+
 export function loadHostedMcpRuntimeConfig(
   env: NodeJS.ProcessEnv,
 ): HostedMcpRuntimeConfig {
@@ -68,6 +112,7 @@ export function loadHostedMcpRuntimeConfig(
     throw new Error("LLMTHINK_HOSTED_BEARER_TOKEN must be at least 32 bytes");
   }
   assertServerBindPolicy({ hostname, authenticationEnabled: true });
+  const scopes = parseScopes(env.LLMTHINK_HOSTED_SCOPES);
   return {
     hostname,
     port: parsePort(env.LLMTHINK_HOSTED_PORT),
@@ -76,7 +121,8 @@ export function loadHostedMcpRuntimeConfig(
     subjectId: env.LLMTHINK_HOSTED_SUBJECT_ID ?? "deployment-user",
     tenantId: env.LLMTHINK_HOSTED_TENANT_ID ?? "deployment-tenant",
     workspaceId: env.LLMTHINK_HOSTED_WORKSPACE_ID ?? "deployment-workspace",
-    scopes: parseScopes(env.LLMTHINK_HOSTED_SCOPES),
+    scopes,
+    ...parseOAuthRuntime(env, scopes),
   };
 }
 
@@ -95,23 +141,43 @@ export async function startHostedMcpServer(
   const application = new LlmthinkApplicationService({
     repository: new ServerFileThoughtRepository({ dataRoot: config.dataRoot }),
   });
+  const oauthVerify =
+    config.oauthDiscovery &&
+    config.oauthJwksUri &&
+    config.oauthAccountRegistryPath
+      ? createLlmthinkJwtTokenVerifier({
+          issuer: config.oauthDiscovery.authorizationServers[0],
+          audience: config.oauthDiscovery.resource,
+          jwks: createLlmthinkRemoteJwks({ jwksUri: config.oauthJwksUri }),
+          allowedTokenScopes: ["openid", "email", "profile", "offline_access"],
+          requiredTokenScopes: ["openid"],
+          resolveAccount: await loadOAuthAccountRegistry(
+            config.oauthAccountRegistryPath,
+          ),
+        })
+      : undefined;
   const authenticate = createBearerTokenAuthenticator({
     verify: async (token) => {
-      if (!tokenMatches(token, config.bearerToken)) {
-        throw new LlmthinkServerError(
-          "unauthenticated",
-          "Bearer token verification failed",
-        );
+      if (tokenMatches(token, config.bearerToken)) {
+        return {
+          subjectId: config.subjectId,
+          tenantId: config.tenantId,
+          workspaceId: config.workspaceId,
+          scopes: config.scopes,
+        };
       }
-      return {
-        subjectId: config.subjectId,
-        tenantId: config.tenantId,
-        workspaceId: config.workspaceId,
-        scopes: config.scopes,
-      };
+      if (oauthVerify) return oauthVerify(token);
+      throw new LlmthinkServerError(
+        "unauthenticated",
+        "Bearer token verification failed",
+      );
     },
   });
-  const server = createLlmthinkHostedMcpServer({ application, authenticate });
+  const server = createLlmthinkHostedMcpServer({
+    application,
+    authenticate,
+    ...(config.oauthDiscovery ? { oauthDiscovery: config.oauthDiscovery } : {}),
+  });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(config.port, config.hostname, () => {
