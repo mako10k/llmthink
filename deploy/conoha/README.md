@@ -35,8 +35,9 @@ LLMTHINK_OAUTH_ACCOUNT_REGISTRY_PATH=/etc/llmthink/oauth-accounts.json
 
 All four values are required together. The authorization-server value is an
 exact issuer string; do not add or remove a trailing slash to normalize it.
-The registry must be an owner-only (`0600`) regular file with this bounded
-schema:
+The registry must be a root-owned, service-group-readable (`root:llmthink
+0640`) regular file with this bounded schema. Group write and all world access
+are rejected:
 
 ```json
 {

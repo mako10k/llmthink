@@ -182,8 +182,10 @@ export async function loadOAuthAccountRegistry(
     if (!stat.isFile() || stat.size > OAUTH_ACCOUNT_REGISTRY_MAX_BYTES) {
       throw new Error("OAuth account registry must be a bounded regular file");
     }
-    if ((stat.mode & 0o077) !== 0) {
-      throw new Error("OAuth account registry must be owner-only (0600)");
+    if ((stat.mode & 0o037) !== 0) {
+      throw new Error(
+        "OAuth account registry must be owner-only or group-readable without group write or world access (0600 or 0640)",
+      );
     }
     const document = parseRegistry(JSON.parse(await handle.readFile("utf8")));
     const accounts = new Map(

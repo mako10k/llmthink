@@ -77,6 +77,11 @@ test("OAuth account registry rejects unsafe files and ambiguous authorization", 
   await chmod(insecure, 0o644);
   await assert.rejects(loadOAuthAccountRegistry(insecure), /owner-only/);
 
+  const groupReadable = join(root, "group-readable.json");
+  await writeFile(groupReadable, JSON.stringify(document()), "utf8");
+  await chmod(groupReadable, 0o640);
+  await loadOAuthAccountRegistry(groupReadable);
+
   const target = await secureRegistry(root, document());
   const link = join(root, "registry-link.json");
   await symlink(target, link);
