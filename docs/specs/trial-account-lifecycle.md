@@ -133,15 +133,15 @@ and optional organization. Internal IDs are random, non-semantic hosted IDs.
 
 ### 5.1 State transitions
 
-| From | Event | To | Resource access |
-|---|---|---|---|
-| absent | current terms agreed and provisioning committed | active | trial policy |
-| active | material terms version activated | reconsent_required | terms, export, closure only |
-| reconsent_required | new current terms agreed | active | trial policy |
-| active or reconsent_required | operator security/abuse action | suspended | none except support-defined recovery |
-| active, reconsent_required, or suspended | service wind-down or accepted closure flow | export_only | export, status, closure only |
-| export_only | retention/export window ends or closure completes | closed | status receipt only or none |
-| suspended | reviewed reinstatement | active or reconsent_required | determined by current terms receipt |
+| From                                     | Event                                             | To                           | Resource access                      |
+| ---------------------------------------- | ------------------------------------------------- | ---------------------------- | ------------------------------------ |
+| absent                                   | current terms agreed and provisioning committed   | active                       | trial policy                         |
+| active                                   | material terms version activated                  | reconsent_required           | terms, export, closure only          |
+| reconsent_required                       | new current terms agreed                          | active                       | trial policy                         |
+| active or reconsent_required             | operator security/abuse action                    | suspended                    | none except support-defined recovery |
+| active, reconsent_required, or suspended | service wind-down or accepted closure flow        | export_only                  | export, status, closure only         |
+| export_only                              | retention/export window ends or closure completes | closed                       | status receipt only or none          |
+| suspended                                | reviewed reinstatement                            | active or reconsent_required | determined by current terms receipt  |
 
 No transition out of `closed` reuses the old tenant automatically. Recovery or migration
 is an audited operator operation, not a client-controlled state transition.
@@ -225,13 +225,13 @@ retry an exact pending operation but must never invent ownership from directory 
 
 After JWT verification, account admission returns one of these stable states:
 
-| Code | HTTP | Meaning | Safe next action |
-|---|---:|---|---|
-| `account_terms_required` | 403 | no current agreement/account | open exact HTTPS onboarding URL |
-| `account_reconsent_required` | 403 | material terms changed | open exact HTTPS re-consent URL |
-| `account_suspended` | 403 | operator/security suspension | show bounded support guidance |
-| `account_export_only` | 403 | ordinary MCP use ended | open archive/closure URL |
-| `account_unavailable` | 403 | mapping cannot be safely resolved | retry later or contact support |
+| Code                         | HTTP | Meaning                           | Safe next action                |
+| ---------------------------- | ---: | --------------------------------- | ------------------------------- |
+| `account_terms_required`     |  403 | no current agreement/account      | open exact HTTPS onboarding URL |
+| `account_reconsent_required` |  403 | material terms changed            | open exact HTTPS re-consent URL |
+| `account_suspended`          |  403 | operator/security suspension      | show bounded support guidance   |
+| `account_export_only`        |  403 | ordinary MCP use ended            | open archive/closure URL        |
+| `account_unavailable`        |  403 | mapping cannot be safely resolved | retry later or contact support  |
 
 401 remains reserved for absent or invalid credentials and its OAuth challenge. Responses
 must not include raw WorkOS claims, email, account IDs, tenant IDs, recovery material, or

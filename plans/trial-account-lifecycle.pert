@@ -32,6 +32,7 @@ milestone SQLITE_SCHEMA_READY:
 
 milestone LIFECYCLE_CORE_IMPLEMENTED:
   title "Agreement and provisioning core implemented locally"
+  state reached
 
 milestone ONBOARDING_IMPLEMENTED:
   title "Onboarding and re-consent surface implemented locally"
@@ -103,6 +104,7 @@ task IMPLEMENT_LIFECYCLE_CORE SQLITE_SCHEMA_READY -> LIFECYCLE_CORE_IMPLEMENTED:
     optimistic 3p
     most_likely 5p
     pessimistic 8p
+  status done
   priority 85
   requires:
     CODEX 1
@@ -173,3 +175,18 @@ work_event FINISH_SQLITE_SCHEMA_20260820:
   occurred_at 2026-08-20T19:35:56+09:00
   active_time 391/3600h
   effort 391/3600ph
+
+work_event START_LIFECYCLE_CORE_20260820:
+  model 1
+  task IMPLEMENT_LIFECYCLE_CORE
+  kind start
+  occurred_at 2026-08-20T19:49:44+09:00
+  planned_value 31/6p
+
+work_event FINISH_LIFECYCLE_CORE_20260820:
+  model 1
+  task IMPLEMENT_LIFECYCLE_CORE
+  kind finish
+  occurred_at 2026-08-20T20:16:27+09:00
+  active_time 1603/3600h
+  effort 1603/3600ph

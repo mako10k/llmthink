@@ -68,7 +68,8 @@ CREATE TABLE schema_metadata (
   singleton       INTEGER PRIMARY KEY CHECK (singleton = 1),
   schema_version  INTEGER NOT NULL CHECK (schema_version >= 1),
   migrated_at     TEXT NOT NULL,
-  migration_id    TEXT NOT NULL
+  migration_id    TEXT NOT NULL,
+  migration_sha256 BLOB NOT NULL CHECK (length(migration_sha256) = 32)
 ) STRICT;
 
 CREATE TABLE terms_artifacts (
@@ -251,12 +252,18 @@ The code-level ports remain separate even though one adapter implements them wit
 
 ```ts
 interface ExternalIdentityRegistry {
-  resolve(identity: ExternalIdentity, snapshot: ReadSnapshot): AccountIdentity | null;
+  resolve(
+    identity: ExternalIdentity,
+    snapshot: ReadSnapshot,
+  ): AccountIdentity | null;
 }
 
 interface AgreementLedger {
   currentTerms(locale: string, snapshot: ReadSnapshot): TermsArtifact;
-  appendReceipt(input: VerifiedAgreement, tx: LifecycleTransaction): AgreementReceipt;
+  appendReceipt(
+    input: VerifiedAgreement,
+    tx: LifecycleTransaction,
+  ): AgreementReceipt;
 }
 
 interface AccountRepository {
@@ -265,20 +272,35 @@ interface AccountRepository {
 }
 
 interface TenantCatalog {
-  resolveOwnedTenant(accountId: string, snapshot: ReadSnapshot): TenantBinding | null;
-  createExclusive(input: NewTenantBinding, tx: LifecycleTransaction): TenantBinding;
+  resolveOwnedTenant(
+    accountId: string,
+    snapshot: ReadSnapshot,
+  ): TenantBinding | null;
+  createExclusive(
+    input: NewTenantBinding,
+    tx: LifecycleTransaction,
+  ): TenantBinding;
 }
 
 interface WorkspaceCatalog {
-  createInitial(input: NewWorkspaceBinding, tx: LifecycleTransaction): WorkspaceBinding;
+  createInitial(
+    input: NewWorkspaceBinding,
+    tx: LifecycleTransaction,
+  ): WorkspaceBinding;
 }
 
 interface ScopePolicyRepository {
-  resolveForAccount(accountId: string, snapshot: ReadSnapshot): readonly LlmthinkServerScope[];
+  resolveForAccount(
+    accountId: string,
+    snapshot: ReadSnapshot,
+  ): readonly LlmthinkServerScope[];
 }
 
 interface RealizationOutbox {
-  enqueueInitialWorkspace(input: RealizationRequest, tx: LifecycleTransaction): void;
+  enqueueInitialWorkspace(
+    input: RealizationRequest,
+    tx: LifecycleTransaction,
+  ): void;
 }
 ```
 
