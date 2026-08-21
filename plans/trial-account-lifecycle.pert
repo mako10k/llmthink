@@ -227,6 +227,19 @@ task ACCEPT_R2_BACKUP_STORAGE STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
     CODEX 1
   source "ADR-0013; owner acceptance 2026-08-21"
 
+task DESIGN_RESTIC_R2_KEY_CUSTODY STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Design R2 backup client and key custody"
+  description "Compare encrypted backup clients for R2, propose restic repository/retention/check/restore behavior, define runtime and recovery key custody, and expose deletion-resistance gaps without installing software, creating credentials, or transferring data."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 91
+  requires:
+    CODEX 1
+  source "ADR-0013; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -371,3 +384,18 @@ work_event FINISH_ACCEPT_R2_BACKUP_STORAGE_20260821:
   occurred_at 2026-08-21T11:14:56+09:00
   active_time 4/225h
   effort 4/225ph
+
+work_event START_RESTIC_R2_KEY_CUSTODY_20260821:
+  model 1
+  task DESIGN_RESTIC_R2_KEY_CUSTODY
+  kind start
+  occurred_at 2026-08-21T11:19:21+09:00
+  planned_value 13/12p
+
+work_event FINISH_RESTIC_R2_KEY_CUSTODY_20260821:
+  model 1
+  task DESIGN_RESTIC_R2_KEY_CUSTODY
+  kind finish
+  occurred_at 2026-08-21T11:23:39+09:00
+  active_time 43/600h
+  effort 43/600ph
