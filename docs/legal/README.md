@@ -1,34 +1,30 @@
 # Hosted trial legal artifacts
 
-Status: draft set for owner self-review. No external legal review has been performed.
+Status: accepted by owner for the free trial on 2026-08-21. No external legal review was performed.
 
 ## Artifact set
 
 - `trial-terms-ja-v1.md`: full trial terms
 - `trial-important-summary-ja-v1.md`: pre-agreement important summary
 - `trial-privacy-notice-ja-v1.md`: superseded pre-R2 privacy draft retained as an immutable artifact
-- `trial-privacy-notice-ja-v2.md`: current privacy and data-handling notice draft
+- `trial-privacy-notice-ja-v2.md`: accepted privacy and data-handling notice
+- `trial-terms-owner-approval-receipt-2026-08-21.md`: owner self-approval receipt and exact accepted
+  artifact identities
 
 ## Activation gate
 
-These files are not yet valid agreement artifacts. Before activation:
+The exact accepted files are sealed agreement artifacts but are not yet published or activated.
+The effective date, status page, provider and R2 disclosures, liability review, exact SHA-256
+digests, and owner self-approval receipt are complete. Before activation:
 
-1. set the effective date and publish `https://llmthink.mk10.org/status`;
-2. verify the current WorkOS and hosting-provider privacy, subprocessor, and transfer disclosures;
-3. verify the Cloudflare R2 disclosure, client-side encryption boundary, APAC location-hint
-   limitation, current legacy recovery scope, and operational-backup retention procedure;
-4. review the liability cap and consumer-facing applicability;
-5. render the exact user-facing bytes and verify links and accessibility;
-6. compute SHA-256 over exact UTF-8 bytes for the full terms and summary;
-7. create immutable SQLite terms artifacts and activate them through an operator-gated action;
-8. record owner self-approval, date, exact Git revision, artifact digests, and the fact that no
-   external legal review was performed.
+1. render the exact user-facing bytes and verify links and accessibility;
+2. create immutable SQLite terms artifacts and activate them through an operator-gated action.
 
-Owner self-approval accepts the operational risk of using an internally reviewed draft. It
-does not make invalid clauses valid, waive mandatory law, or authorize public enrollment,
+Owner self-approval accepts the operational risk of using internally reviewed artifacts. It does
+not make invalid clauses valid, waive mandatory law, or authorize publication, public enrollment,
 billing, or Production activation.
 
-## Public-law references checked for this draft
+## Public-law references checked for this acceptance
 
 - Consumer Affairs Agency, Consumer Contract Act overview and Article 8 commentary
 - Personal Information Protection Commission, APPI general guidelines including safety

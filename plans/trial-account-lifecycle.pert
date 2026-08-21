@@ -79,7 +79,7 @@ task APPROVE_TERMS_COPY LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
     optimistic 1p
     most_likely 3p
     pessimistic 8p
-  status active
+  status done
   priority 90
   requires:
     CODEX 1
@@ -1063,3 +1063,9 @@ work_event RESUME_TERMS_COPY_FINAL_OWNER_REVIEW_20260821:
   task APPROVE_TERMS_COPY
   kind resume
   occurred_at 2026-08-21T17:36:51+09:00
+
+work_event FINISH_TERMS_COPY_OWNER_SELF_APPROVAL_20260821:
+  model 1
+  task APPROVE_TERMS_COPY
+  kind finish
+  occurred_at 2026-08-21T17:59:03+09:00

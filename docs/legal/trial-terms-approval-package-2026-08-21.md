@@ -3,7 +3,7 @@
 ## Status
 
 - Prepared: 2026-08-21
-- Decision state: exact draft bytes approved; publication-status normalization pending confirmation
+- Decision state: owner self-approved and requested non-draft sealing
 - External legal review: not performed
 - Scope: 無償の試験利用のみ
 - Operator-address disclosure: owner accepted individual notice without public residential-address
