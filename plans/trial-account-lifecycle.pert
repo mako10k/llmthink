@@ -201,6 +201,19 @@ task PRIORITIZE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPR
     CODEX 1
   source "Owner direction 2026-08-21"
 
+task HYPOTHESIZE_OFF_CONOHA_BACKUP_STORAGE STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Reframe service-loss threats and hypothesize off-ConoHa storage"
+  description "Elevate long-term ConoHa server/account/control-plane loss to a P0 service scenario, compare low-cost low-management external storage against the prioritized threat model, and propose a provider profile without creating an account, bucket, credential, or transfer."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 92
+  requires:
+    CODEX 1
+  source "Owner direction 2026-08-21; current provider research"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -315,3 +328,18 @@ work_event FINISH_PRIORITIZE_BACKUP_THREAT_MODEL_20260821:
   occurred_at 2026-08-21T10:14:27+09:00
   active_time 47/3600h
   effort 47/3600ph
+
+work_event START_OFF_CONOHA_STORAGE_HYPOTHESIS_20260821:
+  model 1
+  task HYPOTHESIZE_OFF_CONOHA_BACKUP_STORAGE
+  kind start
+  occurred_at 2026-08-21T10:39:50+09:00
+  planned_value 13/12p
+
+work_event FINISH_OFF_CONOHA_STORAGE_HYPOTHESIS_20260821:
+  model 1
+  task HYPOTHESIZE_OFF_CONOHA_BACKUP_STORAGE
+  kind finish
+  occurred_at 2026-08-21T10:40:45+09:00
+  active_time 11/720h
+  effort 11/720ph
