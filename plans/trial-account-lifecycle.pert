@@ -331,6 +331,19 @@ task ACCEPT_RESTIC_OPERATIONAL_VERSION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_A
     CODEX 1
   source "ADR-0014; owner acceptance 2026-08-21"
 
+task IMPLEMENT_RESTIC_SUPPLY_VERIFICATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Implement restic supply verification and install runbook"
+  description "Implement a shell-free verifier for the accepted restic 0.19.1 signed checksum, full signing fingerprint, compressed digest, absent-path decompression, exact binary version, and secret-free receipt; add negative tests and a bounded non-executed VPS install/readback/rollback runbook without connecting to VPS or R2."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 83
+  requires:
+    CODEX 1
+  source "Accepted ADR-0014; owner implementation authorization 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -595,3 +608,18 @@ work_event FINISH_ACCEPT_RESTIC_OPERATIONAL_VERSION_20260821:
   occurred_at 2026-08-21T13:51:39+09:00
   active_time 7/1800h
   effort 7/1800ph
+
+work_event START_IMPLEMENT_RESTIC_SUPPLY_VERIFICATION_20260821:
+  model 1
+  task IMPLEMENT_RESTIC_SUPPLY_VERIFICATION
+  kind start
+  occurred_at 2026-08-21T13:57:44+09:00
+  planned_value 2p
+
+work_event FINISH_IMPLEMENT_RESTIC_SUPPLY_VERIFICATION_20260821:
+  model 1
+  task IMPLEMENT_RESTIC_SUPPLY_VERIFICATION
+  kind finish
+  occurred_at 2026-08-21T13:58:36+09:00
+  active_time 13/900h
+  effort 13/900ph
