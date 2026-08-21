@@ -279,6 +279,19 @@ task IMPLEMENT_BACKUP_SLICE_B_L0 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVE
     CODEX 1
   source "Accepted restic R2 implementation plan; owner continuation 2026-08-21"
 
+task IMPLEMENT_BACKUP_SLICE_C_L1 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Implement restic adapter and local L1 workflow"
+  description "Implement an exact-version, shell-free, bounded-output restic process adapter with secret-free errors, strict backup JSON handling, exact snapshot reread, and fake-process negative tests; verify a checksum-matched disposable official binary against synthetic local init, backup, full-data check, restore, forget, and prune. Do not accept an operational version or access R2, VPS, or live data."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  status done
+  priority 87
+  requires:
+    CODEX 1
+  source "Accepted restic R2 implementation plan; official restic 0.19.1 scripting contract; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -483,3 +496,18 @@ work_event FINISH_BACKUP_SLICE_B_L0_20260821:
   occurred_at 2026-08-21T12:26:40+09:00
   active_time 14/225h
   effort 14/225ph
+
+work_event START_BACKUP_SLICE_C_L1_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_C_L1
+  kind start
+  occurred_at 2026-08-21T12:27:54+09:00
+  planned_value 19/6p
+
+work_event FINISH_BACKUP_SLICE_C_L1_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_C_L1
+  kind finish
+  occurred_at 2026-08-21T12:36:22+09:00
+  active_time 127/900h
+  effort 127/900ph
