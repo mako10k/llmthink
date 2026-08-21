@@ -1,11 +1,11 @@
 # production R2 profile and VPS synthetic rehearsal plan
 
-- Status: proposed
+- Status: accepted by owner on 2026-08-21
 - Date: 2026-08-21
 - Inputs: accepted R2/restic design, ADR-0013, ADR-0014, completed R2D evidence
 - Scope: production storage/credential profile and synthetic VPS route rehearsal only
 
-## Proposed external profile
+## Accepted external profile
 
 - Create one private Cloudflare R2 bucket named `llmthink-backup-3b38f07b`.
 - Use Standard storage and the APAC location hint. Do not claim residency.
@@ -88,6 +88,9 @@ to the VPS, installation/execution/removal of the transient synthetic rehearsal 
 rehearsal-prefix cleanup. It does not authorize a production restic password, live repository
 initialization, live data backup, scheduled service/timer, retention automation, Bucket Lock,
 restore activation, Privacy Notice backup claim, or public enrollment.
+
+The owner accepted this exact boundary on 2026-08-21 and explicitly withheld authorization for
+live data, the production repository password, and persistent service/timer creation.
 
 ## Owner actions after acceptance
 

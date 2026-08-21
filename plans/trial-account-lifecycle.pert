@@ -435,6 +435,19 @@ task PLAN_PRODUCTION_R2_VPS_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_AP
     CODEX 1
   source "Completed R2D evidence and owner continuation 2026-08-21"
 
+task ACCEPT_PRODUCTION_R2_VPS_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Accept production R2 profile and VPS synthetic rehearsal"
+  description "Record owner approval for the exact private production bucket, bucket-specific runtime credential, host-encrypted VPS delivery, one transient synthetic rehearsal prefix and cleanup while explicitly withholding live data, production repository password, and persistent service/timer authority."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  status done
+  priority 75
+  requires:
+    CODEX 1
+  source "Owner acceptance of production R2 profile and bounded VPS rehearsal 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -819,3 +832,18 @@ work_event FINISH_PLAN_PRODUCTION_R2_VPS_REHEARSAL_20260821:
   occurred_at 2026-08-21T14:54:23+09:00
   active_time 11/900h
   effort 11/900ph
+
+work_event START_ACCEPT_PRODUCTION_R2_VPS_REHEARSAL_20260821:
+  model 1
+  task ACCEPT_PRODUCTION_R2_VPS_REHEARSAL
+  kind start
+  occurred_at 2026-08-21T15:01:56+09:00
+  planned_value 13/24p
+
+work_event FINISH_ACCEPT_PRODUCTION_R2_VPS_REHEARSAL_20260821:
+  model 1
+  task ACCEPT_PRODUCTION_R2_VPS_REHEARSAL
+  kind finish
+  occurred_at 2026-08-21T15:02:15+09:00
+  active_time 19/3600h
+  effort 19/3600ph
