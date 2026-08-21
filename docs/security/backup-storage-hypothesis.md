@@ -1,6 +1,6 @@
 # llmthink backup storage hypothesis
 
-- Status: proposed for owner review
+- Status: accepted as storage selection input by owner on 2026-08-21
 - Date: 2026-08-21
 - Scope: off-ConoHa encrypted storage for the unpaid hosted trial
 - Threat-model input: `docs/security/backup-threat-model.md`
@@ -33,9 +33,9 @@ change.
 | Wasabi                 | One-TB monthly minimum and 90-day minimum storage duration apply to pay-as-you-go.                                                                                                    | S3-compatible and backup-oriented.                                                                 | Immutability features exist, but are unnecessary to compare further at current scale.                              | Restore egress policy has conditions tied to active storage.                                                         | Reject for the initial trial because minimum billing and retention do not match the tiny 30-day workload.                 |
 | Amazon S3/Glacier      | No general minimum charge, but storage class, request, retrieval, early-deletion, and transfer pricing require more decisions. Glacier classes have 90- or 180-day minimum durations. | Most mature control surface, but the most operational and billing complexity for this scale.       | Strong Object Lock and IAM options.                                                                                | Japan regions are available, but archive retrieval and pricing add failure modes.                                    | Defer until compliance, residency, scale, or existing AWS operations justify the complexity.                              |
 
-## 3. Provisional selection
+## 3. Accepted storage selection
 
-Use **Cloudflare R2 Standard** as the first infrastructure hypothesis.
+Use **Cloudflare R2 Standard** as the initial off-ConoHa backup storage.
 
 Why:
 
@@ -109,8 +109,8 @@ Re-evaluate B2 or AWS when any of the following occurs:
 
 ## 7. Owner decision and next gate
 
-Owner acceptance of this hypothesis would authorize preparation of a detailed R2 setup and
-backup-client comparison. It would not authorize:
+Owner acceptance on 2026-08-21 authorizes preparation of a detailed R2 setup and backup-client
+comparison. It does not authorize:
 
 - Cloudflare account or bucket creation;
 - billing activation;

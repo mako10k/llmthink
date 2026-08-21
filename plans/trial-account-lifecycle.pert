@@ -214,6 +214,19 @@ task HYPOTHESIZE_OFF_CONOHA_BACKUP_STORAGE STORAGE_DECISION_ACCEPTED -> TERMS_CO
     CODEX 1
   source "Owner direction 2026-08-21; current provider research"
 
+task ACCEPT_R2_BACKUP_STORAGE STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Accept Cloudflare R2 as initial backup storage"
+  description "Record the owner-approved Cloudflare R2 Standard storage decision, its ConoHa-independent P0 role, limitations, reconsideration triggers, and the separate gates for client-side encryption, key custody, credentials, external setup, and data transfer."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  status done
+  priority 92
+  requires:
+    CODEX 1
+  source "ADR-0013; owner acceptance 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -343,3 +356,18 @@ work_event FINISH_OFF_CONOHA_STORAGE_HYPOTHESIS_20260821:
   occurred_at 2026-08-21T10:40:45+09:00
   active_time 11/720h
   effort 11/720ph
+
+work_event START_ACCEPT_R2_BACKUP_STORAGE_20260821:
+  model 1
+  task ACCEPT_R2_BACKUP_STORAGE
+  kind start
+  occurred_at 2026-08-21T11:13:52+09:00
+  planned_value 13/24p
+
+work_event FINISH_ACCEPT_R2_BACKUP_STORAGE_20260821:
+  model 1
+  task ACCEPT_R2_BACKUP_STORAGE
+  kind finish
+  occurred_at 2026-08-21T11:14:56+09:00
+  active_time 4/225h
+  effort 4/225ph
