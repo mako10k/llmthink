@@ -1,0 +1,1 @@
+{"schema":"sealgraph/recovery/v1","operation_id":"07cb954510b617be669e2e16ade054df","state":"COMMITTED","kind":"seal","transitions":[{"ref":"acceptance/stage-trial-lifecycle","before":null,"after":"eyJzY2hlbWEiOiJzZWFsZ3JhcGgvcmVmL3YxIiwiaGVhZCI6IjFlNzE1Njc0ZTE5YWYzZDkxNDQyYjE0YzJmMWFiNTYzMGM5M2U0ODY4ZTQ3Y2E4Mzk3ZjI5M2IxMmY3MmNiZGIiLCJ0YWdzIjpbXX0="}]}
