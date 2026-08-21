@@ -58,7 +58,7 @@ export function createLlmthinkRemoteJwks(options) {
         cacheMaxAge: options.cacheMaxAgeMilliseconds ?? 10 * 60_000,
     });
 }
-export function createLlmthinkJwtTokenVerifier(options) {
+export function createLlmthinkJwtIdentityVerifier(options) {
     parseExactHttpsUrl(options.issuer, "OAuth issuer");
     parseExactHttpsUrl(options.audience, "OAuth audience");
     const algorithms = options.algorithms ?? ["RS256"];
@@ -111,7 +111,11 @@ export function createLlmthinkJwtTokenVerifier(options) {
             requiredClaims: ["sub", "iat", "exp"],
             clockTolerance: options.clockToleranceSeconds ?? 5,
         });
-        return options.resolveAccount(acceptedIdentity(payload));
+        return acceptedIdentity(payload);
     };
+}
+export function createLlmthinkJwtTokenVerifier(options) {
+    const verifyIdentity = createLlmthinkJwtIdentityVerifier(options);
+    return async (token) => options.resolveAccount(await verifyIdentity(token));
 }
 //# sourceMappingURL=oauth-jwt.js.map

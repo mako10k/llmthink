@@ -15,6 +15,9 @@ dist/server/*
 !dist/server/hosted-main.d.ts
 !dist/server/hosted-main.js
 !dist/server/hosted-main.js.map
+!dist/server/lifecycle-init.d.ts
+!dist/server/lifecycle-init.js
+!dist/server/lifecycle-init.js.map
 !dist/server/oauth-discovery.d.ts
 !dist/server/oauth-discovery.js
 !dist/server/oauth-discovery.js.map

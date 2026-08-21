@@ -23,6 +23,6 @@ export { SqliteLifecycleStore, TRIAL_AGREEMENT_ACTION_VERSION, } from "./server/
 export { LlmthinkArchiveService, } from "./server/archive-service.js";
 export { loadOAuthAccountRegistry, OAUTH_ACCOUNT_REGISTRY_MAX_BYTES, OAUTH_ACCOUNT_REGISTRY_VERSION, } from "./server/oauth-account-registry.js";
 export { createLlmthinkOAuthDiscovery, oauthBearerChallenge, oauthProtectedResourceMetadata, OAUTH_PROTECTED_RESOURCE_PATH, } from "./server/oauth-discovery.js";
-export { createLlmthinkJwtTokenVerifier, createLlmthinkRemoteJwks, } from "./server/oauth-jwt.js";
+export { createLlmthinkJwtIdentityVerifier, createLlmthinkJwtTokenVerifier, createLlmthinkRemoteJwks, } from "./server/oauth-jwt.js";
 export { assertVerifiedRequestContext, BoundedLlmthinkSecurityMetrics, DEFAULT_HOSTED_RATE_LIMIT, DEFAULT_HOSTED_METRIC_SERIES_LIMIT, DEFAULT_HOSTED_RATE_SUBJECT_LIMIT, DEFAULT_HOSTED_RATE_WINDOW_MS, DEFAULT_HOSTED_REQUEST_TIMEOUT_MS, createBearerTokenAuthenticator, InMemoryLlmthinkRateLimiter, LlmthinkSecurityBoundary, } from "./server/security.js";
 //# sourceMappingURL=index.js.map

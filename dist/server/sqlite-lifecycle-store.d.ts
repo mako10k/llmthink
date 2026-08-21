@@ -3,6 +3,7 @@ import type { LlmthinkExternalOAuthIdentity, LlmthinkOAuthAccountResolver } from
 declare const ACTION_VERSION = "trial-agree-v1";
 export interface SqliteLifecycleStoreOptions {
     readonly path: string;
+    readonly createNew?: boolean;
     readonly allowMemory?: boolean;
     readonly now?: () => Date;
     readonly entropy?: (bytes: number) => Buffer;

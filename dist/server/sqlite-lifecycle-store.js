@@ -258,8 +258,9 @@ export class SqliteLifecycleStore {
         }
         this.#now = options.now ?? (() => new Date());
         this.#entropy = options.entropy ?? randomBytes;
-        if (options.path !== ":memory:")
-            prepareDatabasePath(options.path);
+        if (options.path !== ":memory:") {
+            prepareDatabasePath(options.path, options.createNew ?? false);
+        }
         this.#db = new DatabaseSync(options.path, { allowExtension: false });
         try {
             this.#configure();
@@ -933,8 +934,10 @@ function allowedOperatorTransition(fromState, toState) {
     }
     return fromState === "export_only";
 }
-function prepareDatabasePath(path) {
+function prepareDatabasePath(path, createNew) {
     if (existsSync(path)) {
+        if (createNew)
+            throw new Error("Lifecycle database already exists");
         const stat = lstatSync(path);
         if (!stat.isFile() || stat.isSymbolicLink()) {
             throw new Error("Lifecycle database must be a regular non-symlink file");

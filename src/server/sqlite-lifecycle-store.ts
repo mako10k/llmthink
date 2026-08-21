@@ -224,6 +224,7 @@ CREATE TABLE retention_transitions (
 
 export interface SqliteLifecycleStoreOptions {
   readonly path: string;
+  readonly createNew?: boolean;
   readonly allowMemory?: boolean;
   readonly now?: () => Date;
   readonly entropy?: (bytes: number) => Buffer;
@@ -389,7 +390,9 @@ export class SqliteLifecycleStore {
     }
     this.#now = options.now ?? (() => new Date());
     this.#entropy = options.entropy ?? randomBytes;
-    if (options.path !== ":memory:") prepareDatabasePath(options.path);
+    if (options.path !== ":memory:") {
+      prepareDatabasePath(options.path, options.createNew ?? false);
+    }
     this.#db = new DatabaseSync(options.path, { allowExtension: false });
     try {
       this.#configure();
@@ -1420,8 +1423,9 @@ function allowedOperatorTransition(
   return fromState === "export_only";
 }
 
-function prepareDatabasePath(path: string): void {
+function prepareDatabasePath(path: string, createNew: boolean): void {
   if (existsSync(path)) {
+    if (createNew) throw new Error("Lifecycle database already exists");
     const stat = lstatSync(path);
     if (!stat.isFile() || stat.isSymbolicLink()) {
       throw new Error("Lifecycle database must be a regular non-symlink file");

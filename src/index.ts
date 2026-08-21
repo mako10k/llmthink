@@ -215,9 +215,11 @@ export {
   type LlmthinkOAuthDiscoveryOptions,
 } from "./server/oauth-discovery.js";
 export {
+  createLlmthinkJwtIdentityVerifier,
   createLlmthinkJwtTokenVerifier,
   createLlmthinkRemoteJwks,
   type LlmthinkExternalOAuthIdentity,
+  type LlmthinkExternalOAuthIdentityVerifier,
   type LlmthinkJwtVerifierOptions,
   type LlmthinkOAuthAccountResolver,
   type LlmthinkRemoteJwksOptions,

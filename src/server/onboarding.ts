@@ -34,6 +34,10 @@ export interface LlmthinkOnboardingOptions {
   readonly termsId: string;
   readonly privacyNoticeId: string;
   readonly scopePolicyId: string;
+  readonly realizeInitialWorkspace?: (
+    tenantId: string,
+    workspaceId: string,
+  ) => void | Promise<void>;
   readonly now?: () => number;
   readonly entropy?: (bytes: number) => Buffer;
   readonly nonceTtlMs?: number;
@@ -382,6 +386,10 @@ async function handleOnboardingPost(
     scopePolicyId: runtime.options.scopePolicyId,
     actionVersion: TRIAL_AGREEMENT_ACTION_VERSION,
   });
+  await runtime.options.realizeInitialWorkspace?.(
+    provisioned.tenantId,
+    provisioned.workspaceId,
+  );
   sendHtml(
     response,
     201,

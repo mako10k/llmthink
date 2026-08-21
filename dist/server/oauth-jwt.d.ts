@@ -9,6 +9,7 @@ export interface LlmthinkExternalOAuthIdentity {
     readonly tokenScopes: readonly string[];
 }
 export type LlmthinkOAuthAccountResolver = (identity: LlmthinkExternalOAuthIdentity) => Promise<VerifiedBearerIdentity>;
+export type LlmthinkExternalOAuthIdentityVerifier = (token: string) => Promise<LlmthinkExternalOAuthIdentity>;
 export interface LlmthinkJwtVerifierOptions {
     readonly issuer: string;
     readonly audience: string;
@@ -27,4 +28,5 @@ export interface LlmthinkRemoteJwksOptions {
     readonly cacheMaxAgeMilliseconds?: number;
 }
 export declare function createLlmthinkRemoteJwks(options: LlmthinkRemoteJwksOptions): JWTVerifyGetKey;
+export declare function createLlmthinkJwtIdentityVerifier(options: Omit<LlmthinkJwtVerifierOptions, "resolveAccount">): LlmthinkExternalOAuthIdentityVerifier;
 export declare function createLlmthinkJwtTokenVerifier(options: LlmthinkJwtVerifierOptions): LlmthinkBearerTokenVerifier;

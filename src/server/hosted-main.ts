@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,11 +19,28 @@ import {
 } from "./oauth-discovery.js";
 import { loadOAuthAccountRegistry } from "./oauth-account-registry.js";
 import {
-  createLlmthinkJwtTokenVerifier,
+  createLlmthinkJwtIdentityVerifier,
   createLlmthinkRemoteJwks,
+  type LlmthinkExternalOAuthIdentityVerifier,
 } from "./oauth-jwt.js";
+import {
+  createLlmthinkOnboardingHandler,
+  type LlmthinkOnboardingHttpHandler,
+} from "./onboarding.js";
 import { assertServerBindPolicy } from "./policy.js";
-import { createBearerTokenAuthenticator } from "./security.js";
+import {
+  createBearerTokenAuthenticator,
+  type LlmthinkBearerTokenVerifier,
+} from "./security.js";
+import { SqliteLifecycleStore } from "./sqlite-lifecycle-store.js";
+
+export interface HostedLifecycleRuntimeConfig {
+  readonly databasePath: string;
+  readonly publicOrigin: string;
+  readonly termsId: string;
+  readonly privacyNoticeId: string;
+  readonly scopePolicyId: string;
+}
 
 export interface HostedMcpRuntimeConfig {
   readonly hostname: string;
@@ -37,6 +54,7 @@ export interface HostedMcpRuntimeConfig {
   readonly oauthDiscovery?: LlmthinkOAuthDiscovery;
   readonly oauthJwksUri?: string;
   readonly oauthAccountRegistryPath?: string;
+  readonly lifecycle?: HostedLifecycleRuntimeConfig;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
@@ -78,11 +96,11 @@ function parseOAuthRuntime(
   const issuer = env.LLMTHINK_OAUTH_AUTHORIZATION_SERVER;
   const jwksUri = env.LLMTHINK_OAUTH_JWKS_URI;
   const registryPath = env.LLMTHINK_OAUTH_ACCOUNT_REGISTRY_PATH;
-  const values = [resource, issuer, jwksUri, registryPath];
+  const values = [resource, issuer, jwksUri];
   if (!values.some(Boolean)) return {};
-  if (!resource || !issuer || !jwksUri || !registryPath) {
+  if (!resource || !issuer || !jwksUri) {
     throw new Error(
-      "OAuth resource, authorization server, JWKS URI, and account registry path must be configured together",
+      "OAuth resource, authorization server, and JWKS URI must be configured together",
     );
   }
   return {
@@ -95,8 +113,56 @@ function parseOAuthRuntime(
         : {}),
     }),
     oauthJwksUri: jwksUri,
-    oauthAccountRegistryPath: registryPath,
+    ...(registryPath ? { oauthAccountRegistryPath: registryPath } : {}),
   };
+}
+
+function parseLifecycleRuntime(
+  env: NodeJS.ProcessEnv,
+): HostedLifecycleRuntimeConfig | undefined {
+  const databasePath = env.LLMTHINK_LIFECYCLE_DATABASE_PATH;
+  const publicOrigin = env.LLMTHINK_ONBOARDING_PUBLIC_ORIGIN;
+  const termsId = env.LLMTHINK_ONBOARDING_TERMS_ID;
+  const privacyNoticeId = env.LLMTHINK_ONBOARDING_PRIVACY_NOTICE_ID;
+  const scopePolicyId = env.LLMTHINK_ONBOARDING_SCOPE_POLICY_ID;
+  const values = [
+    databasePath,
+    publicOrigin,
+    termsId,
+    privacyNoticeId,
+    scopePolicyId,
+  ];
+  if (!values.some(Boolean)) return undefined;
+  if (values.some((value) => !value)) {
+    throw new Error("Lifecycle and onboarding configuration must be complete");
+  }
+  if (!isAbsolute(databasePath!)) {
+    throw new Error("Lifecycle database path must be absolute");
+  }
+  return {
+    databasePath: databasePath!,
+    publicOrigin: publicOrigin!,
+    termsId: termsId!,
+    privacyNoticeId: privacyNoticeId!,
+    scopePolicyId: scopePolicyId!,
+  };
+}
+
+function assertAuthorityConfiguration(
+  oauth: ReturnType<typeof parseOAuthRuntime>,
+  lifecycle: HostedLifecycleRuntimeConfig | undefined,
+): void {
+  if (lifecycle && !oauth.oauthDiscovery) {
+    throw new Error("Lifecycle onboarding requires OAuth configuration");
+  }
+  if (lifecycle && oauth.oauthAccountRegistryPath) {
+    throw new Error(
+      "Lifecycle onboarding and the legacy OAuth account registry cannot be enabled together",
+    );
+  }
+  if (oauth.oauthDiscovery && !lifecycle && !oauth.oauthAccountRegistryPath) {
+    throw new Error("OAuth requires an account registry or lifecycle database");
+  }
 }
 
 export function loadHostedMcpRuntimeConfig(
@@ -113,6 +179,9 @@ export function loadHostedMcpRuntimeConfig(
   }
   assertServerBindPolicy({ hostname, authenticationEnabled: true });
   const scopes = parseScopes(env.LLMTHINK_HOSTED_SCOPES);
+  const oauth = parseOAuthRuntime(env, scopes);
+  const lifecycle = parseLifecycleRuntime(env);
+  assertAuthorityConfiguration(oauth, lifecycle);
   return {
     hostname,
     port: parsePort(env.LLMTHINK_HOSTED_PORT),
@@ -122,8 +191,63 @@ export function loadHostedMcpRuntimeConfig(
     tenantId: env.LLMTHINK_HOSTED_TENANT_ID ?? "deployment-tenant",
     workspaceId: env.LLMTHINK_HOSTED_WORKSPACE_ID ?? "deployment-workspace",
     scopes,
-    ...parseOAuthRuntime(env, scopes),
+    ...oauth,
+    ...(lifecycle ? { lifecycle } : {}),
   };
+}
+
+function createIdentityVerifier(
+  config: HostedMcpRuntimeConfig,
+): LlmthinkExternalOAuthIdentityVerifier | undefined {
+  if (!config.oauthDiscovery || !config.oauthJwksUri) return undefined;
+  return createLlmthinkJwtIdentityVerifier({
+    issuer: config.oauthDiscovery.authorizationServers[0],
+    audience: config.oauthDiscovery.resource,
+    jwks: createLlmthinkRemoteJwks({ jwksUri: config.oauthJwksUri }),
+    allowedTokenScopes: ["openid", "email", "profile", "offline_access"],
+    requiredTokenScopes: ["openid"],
+  });
+}
+
+async function createOAuthVerifier(
+  config: HostedMcpRuntimeConfig,
+  identityVerify: LlmthinkExternalOAuthIdentityVerifier | undefined,
+  lifecycleStore: SqliteLifecycleStore | undefined,
+): Promise<LlmthinkBearerTokenVerifier | undefined> {
+  if (!identityVerify) return undefined;
+  const accountResolver = lifecycleStore
+    ? lifecycleStore.accountResolver()
+    : await loadOAuthAccountRegistry(config.oauthAccountRegistryPath!);
+  return async (token) => accountResolver(await identityVerify(token));
+}
+
+function createOnboarding(
+  config: HostedMcpRuntimeConfig,
+  identityVerify: LlmthinkExternalOAuthIdentityVerifier | undefined,
+  lifecycleStore: SqliteLifecycleStore | undefined,
+): LlmthinkOnboardingHttpHandler | undefined {
+  if (!config.lifecycle || !identityVerify || !lifecycleStore) return undefined;
+  return createLlmthinkOnboardingHandler({
+    store: lifecycleStore,
+    authenticate: async (request) => {
+      const authorization = request.headers.authorization;
+      const match =
+        typeof authorization === "string"
+          ? /^Bearer ([^\s]+)$/.exec(authorization)
+          : null;
+      if (!match) throw new Error("Bearer authentication is required");
+      return {
+        identity: await identityVerify(match[1]),
+        requestId: randomUUID(),
+      };
+    },
+    publicOrigin: config.lifecycle.publicOrigin,
+    termsId: config.lifecycle.termsId,
+    privacyNoticeId: config.lifecycle.privacyNoticeId,
+    scopePolicyId: config.lifecycle.scopePolicyId,
+    realizeInitialWorkspace: (tenantId, workspaceId) =>
+      lifecycleStore.markInitialWorkspaceRealized(tenantId, workspaceId),
+  });
 }
 
 function tokenMatches(actual: string, expected: string): boolean {
@@ -141,21 +265,23 @@ export async function startHostedMcpServer(
   const application = new LlmthinkApplicationService({
     repository: new ServerFileThoughtRepository({ dataRoot: config.dataRoot }),
   });
-  const oauthVerify =
-    config.oauthDiscovery &&
-    config.oauthJwksUri &&
-    config.oauthAccountRegistryPath
-      ? createLlmthinkJwtTokenVerifier({
-          issuer: config.oauthDiscovery.authorizationServers[0],
-          audience: config.oauthDiscovery.resource,
-          jwks: createLlmthinkRemoteJwks({ jwksUri: config.oauthJwksUri }),
-          allowedTokenScopes: ["openid", "email", "profile", "offline_access"],
-          requiredTokenScopes: ["openid"],
-          resolveAccount: await loadOAuthAccountRegistry(
-            config.oauthAccountRegistryPath,
-          ),
-        })
-      : undefined;
+  const lifecycleStore = config.lifecycle
+    ? new SqliteLifecycleStore({ path: config.lifecycle.databasePath })
+    : undefined;
+  if (lifecycleStore && config.lifecycle) {
+    lifecycleStore.activeTermsArtifact(config.lifecycle.termsId);
+    lifecycleStore.activeTermsArtifact(
+      config.lifecycle.privacyNoticeId,
+      "privacy_notice",
+    );
+  }
+  const identityVerify = createIdentityVerifier(config);
+  const oauthVerify = await createOAuthVerifier(
+    config,
+    identityVerify,
+    lifecycleStore,
+  );
+  const onboarding = createOnboarding(config, identityVerify, lifecycleStore);
   const authenticate = createBearerTokenAuthenticator({
     verify: async (token) => {
       if (tokenMatches(token, config.bearerToken)) {
@@ -177,6 +303,7 @@ export async function startHostedMcpServer(
     application,
     authenticate,
     ...(config.oauthDiscovery ? { oauthDiscovery: config.oauthDiscovery } : {}),
+    ...(onboarding ? { onboarding } : {}),
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -193,6 +320,7 @@ export async function startHostedMcpServer(
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve())),
     );
+    lifecycleStore?.close();
   };
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, () => {

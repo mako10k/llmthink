@@ -23,6 +23,10 @@ export type LlmthinkOAuthAccountResolver = (
   identity: LlmthinkExternalOAuthIdentity,
 ) => Promise<VerifiedBearerIdentity>;
 
+export type LlmthinkExternalOAuthIdentityVerifier = (
+  token: string,
+) => Promise<LlmthinkExternalOAuthIdentity>;
+
 export interface LlmthinkJwtVerifierOptions {
   readonly issuer: string;
   readonly audience: string;
@@ -118,9 +122,9 @@ export function createLlmthinkRemoteJwks(
   });
 }
 
-export function createLlmthinkJwtTokenVerifier(
-  options: LlmthinkJwtVerifierOptions,
-): LlmthinkBearerTokenVerifier {
+export function createLlmthinkJwtIdentityVerifier(
+  options: Omit<LlmthinkJwtVerifierOptions, "resolveAccount">,
+): LlmthinkExternalOAuthIdentityVerifier {
   parseExactHttpsUrl(options.issuer, "OAuth issuer");
   parseExactHttpsUrl(options.audience, "OAuth audience");
   const algorithms = options.algorithms ?? ["RS256"];
@@ -193,6 +197,13 @@ export function createLlmthinkJwtTokenVerifier(
       requiredClaims: ["sub", "iat", "exp"],
       clockTolerance: options.clockToleranceSeconds ?? 5,
     });
-    return options.resolveAccount(acceptedIdentity(payload));
+    return acceptedIdentity(payload);
   };
+}
+
+export function createLlmthinkJwtTokenVerifier(
+  options: LlmthinkJwtVerifierOptions,
+): LlmthinkBearerTokenVerifier {
+  const verifyIdentity = createLlmthinkJwtIdentityVerifier(options);
+  return async (token) => options.resolveAccount(await verifyIdentity(token));
 }

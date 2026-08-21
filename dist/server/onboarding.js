@@ -207,6 +207,7 @@ async function handleOnboardingPost(runtime, request, principal, response) {
         scopePolicyId: runtime.options.scopePolicyId,
         actionVersion: TRIAL_AGREEMENT_ACTION_VERSION,
     });
+    await runtime.options.realizeInitialWorkspace?.(provisioned.tenantId, provisioned.workspaceId);
     sendHtml(response, 201, resultPage("試験利用を開始できます", `復旧識別子は一度だけ表示されます: ${provisioned.recoveryCredential ?? "既に発行済みです"}`));
 }
 export function createLlmthinkOnboardingHandler(options) {

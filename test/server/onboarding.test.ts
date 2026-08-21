@@ -66,7 +66,10 @@ function createArtifacts(store: SqliteLifecycleStore): void {
 
 async function fixture(
   t: test.TestContext,
-  options: { readonly now?: () => number } = {},
+  options: {
+    readonly now?: () => number;
+    readonly realizeInitialWorkspace?: boolean;
+  } = {},
 ): Promise<Fixture> {
   const root = await mkdtemp(join(tmpdir(), "llmthink-onboarding-"));
   const store = new SqliteLifecycleStore({
@@ -80,6 +83,12 @@ async function fixture(
     termsId: TERMS_ID,
     privacyNoticeId: PRIVACY_ID,
     scopePolicyId: POLICY_ID,
+    ...(options.realizeInitialWorkspace
+      ? {
+          realizeInitialWorkspace: (tenantId: string, workspaceId: string) =>
+            store.markInitialWorkspaceRealized(tenantId, workspaceId),
+        }
+      : {}),
     now: options.now,
     entropy: (bytes) => Buffer.alloc(bytes, ++entropyCounter),
     authenticate: async (request) => {
@@ -185,6 +194,19 @@ test("onboarding is separately authenticated and renders exact versioned documen
   assert.equal(started.form.get("terms_id"), TERMS_ID);
   assert.equal(started.form.get("privacy_id"), PRIVACY_ID);
   assert.match(started.form.get("content_sha256") ?? "", /^[a-f0-9]{64}$/);
+});
+
+test("hosted realization activates exactly the provisioned tenant boundary", async (t) => {
+  const { baseUrl, store } = await fixture(t, {
+    realizeInitialWorkspace: true,
+  });
+  const started = await begin(baseUrl);
+  const response = await agree(baseUrl, started.form, started.cookie);
+  assert.equal(response.status, 201);
+  const resolved = await store.accountResolver()(identity("user-a"));
+  assert.match(resolved.tenantId, /^tenant-/);
+  assert.match(resolved.workspaceId, /^ws-/);
+  await assert.rejects(store.accountResolver()(identity("user-b")));
 });
 
 test("explicit same-origin POST provisions once and consumes its identity-bound nonce", async (t) => {

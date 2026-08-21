@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "terms": {
+    "id": "trial-terms-ja-v1",
+    "version": "trial-terms-ja-2026-08-v1",
+    "locale": "ja-JP",
+    "effective_at": "2026-08-21",
+    "content_path": "../legal/trial-terms-ja-v1.md",
+    "content_sha256": "b40e20f16af8f927027b34ca97c8a729d65178a93f999006f77e8a3821723af1",
+    "summary_path": "../legal/trial-important-summary-ja-v1.md",
+    "summary_sha256": "c81803b0b85713ccc0a79908949774ece7023439fe34088051140d84e53fef2c"
+  },
+  "privacy_notice": {
+    "id": "trial-privacy-ja-v2",
+    "version": "trial-privacy-ja-2026-08-v2",
+    "locale": "ja-JP",
+    "effective_at": "2026-08-21",
+    "content_path": "../legal/trial-privacy-notice-ja-v2.md",
+    "content_sha256": "88028714e007f7aea2c5ef829b9fa42a9c428136eb3a8ced942669e83c9be610",
+    "summary_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope_policy": {
+    "id": "trial-default-v1",
+    "version": 1
+  }
+}

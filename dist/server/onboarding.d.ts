@@ -14,6 +14,7 @@ export interface LlmthinkOnboardingOptions {
     readonly termsId: string;
     readonly privacyNoticeId: string;
     readonly scopePolicyId: string;
+    readonly realizeInitialWorkspace?: (tenantId: string, workspaceId: string) => void | Promise<void>;
     readonly now?: () => number;
     readonly entropy?: (bytes: number) => Buffer;
     readonly nonceTtlMs?: number;
