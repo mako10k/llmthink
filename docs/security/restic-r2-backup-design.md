@@ -1,17 +1,17 @@
 # restic + Cloudflare R2 backup design
 
-- Status: proposed for owner review
+- Status: accepted
 - Date: 2026-08-21
 - Storage decision: ADR-0013
 - Threat-model input: `docs/security/backup-threat-model.md`
 - Scope: client, encrypted repository, credentials, retention, verification, and restore design
 
-## 1. Decision requested
+## 1. Decision
 
 Use restic with Cloudflare R2 Standard through the S3-compatible API as the initial encrypted
 backup mechanism. Keep account/bucket administration and recovery custody outside the VPS.
 
-This is a design proposal. It does not authorize installation, account or bucket creation,
+Owner acceptance was recorded on 2026-08-21. It does not authorize installation, account or bucket creation,
 credential generation, secret placement, upload, retention lock, restore, or Production change.
 
 ## 2. Client comparison
@@ -208,14 +208,14 @@ The implementation plan must include local/disposable tests for:
 ## 11. Alternatives and reconsideration
 
 Reconsider Kopia when centralized policy/UI or multi-host scheduling would materially reduce
-operations. Reconsider an append-only rest-server/rclone bridge only when deletion resistance is
-promoted to P0 and the added service can be operated independently of ConoHa. Reconsider a
-custom generation archive only if restic repository semantics prevent required tenant-safe
-recovery or bounded retention.
+operations. Reconsider an independently operated receiving API, append-only rest-server, or
+rclone bridge only when deletion resistance is promoted to P0 and the added service can keep
+physical deletion authority outside a compromised VPS. Reconsider a custom generation archive
+only if restic repository semantics prevent required tenant-safe recovery or bounded retention.
 
-## 12. Owner decisions before implementation
+## 12. Accepted owner decisions
 
-Accept or change:
+The owner accepted the following on 2026-08-21:
 
 1. restic as the initial client;
 2. the two-secret runtime model: restic repository password plus bucket-scoped R2 key;
@@ -226,7 +226,9 @@ Accept or change:
 6. 30-day time-window retention, structural checks, periodic full-data checks, and isolated
    restore rehearsal.
 
-Acceptance authorizes an implementation plan and local/disposable test design only. External R2
+Acceptance authorizes an implementation plan and local/disposable test design only. The owner
+explicitly accepts the initial residual risk that compromise of the VPS runtime credential may
+permit repository deletion. External R2
 setup, credential creation, secret placement, software installation on the VPS, live upload, and
 restore remain separately gated.
 

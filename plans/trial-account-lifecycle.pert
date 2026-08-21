@@ -238,7 +238,7 @@ task DESIGN_RESTIC_R2_KEY_CUSTODY STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROV
   priority 91
   requires:
     CODEX 1
-  source "ADR-0013; owner continuation 2026-08-21"
+  source "ADR-0013; owner acceptance of restic/key-custody design and residual deletion risk 2026-08-21"
 
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
