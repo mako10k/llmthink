@@ -6,7 +6,8 @@ Status: draft set for owner self-review. No external legal review has been perfo
 
 - `trial-terms-ja-v1.md`: full trial terms
 - `trial-important-summary-ja-v1.md`: pre-agreement important summary
-- `trial-privacy-notice-ja-v1.md`: privacy and data-handling notice
+- `trial-privacy-notice-ja-v1.md`: superseded pre-R2 privacy draft retained as an immutable artifact
+- `trial-privacy-notice-ja-v2.md`: current privacy and data-handling notice draft
 
 ## Activation gate
 
@@ -14,7 +15,8 @@ These files are not yet valid agreement artifacts. Before activation:
 
 1. set the effective date and publish `https://llmthink.mk10.org/status`;
 2. verify the current WorkOS and hosting-provider privacy, subprocessor, and transfer disclosures;
-3. confirm that no external backup provider is active, or disclose it before use;
+3. verify the Cloudflare R2 disclosure, client-side encryption boundary, APAC location-hint
+   limitation, current legacy recovery scope, and operational-backup retention procedure;
 4. review the liability cap and consumer-facing applicability;
 5. render the exact user-facing bytes and verify links and accessibility;
 6. compute SHA-256 over exact UTF-8 bytes for the full terms and summary;

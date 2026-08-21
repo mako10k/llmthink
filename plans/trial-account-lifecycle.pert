@@ -487,6 +487,32 @@ task CREATE_LEGACY_FIRST_LIVE_BACKUP STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APP
     CODEX 1
   source "Owner acceptance of one legacy recovery generation because production predates lifecycle SQLite 2026-08-21"
 
+task UPDATE_PRIVACY_NOTICE_R2_DISCLOSURE STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Update Privacy Notice R2 disclosure draft"
+  description "Revise the draft public version for active Cloudflare R2 encrypted backup, handled ciphertext and metadata, APAC hint limitations, provider links, client-side encryption, retention intent, and the bounded legacy recovery state without publishing or accepting the legal artifact."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 71
+  requires:
+    CODEX 1
+  source "Completed legacy live-backup evidence; owner continuation 2026-08-21; current official Cloudflare disclosures checked 2026-08-21"
+
+task DRAFT_LEGACY_OFFHOST_RESTORE_PLAN STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Draft legacy off-host restore rehearsal"
+  description "Define a ConoHa-independent exact-snapshot restore using a fresh read-only bucket credential, password-manager repository password, freshly verified restic supply, isolated local restore, manifest and component validation, exact cleanup, and credential revocation without repository mutation or production activation."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 70
+  requires:
+    CODEX 1
+  source "Completed legacy live-backup evidence and accepted off-host custody design; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -927,3 +953,29 @@ work_event FINISH_CREATE_LEGACY_FIRST_LIVE_BACKUP_20260821:
   task CREATE_LEGACY_FIRST_LIVE_BACKUP
   kind finish
   occurred_at 2026-08-21T16:06:10+09:00
+
+work_event START_UPDATE_PRIVACY_NOTICE_R2_DISCLOSURE_20260821:
+  model 1
+  task UPDATE_PRIVACY_NOTICE_R2_DISCLOSURE
+  kind start
+  occurred_at 2026-08-21T16:38:58+09:00
+  planned_value 13/12p
+
+work_event FINISH_UPDATE_PRIVACY_NOTICE_R2_DISCLOSURE_20260821:
+  model 1
+  task UPDATE_PRIVACY_NOTICE_R2_DISCLOSURE
+  kind finish
+  occurred_at 2026-08-21T16:38:58+09:00
+
+work_event START_DRAFT_LEGACY_OFFHOST_RESTORE_PLAN_20260821:
+  model 1
+  task DRAFT_LEGACY_OFFHOST_RESTORE_PLAN
+  kind start
+  occurred_at 2026-08-21T16:38:59+09:00
+  planned_value 13/12p
+
+work_event FINISH_DRAFT_LEGACY_OFFHOST_RESTORE_PLAN_20260821:
+  model 1
+  task DRAFT_LEGACY_OFFHOST_RESTORE_PLAN
+  kind finish
+  occurred_at 2026-08-21T16:38:59+09:00
