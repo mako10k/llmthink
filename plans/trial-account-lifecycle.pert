@@ -383,6 +383,19 @@ task ACCEPT_RESTIC_R2D_AUTHORIZATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APP
     CODEX 1
   source "Owner acceptance of disposable R2 authorization package and USD 1.00 ceiling 2026-08-21"
 
+task RECORD_RESTIC_R2D_ATTEMPT_1 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Record failed-closed R2D attempt and repair harness"
+  description "Record the one-shot R2D attempt that initialized format 2 and uploaded one synthetic snapshot before an informational positional-filter stderr stopped execution; confirm exact dedicated-bucket cleanup, repair the harness to the accepted explicit --path command shape, invalidate downstream R2D claims, and leave external retry separately gated."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 79
+  requires:
+    CODEX 1
+  source "Accepted R2D authorization; fail-closed execution and cleanup evidence 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -707,3 +720,18 @@ work_event FINISH_ACCEPT_RESTIC_R2D_AUTHORIZATION_20260821:
   occurred_at 2026-08-21T14:17:37+09:00
   active_time 1/200h
   effort 1/200ph
+
+work_event START_RECORD_RESTIC_R2D_ATTEMPT_1_20260821:
+  model 1
+  task RECORD_RESTIC_R2D_ATTEMPT_1
+  kind start
+  occurred_at 2026-08-21T14:30:17+09:00
+  planned_value 13/12p
+
+work_event FINISH_RECORD_RESTIC_R2D_ATTEMPT_1_20260821:
+  model 1
+  task RECORD_RESTIC_R2D_ATTEMPT_1
+  kind finish
+  occurred_at 2026-08-21T14:30:52+09:00
+  active_time 7/720h
+  effort 7/720ph
