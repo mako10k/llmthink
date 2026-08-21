@@ -10,6 +10,7 @@ import {
   type AddReflectionCommand,
   type AuditTextCommand,
   type CreateThoughtCommand,
+  type DeleteThoughtCommand,
   type FinalizeThoughtCommand,
   type LlmthinkServerScope,
   type PureAuditResult,
@@ -18,6 +19,7 @@ import {
   type SaveDraftCommand,
   type ServerThoughtSnapshot,
   type ThoughtListQuery,
+  type ThoughtDeletionReceipt,
   type ThoughtPage,
   type ThoughtRef,
   type ThoughtRepository,
@@ -182,6 +184,15 @@ export class LlmthinkApplicationService {
     requireScope(context, "thought:read");
     assertThoughtRef(ref, context);
     return this.repositoryCall(() => this.repository.events(ref, context));
+  }
+
+  async deleteThought(
+    command: DeleteThoughtCommand,
+    context: RequestContext,
+  ): Promise<ThoughtDeletionReceipt> {
+    requireScope(context, "thought:write");
+    this.assertRevisionCommand(command, context);
+    return this.repositoryCall(() => this.repository.delete(command, context));
   }
 
   private assertRevisionCommand(

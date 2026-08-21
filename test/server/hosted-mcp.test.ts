@@ -192,7 +192,7 @@ async function callTool(
   return rpc(baseUrl, "tools/call", { name, arguments: args }, scopes);
 }
 
-test("hosted MCP publishes help and eight goal-oriented tools with effect annotations", async (t) => {
+test("hosted MCP publishes goal-oriented tools with effect annotations", async (t) => {
   const { baseUrl } = await fixture(t);
   const initialized = await rpc(baseUrl, "initialize", {
     protocolVersion: "2025-06-18",
@@ -219,6 +219,7 @@ test("hosted MCP publishes help and eight goal-oriented tools with effect annota
       "search_thoughts",
       "finalize_thought",
       "add_thought_reflection",
+      "delete_thought",
       "get_thought_history",
     ],
   );
@@ -233,13 +234,14 @@ test("hosted MCP publishes help and eight goal-oriented tools with effect annota
     /externally persist/,
   );
   assert.equal(
-    tools.find((tool) => tool.name === "finalize_thought")?.annotations
+    tools.find((tool) => tool.name === "delete_thought")?.annotations
       .destructiveHint,
     true,
   );
   assert.equal(
-    tools.some((tool) => tool.name.includes("delete")),
-    false,
+    tools.find((tool) => tool.name === "finalize_thought")?.annotations
+      .destructiveHint,
+    true,
   );
 });
 
@@ -488,6 +490,27 @@ test("write and read tools share Application Service state without REST loopback
     ["thought:read"],
   );
   assert.equal(searched.body.result.structuredContent.items.length, 1);
+
+  const deleted = await callTool(
+    baseUrl,
+    "delete_thought",
+    {
+      thought_id: "thought-1",
+      expected_revision: 1,
+      idempotency_key: "delete-1",
+      request_digest: `sha256:${"d".repeat(64)}`,
+    },
+    ["thought:write"],
+  );
+  assert.deepEqual(deleted.body.result.structuredContent, {
+    thoughtId: "thought-1",
+    deleted: true,
+    deletedRevision: 1,
+  });
+  const after = await callTool(baseUrl, "list_thoughts", { limit: 20 }, [
+    "thought:read",
+  ]);
+  assert.deepEqual(after.body.result.structuredContent.items, []);
 });
 
 test("authorization, schema, revision, and idempotency failures are structured", async (t) => {

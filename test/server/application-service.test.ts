@@ -145,6 +145,38 @@ test("missing thoughts use the stable not_found domain error", async (t) => {
   );
 });
 
+test("delete is revision-bound, tenant-bound, physical, and idempotent", async (t) => {
+  const { service } = await fixture(t);
+  const write = context(["thought:write", "thought:read"]);
+  await service.createThought(
+    { thoughtId: "delete-me", draftText: "synthetic", identity: IDENTITY },
+    write,
+  );
+  const command = {
+    ref: { ...REF, thoughtId: "delete-me" },
+    expectedRevision: 1,
+    identity: {
+      idempotencyKey: "delete-1",
+      requestDigest: `sha256:${"d".repeat(64)}` as const,
+    },
+  };
+  await assert.rejects(
+    service.deleteThought(command, { ...write, tenantId: "tenant-2" }),
+    expectCode("forbidden"),
+  );
+  const deleted = await service.deleteThought(command, write);
+  assert.deepEqual(deleted, {
+    thoughtId: "delete-me",
+    deleted: true,
+    deletedRevision: 1,
+  });
+  await assert.rejects(
+    service.getThought(command.ref, write),
+    expectCode("not_found"),
+  );
+  assert.deepEqual(await service.deleteThought(command, write), deleted);
+});
+
 test("allowed commands retain repository revision and idempotency semantics", async (t) => {
   const { service } = await fixture(t);
   const writeContext = context(["thought:write"]);

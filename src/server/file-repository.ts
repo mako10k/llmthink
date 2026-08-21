@@ -29,6 +29,7 @@ import {
   type AddReflectionCommand,
   type CommandIdentity,
   type CreateThoughtCommand,
+  type DeleteThoughtCommand,
   type NewThoughtRevision,
   type RecordAuditCommand,
   type RequestContext,
@@ -38,6 +39,7 @@ import {
   type ServerThoughtSnapshot,
   type StoredIdempotencyRecord,
   type ThoughtListQuery,
+  type ThoughtDeletionReceipt,
   type ThoughtPage,
   type ThoughtRef,
   type ThoughtRepository,
@@ -69,6 +71,11 @@ interface RevisionCommandRecord {
   readonly request_digest: `sha256:${string}`;
   readonly created_at: string;
   readonly expires_at: string;
+}
+
+interface DeletionRecord extends RevisionCommandRecord {
+  readonly resource_digest: `sha256:${string}`;
+  readonly deleted_revision: number;
 }
 
 function json(value: unknown): string {
@@ -379,6 +386,76 @@ export class ServerFileThoughtRepository implements ThoughtRepository {
     if (!snapshot)
       throw new LlmthinkServerError("not_found", "Thought not found");
     return snapshot.history;
+  }
+
+  async delete(
+    command: DeleteThoughtCommand,
+    context: RequestContext,
+  ): Promise<ThoughtDeletionReceipt> {
+    assertContext(context);
+    assertThoughtRef(command.ref, context);
+    assertRevision(command.expectedRevision);
+    assertCommandIdentity(command.identity);
+    return this.serialized(command.ref, async () => {
+      const receiptPath = this.deletionReceiptPath(
+        command.ref,
+        context.subjectId,
+        command.identity.idempotencyKey,
+      );
+      const prior = await readOptional(receiptPath);
+      if (prior !== undefined) {
+        const record = parseJson<DeletionRecord>(prior, "deletion receipt");
+        assertSchema(record, "deletion receipt");
+        if (record.request_digest !== command.identity.requestDigest)
+          throw new LlmthinkServerError(
+            "idempotency_conflict",
+            "Idempotency key was used for a different request",
+          );
+        return {
+          thoughtId: command.ref.thoughtId,
+          deleted: true,
+          deletedRevision: record.deleted_revision,
+        };
+      }
+      const current = await this.readFiles(command.ref);
+      if (current.record.revision !== command.expectedRevision)
+        throw new LlmthinkServerError(
+          "revision_conflict",
+          "Expected revision does not match",
+          {
+            expectedRevision: command.expectedRevision,
+            actualRevision: current.record.revision,
+          },
+        );
+      const parent = this.thoughtsPath(context);
+      const temporary = join(
+        parent,
+        `.deleting-${digest(command.ref.thoughtId)}-${randomUUID()}`,
+      );
+      await rename(this.thoughtPath(command.ref), temporary);
+      const directory = join(
+        parent,
+        ".deletions",
+        digest(command.ref.thoughtId),
+      );
+      await mkdir(directory, { recursive: true });
+      const record: DeletionRecord = {
+        ...this.commandRecord("delete", command.identity, context),
+        resource_digest: `sha256:${digest(command.ref.thoughtId)}`,
+        deleted_revision: current.record.revision,
+      };
+      await writeFile(receiptPath, json(record), {
+        encoding: "utf8",
+        flag: "wx",
+      });
+      await syncPath(receiptPath);
+      await rm(temporary, { recursive: true });
+      return {
+        thoughtId: command.ref.thoughtId,
+        deleted: true,
+        deletedRevision: current.record.revision,
+      };
+    });
   }
 
   private async update<
@@ -883,6 +960,25 @@ export class ServerFileThoughtRepository implements ThoughtRepository {
   ): string {
     const scope = `${subjectId}\0${operation}\0${key}`;
     return join(this.thoughtPath(ref), "idempotency", `${digest(scope)}.json`);
+  }
+
+  private deletionReceiptPath(
+    ref: ThoughtRef,
+    subjectId: string,
+    key: string,
+  ): string {
+    const scope = `${subjectId}\0delete\0${key}`;
+    return join(
+      this.dataRoot,
+      "tenants",
+      ref.tenantId,
+      "workspaces",
+      ref.workspaceId,
+      "thoughts",
+      ".deletions",
+      digest(ref.thoughtId),
+      `${digest(scope)}.json`,
+    );
   }
 
   private assertPageQuery(limit: number): void {
