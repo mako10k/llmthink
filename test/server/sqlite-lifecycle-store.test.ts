@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { Worker } from "node:worker_threads";
 
 import {
   SqliteLifecycleStore,
@@ -47,6 +48,53 @@ function prepare(store: SqliteLifecycleStore): void {
     version: 1,
     scopes: ["thought:read", "audit:run"],
   });
+}
+
+function provisionWorker(
+  path: string,
+  gate: SharedArrayBuffer,
+): {
+  readonly ready: Promise<void>;
+  readonly result: Promise<Record<string, unknown>>;
+} {
+  const worker = new Worker(
+    new URL("./fixtures/concurrent-provision-worker.ts", import.meta.url),
+    { workerData: { path, gate }, execArgv: ["--import", "tsx"] },
+  );
+  let readyResolve!: () => void;
+  let resultResolve!: (result: Record<string, unknown>) => void;
+  let readyReject!: (error: Error) => void;
+  let resultReject!: (error: Error) => void;
+  const ready = new Promise<void>((resolve, rejectPromise) => {
+    readyResolve = resolve;
+    readyReject = rejectPromise;
+  });
+  const result = new Promise<Record<string, unknown>>(
+    (resolve, rejectPromise) => {
+      resultResolve = resolve;
+      resultReject = rejectPromise;
+    },
+  );
+  worker.on(
+    "message",
+    (message: { kind: string; result?: Record<string, unknown> }) => {
+      if (message.kind === "ready") readyResolve();
+      if (message.kind === "result" && message.result)
+        resultResolve(message.result);
+    },
+  );
+  worker.once("error", (error) => {
+    readyReject(error);
+    resultReject(error);
+  });
+  worker.once("exit", (code) => {
+    if (code !== 0) {
+      const error = new Error(`provision worker exited ${code}`);
+      readyReject(error);
+      resultReject(error);
+    }
+  });
+  return { ready, result };
 }
 
 test("SQLite lifecycle provisioning is exact, idempotent, and fail closed until realization", async (t) => {
@@ -108,6 +156,56 @@ test("SQLite lifecycle provisioning is exact, idempotent, and fail closed until 
     resolve(identity("workos-user-1", "org-1")),
     /mapping is unavailable/,
   );
+});
+
+test("concurrent first provisioning commits one account and returns one replay", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "llmthink-lifecycle-race-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, "lifecycle.sqlite");
+  const setup = new SqliteLifecycleStore({ path, now: () => NOW });
+  prepare(setup);
+  setup.close();
+
+  const gate = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 2);
+  const state = new Int32Array(gate);
+  const workers = [provisionWorker(path, gate), provisionWorker(path, gate)];
+  await Promise.all(workers.map((worker) => worker.ready));
+  Atomics.store(state, 1, 1);
+  Atomics.notify(state, 1, 2);
+  const results = await Promise.all(workers.map((worker) => worker.result));
+
+  assert.deepEqual(results.map((result) => result.status).sort(), [
+    "already_provisioned",
+    "provisioned",
+  ]);
+  const identities = results.map((result) => ({
+    subjectId: result.subjectId,
+    tenantId: result.tenantId,
+    workspaceId: result.workspaceId,
+    receiptId: result.receiptId,
+    provisioningOperationId: result.provisioningOperationId,
+  }));
+  assert.deepEqual(identities[0], identities[1]);
+  assert.equal(
+    results.filter((result) => typeof result.recoveryCredential === "string")
+      .length,
+    1,
+  );
+  const readback = new SqliteLifecycleStore({ path });
+  try {
+    assert.deepEqual(readback.counts(), {
+      accounts: 1,
+      external_identity_mappings: 1,
+      agreement_receipts: 1,
+      tenant_catalog: 1,
+      workspace_catalog: 1,
+      recovery_credentials: 1,
+      provisioning_operations: 1,
+      realization_outbox: 1,
+    });
+  } finally {
+    readback.close();
+  }
 });
 
 test("SQLite lifecycle keeps absent and present organization identities separate", () => {

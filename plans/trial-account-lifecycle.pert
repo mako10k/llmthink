@@ -144,6 +144,7 @@ task ACCEPT_STAGE_LIFECYCLE RECOVERY_EXPORT_IMPLEMENTED -> STAGE_LIFECYCLE_ACCEP
     optimistic 2p
     most_likely 3p
     pessimistic 5p
+  status active
   priority 70
   requires:
     CODEX 1
@@ -1099,3 +1100,10 @@ work_event WE-1fdfab53defb1842550ed8c2ba0659d688a2511a30faf30c4d227c6adad0fbac:
   occurred_at 2026-08-21T18:44:00+09:00
   active_time 0.5h
   effort 0.5ph
+
+work_event WE-493a3a4082263daa36d33f4119ef5badec3dcb0b53e198900ee04ddf1a185a61:
+  model 1
+  task ACCEPT_STAGE_LIFECYCLE
+  kind start
+  occurred_at 2026-08-21T18:32:43+09:00
+  planned_value 19/6p
