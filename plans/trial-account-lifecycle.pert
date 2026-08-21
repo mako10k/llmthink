@@ -175,6 +175,19 @@ task IMPLEMENT_STATUS_PAGE LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
     CODEX 1
   source "trial terms activation gate; owner instruction 2026-08-20"
 
+task DEFINE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Define infrastructure-independent backup threat model"
+  description "Define protected assets, actors, abstract trust boundaries, threats, non-negotiable security and restore invariants, proposed RPO/RTO, retention/deletion constraints, and acceptance evidence without selecting a provider, transport, storage product, or credential model. The accepted requirements become input to a separately gated hypothetical infrastructure evaluation."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 94
+  requires:
+    CODEX 1
+  source "Owner sequencing decision 2026-08-21; ADR-0012 backup boundary"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -259,3 +272,18 @@ work_event SUSPEND_TERMS_FINAL_REVIEW_20260820:
   kind suspend
   occurred_at 2026-08-20T21:08:15+09:00
   reason "Public status page is live and verified; owner exact-text self-review, effective date, and confirmation of the actual backup configuration remain before approval"
+
+work_event START_BACKUP_THREAT_MODEL_20260821:
+  model 1
+  task DEFINE_BACKUP_THREAT_MODEL
+  kind start
+  occurred_at 2026-08-21T09:57:49+09:00
+  planned_value 13/12p
+
+work_event FINISH_BACKUP_THREAT_MODEL_20260821:
+  model 1
+  task DEFINE_BACKUP_THREAT_MODEL
+  kind finish
+  occurred_at 2026-08-21T10:03:40+09:00
+  active_time 0.0975h
+  effort 0.0975ph
