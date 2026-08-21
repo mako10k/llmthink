@@ -305,6 +305,19 @@ task IMPLEMENT_BACKUP_SLICE_D_RESTORE_VALIDATION STORAGE_DECISION_ACCEPTED -> TE
     CODEX 1
   source "Accepted restic R2 implementation plan; owner authorization 2026-08-21"
 
+task DRAFT_RESTIC_OPERATIONAL_VERSION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Draft restic operational version decision"
+  description "Propose restic 0.19.1 Linux amd64 as the exact operational version; define signed-checksum and full-fingerprint verification, immutable versioned installation path, non-secret receipts, explicit update and rollback gates, and residual supply-chain risks without accepting the ADR or changing VPS, R2, credentials, or live data."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 85
+  requires:
+    CODEX 1
+  source "Official restic v0.19.1 release and installation documentation; completed local L1 and restore-validation evidence; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -539,3 +552,18 @@ work_event FINISH_BACKUP_SLICE_D_RESTORE_VALIDATION_20260821:
   occurred_at 2026-08-21T13:43:07+09:00
   active_time 37/300h
   effort 37/300ph
+
+work_event START_DRAFT_RESTIC_OPERATIONAL_VERSION_20260821:
+  model 1
+  task DRAFT_RESTIC_OPERATIONAL_VERSION
+  kind start
+  occurred_at 2026-08-21T13:49:13+09:00
+  planned_value 13/12p
+
+work_event FINISH_DRAFT_RESTIC_OPERATIONAL_VERSION_20260821:
+  model 1
+  task DRAFT_RESTIC_OPERATIONAL_VERSION
+  kind finish
+  occurred_at 2026-08-21T13:50:09+09:00
+  active_time 7/450h
+  effort 7/450ph
