@@ -252,7 +252,10 @@ test("fragment ticket exchanges once without putting OAuth bearer tokens in the 
 test("fragment bootstrap uses a same-origin document navigation for the ticket exchange", async (t) => {
   const { baseUrl } = await fixture(t);
   const page = await fetch(`${baseUrl}/onboarding`);
-  assert.match(page.headers.get("content-security-policy") ?? "", /form-action 'self'/);
+  assert.match(
+    page.headers.get("content-security-policy") ?? "",
+    /form-action 'self'/,
+  );
   assert.equal(page.headers.get("referrer-policy"), "same-origin");
 
   const script = await fetch(`${baseUrl}/onboarding/bootstrap.js`);

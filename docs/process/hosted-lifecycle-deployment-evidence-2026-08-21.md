@@ -14,11 +14,11 @@
 The lifecycle database was created as `llmthink:llmthink` mode `0600`. The initialization receipt
 and an independent post-restart readback agreed on:
 
-| Artifact | SHA-256 |
-| --- | --- |
-| Trial terms | `b40e20f16af8f927027b34ca97c8a729d65178a93f999006f77e8a3821723af1` |
+| Artifact          | SHA-256                                                            |
+| ----------------- | ------------------------------------------------------------------ |
+| Trial terms       | `b40e20f16af8f927027b34ca97c8a729d65178a93f999006f77e8a3821723af1` |
 | Important summary | `c81803b0b85713ccc0a79908949774ece7023439fe34088051140d84e53fef2c` |
-| Privacy Notice | `88028714e007f7aea2c5ef829b9fa42a9c428136eb3a8ced942669e83c9be610` |
+| Privacy Notice    | `88028714e007f7aea2c5ef829b9fa42a9c428136eb3a8ced942669e83c9be610` |
 
 All account, identity mapping, agreement, tenant, workspace, recovery, provisioning, and outbox
 counts were zero. No participant was registered or invited.

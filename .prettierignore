@@ -2,6 +2,7 @@ dist
 vscode-extension/dist
 node_modules
 .llmthink
+.sealgraph/
 .tmp
 package-lock.json
 vscode-extension/package-lock.json
