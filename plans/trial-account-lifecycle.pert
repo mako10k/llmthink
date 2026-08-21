@@ -46,6 +46,21 @@ milestone STAGE_LIFECYCLE_ACCEPTED:
 milestone LIMITED_PLUGIN_ACCEPTED:
   title "Limited-distribution Plugin accepted"
 
+milestone PARTICIPANT_OAUTH_ENTRY_ACCEPTED:
+  title "Participant OAuth entry accepted"
+
+milestone DEPLOYED_LIFECYCLE_ALIGNED:
+  title "Deployed lifecycle aligned with accepted candidate"
+
+milestone PLUGIN_DISTRIBUTION_AVAILABLE:
+  title "Exact limited Plugin artifact available"
+
+milestone LEGACY_ACCEPTANCE_RECONCILED:
+  title "Legacy milestone acceptance evidence reconciled"
+
+milestone LIMITED_ENROLLMENT_PACKAGE_READY:
+  title "Limited enrollment authorization package ready"
+
 milestone LIMITED_TRIAL_ENROLLMENT_READY:
   title "Invite-only trial enrollment separately authorized"
 
@@ -155,31 +170,109 @@ task ACCEPT_STAGE_LIFECYCLE RECOVERY_EXPORT_IMPLEMENTED -> STAGE_LIFECYCLE_ACCEP
 
 task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION STAGE_LIFECYCLE_ACCEPTED -> LIMITED_PLUGIN_ACCEPTED:
   title "Accept the limited-distribution Plugin entry"
-  description "Prepare and test the existing llmthink Plugin through a local or repository marketplace for named trial users. Verify the manifest, Skills, hosted MCP connection, OAuth onboarding guidance, exact install and removal instructions, compatibility, and server-enforced authorization without submitting to the Universal Plugin Directory. Logo, screenshots, public listing copy, public submission, and general discovery are not launch requirements for this limited trial."
+  description "Prepare and test the existing llmthink Plugin through a local or repository marketplace for the operator and later named trial users. Keep the operator test installation usable across exercises. Verify the manifest, Skills, hosted MCP connection, OAuth onboarding guidance, exact install and removal instructions, compatibility, and server-enforced authorization without submitting to the Universal Plugin Directory. Treat limited Plugin and credential delivery as operational admission, not a cryptographic invitation gate; before another person is admitted, require a dedicated per-user credential or accepted OAuth identity. Logo, screenshots, public listing copy, public submission, and general discovery are not launch requirements for this limited trial."
   estimate:
     optimistic 0.5p
     most_likely 1p
     pessimistic 2p
-  status suspended
+  status done
   priority 65
   requires:
     CODEX 1
   source "STAGE_LIFECYCLE_ACCEPTED; owner distribution decision 2026-08-21"
 
-task AUTHORIZE_LIMITED_TRIAL_ENROLLMENT LIMITED_PLUGIN_ACCEPTED -> LIMITED_TRIAL_ENROLLMENT_READY:
-  title "Authorize invite-only trial enrollment"
-  description "Freeze exact code, Plugin revision and distribution source, named-user admission procedure, terms versions, scope policy, capacity and abuse limits, notification and archive periods, operational owners, rollback, support route, and Stage evidence. Require explicit owner approval before admitting trial users. Universal Plugin Directory submission, general registration, public availability changes, Production configuration, paid plans, billing, release, and publication remain separate."
+task ACCEPT_PARTICIPANT_OAUTH_ENTRY LIMITED_PLUGIN_ACCEPTED -> PARTICIPANT_OAUTH_ENTRY_ACCEPTED:
+  title "Accept participant OAuth client entry"
+  description "Complete and verify end-user OAuth client interoperability for the limited Plugin, exact WorkOS subject-to-account mapping, revocation, and fail-closed denial without sharing the operator static bearer token. Reuse accepted implementation evidence from the OAuth plan; do not invite a participant or change public availability."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  status suspended
+  priority 64
+  requires:
+    CODEX 1
+  source "plans/oauth-implementation.pert; limited enrollment blocker B1"
+
+task ALIGN_DEPLOYED_LIFECYCLE LIMITED_PLUGIN_ACCEPTED -> DEPLOYED_LIFECYCLE_ALIGNED:
+  title "Align deployed lifecycle with accepted candidate"
+  description "Under separate deployment authority, freeze the exact lifecycle candidate, deploy it to the trial endpoint, and independently read back revision, health, terms/onboarding routes, isolation behavior, and rollback. Do not enable general registration, Production, billing, or public Plugin discovery."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  status done
+  priority 63
+  requires:
+    CODEX 1
+  source "limited enrollment blocker B2; deployment authority required"
+
+task PREPARE_PARTICIPANT_PLUGIN_DISTRIBUTION LIMITED_PLUGIN_ACCEPTED -> PLUGIN_DISTRIBUTION_AVAILABLE:
+  title "Prepare exact participant Plugin distribution"
+  description "Make the exact accepted Plugin revision available through an approved non-public participant distribution path with integrity, compatibility, install, update, and removal instructions. Do not publish to the Universal Plugin Directory, enable general discovery, or admit a participant."
   estimate:
     optimistic 0.5p
     most_likely 1p
     pessimistic 2p
+  status planned
+  priority 62
+  requires:
+    CODEX 1
+  source "limited enrollment blocker B3; commit df62f34"
+
+task RECONCILE_LEGACY_ACCEPTANCE_EVIDENCE LIMITED_PLUGIN_ACCEPTED -> LEGACY_ACCEPTANCE_RECONCILED:
+  title "Reconcile legacy milestone acceptance evidence"
+  description "Define revisioned criterion sets for the pre-existing reached milestones, map each required criterion to sealed or immutable evidence, and issue receipts only where the evidence actually proves the outcome. Record gaps instead of grandfathering or inferring acceptance. Do not repeat external tests, deploy, publish, invite, provision, or rewrite historical work events without separate authority."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  status suspended
+  priority 61
+  requires:
+    CODEX 1
+  source "Grammar 7 PTMAC-102 legacy acceptance warnings; Acceptance Criteria redesign 2026-08-21"
+
+task AUTHORIZE_LIMITED_TRIAL_ENROLLMENT LIMITED_PLUGIN_ACCEPTED -> LIMITED_ENROLLMENT_PACKAGE_READY:
+  title "Assemble evidence-bound enrollment package"
+  description "Revise and freeze the enrollment package against exact OAuth, deployed lifecycle, Plugin distribution, terms, limits, support, rollback, and residual-risk evidence. The package may be prepared as No-Go while prerequisites are incomplete; the milestone is not accepted until every incoming gate and required criterion has evidence. Do not invite, provision, publish, or charge."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status suspended
+  priority 61
+  requires:
+    CODEX 1
+  source "docs/process/limited-trial-enrollment-authorization-package.md"
+
+task AUTHORIZE_LIMITED_TRIAL_ENROLLMENT_FINAL LIMITED_ENROLLMENT_PACKAGE_READY -> LIMITED_TRIAL_ENROLLMENT_READY:
+  title "Authorize invite-only trial enrollment"
+  description "Review the frozen evidence-bound package and explicitly accept the named-user limit, exact terms, scope policy, capacity and abuse limits, notice/archive periods, operational ownership, rollback, support route, and residual risks. This authorization does not itself invite or provision anyone. Universal Plugin Directory submission, general registration, public availability, Production, paid plans, billing, release, and publication remain separate."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status planned
   priority 60
   requires:
     CODEX 1
-  source "LIMITED_PLUGIN_ACCEPTED; explicit owner approval required"
+  source "LIMITED_ENROLLMENT_PACKAGE_READY; explicit owner approval required"
 
 gate TERMS_COPY_BEFORE_ONBOARDING TERMS_COPY_APPROVED -> ONBOARDING_IMPLEMENTED:
   reason "The onboarding surface cannot be accepted before the exact user-facing terms and summary are approved"
+
+gate OAUTH_BEFORE_ENROLLMENT_PACKAGE PARTICIPANT_OAUTH_ENTRY_ACCEPTED -> LIMITED_ENROLLMENT_PACKAGE_READY:
+  reason "A participant must authenticate without receiving the operator static bearer token"
+
+gate DEPLOYMENT_BEFORE_ENROLLMENT_PACKAGE DEPLOYED_LIFECYCLE_ALIGNED -> LIMITED_ENROLLMENT_PACKAGE_READY:
+  reason "The accepted lifecycle must be the exact deployed and read-back candidate before enrollment approval"
+
+gate DISTRIBUTION_BEFORE_ENROLLMENT_PACKAGE PLUGIN_DISTRIBUTION_AVAILABLE -> LIMITED_ENROLLMENT_PACKAGE_READY:
+  reason "The exact accepted Plugin artifact must be privately obtainable and removable before enrollment approval"
+
+gate LEGACY_ACCEPTANCE_BEFORE_ENROLLMENT_PACKAGE LEGACY_ACCEPTANCE_RECONCILED -> LIMITED_ENROLLMENT_PACKAGE_READY:
+  reason "Previously reached lifecycle milestones must be backed by explicit criterion receipts rather than task closure alone"
 
 task IMPLEMENT_STATUS_PAGE LIFECYCLE_DESIGN_READY -> TERMS_COPY_APPROVED:
   title "Implement public status page"
@@ -1145,3 +1238,311 @@ work_event SUSPEND_LIMITED_PLUGIN_FRESH_THREAD_20260821:
   kind suspend
   occurred_at 2026-08-21T19:02:55+09:00
   reason "Repository marketplace installation passed; a new Codex thread and dedicated trial identity are required to verify loaded Skills, MCP read/write behavior, tenant denial, and credential revocation without weakening the separate OAuth gate"
+
+work_event RESUME_LIMITED_PLUGIN_FRESH_THREAD_20260821:
+  model 1
+  task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION
+  kind resume
+  occurred_at 2026-08-21T19:09:50+09:00
+
+work_event SUSPEND_LIMITED_PLUGIN_LIVE_MUTATION_20260821:
+  model 1
+  task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION
+  kind suspend
+  occurred_at 2026-08-21T19:11:11+09:00
+  reason "Fresh-process auditor Skill and non-persistent hosted MCP audit passed; operator installation and current test credential remain active for continued testing. Remaining acceptance requires one confirmed synthetic write and cleanup plus dedicated negative fixtures. Revocation must use a disposable credential so the continuing operator test path is preserved"
+
+work_event RESUME_LIMITED_PLUGIN_APPROVED_WRITE_20260821:
+  model 1
+  task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION
+  kind resume
+  occurred_at 2026-08-21T19:26:50+09:00
+
+work_event FINISH_ACCEPT_LIMITED_PLUGIN_DISTRIBUTION_20260821:
+  model 1
+  task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION
+  kind finish
+  occurred_at 2026-08-21T19:29:20+09:00
+  active_time 353/1800h
+  effort 353/1800ph
+
+work_event START_AUTHORIZE_LIMITED_TRIAL_ENROLLMENT_20260821:
+  model 1
+  task AUTHORIZE_LIMITED_TRIAL_ENROLLMENT
+  kind start
+  occurred_at 2026-08-21T19:29:30+09:00
+  planned_value 13/12p
+
+work_event SUSPEND_LIMITED_ENROLLMENT_PREREQUISITES_20260821:
+  model 1
+  task AUTHORIZE_LIMITED_TRIAL_ENROLLMENT
+  kind suspend
+  occurred_at 2026-08-21T19:31:44+09:00
+  reason "Authorization package is frozen No-Go: distributable Plugin still uses the operator static token, accepted lifecycle onboarding is not the active public release, and Plugin commit df62f34 is not yet available through an approved participant distribution channel"
+
+milestone_criterion_set PARTICIPANT_OAUTH_ENTRY_R1:
+  milestone PARTICIPANT_OAUTH_ENTRY_ACCEPTED
+  revision R1
+  commitment sha256:95eb0e7f123f2ca1127e5262baf367d7e91c4ff5c4ff9a85cbebabf5d6210e4b
+  criterion NO_SHARED_OPERATOR_SECRET required test "Participant Plugin authenticates without receiving or reading the operator static bearer token"
+  criterion CLIENT_INTEROP required test "Fresh supported client completes OAuth discovery authorization callback and MCP connection"
+  criterion EXACT_IDENTITY_MAPPING required artifact "Exact WorkOS subject maps to one account and one tenant with no fallback identity"
+  criterion REVOCATION_FAILS_CLOSED required test "Revocation and malformed or ambiguous identity are denied without cross-tenant disclosure"
+
+milestone_criterion_set DEPLOYED_LIFECYCLE_R1:
+  milestone DEPLOYED_LIFECYCLE_ALIGNED
+  revision R1
+  commitment sha256:5f045670d749118a841807e49a4179ee8a8bed577da9e1cbb3c48389ebb27c7e
+  criterion EXACT_REVISION_READBACK required artifact "Deployed revision and configuration are independently read back and match the frozen accepted candidate"
+  criterion TERMS_AND_PROVISIONING required test "Exact terms consent idempotent provisioning re-consent recovery and export-only paths pass on the deployed endpoint"
+  criterion TENANT_BOUNDARY required test "Cross-account and cross-tenant access fail closed on the deployed endpoint"
+  criterion HEALTH_AND_ROLLBACK required artifact "Health evidence and a bounded rollback procedure are recorded without enabling general registration"
+
+milestone_criterion_set PLUGIN_DISTRIBUTION_R1:
+  milestone PLUGIN_DISTRIBUTION_AVAILABLE
+  revision R1
+  commitment sha256:837b775c9b3d1d34c2ab5a91a54dc4f58dd27d2a3660d8e848aacf436781c486
+  criterion EXACT_ARTIFACT required artifact "A named participant can obtain the exact accepted Plugin revision through the approved non-public source"
+  criterion INTEGRITY_AND_COMPATIBILITY required test "Artifact integrity supported client version clean install update and removal are verified"
+  criterion NONPUBLIC_SCOPE required artifact "Distribution evidence proves no Universal Directory submission general discovery or public registration change"
+
+milestone_criterion_set LIMITED_ENROLLMENT_PACKAGE_R1:
+  milestone LIMITED_ENROLLMENT_PACKAGE_READY
+  revision R1
+  commitment sha256:08985489925b1c7d697f376159bdb1229ddadc2c15cb048624dc1b9c7bb77c0d
+  criterion PREREQUISITE_RECEIPTS required artifact "Current acceptance receipts exist for OAuth entry deployed lifecycle and Plugin distribution"
+  criterion EXACT_PACKAGE_DIGESTS required artifact "Package freezes exact code Plugin terms scope limits notice archive support rollback and residual-risk revisions and digests"
+  criterion NO_ADMISSION_SIDE_EFFECT required test "Package preparation performed no invitation participant provisioning publication billing or Production activation"
+
+milestone_criterion_set LIMITED_TRIAL_ENROLLMENT_R1:
+  milestone LIMITED_TRIAL_ENROLLMENT_READY
+  revision R1
+  commitment sha256:db60fd26689fb82f941463c8449ec85ddc718dc251e252d49b4481f193c6884e
+  criterion OWNER_APPROVAL required owner "Owner explicitly approves the exact frozen package for the stated maximum participant count and residual risks"
+  criterion AUTHORITY_CONTAINMENT required artifact "Approval explicitly excludes invitation execution general registration publication Production billing and paid plans"
+
+milestone_criterion_set LEGACY_ACCEPTANCE_RECONCILIATION_R1:
+  milestone LEGACY_ACCEPTANCE_RECONCILED
+  revision R1
+  commitment sha256:1338726518245c3d656b71b8e7b86c0188dd0cc8354dbed8100aa0545b7a002b
+  criterion ALL_REACHED_MILESTONES_MAPPED required artifact "Every pre-existing reached milestone has a revisioned criterion set and an explicit evidence map"
+  criterion RECEIPTS_ARE_EVIDENCE_BOUND required artifact "Every required criterion is satisfied by a receipt referencing immutable or sealed evidence at an exact revision"
+  criterion GAPS_REMAIN_OPEN required test "Missing or ambiguous evidence leaves the corresponding criterion unsatisfied and is not grandfathered by task closure"
+
+work_event START_PARTICIPANT_OAUTH_ENTRY_20260821:
+  model 1
+  task ACCEPT_PARTICIPANT_OAUTH_ENTRY
+  kind start
+  occurred_at 2026-08-21T19:43:03+09:00
+  planned_value 13/6p
+
+work_event SUSPEND_PARTICIPANT_OAUTH_FRESH_CLIENT_20260821:
+  model 1
+  task ACCEPT_PARTICIPANT_OAUTH_ENTRY
+  kind suspend
+  occurred_at 2026-08-21T19:46:01+09:00
+  reason "OAuth Plugin candidate and local/public metadata checks passed while preserving the installed operator compatibility version; acceptance still requires a separated fresh-client browser login, exact WorkOS subject mapping, token use and refresh, revocation, and fail-closed negative evidence"
+
+work_event START_RECONCILE_LEGACY_ACCEPTANCE_20260821:
+  model 1
+  task RECONCILE_LEGACY_ACCEPTANCE_EVIDENCE
+  kind start
+  occurred_at 2026-08-21T19:46:02+09:00
+  planned_value 13/6p
+
+milestone_criterion_set ADR_0011_ACCEPTANCE_R1:
+  milestone ADR_0011_ACCEPTED
+  revision R1
+  commitment sha256:b79be9fbd89dadef6bb9fed636215fb955cfb74e5c88cc1fa74daabf66719e5e
+  criterion BOUNDARY_ACCEPTED required artifact "Accepted provisioning consent privacy recovery and tenant-boundary decision is clean sealed"
+
+milestone_criterion_set LIFECYCLE_DESIGN_R1:
+  milestone LIFECYCLE_DESIGN_READY
+  revision R1
+  commitment sha256:4eca80e59b80f95bc860cb36c5fc8992f08ef7f552b40a625476043f6d6f8311
+  criterion DESIGN_BASELINE required artifact "Versioned lifecycle contracts are bound to an immutable accepted design baseline"
+
+milestone_criterion_set STORAGE_DECISION_R1:
+  milestone STORAGE_DECISION_ACCEPTED
+  revision R1
+  commitment sha256:29dd8174e8ebab984151dba68ced73b98b56398f9496696848cf6e850f1474d7
+  criterion STORAGE_BOUNDARY_ACCEPTED required artifact "SQLite control-plane separation transaction backup and recovery boundary is clean sealed"
+
+milestone_criterion_set TERMS_COPY_R1:
+  milestone TERMS_COPY_APPROVED
+  revision R1
+  commitment sha256:7456bcb7572a79d04d16084dccbe74fb0f770fead920b9d608a8b5ba2a30b1bb
+  criterion EXACT_LEGAL_PACKAGE_APPROVED required artifact "Exact terms summary privacy notice and owner self-approval are clean sealed"
+
+milestone_criterion_set SQLITE_SCHEMA_R1:
+  milestone SQLITE_SCHEMA_READY
+  revision R1
+  commitment sha256:2673487b873dfbaf3d437da6be2dcf510c943bd1d3741f3b612dfd1295877279
+  criterion SCHEMA_DESIGN_READY required artifact "Separated schema constraints transactions migrations and backup profile are clean sealed"
+
+milestone_criterion_set LIFECYCLE_CORE_R1:
+  milestone LIFECYCLE_CORE_IMPLEMENTED
+  revision R1
+  commitment sha256:03bc0966af1bbe38d950fc8b35064d6aaf796445d94eb2f3d4aab034cf7d8e10
+  criterion CORE_IMPLEMENTED_AND_TESTED required artifact "Identity receipt state and concurrency-safe provisioning implementation evidence is clean sealed"
+
+milestone_criterion_set ONBOARDING_R1:
+  milestone ONBOARDING_IMPLEMENTED
+  revision R1
+  commitment sha256:eb2638011f75b2363ec9d451f6b5224b0efa60d7b77b59d50b47f16fbb2e2412
+  criterion ONBOARDING_IMPLEMENTED_AND_TESTED required artifact "Consent nonce CSRF stale-terms re-consent and accessibility implementation evidence is clean sealed"
+
+milestone_criterion_set RECOVERY_EXPORT_R1:
+  milestone RECOVERY_EXPORT_IMPLEMENTED
+  revision R1
+  commitment sha256:82be07dbd58b4b0d4aa39f9d069c80e62d161c59563191d3fd6686a83a7f0a4a
+  criterion RECOVERY_EXPORT_IMPLEMENTED_AND_TESTED required artifact "Recovery rotation suspension export-only closure and archive implementation evidence is clean sealed"
+
+milestone_criterion_set STAGE_LIFECYCLE_R1:
+  milestone STAGE_LIFECYCLE_ACCEPTED
+  revision R1
+  commitment sha256:da88e89afc32a8583c09e18dc5beef722b2fba10ea5464ee25399ab7271dbbdd
+  criterion ISOLATED_STAGE_ACCEPTED required artifact "Isolated Stage lifecycle and tenant-negative acceptance evidence is clean sealed without claiming public deployment"
+
+milestone_criterion_set LIMITED_PLUGIN_OPERATOR_R1:
+  milestone LIMITED_PLUGIN_ACCEPTED
+  revision R1
+  commitment sha256:e46d94f0aa548d683eab96a18e1345b53133ff9c9ab7f0d82451df7a205ae61f
+  criterion OPERATOR_PLUGIN_ACCEPTED required artifact "Exact operator-only Plugin acceptance evidence is frozen separately from the OAuth participant candidate"
+
+milestone_acceptance_receipt RCPT_ADR_0011_R1:
+  model 1
+  set ADR_0011_ACCEPTANCE_R1
+  set_commitment sha256:b79be9fbd89dadef6bb9fed636215fb955cfb74e5c88cc1fa74daabf66719e5e
+  criterion BOUNDARY_ACCEPTED
+  criterion_commitment sha256:c1fea899fb473ac43002ad049c19beb6d964131429f4861d3cdace237b73a036
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:adr/0011@d8f3e40f0d5291aed187750640b941263b1d5492344e0c67623e98a6bf7ab789"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_STORAGE_R1:
+  model 1
+  set STORAGE_DECISION_R1
+  set_commitment sha256:29dd8174e8ebab984151dba68ced73b98b56398f9496696848cf6e850f1474d7
+  criterion STORAGE_BOUNDARY_ACCEPTED
+  criterion_commitment sha256:fcb216492f898d666a4355ca0face5563c1ab57409c622a1d6da001b17419991
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:adr/0012@a7af5f7dd07df8b77aa7f34a9ae4c075f5ed612f38391bdd3e579b262a33ae50"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_TERMS_R1:
+  model 1
+  set TERMS_COPY_R1
+  set_commitment sha256:7456bcb7572a79d04d16084dccbe74fb0f770fead920b9d608a8b5ba2a30b1bb
+  criterion EXACT_LEGAL_PACKAGE_APPROVED
+  criterion_commitment sha256:04931cbdee9bc16266e07388e7e8e2f3757c94065af3d4f51b8f1b464da5b2f0
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:legal/accepted/trial-terms-ja-v1@33e8852dd605b980123e6d5b0074f836742f998107fe96b52c8ad975e9caaa89;legal/accepted/trial-important-summary-ja-v1@ce06c6e080fc8e8cd1af645bf53313e422dfc9409d33b81975c88b916d9c1c70;legal/accepted/trial-privacy-notice-ja-v2@b95e5b43aac5fa24445a5d2dfd72b51539390e8a401084b9158a4bf415ac5e3a;legal/trial-terms-owner-self-approval-20260821@4055cc21699db52c2c5bc775d9159e3c3e7aa06e3265f6531bb787c96eb043fd"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_SCHEMA_R1:
+  model 1
+  set SQLITE_SCHEMA_R1
+  set_commitment sha256:2673487b873dfbaf3d437da6be2dcf510c943bd1d3741f3b612dfd1295877279
+  criterion SCHEMA_DESIGN_READY
+  criterion_commitment sha256:d8abad8a134776f077bc2260adc80e4f4f1268dce1c2279cea3a051c9516979f
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:design/sqlite-lifecycle-schema@ce5587fc040708cf2e92ef7e800e9690c39b55fc05f6aeceb67a6be07f9f61ad"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_CORE_R1:
+  model 1
+  set LIFECYCLE_CORE_R1
+  set_commitment sha256:03bc0966af1bbe38d950fc8b35064d6aaf796445d94eb2f3d4aab034cf7d8e10
+  criterion CORE_IMPLEMENTED_AND_TESTED
+  criterion_commitment sha256:0f1778f2c1b7737de7b000e8802b26b1581acf6d3f3ce79763b230adafe20ab3
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:implementation/sqlite-lifecycle-core@6c473d508ea3459c79f2a9e6b2ebe3f8466bacf4b0c627871b71cb4856eb8100"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_ONBOARDING_R1:
+  model 1
+  set ONBOARDING_R1
+  set_commitment sha256:eb2638011f75b2363ec9d451f6b5224b0efa60d7b77b59d50b47f16fbb2e2412
+  criterion ONBOARDING_IMPLEMENTED_AND_TESTED
+  criterion_commitment sha256:83e25d8fa797dca28412fdd10e141c48c04b01f5433e9a5459b46abb2796ff43
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:implementation/explicit-onboarding-and-reconsent@5cc2ce6dbd9989775da5497c3392c8c824f5eecdeb70e4c492776fe55ba6dda0"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_RECOVERY_R1:
+  model 1
+  set RECOVERY_EXPORT_R1
+  set_commitment sha256:82be07dbd58b4b0d4aa39f9d069c80e62d161c59563191d3fd6686a83a7f0a4a
+  criterion RECOVERY_EXPORT_IMPLEMENTED_AND_TESTED
+  criterion_commitment sha256:e0cbba6470dddbf8be77debaac6e69b42f756260212ac189445ceffcda82070b
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:implementation/recovery-export-lifecycle@1c02a76be96d2f02fd67e17afd60f5c6351b9c58547f3163b16b0f44cacccb3d"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+milestone_acceptance_receipt RCPT_STAGE_R1:
+  model 1
+  set STAGE_LIFECYCLE_R1
+  set_commitment sha256:da88e89afc32a8583c09e18dc5beef722b2fba10ea5464ee25399ab7271dbbdd
+  criterion ISOLATED_STAGE_ACCEPTED
+  criterion_commitment sha256:c18bc367b7f09453f308b942306b46bd5d3627f0cecf004ca07ce4aeb0f057d2
+  action verify
+  evidence_kind artifact
+  evidence_reference "sealgraph:acceptance/stage-trial-lifecycle@1e715674e19af3d91442b14c2f1ab5630c93e4868e47ca8397f293b12f72cbdb"
+  evidence_revision df62f346bd4fc933b8f021c4f03afb2939fa8a47
+  verifier codex
+  occurred_at 2026-08-21T10:48:00Z
+
+work_event SUSPEND_RECONCILE_LEGACY_SEAL_GAPS_20260821:
+  model 1
+  task RECONCILE_LEGACY_ACCEPTANCE_EVIDENCE
+  kind suspend
+  occurred_at 2026-08-21T19:49:00+09:00
+  reason "All ten legacy milestones now have revisioned criterion sets and eight clean-sealed outcomes have exact receipts; lifecycle design baseline lacks an independently bound seal and limited Plugin evidence now mixes the earlier operator acceptance with the unaccepted OAuth candidate, so both remain pending rather than grandfathered"
+
+work_event START_ALIGN_DEPLOYED_LIFECYCLE_20260821:
+  model 1
+  task ALIGN_DEPLOYED_LIFECYCLE
+  kind start
+  occurred_at 2026-08-21T19:50:00+09:00
+  planned_value 13/6p
+
+work_event SUSPEND_ALIGN_DEPLOYED_LIFECYCLE_UNWIRED_20260821:
+  model 1
+  task ALIGN_DEPLOYED_LIFECYCLE
+  kind suspend
+  occurred_at 2026-08-21T19:51:00+09:00
+  reason "Frozen candidate df62f34 contains onboarding implementation but hosted-main does not mount it or configure lifecycle SQLite and active terms; deployment cannot satisfy approved terms/onboarding readback without a separately accepted runtime-integration candidate."
+
+work_event RESUME_ALIGN_DEPLOYED_LIFECYCLE_20260821:
+  model 1
+  task ALIGN_DEPLOYED_LIFECYCLE
+  kind resume
+  occurred_at 2026-08-21T20:08:00+09:00
+
+work_event FINISH_ALIGN_DEPLOYED_LIFECYCLE_20260821:
+  model 1
+  task ALIGN_DEPLOYED_LIFECYCLE
+  kind finish
+  occurred_at 2026-08-21T20:09:00+09:00

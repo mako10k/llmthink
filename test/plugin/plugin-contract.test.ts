@@ -50,12 +50,12 @@ test("plugin manifest exposes local skills and authenticated hosted MCP", async 
       llmthink: {
         type: string;
         url: string;
-        bearer_token_env_var: string;
+        auth: string;
       };
     };
   };
   assert.equal(manifest.name, "llmthink");
-  assert.equal(manifest.version, "1.2.0+codex.20260821100909");
+  assert.match(String(manifest.version), /^1\.2\.0\+codex\.[A-Za-z0-9-]+$/);
   assert.equal(manifest.skills, "./skills/");
   assert.equal(manifest.mcpServers, "./.mcp.json");
   assert.equal(
@@ -77,8 +77,10 @@ test("plugin manifest exposes local skills and authenticated hosted MCP", async 
   assert.deepEqual(mcp.mcpServers.llmthink, {
     type: "http",
     url: "https://llmthink.mk10.org/mcp",
-    bearer_token_env_var: "LLMTHINK_MCP_TOKEN",
+    auth: "oauth",
   });
+  assert.equal(JSON.stringify(mcp).includes("bearer_token_env_var"), false);
+  assert.equal(JSON.stringify(mcp).includes("LLMTHINK_MCP_TOKEN"), false);
 });
 
 test("tool-selection evaluations stay inside the accepted MCP surface", async () => {

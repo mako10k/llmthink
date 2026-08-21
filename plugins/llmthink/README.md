@@ -10,10 +10,11 @@ commands. `assets/llmthink-mark.svg` is the editable source and `assets/icon.png
 ## Before installation
 
 - Obtain trial admission and accept the current trial terms through the operator-provided route.
-- Obtain `LLMTHINK_MCP_TOKEN` through a separate approved secret channel. Do not put it in Git,
-  screenshots, chat messages, shell history, or the marketplace manifest.
-- The static token is a temporary trial compatibility path. OAuth migration remains a separate
-  acceptance gate.
+- Authenticate when Codex reports that the hosted MCP server requires OAuth. The Plugin contains
+  no bearer token, client secret, or shared operator credential.
+- If authentication does not start automatically, run `codex mcp login llmthink` and complete the
+  browser flow. Do not copy authorization codes, access tokens, or personal claims into chat,
+  screenshots, Git, or shell history.
 
 ## Install from a cloned repository
 
@@ -24,8 +25,12 @@ codex plugin marketplace add "$(pwd)"
 codex plugin add llmthink@llmthink-trial
 ```
 
-Export `LLMTHINK_MCP_TOKEN` only in the environment that starts Codex, then start a new thread so
-Codex loads the installed Skills and MCP connection.
+Start a new thread so Codex loads the installed Skills and MCP connection. Select **Authenticate**
+for `llmthink` when prompted, or run:
+
+```bash
+codex mcp login llmthink
+```
 
 Confirm installation without exposing credentials:
 
@@ -40,11 +45,11 @@ Expected entry: `llmthink@llmthink-trial`, installed and enabled.
 ```bash
 codex plugin remove llmthink@llmthink-trial
 codex plugin marketplace remove llmthink-trial
-unset LLMTHINK_MCP_TOKEN
+codex mcp logout llmthink
 ```
 
-Removal from Codex does not revoke the server credential. Ask the operator to revoke the trial
-credential separately.
+Removal from Codex does not revoke the provider-side session or account. Ask the operator to
+suspend trial access when server-side revocation is also required.
 
 ## Trial boundaries
 
