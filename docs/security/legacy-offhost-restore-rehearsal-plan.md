@@ -1,6 +1,6 @@
 # legacy off-host restore rehearsal plan
 
-- Status: draft for owner approval
+- Status: accepted by owner on 2026-08-21
 - Date: 2026-08-21
 - Source snapshot: `18c7800bf1020f1e431d00b765f29bfa848aec44367764394fb48424c85df826`
 - Scope: isolated read-only recovery proof; no production activation
@@ -69,3 +69,5 @@ the temporary read-only R2 credential, recovery-only ephemeral secret entry use,
 cleanup, and credential revocation. It does not authorize production restore activation, deletion
 or retention changes, a persistent local backup copy, public enrollment, or a claim of automated
 backup capability.
+
+The owner accepted this exact boundary on 2026-08-21.

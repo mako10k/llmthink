@@ -513,6 +513,19 @@ task DRAFT_LEGACY_OFFHOST_RESTORE_PLAN STORAGE_DECISION_ACCEPTED -> TERMS_COPY_A
     CODEX 1
   source "Completed legacy live-backup evidence and accepted off-host custody design; owner continuation 2026-08-21"
 
+task ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Accept legacy off-host restore rehearsal"
+  description "Record owner approval for one exact-snapshot read-only restore using a fresh exact-bucket Object Read Only credential, password-manager repository password, independently verified restic supply, isolated validation, exact cleanup, and credential revocation while withholding repository mutation and production activation."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  status done
+  priority 69
+  requires:
+    CODEX 1
+  source "Owner explicit approval of legacy off-host restore rehearsal plan 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -979,3 +992,16 @@ work_event FINISH_DRAFT_LEGACY_OFFHOST_RESTORE_PLAN_20260821:
   task DRAFT_LEGACY_OFFHOST_RESTORE_PLAN
   kind finish
   occurred_at 2026-08-21T16:38:59+09:00
+
+work_event START_ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL_20260821:
+  model 1
+  task ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL
+  kind start
+  occurred_at 2026-08-21T16:50:24+09:00
+  planned_value 13/24p
+
+work_event FINISH_ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL_20260821:
+  model 1
+  task ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL
+  kind finish
+  occurred_at 2026-08-21T16:50:24+09:00
