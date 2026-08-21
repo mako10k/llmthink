@@ -1,14 +1,16 @@
 import { randomBytes, scryptSync, createHash } from "node:crypto";
 import {
+  chmodSync,
   closeSync,
   constants,
   existsSync,
   fchmodSync,
   lstatSync,
   openSync,
+  unlinkSync,
 } from "node:fs";
 import { isAbsolute } from "node:path";
-import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+import { backup, DatabaseSync, type SQLInputValue } from "node:sqlite";
 
 import {
   assertHostedId,
@@ -314,6 +316,45 @@ export class SqliteLifecycleStore {
 
   close(): void {
     this.#db.close();
+  }
+
+  async backupTo(path: string): Promise<void> {
+    if (!isAbsolute(path) || existsSync(path)) {
+      throw new Error(
+        "Lifecycle backup destination must be an absent absolute path",
+      );
+    }
+    try {
+      await backup(this.#db, path);
+      chmodSync(path, 0o600);
+      const restored = new DatabaseSync(path, {
+        allowExtension: false,
+        readOnly: true,
+      });
+      try {
+        const integrity = restored.prepare("PRAGMA integrity_check").all();
+        const foreignKeys = restored.prepare("PRAGMA foreign_key_check").all();
+        const schema = restored
+          .prepare(
+            "SELECT schema_version FROM schema_metadata WHERE singleton = 1",
+          )
+          .get() as Row | undefined;
+        if (
+          integrity.length !== 1 ||
+          text(integrity[0], "integrity_check") !== "ok" ||
+          foreignKeys.length !== 0 ||
+          !schema ||
+          schema.schema_version !== SCHEMA_VERSION
+        ) {
+          throw new Error("Lifecycle backup validation failed");
+        }
+      } finally {
+        restored.close();
+      }
+    } catch (error) {
+      if (existsSync(path)) unlinkSync(path);
+      throw error;
+    }
   }
 
   createTermsArtifact(input: NewTermsArtifact): void {

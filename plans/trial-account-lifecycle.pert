@@ -266,6 +266,19 @@ task IMPLEMENT_BACKUP_SLICE_A_L0 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVE
     CODEX 1
   source "Accepted restic R2 implementation plan; owner authorization 2026-08-21"
 
+task IMPLEMENT_BACKUP_SLICE_B_L0 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Implement consistent local backup generation"
+  description "Implement SQLite online backup with integrity, foreign-key, schema, and WAL validation; copy a paused thought tree through no-follow exclusive file handles; create protected generation and canonical manifest artifacts; reject unsafe entries and overlapping roots; and clean partial generations. Keep hosted write-pause wiring, restic, R2, VPS, and live data out of scope."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  status done
+  priority 88
+  requires:
+    CODEX 1
+  source "Accepted restic R2 implementation plan; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -455,3 +468,18 @@ work_event FINISH_BACKUP_SLICE_A_L0_20260821:
   occurred_at 2026-08-21T12:06:12+09:00
   active_time 299/1800h
   effort 299/1800ph
+
+work_event START_BACKUP_SLICE_B_L0_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_B_L0
+  kind start
+  occurred_at 2026-08-21T12:22:56+09:00
+  planned_value 19/6p
+
+work_event FINISH_BACKUP_SLICE_B_L0_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_B_L0
+  kind finish
+  occurred_at 2026-08-21T12:26:40+09:00
+  active_time 14/225h
+  effort 14/225ph
