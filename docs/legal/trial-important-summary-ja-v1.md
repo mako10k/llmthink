@@ -32,8 +32,8 @@ WorkOSによる認証後、利用規約への明示同意が必要です。ロ�
 
 ## 必要なデータはarchiveしてください
 
-本サービスを唯一の保存先にしないでください。終了または重大変更時は、緊急事情がない限り事前通知と
-原則14日以上前に通知し、通知日から30日以上のarchive期間を設けます。ただし、法令、security incident、
+本サービスを唯一の保存先にしないでください。終了または重大変更時は、緊急事情がない限り原則14日
+以上前に通知し、通知日から30日以上のarchive期間を設けます。ただし、法令、security incident、
 providerの突然の停止その他、事前通知またはarchive提供が不可能な事情がある場合を除きます。
 
 ## 将来、有料planを提案する場合があります
@@ -57,4 +57,4 @@ account終了を利用可能にします。
 
 - 運営者: 勝又誠
 - 問い合わせ先: `mako10k@mk10.org`
-- status page: `https://llmthink.mk10.org/status`（サービス開始前に公開）
+- status page: `https://llmthink.mk10.org/status`（公開済み）

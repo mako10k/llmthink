@@ -9,7 +9,7 @@
 - Contact: `mako10k@mk10.org`
 - Content language: 日本語
 
-この文書は公開前のドラフトです。発効日を確定し、status pageを公開したうえで、本文と重要事項要約の
+この文書は公開前のドラフトです。status pageは公開済みですが、発効日を確定し、本文と重要事項要約の
 exact bytesおよびSHA-256を固定するまで利用者の同意対象にしてはなりません。
 
 ## 第1条（適用と同意）
@@ -171,8 +171,8 @@ exact bytesおよびSHA-256を固定するまで利用者の同意対象にし�
 2. llmthinkがemail addressを保持していない場合があるため、利用者は指定websiteおよびservice statusを
    自ら確認するものとします。
 3. 重大変更、計画保守または終了の通知は、原則として
-   `https://llmthink.mk10.org/status`へ掲載します。このURLが利用可能になる前に本サービスを一般提供
-   しません。
+   `https://llmthink.mk10.org/status`へ掲載します。このURLを継続的な通知先として維持し、利用できない
+   場合は合理的に利用可能な代替手段を案内します。
 
 ## 第16条（規約の変更）
 
