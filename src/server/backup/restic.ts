@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { isAbsolute } from "node:path";
+import { existsSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { z } from "zod";
 
 import type { BackupReceipt } from "./contracts.js";
@@ -45,6 +46,23 @@ export interface ResticBackupOptions {
   readonly now?: () => Date;
 }
 
+export interface ResticRestoreOptions {
+  readonly executable: string;
+  readonly expectedVersion: string;
+  readonly repository: string;
+  readonly passwordFile: string;
+  readonly cacheDirectory: string;
+  readonly snapshotId: string;
+  readonly originalGenerationPath: string;
+  readonly restoreRoot: string;
+  readonly profileId: string;
+  readonly accessKeyId?: string;
+  readonly secretAccessKey?: string;
+  readonly sessionToken?: string;
+  readonly timeoutMs?: number;
+  readonly runner?: ResticProcessRunner;
+}
+
 export class ResticAdapterError extends Error {
   readonly code:
     | "invalid_configuration"
@@ -87,7 +105,18 @@ function invalidConfiguration(): never {
   throw new ResticAdapterError("invalid_configuration");
 }
 
-function exactEnv(options: ResticBackupOptions): Record<string, string> {
+function exactEnv(
+  options: Pick<
+    ResticBackupOptions,
+    | "repository"
+    | "passwordFile"
+    | "cacheDirectory"
+    | "profileId"
+    | "accessKeyId"
+    | "secretAccessKey"
+    | "sessionToken"
+  >,
+): Record<string, string> {
   const env: Record<string, string> = {
     RESTIC_REPOSITORY: options.repository,
     RESTIC_PASSWORD_FILE: options.passwordFile,
@@ -102,6 +131,17 @@ function exactEnv(options: ResticBackupOptions): Record<string, string> {
     env.AWS_SESSION_TOKEN = options.sessionToken;
   return env;
 }
+
+const restoreMessageSchema = z.discriminatedUnion("message_type", [
+  z.object({ message_type: z.literal("status") }).passthrough(),
+  z
+    .object({
+      message_type: z.literal("summary"),
+      files_skipped: z.number().int().nonnegative().optional().default(0),
+      files_deleted: z.number().int().nonnegative().optional().default(0),
+    })
+    .passthrough(),
+]);
 
 export const runResticProcess: ResticProcessRunner = async (request) =>
   new Promise((resolve, reject) => {
@@ -311,4 +351,84 @@ export async function backupGenerationWithRestic(
     snapshot_observed_at: (options.now ?? (() => new Date()))().toISOString(),
     check_state: "not_checked",
   };
+}
+
+function validateRestoreOptions(options: ResticRestoreOptions): void {
+  const paths = [
+    options.executable,
+    options.passwordFile,
+    options.cacheDirectory,
+    options.originalGenerationPath,
+    options.restoreRoot,
+  ];
+  if (
+    paths.some((path) => !isAbsolute(path)) ||
+    existsSync(options.restoreRoot) ||
+    !SNAPSHOT_ID.test(options.snapshotId) ||
+    !SAFE_VALUE.test(options.expectedVersion) ||
+    !SAFE_VALUE.test(options.profileId)
+  ) {
+    invalidConfiguration();
+  }
+}
+
+function parseRestoreSummary(
+  stdout: string,
+): Extract<z.infer<typeof restoreMessageSchema>, { message_type: "summary" }> {
+  let messages: z.infer<typeof restoreMessageSchema>[];
+  try {
+    messages = stdout
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => restoreMessageSchema.parse(JSON.parse(line)));
+  } catch {
+    throw new ResticAdapterError("ambiguous_output");
+  }
+  const summaries = messages.filter(
+    (message) => message.message_type === "summary",
+  );
+  const summary = summaries[0];
+  if (
+    summaries.length !== 1 ||
+    messages.at(-1)?.message_type !== "summary" ||
+    !summary ||
+    summary.files_skipped !== 0 ||
+    summary.files_deleted !== 0
+  ) {
+    throw new ResticAdapterError("ambiguous_output");
+  }
+  return summary;
+}
+
+export async function restoreSnapshotWithRestic(
+  options: ResticRestoreOptions,
+): Promise<string> {
+  validateRestoreOptions(options);
+  const runner = options.runner ?? runResticProcess;
+  const request = (args: readonly string[]): ResticProcessRequest => ({
+    executable: options.executable,
+    args,
+    env: exactEnv(options),
+    timeoutMs: options.timeoutMs ?? 30 * 60 * 1000,
+    maxOutputBytes: MAX_OUTPUT_BYTES,
+  });
+  const version = await checkedRun(runner, request(["version"]));
+  if (
+    !version.stdout.startsWith(`restic ${options.expectedVersion} `) &&
+    version.stdout.trim() !== `restic ${options.expectedVersion}`
+  ) {
+    throw new ResticAdapterError("version_mismatch");
+  }
+  const restored = await checkedRun(
+    runner,
+    request([
+      "restore",
+      options.snapshotId,
+      "--target",
+      options.restoreRoot,
+      "--json",
+    ]),
+  );
+  parseRestoreSummary(restored.stdout);
+  return join(options.restoreRoot, options.originalGenerationPath.slice(1));
 }

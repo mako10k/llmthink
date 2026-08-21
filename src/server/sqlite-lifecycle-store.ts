@@ -329,9 +329,9 @@ export class SqliteLifecycleStore {
       chmodSync(path, 0o600);
       const restored = new DatabaseSync(path, {
         allowExtension: false,
-        readOnly: true,
       });
       try {
+        restored.exec("PRAGMA journal_mode = DELETE");
         const integrity = restored.prepare("PRAGMA integrity_check").all();
         const foreignKeys = restored.prepare("PRAGMA foreign_key_check").all();
         const schema = restored

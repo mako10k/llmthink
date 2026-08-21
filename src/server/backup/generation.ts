@@ -100,7 +100,7 @@ async function copyTree(
   await visit(sourceRoot, destinationRoot);
 }
 
-async function digestFile(
+export async function digestBackupFile(
   path: string,
 ): Promise<{ digest: string; size: number }> {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -120,7 +120,7 @@ async function digestFile(
   return { digest: `sha256:${hash.digest("hex")}`, size };
 }
 
-async function digestTree(
+export async function digestBackupTree(
   root: string,
 ): Promise<{ digest: string; size: number }> {
   const files: string[] = [];
@@ -138,7 +138,7 @@ async function digestTree(
   const tree = createHash("sha256");
   let size = 0;
   for (const path of files) {
-    const file = await digestFile(path);
+    const file = await digestBackupFile(path);
     size += file.size;
     tree.update(relative(root, path));
     tree.update("\0");
@@ -178,8 +178,8 @@ export async function prepareBackupGeneration(
       await copyTree(thoughtRoot, thoughtPath);
     });
     const [lifecycle, thoughts] = await Promise.all([
-      digestFile(lifecyclePath),
-      digestTree(thoughtPath),
+      digestBackupFile(lifecyclePath),
+      digestBackupTree(thoughtPath),
     ]);
     const manifest = {
       format: "llmthink-backup-generation-v1",

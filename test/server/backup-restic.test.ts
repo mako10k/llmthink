@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   backupGenerationWithRestic,
   ResticAdapterError,
+  restoreSnapshotWithRestic,
   type ResticProcessRequest,
   type ResticProcessResult,
 } from "../../src/server/backup/restic.js";
@@ -153,4 +154,37 @@ test("restic adapter rejects a mismatched exact snapshot reread", async () => {
     ),
     { code: "snapshot_mismatch" },
   );
+});
+
+test("restic restore requires an absent target and one successful final summary", async () => {
+  const requests: ResticProcessRequest[] = [];
+  const restoredPath = await restoreSnapshotWithRestic({
+    executable: "/opt/llmthink/bin/restic",
+    expectedVersion: "0.19.1",
+    repository: "/var/lib/test-repository",
+    passwordFile: CREDENTIAL_FILE,
+    cacheDirectory: "/var/cache/llmthink-backup",
+    snapshotId: SNAPSHOT,
+    originalGenerationPath:
+      "/var/lib/llmthink-backup/generations/generation_0123456789abcdef",
+    restoreRoot: "/var/lib/llmthink-backup/isolated/restore-1",
+    profileId: "llmthink-trial-v1",
+    runner: async (request) => {
+      requests.push(request);
+      return request.args[0] === "version"
+        ? result("restic 0.19.1\n")
+        : result('{"message_type":"summary","files_restored":3}\n');
+    },
+  });
+  assert.equal(
+    restoredPath,
+    "/var/lib/llmthink-backup/isolated/restore-1/var/lib/llmthink-backup/generations/generation_0123456789abcdef",
+  );
+  assert.deepEqual(requests[1].args, [
+    "restore",
+    SNAPSHOT,
+    "--target",
+    "/var/lib/llmthink-backup/isolated/restore-1",
+    "--json",
+  ]);
 });

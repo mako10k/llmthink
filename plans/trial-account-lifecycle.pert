@@ -292,6 +292,19 @@ task IMPLEMENT_BACKUP_SLICE_C_L1 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVE
     CODEX 1
   source "Accepted restic R2 implementation plan; official restic 0.19.1 scripting contract; owner continuation 2026-08-21"
 
+task IMPLEMENT_BACKUP_SLICE_D_RESTORE_VALIDATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Implement isolated restore validation"
+  description "Restore one exact snapshot to an absent isolated target; validate manifest identity, component digests, SQLite integrity/schema/foreign keys, thought CURRENT and revision ownership, and lifecycle catalog reconciliation; emit a secret-free non-activation report and fail closed on ambiguity or orphan ownership. Do not implement activation, repair, R2, VPS, or live data operations."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  status done
+  priority 86
+  requires:
+    CODEX 1
+  source "Accepted restic R2 implementation plan; owner authorization 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -511,3 +524,18 @@ work_event FINISH_BACKUP_SLICE_C_L1_20260821:
   occurred_at 2026-08-21T12:36:22+09:00
   active_time 127/900h
   effort 127/900ph
+
+work_event START_BACKUP_SLICE_D_RESTORE_VALIDATION_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_D_RESTORE_VALIDATION
+  kind start
+  occurred_at 2026-08-21T13:35:43+09:00
+  planned_value 19/6p
+
+work_event FINISH_BACKUP_SLICE_D_RESTORE_VALIDATION_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_D_RESTORE_VALIDATION
+  kind finish
+  occurred_at 2026-08-21T13:43:07+09:00
+  active_time 37/300h
+  effort 37/300ph

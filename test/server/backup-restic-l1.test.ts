@@ -15,7 +15,10 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
-import { backupGenerationWithRestic } from "../../src/server/backup/restic.js";
+import {
+  backupGenerationWithRestic,
+  restoreSnapshotWithRestic,
+} from "../../src/server/backup/restic.js";
 
 const execute = promisify(execFile);
 const binary = process.env.LLMTHINK_TEST_RESTIC_BINARY;
@@ -61,12 +64,18 @@ test(
     await execute(binary, ["check", "--read-data"], { env });
 
     const restoreRoot = join(root, "restore");
-    await execute(
-      binary,
-      ["restore", receipt.snapshot_id, "--target", restoreRoot],
-      { env },
-    );
-    const restored = join(restoreRoot, generation.slice(1), "manifest.json");
+    const restoredGeneration = await restoreSnapshotWithRestic({
+      executable: binary,
+      expectedVersion: "0.19.1",
+      repository,
+      passwordFile,
+      cacheDirectory: cache,
+      snapshotId: receipt.snapshot_id,
+      originalGenerationPath: generation,
+      restoreRoot,
+      profileId: "llmthink-trial-v1",
+    });
+    const restored = join(restoredGeneration, "manifest.json");
     assert.equal(await readFile(restored, "utf8"), "synthetic fixture\n");
 
     await execute(binary, ["forget", receipt.snapshot_id], { env });
