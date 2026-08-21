@@ -1,6 +1,6 @@
 # legacy off-host restore rehearsal evidence
 
-- Status: technical restore completed; temporary Cloudflare credential revocation pending
+- Status: completed; owner confirmed temporary Cloudflare credential revocation
 - Date: 2026-08-21
 - Authorization: `security/legacy-offhost-restore-rehearsal-authorization`
 - Snapshot: `18c7800bf1020f1e431d00b765f29bfa848aec44367764394fb48424c85df826`
@@ -50,9 +50,11 @@ lock objects. The isolated plaintext restore, restic cache, downloaded supply ar
 binary, and fixed owner-only temporary root were deleted. All four recovery-only ephemeral `secdat`
 entries were deleted and confirmed absent.
 
-## Remaining external cleanup
+## Credential revocation and acceptance
 
-The owner must revoke the temporary Cloudflare Object Read Only credential and confirm completion.
-Until then, the full rehearsal acceptance condition remains incomplete. No retry, repository
-mutation, production activation, persistent restored copy, service, timer, or retention operation is
-authorized by this evidence.
+On 2026-08-21, the owner confirmed that the temporary Cloudflare Object Read Only credential had
+been revoked. Together with deletion of all recovery-only ephemeral `secdat` entries and local
+artifacts, this completes the rehearsal's credential-cleanup condition and full acceptance.
+
+This evidence does not authorize a retry, repository mutation, production activation, persistent
+restored copy, service, timer, or retention operation.
