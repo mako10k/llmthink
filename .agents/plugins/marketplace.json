@@ -1,0 +1,20 @@
+{
+  "name": "llmthink-trial",
+  "interface": {
+    "displayName": "Llmthink Trial"
+  },
+  "plugins": [
+    {
+      "name": "llmthink",
+      "source": {
+        "source": "local",
+        "path": "./plugins/llmthink"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

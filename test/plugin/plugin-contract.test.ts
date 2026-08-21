@@ -55,9 +55,23 @@ test("plugin manifest exposes local skills and authenticated hosted MCP", async 
     };
   };
   assert.equal(manifest.name, "llmthink");
-  assert.equal(manifest.version, "1.2.0+codex.20260819081527");
+  assert.equal(manifest.version, "1.2.0+codex.20260821100909");
   assert.equal(manifest.skills, "./skills/");
   assert.equal(manifest.mcpServers, "./.mcp.json");
+  assert.equal(
+    (manifest.interface as Record<string, unknown>).composerIcon,
+    "./assets/icon.png",
+  );
+  assert.equal(
+    (manifest.interface as Record<string, unknown>).logo,
+    "./assets/icon.png",
+  );
+  assert.deepEqual(
+    new Uint8Array(
+      (await readFile(join(pluginRoot, "assets", "icon.png"))).subarray(0, 8),
+    ),
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+  );
   assert.equal("apps" in manifest, false);
   assert.equal("hooks" in manifest, false);
   assert.deepEqual(mcp.mcpServers.llmthink, {

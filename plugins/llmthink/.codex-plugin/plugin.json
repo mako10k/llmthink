@@ -1,6 +1,6 @@
 {
   "name": "llmthink",
-  "version": "1.2.0+codex.20260819081527",
+  "version": "1.2.0+codex.20260821100909",
   "description": "Structure, audit, and reflect on LLMThink thoughts through the hosted MCP boundary.",
   "author": {
     "name": "llmthink contributors",
@@ -18,6 +18,9 @@
     "developerName": "llmthink contributors",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
+    "brandColor": "#0B57D0",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
     "defaultPrompt": [
       "Structure this problem as an LLMThink draft.",
       "Audit this reasoning without saving it.",

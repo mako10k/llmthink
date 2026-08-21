@@ -1,11 +1,11 @@
 project LLMTHINK_TRIAL_ACCOUNT_LIFECYCLE:
-  version 6
+  version 7
   title "LLMThink trial account lifecycle"
-  description "Design and implement explicit terms agreement, minimal receipts, per-user tenant provisioning, recovery, re-consent, export-only lifecycle, and Stage acceptance under ADR-0011. Legal-copy approval, public enrollment, paid plans, billing, Production activation, shared tenants, invitations, cross-tenant access, and release remain separately authorized."
-  as_of 2026-08-20
+  description "Design and implement explicit terms agreement, minimal receipts, per-user tenant provisioning, recovery, re-consent, export-only lifecycle, Stage acceptance, and a separately accepted limited-distribution Plugin entry under ADR-0011. Universal Plugin Directory submission, general registration, paid plans, billing, Production activation, shared tenants, cross-tenant access, and release remain separately authorized."
+  as_of 2026-08-21
   duration_unit point
   velocity 31p/6d
-  finish TRIAL_ENROLLMENT_READY
+  finish LIMITED_TRIAL_ENROLLMENT_READY
 
 resource CODEX:
   title "LLMThink lifecycle design and implementation capacity"
@@ -43,8 +43,11 @@ milestone RECOVERY_EXPORT_IMPLEMENTED:
 milestone STAGE_LIFECYCLE_ACCEPTED:
   title "Trial lifecycle accepted in Stage"
 
-milestone TRIAL_ENROLLMENT_READY:
-  title "Public trial enrollment separately authorized"
+milestone LIMITED_PLUGIN_ACCEPTED:
+  title "Limited-distribution Plugin accepted"
+
+milestone LIMITED_TRIAL_ENROLLMENT_READY:
+  title "Invite-only trial enrollment separately authorized"
 
 task DESIGN_LIFECYCLE_CONTRACT ADR_0011_ACCEPTED -> LIFECYCLE_DESIGN_READY:
   title "Define terms, receipt, state, and provisioning contracts"
@@ -150,9 +153,22 @@ task ACCEPT_STAGE_LIFECYCLE RECOVERY_EXPORT_IMPLEMENTED -> STAGE_LIFECYCLE_ACCEP
     CODEX 1
   source "RECOVERY_EXPORT_IMPLEMENTED; Stage authority required"
 
-task AUTHORIZE_TRIAL_ENROLLMENT STAGE_LIFECYCLE_ACCEPTED -> TRIAL_ENROLLMENT_READY:
-  title "Authorize public trial enrollment"
-  description "Freeze exact code, terms versions, scope policy, capacity and abuse limits, notification and archive periods, operational owners, rollback, support route, and Stage evidence. Require explicit owner approval before changing public availability or Production configuration. Paid plans, billing, release, and publication remain separate."
+task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION STAGE_LIFECYCLE_ACCEPTED -> LIMITED_PLUGIN_ACCEPTED:
+  title "Accept the limited-distribution Plugin entry"
+  description "Prepare and test the existing llmthink Plugin through a local or repository marketplace for named trial users. Verify the manifest, Skills, hosted MCP connection, OAuth onboarding guidance, exact install and removal instructions, compatibility, and server-enforced authorization without submitting to the Universal Plugin Directory. Logo, screenshots, public listing copy, public submission, and general discovery are not launch requirements for this limited trial."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status suspended
+  priority 65
+  requires:
+    CODEX 1
+  source "STAGE_LIFECYCLE_ACCEPTED; owner distribution decision 2026-08-21"
+
+task AUTHORIZE_LIMITED_TRIAL_ENROLLMENT LIMITED_PLUGIN_ACCEPTED -> LIMITED_TRIAL_ENROLLMENT_READY:
+  title "Authorize invite-only trial enrollment"
+  description "Freeze exact code, Plugin revision and distribution source, named-user admission procedure, terms versions, scope policy, capacity and abuse limits, notification and archive periods, operational owners, rollback, support route, and Stage evidence. Require explicit owner approval before admitting trial users. Universal Plugin Directory submission, general registration, public availability changes, Production configuration, paid plans, billing, release, and publication remain separate."
   estimate:
     optimistic 0.5p
     most_likely 1p
@@ -160,7 +176,7 @@ task AUTHORIZE_TRIAL_ENROLLMENT STAGE_LIFECYCLE_ACCEPTED -> TRIAL_ENROLLMENT_REA
   priority 60
   requires:
     CODEX 1
-  source "STAGE_LIFECYCLE_ACCEPTED; explicit owner approval required"
+  source "LIMITED_PLUGIN_ACCEPTED; explicit owner approval required"
 
 gate TERMS_COPY_BEFORE_ONBOARDING TERMS_COPY_APPROVED -> ONBOARDING_IMPLEMENTED:
   reason "The onboarding surface cannot be accepted before the exact user-facing terms and summary are approved"
@@ -1115,3 +1131,17 @@ work_event WE-509fdcd646b41dd94640c9d337d510e8fea6d117d9b2b25ccd8d5495c4897da1:
   occurred_at 2026-08-21T18:43:08+09:00
   active_time 25/144h
   effort 25/144ph
+
+work_event START_ACCEPT_LIMITED_PLUGIN_DISTRIBUTION_20260821:
+  model 1
+  task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION
+  kind start
+  occurred_at 2026-08-21T18:55:00+09:00
+  planned_value 13/12p
+
+work_event SUSPEND_LIMITED_PLUGIN_FRESH_THREAD_20260821:
+  model 1
+  task ACCEPT_LIMITED_PLUGIN_DISTRIBUTION
+  kind suspend
+  occurred_at 2026-08-21T19:02:55+09:00
+  reason "Repository marketplace installation passed; a new Codex thread and dedicated trial identity are required to verify loaded Skills, MCP read/write behavior, tenant denial, and credential revocation without weakening the separate OAuth gate"
