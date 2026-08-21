@@ -1,12 +1,10 @@
-import type { LlmthinkServerScope } from "./contracts.js";
-
 export const OAUTH_PROTECTED_RESOURCE_PATH =
   "/.well-known/oauth-protected-resource";
 
 export interface LlmthinkOAuthDiscoveryOptions {
   readonly resource: string;
   readonly authorizationServers: readonly string[];
-  readonly scopesSupported: readonly LlmthinkServerScope[];
+  readonly scopesSupported: readonly string[];
   readonly resourceDocumentation?: string;
 }
 
@@ -14,7 +12,7 @@ export interface LlmthinkOAuthDiscovery {
   readonly resource: string;
   readonly resourceMetadataUrl: string;
   readonly authorizationServers: readonly string[];
-  readonly scopesSupported: readonly LlmthinkServerScope[];
+  readonly scopesSupported: readonly string[];
   readonly resourceDocumentation?: string;
 }
 
@@ -64,6 +62,11 @@ export function createLlmthinkOAuthDiscovery(
     options.scopesSupported,
     "OAuth supported scopes",
   );
+  if (
+    scopesSupported.some((scope) => !/^[A-Za-z0-9:_./-]{1,128}$/.test(scope))
+  ) {
+    throw new Error("OAuth supported scopes must be bounded safe values");
+  }
   const resourceDocumentation = options.resourceDocumentation
     ? exactHttpsUrl(
         options.resourceDocumentation,
@@ -106,7 +109,7 @@ function quotedChallengeValue(value: string): string {
 export function oauthBearerChallenge(
   discovery: LlmthinkOAuthDiscovery,
   error: "invalid_token" | "insufficient_scope" = "invalid_token",
-  scopes: readonly LlmthinkServerScope[] = discovery.scopesSupported,
+  scopes: readonly string[] = discovery.scopesSupported,
 ): string {
   const fields = [
     `resource_metadata=${quotedChallengeValue(discovery.resourceMetadataUrl)}`,

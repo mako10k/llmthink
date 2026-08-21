@@ -14,6 +14,12 @@ import { createLlmthinkOnboardingHandler, } from "./onboarding.js";
 import { assertServerBindPolicy } from "./policy.js";
 import { createBearerTokenAuthenticator, } from "./security.js";
 import { SqliteLifecycleStore } from "./sqlite-lifecycle-store.js";
+const OAUTH_TOKEN_SCOPES = [
+    "openid",
+    "email",
+    "profile",
+    "offline_access",
+];
 function required(env, name) {
     const value = env[name];
     if (!value)
@@ -38,7 +44,7 @@ function parseScopes(value) {
     }
     return requested;
 }
-function parseOAuthRuntime(env, scopes) {
+function parseOAuthRuntime(env) {
     const resource = env.LLMTHINK_OAUTH_RESOURCE;
     const issuer = env.LLMTHINK_OAUTH_AUTHORIZATION_SERVER;
     const jwksUri = env.LLMTHINK_OAUTH_JWKS_URI;
@@ -53,7 +59,7 @@ function parseOAuthRuntime(env, scopes) {
         oauthDiscovery: createLlmthinkOAuthDiscovery({
             resource,
             authorizationServers: [issuer],
-            scopesSupported: scopes,
+            scopesSupported: OAUTH_TOKEN_SCOPES,
             ...(env.LLMTHINK_OAUTH_RESOURCE_DOCUMENTATION
                 ? { resourceDocumentation: env.LLMTHINK_OAUTH_RESOURCE_DOCUMENTATION }
                 : {}),
@@ -114,7 +120,7 @@ export function loadHostedMcpRuntimeConfig(env) {
     }
     assertServerBindPolicy({ hostname, authenticationEnabled: true });
     const scopes = parseScopes(env.LLMTHINK_HOSTED_SCOPES);
-    const oauth = parseOAuthRuntime(env, scopes);
+    const oauth = parseOAuthRuntime(env);
     const lifecycle = parseLifecycleRuntime(env);
     assertAuthorityConfiguration(oauth, lifecycle);
     return {
@@ -137,7 +143,7 @@ function createIdentityVerifier(config) {
         issuer: config.oauthDiscovery.authorizationServers[0],
         audience: config.oauthDiscovery.resource,
         jwks: createLlmthinkRemoteJwks({ jwksUri: config.oauthJwksUri }),
-        allowedTokenScopes: ["openid", "email", "profile", "offline_access"],
+        allowedTokenScopes: OAUTH_TOKEN_SCOPES,
         requiredTokenScopes: ["openid"],
     });
 }

@@ -34,6 +34,13 @@ import {
 } from "./security.js";
 import { SqliteLifecycleStore } from "./sqlite-lifecycle-store.js";
 
+const OAUTH_TOKEN_SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  "offline_access",
+] as const;
+
 export interface HostedLifecycleRuntimeConfig {
   readonly databasePath: string;
   readonly publicOrigin: string;
@@ -87,7 +94,6 @@ function parseScopes(
 
 function parseOAuthRuntime(
   env: NodeJS.ProcessEnv,
-  scopes: readonly LlmthinkServerScope[],
 ): Pick<
   HostedMcpRuntimeConfig,
   "oauthDiscovery" | "oauthJwksUri" | "oauthAccountRegistryPath"
@@ -107,7 +113,7 @@ function parseOAuthRuntime(
     oauthDiscovery: createLlmthinkOAuthDiscovery({
       resource,
       authorizationServers: [issuer],
-      scopesSupported: scopes,
+      scopesSupported: OAUTH_TOKEN_SCOPES,
       ...(env.LLMTHINK_OAUTH_RESOURCE_DOCUMENTATION
         ? { resourceDocumentation: env.LLMTHINK_OAUTH_RESOURCE_DOCUMENTATION }
         : {}),
@@ -179,7 +185,7 @@ export function loadHostedMcpRuntimeConfig(
   }
   assertServerBindPolicy({ hostname, authenticationEnabled: true });
   const scopes = parseScopes(env.LLMTHINK_HOSTED_SCOPES);
-  const oauth = parseOAuthRuntime(env, scopes);
+  const oauth = parseOAuthRuntime(env);
   const lifecycle = parseLifecycleRuntime(env);
   assertAuthorityConfiguration(oauth, lifecycle);
   return {
@@ -204,7 +210,7 @@ function createIdentityVerifier(
     issuer: config.oauthDiscovery.authorizationServers[0],
     audience: config.oauthDiscovery.resource,
     jwks: createLlmthinkRemoteJwks({ jwksUri: config.oauthJwksUri }),
-    allowedTokenScopes: ["openid", "email", "profile", "offline_access"],
+    allowedTokenScopes: OAUTH_TOKEN_SCOPES,
     requiredTokenScopes: ["openid"],
   });
 }

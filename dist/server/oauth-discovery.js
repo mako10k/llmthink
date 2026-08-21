@@ -32,6 +32,9 @@ export function createLlmthinkOAuthDiscovery(options) {
         exactHttpsUrl(issuer, "OAuth authorization server");
     }
     const scopesSupported = uniqueNonEmpty(options.scopesSupported, "OAuth supported scopes");
+    if (scopesSupported.some((scope) => !/^[A-Za-z0-9:_./-]{1,128}$/.test(scope))) {
+        throw new Error("OAuth supported scopes must be bounded safe values");
+    }
     const resourceDocumentation = options.resourceDocumentation
         ? exactHttpsUrl(options.resourceDocumentation, "OAuth resource documentation").href
         : undefined;

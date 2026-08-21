@@ -53,6 +53,12 @@ test("hosted runtime enables provider-neutral OAuth discovery only with a comple
   assert.deepEqual(configured.oauthDiscovery?.authorizationServers, [
     "https://example.authkit.app",
   ]);
+  assert.deepEqual(configured.oauthDiscovery?.scopesSupported, [
+    "openid",
+    "email",
+    "profile",
+    "offline_access",
+  ]);
   assert.equal(
     configured.oauthJwksUri,
     "https://example.authkit.app/oauth2/jwks",

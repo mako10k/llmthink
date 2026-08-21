@@ -10,7 +10,7 @@ import {
 const OPTIONS = {
   resource: "https://llmthink.mk10.org/mcp",
   authorizationServers: ["https://example.authkit.app"],
-  scopesSupported: ["thought:read", "thought:write"],
+  scopesSupported: ["openid", "email", "profile", "offline_access"],
 } as const;
 
 test("OAuth discovery projects exact provider-neutral protected-resource metadata", () => {
@@ -18,7 +18,7 @@ test("OAuth discovery projects exact provider-neutral protected-resource metadat
   assert.deepEqual(oauthProtectedResourceMetadata(discovery), {
     resource: "https://llmthink.mk10.org/mcp",
     authorization_servers: ["https://example.authkit.app"],
-    scopes_supported: ["thought:read", "thought:write"],
+    scopes_supported: ["openid", "email", "profile", "offline_access"],
     bearer_methods_supported: ["header"],
   });
   assert.equal(
@@ -27,7 +27,7 @@ test("OAuth discovery projects exact provider-neutral protected-resource metadat
   );
   assert.equal(
     oauthBearerChallenge(discovery),
-    'Bearer resource_metadata="https://llmthink.mk10.org/.well-known/oauth-protected-resource", error="invalid_token", scope="thought:read thought:write"',
+    'Bearer resource_metadata="https://llmthink.mk10.org/.well-known/oauth-protected-resource", error="invalid_token", scope="openid email profile offline_access"',
   );
 });
 
@@ -50,6 +50,7 @@ test("OAuth discovery fails closed for unsafe, ambiguous, or incomplete configur
     { ...OPTIONS, authorizationServers: ["http://example.authkit.app"] },
     { ...OPTIONS, scopesSupported: [] },
     { ...OPTIONS, scopesSupported: ["thought:read", "thought:read"] },
+    { ...OPTIONS, scopesSupported: ["unsafe scope"] },
   ]) {
     assert.throws(() => createLlmthinkOAuthDiscovery(options as never));
   }
