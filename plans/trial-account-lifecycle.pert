@@ -357,6 +357,19 @@ task INSTALL_RESTIC_ON_VPS STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
     CODEX 1
   source "Accepted ADR-0014 and implementation/restic-supply-verification; owner VPS-install authorization 2026-08-21"
 
+task DRAFT_RESTIC_R2D_AUTHORIZATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Draft bounded disposable R2 authorization"
+  description "Define one private Standard/APAC test bucket, one bucket-specific short-lived Object Read & Write credential, synthetic-only local execution, exact operation/data/cost ceilings, secret injection, cleanup, owner actions, evidence, stop conditions, and remaining external gates without creating Cloudflare resources or credentials."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 81
+  requires:
+    CODEX 1
+  source "Accepted R2/restic design and current Cloudflare R2 documentation; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -651,3 +664,18 @@ work_event FINISH_INSTALL_RESTIC_ON_VPS_20260821:
   occurred_at 2026-08-21T14:07:14+09:00
   active_time 11/600h
   effort 11/600ph
+
+work_event START_DRAFT_RESTIC_R2D_AUTHORIZATION_20260821:
+  model 1
+  task DRAFT_RESTIC_R2D_AUTHORIZATION
+  kind start
+  occurred_at 2026-08-21T14:11:21+09:00
+  planned_value 13/12p
+
+work_event FINISH_DRAFT_RESTIC_R2D_AUTHORIZATION_20260821:
+  model 1
+  task DRAFT_RESTIC_R2D_AUTHORIZATION
+  kind finish
+  occurred_at 2026-08-21T14:12:04+09:00
+  active_time 43/3600h
+  effort 43/3600ph
