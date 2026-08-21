@@ -1,11 +1,11 @@
 # disposable Cloudflare R2 test authorization
 
-- Status: proposed
+- Status: accepted by owner on 2026-08-21
 - Date: 2026-08-21
 - Upstream: ADR-0013, ADR-0014, accepted restic R2 design and implementation plan
 - Scope: one local synthetic compatibility test; no VPS secret placement or live data
 
-## Proposed authorization
+## Accepted authorization
 
 Authorize one bounded R2D execution with all of the following limits.
 
@@ -61,8 +61,9 @@ account authority and performs dashboard creation, token revocation, and final b
 - Hard stored-data ceiling: 20 MiB in the disposable bucket. Stop if observed use exceeds it.
 - Hard operation ceiling: 2,000 Class A and 5,000 Class B requests attributable to this test. Stop
   rather than retry if the count cannot be bounded.
-- Hard direct R2 charge ceiling for this execution: USD 1.00. Existing account-wide R2 usage is not
-  controlled by this authorization and must be checked by the owner before execution.
+- Hard authorization ceiling for direct R2 charges attributable to this execution: USD 1.00.
+  Existing account-wide R2 usage is not controlled by this authorization and must be checked by the
+  owner before execution. This is an operator stop ceiling, not a Cloudflare-enforced billing cap.
 - Standard currently includes a monthly free tier of 10 GB-month storage, one million Class A, ten
   million Class B operations, and free egress. This test should fit within it if the account has
   remaining allowance, but free execution is not guaranteed.
@@ -105,6 +106,9 @@ Success requires all of the following:
 Acceptance authorizes only the bounded local R2D above. It does not authorize production bucket or
 credential creation, VPS secret placement, VPS R2 access, live backup, systemd/timer activation,
 retention automation, Bucket Lock, restore activation, or a public backup claim.
+
+The owner accepted this package, including the USD 1.00 authorization ceiling and destructive
+cleanup of the dedicated credential and bucket, on 2026-08-21.
 
 ## Current official references
 
