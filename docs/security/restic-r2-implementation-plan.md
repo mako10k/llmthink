@@ -1,6 +1,6 @@
 # restic + R2 backup implementation and disposable-test plan
 
-- Status: draft for owner review
+- Status: accepted by owner on 2026-08-21
 - Date: 2026-08-21
 - Accepted design: `docs/security/restic-r2-backup-design.md`
 - Scope: local implementation slices, disposable tests, evidence, and external activation gates
@@ -15,6 +15,9 @@ repository.
 This plan does not authorize creating an R2 bucket or credential, installing software on the VPS,
 placing secrets, uploading live data, enabling a timer, restoring production data, or activating a
 restored generation.
+
+Owner acceptance on 2026-08-21 authorizes Slice A and L0 implementation. Later slices and every
+external stage remain subject to the gates in section 9.
 
 ## 2. Deliverable boundary
 

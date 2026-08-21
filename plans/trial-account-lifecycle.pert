@@ -253,6 +253,19 @@ task PLAN_RESTIC_R2_IMPLEMENTATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPRO
     CODEX 1
   source "Accepted restic R2 backup design; owner continuation 2026-08-21"
 
+task IMPLEMENT_BACKUP_SLICE_A_L0 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Implement backup Slice A and L0 contracts"
+  description "Implement strict versioned backup manifest and receipt validation, canonical manifest encoding, fixed-root source and absent-destination path policy, privacy-safe error codes, and local negative tests. Do not implement SQLite copying, restic execution, R2 access, VPS changes, or live data transfer."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 89
+  requires:
+    CODEX 1
+  source "Accepted restic R2 implementation plan; owner authorization 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -427,3 +440,18 @@ work_event FINISH_RESTIC_R2_IMPLEMENTATION_PLAN_20260821:
   occurred_at 2026-08-21T11:45:05+09:00
   active_time 59/900h
   effort 59/900ph
+
+work_event START_BACKUP_SLICE_A_L0_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_A_L0
+  kind start
+  occurred_at 2026-08-21T11:56:14+09:00
+  planned_value 2p
+
+work_event FINISH_BACKUP_SLICE_A_L0_20260821:
+  model 1
+  task IMPLEMENT_BACKUP_SLICE_A_L0
+  kind finish
+  occurred_at 2026-08-21T12:06:12+09:00
+  active_time 299/1800h
+  effort 299/1800ph
