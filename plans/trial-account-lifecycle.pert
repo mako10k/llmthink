@@ -240,6 +240,19 @@ task DESIGN_RESTIC_R2_KEY_CUSTODY STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROV
     CODEX 1
   source "ADR-0013; owner acceptance of restic/key-custody design and residual deletion risk 2026-08-21"
 
+task PLAN_RESTIC_R2_IMPLEMENTATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Plan restic R2 implementation and disposable tests"
+  description "Define local implementation slices, versioned manifest/receipt boundaries, SQLite and thought recovery-point handling, restic process isolation, restore validation, disposable test stages, evidence, and external activation gates without creating R2 resources, credentials, VPS changes, or data transfer."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 90
+  requires:
+    CODEX 1
+  source "Accepted restic R2 backup design; owner continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -399,3 +412,18 @@ work_event FINISH_RESTIC_R2_KEY_CUSTODY_20260821:
   occurred_at 2026-08-21T11:23:39+09:00
   active_time 43/600h
   effort 43/600ph
+
+work_event START_RESTIC_R2_IMPLEMENTATION_PLAN_20260821:
+  model 1
+  task PLAN_RESTIC_R2_IMPLEMENTATION
+  kind start
+  occurred_at 2026-08-21T11:41:09+09:00
+  planned_value 13/12p
+
+work_event FINISH_RESTIC_R2_IMPLEMENTATION_PLAN_20260821:
+  model 1
+  task PLAN_RESTIC_R2_IMPLEMENTATION
+  kind finish
+  occurred_at 2026-08-21T11:45:05+09:00
+  active_time 59/900h
+  effort 59/900ph
