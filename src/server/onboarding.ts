@@ -44,7 +44,13 @@ export interface LlmthinkOnboardingOptions {
   readonly maxSessions?: number;
 }
 
+export interface LlmthinkOnboardingBridge {
+  readonly handler: LlmthinkOnboardingHttpHandler;
+  readonly issueUrl: (identity: LlmthinkExternalOAuthIdentity) => string;
+}
+
 interface OnboardingSession {
+  readonly identity: LlmthinkExternalOAuthIdentity;
   readonly identityKey: string;
   readonly csrf: string;
   readonly expiresAt: number;
@@ -55,6 +61,11 @@ interface OnboardingSession {
   readonly privacyNoticeId: string;
   readonly privacyVersion: string;
   readonly privacySha256: string;
+}
+
+interface OnboardingTicket {
+  readonly identity: LlmthinkExternalOAuthIdentity;
+  readonly expiresAt: number;
 }
 
 function exactOrigin(value: string): string {
@@ -180,12 +191,16 @@ interface OnboardingRuntime {
   readonly ttl: number;
   readonly maxSessions: number;
   readonly sessions: Map<string, OnboardingSession>;
+  readonly tickets: Map<string, OnboardingTicket>;
 }
 
 function cleanSessions(runtime: OnboardingRuntime): void {
   const timestamp = runtime.now();
   for (const [nonce, session] of runtime.sessions) {
     if (session.expiresAt <= timestamp) runtime.sessions.delete(nonce);
+  }
+  for (const [ticket, value] of runtime.tickets) {
+    if (value.expiresAt <= timestamp) runtime.tickets.delete(ticket);
   }
 }
 
@@ -215,6 +230,7 @@ function issueSession(
   const nonce = runtime.entropy(32).toString("base64url");
   const csrf = runtime.entropy(32).toString("base64url");
   runtime.sessions.set(nonce, {
+    identity: principal.identity,
     identityKey: identityKey(principal.identity),
     csrf,
     expiresAt: runtime.now() + runtime.ttl,
@@ -227,6 +243,64 @@ function issueSession(
     privacySha256: privacy.contentSha256,
   });
   return { nonce, csrf };
+}
+
+const BOOTSTRAP_SCRIPT = `(() => {
+  const ticket = new URLSearchParams(location.hash.slice(1)).get("ticket");
+  history.replaceState(null, "", "/onboarding");
+  if (!ticket) return;
+  fetch("/onboarding/session", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ ticket }),
+  }).then(async (response) => {
+    const html = await response.text();
+    document.open(); document.write(html); document.close();
+  });
+})();\n`;
+
+function bootstrapPage(): string {
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>llmthink オンボーディング</title><script defer src="/onboarding/bootstrap.js"></script></head><body><main><h1>llmthink オンボーディング</h1><p>認証済みクライアントから発行されたリンクを開いてください。</p></main></body></html>`;
+}
+
+function sendBootstrap(response: ServerResponse): void {
+  securityHeaders(response);
+  response.setHeader(
+    "content-security-policy",
+    "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+  );
+  response.statusCode = 200;
+  response.setHeader("content-type", "text/html; charset=utf-8");
+  response.end(bootstrapPage());
+}
+
+function sendBootstrapScript(response: ServerResponse): void {
+  securityHeaders(response);
+  response.statusCode = 200;
+  response.setHeader("content-type", "text/javascript; charset=utf-8");
+  response.end(BOOTSTRAP_SCRIPT);
+}
+
+async function exchangeTicket(
+  runtime: OnboardingRuntime,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  if (request.headers.origin !== runtime.origin)
+    throw new Error("invalid_form");
+  cleanSessions(runtime);
+  const form = await readForm(request);
+  const value = form.get("ticket") ?? "";
+  const ticket = runtime.tickets.get(value);
+  runtime.tickets.delete(value);
+  if (!ticket || ticket.expiresAt <= runtime.now())
+    throw new Error("invalid_form");
+  handleOnboardingGet(
+    runtime,
+    { identity: ticket.identity, requestId: "onboarding-ticket" },
+    response,
+  );
 }
 
 function handleOnboardingGet(
@@ -325,10 +399,20 @@ function artifactsMatch(
   ].every(Boolean);
 }
 
+function agreementPrincipal(
+  authenticated: OnboardingPrincipal | undefined,
+  session: OnboardingSession | undefined,
+): OnboardingPrincipal | undefined {
+  if (authenticated) return authenticated;
+  return session
+    ? { identity: session.identity, requestId: "onboarding-ticket" }
+    : undefined;
+}
+
 async function handleOnboardingPost(
   runtime: OnboardingRuntime,
   request: IncomingMessage,
-  principal: OnboardingPrincipal,
+  authenticatedPrincipal: OnboardingPrincipal | undefined,
   response: ServerResponse,
 ): Promise<void> {
   if (request.headers.origin !== runtime.origin)
@@ -337,6 +421,8 @@ async function handleOnboardingPost(
   const nonce = form.get("nonce") ?? "";
   const session = runtime.sessions.get(nonce);
   runtime.sessions.delete(nonce);
+  const principal = agreementPrincipal(authenticatedPrincipal, session);
+  if (!principal) throw new Error("invalid_form");
   if (!sessionMatches(runtime, request, principal, form, session))
     throw new Error("invalid_form");
   let terms: ActiveTermsArtifact;
@@ -400,9 +486,47 @@ async function handleOnboardingPost(
   );
 }
 
-export function createLlmthinkOnboardingHandler(
+async function handleOnboardingGetRequest(
+  runtime: OnboardingRuntime,
+  pathname: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  if (pathname === "/onboarding/bootstrap.js") {
+    sendBootstrapScript(response);
+    return;
+  }
+  if (pathname !== "/onboarding") throw new Error("invalid_form");
+  if (!request.headers.authorization) {
+    sendBootstrap(response);
+    return;
+  }
+  const principal = await authenticateOnboarding(runtime, request, response);
+  if (principal) handleOnboardingGet(runtime, principal, response);
+}
+
+async function handleOnboardingPostRequest(
+  runtime: OnboardingRuntime,
+  pathname: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  if (pathname === "/onboarding/session") {
+    await exchangeTicket(runtime, request, response);
+    return;
+  }
+  if (pathname !== "/onboarding/agree") throw new Error("invalid_form");
+  const hasAuthorization = Boolean(request.headers.authorization);
+  const principal = hasAuthorization
+    ? await authenticateOnboarding(runtime, request, response)
+    : undefined;
+  if (hasAuthorization && !principal) return;
+  await handleOnboardingPost(runtime, request, principal, response);
+}
+
+export function createLlmthinkOnboardingBridge(
   options: LlmthinkOnboardingOptions,
-): LlmthinkOnboardingHttpHandler {
+): LlmthinkOnboardingBridge {
   const runtime: OnboardingRuntime = {
     options,
     origin: exactOrigin(options.publicOrigin),
@@ -411,6 +535,7 @@ export function createLlmthinkOnboardingHandler(
     ttl: options.nonceTtlMs ?? DEFAULT_NONCE_TTL_MS,
     maxSessions: options.maxSessions ?? DEFAULT_MAX_SESSIONS,
     sessions: new Map(),
+    tickets: new Map(),
   };
   if (
     !Number.isSafeInteger(runtime.ttl) ||
@@ -420,23 +545,21 @@ export function createLlmthinkOnboardingHandler(
   ) {
     throw new Error("Onboarding session bounds are invalid");
   }
-  return async (request, response) => {
+  const handler: LlmthinkOnboardingHttpHandler = async (request, response) => {
     const pathname = new URL(request.url ?? "/", runtime.origin).pathname;
-    if (pathname !== "/onboarding" && pathname !== "/onboarding/agree")
+    if (
+      pathname !== "/onboarding" &&
+      pathname !== "/onboarding/agree" &&
+      pathname !== "/onboarding/session" &&
+      pathname !== "/onboarding/bootstrap.js"
+    )
       return false;
-    const principal = await authenticateOnboarding(runtime, request, response);
-    if (!principal) return true;
     try {
-      if (request.method === "GET" && pathname === "/onboarding") {
-        handleOnboardingGet(runtime, principal, response);
-      } else if (
-        request.method === "POST" &&
-        pathname === "/onboarding/agree"
-      ) {
-        await handleOnboardingPost(runtime, request, principal, response);
-      } else {
-        throw new Error("invalid_form");
-      }
+      if (request.method === "GET") {
+        await handleOnboardingGetRequest(runtime, pathname, request, response);
+      } else if (request.method === "POST") {
+        await handleOnboardingPostRequest(runtime, pathname, request, response);
+      } else throw new Error("invalid_form");
     } catch {
       sendHtml(
         response,
@@ -449,4 +572,25 @@ export function createLlmthinkOnboardingHandler(
     }
     return true;
   };
+  return Object.freeze({
+    handler,
+    issueUrl: (identity: LlmthinkExternalOAuthIdentity) => {
+      cleanSessions(runtime);
+      if (runtime.tickets.size >= runtime.maxSessions) {
+        throw new Error("Onboarding ticket capacity is unavailable");
+      }
+      const ticket = runtime.entropy(32).toString("base64url");
+      runtime.tickets.set(ticket, {
+        identity,
+        expiresAt: runtime.now() + runtime.ttl,
+      });
+      return `${runtime.origin}/onboarding#ticket=${ticket}`;
+    },
+  });
+}
+
+export function createLlmthinkOnboardingHandler(
+  options: LlmthinkOnboardingOptions,
+): LlmthinkOnboardingHttpHandler {
+  return createLlmthinkOnboardingBridge(options).handler;
 }

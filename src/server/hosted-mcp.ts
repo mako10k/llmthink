@@ -4,6 +4,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
+import { createHash } from "node:crypto";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -19,6 +20,7 @@ import {
 } from "./contracts.js";
 import type { LlmthinkHttpAuthenticator } from "./http.js";
 import type { LlmthinkOnboardingHttpHandler } from "./onboarding.js";
+import type { OnboardingPrincipal } from "./onboarding.js";
 import {
   errorNavigation,
   EXTERNAL_STORAGE_NOTICE,
@@ -32,7 +34,11 @@ import {
   OAUTH_PROTECTED_RESOURCE_PATH,
   type LlmthinkOAuthDiscovery,
 } from "./oauth-discovery.js";
-import { LlmthinkSecurityBoundary } from "./security.js";
+import {
+  assertVerifiedRequestContext,
+  InMemoryLlmthinkRateLimiter,
+  LlmthinkSecurityBoundary,
+} from "./security.js";
 
 export const DEFAULT_MCP_REQUEST_LIMIT_BYTES = 1024 * 1024;
 export const DEFAULT_MCP_TEXT_LIMIT_BYTES = 64 * 1024;
@@ -45,6 +51,12 @@ export interface LlmthinkHostedMcpHandlerOptions {
   readonly requestLimitBytes?: number;
   readonly textLimitBytes?: number;
   readonly onboarding?: LlmthinkOnboardingHttpHandler;
+  readonly onboardingMcp?: {
+    readonly authenticate: (
+      request: IncomingMessage,
+    ) => Promise<OnboardingPrincipal>;
+    readonly issueUrl: (principal: OnboardingPrincipal) => string;
+  };
 }
 
 const identityShape = {
@@ -403,6 +415,49 @@ function registerTools(
   );
 }
 
+function onboardingContext(principal: OnboardingPrincipal): RequestContext {
+  const digest = createHash("sha256")
+    .update(principal.identity.issuer)
+    .update("\0")
+    .update(principal.identity.subjectId)
+    .update("\0")
+    .update(principal.identity.organizationId ?? "")
+    .digest("hex");
+  return {
+    subjectId: `onboarding-${digest.slice(0, 32)}`,
+    tenantId: `onboarding-${digest.slice(0, 32)}`,
+    workspaceId: `onboarding-${digest.slice(0, 32)}`,
+    scopes: [],
+    requestId: principal.requestId,
+  };
+}
+
+function registerOnboardingTool(
+  server: McpServer,
+  principal: OnboardingPrincipal,
+  issueUrl: (principal: OnboardingPrincipal) => string,
+  textLimit: number,
+): void {
+  server.registerTool(
+    "begin_llmthink_onboarding",
+    {
+      description:
+        "Create a short-lived, single-use browser link to review and explicitly accept the current llmthink trial terms. This does not itself record agreement or create a tenant.",
+      inputSchema: {},
+      annotations: WRITE,
+    },
+    async () =>
+      toolResult(
+        {
+          onboarding_url: issueUrl(principal),
+          expires_in_seconds: 600,
+          agreement_recorded: false,
+        },
+        textLimit,
+      ),
+  );
+}
+
 async function readBoundedJson(
   request: IncomingMessage,
   limit: number,
@@ -486,6 +541,7 @@ function mcpOperation(body: unknown): string {
 }
 
 const MCP_TOOL_NAMES = new Set([
+  "begin_llmthink_onboarding",
   "llmthink_help",
   "audit_thought",
   "create_thought_draft",
@@ -504,17 +560,41 @@ async function handleMcpRequest(
   requestLimit: number,
   textLimit: number,
   security: LlmthinkSecurityBoundary,
+  onboardingRateLimiter: InMemoryLlmthinkRateLimiter,
 ): Promise<void> {
   let transport: StreamableHTTPServerTransport | undefined;
   let server: McpServer | undefined;
   try {
-    const context = await security.authenticate(request);
     const body =
       request.method === "POST"
         ? await readBoundedJson(request, requestLimit)
         : undefined;
+    let context: RequestContext;
+    let onboardingPrincipal: OnboardingPrincipal | undefined;
+    try {
+      context = await security.authenticate(request);
+    } catch (error) {
+      if (!options.onboardingMcp) throw error;
+      try {
+        onboardingPrincipal = await options.onboardingMcp.authenticate(request);
+      } catch {
+        throw error;
+      }
+      context = onboardingContext(onboardingPrincipal);
+      assertVerifiedRequestContext(context);
+      onboardingRateLimiter.check(context, Date.now());
+    }
     server = new McpServer({ name: "llmthink-hosted", version: "1.2.0" });
-    registerTools(server, options.application, context, textLimit, security);
+    if (onboardingPrincipal && options.onboardingMcp) {
+      registerOnboardingTool(
+        server,
+        onboardingPrincipal,
+        options.onboardingMcp.issueUrl,
+        textLimit,
+      );
+    } else {
+      registerTools(server, options.application, context, textLimit, security);
+    }
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -541,6 +621,7 @@ export function createLlmthinkHostedMcpHandler(
   const security =
     options.security ??
     new LlmthinkSecurityBoundary({ authenticate: options.authenticate });
+  const onboardingRateLimiter = new InMemoryLlmthinkRateLimiter();
   return async (
     request: IncomingMessage,
     response: ServerResponse,
@@ -580,6 +661,7 @@ export function createLlmthinkHostedMcpHandler(
       requestLimit,
       textLimit,
       security,
+      onboardingRateLimiter,
     );
   };
 }

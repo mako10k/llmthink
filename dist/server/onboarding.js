@@ -96,6 +96,10 @@ function cleanSessions(runtime) {
         if (session.expiresAt <= timestamp)
             runtime.sessions.delete(nonce);
     }
+    for (const [ticket, value] of runtime.tickets) {
+        if (value.expiresAt <= timestamp)
+            runtime.tickets.delete(ticket);
+    }
 }
 async function authenticateOnboarding(runtime, request, response) {
     try {
@@ -110,6 +114,7 @@ function issueSession(runtime, principal, terms, privacy) {
     const nonce = runtime.entropy(32).toString("base64url");
     const csrf = runtime.entropy(32).toString("base64url");
     runtime.sessions.set(nonce, {
+        identity: principal.identity,
         identityKey: identityKey(principal.identity),
         csrf,
         expiresAt: runtime.now() + runtime.ttl,
@@ -122,6 +127,48 @@ function issueSession(runtime, principal, terms, privacy) {
         privacySha256: privacy.contentSha256,
     });
     return { nonce, csrf };
+}
+const BOOTSTRAP_SCRIPT = `(() => {
+  const ticket = new URLSearchParams(location.hash.slice(1)).get("ticket");
+  history.replaceState(null, "", "/onboarding");
+  if (!ticket) return;
+  fetch("/onboarding/session", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ ticket }),
+  }).then(async (response) => {
+    const html = await response.text();
+    document.open(); document.write(html); document.close();
+  });
+})();\n`;
+function bootstrapPage() {
+    return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>llmthink オンボーディング</title><script defer src="/onboarding/bootstrap.js"></script></head><body><main><h1>llmthink オンボーディング</h1><p>認証済みクライアントから発行されたリンクを開いてください。</p></main></body></html>`;
+}
+function sendBootstrap(response) {
+    securityHeaders(response);
+    response.setHeader("content-security-policy", "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
+    response.statusCode = 200;
+    response.setHeader("content-type", "text/html; charset=utf-8");
+    response.end(bootstrapPage());
+}
+function sendBootstrapScript(response) {
+    securityHeaders(response);
+    response.statusCode = 200;
+    response.setHeader("content-type", "text/javascript; charset=utf-8");
+    response.end(BOOTSTRAP_SCRIPT);
+}
+async function exchangeTicket(runtime, request, response) {
+    if (request.headers.origin !== runtime.origin)
+        throw new Error("invalid_form");
+    cleanSessions(runtime);
+    const form = await readForm(request);
+    const value = form.get("ticket") ?? "";
+    const ticket = runtime.tickets.get(value);
+    runtime.tickets.delete(value);
+    if (!ticket || ticket.expiresAt <= runtime.now())
+        throw new Error("invalid_form");
+    handleOnboardingGet(runtime, { identity: ticket.identity, requestId: "onboarding-ticket" }, response);
 }
 function handleOnboardingGet(runtime, principal, response) {
     cleanSessions(runtime);
@@ -170,13 +217,23 @@ function artifactsMatch(terms, privacy, session) {
         privacy.contentSha256 === session.privacySha256,
     ].every(Boolean);
 }
-async function handleOnboardingPost(runtime, request, principal, response) {
+function agreementPrincipal(authenticated, session) {
+    if (authenticated)
+        return authenticated;
+    return session
+        ? { identity: session.identity, requestId: "onboarding-ticket" }
+        : undefined;
+}
+async function handleOnboardingPost(runtime, request, authenticatedPrincipal, response) {
     if (request.headers.origin !== runtime.origin)
         throw new Error("invalid_form");
     const form = await readForm(request);
     const nonce = form.get("nonce") ?? "";
     const session = runtime.sessions.get(nonce);
     runtime.sessions.delete(nonce);
+    const principal = agreementPrincipal(authenticatedPrincipal, session);
+    if (!principal)
+        throw new Error("invalid_form");
     if (!sessionMatches(runtime, request, principal, form, session))
         throw new Error("invalid_form");
     let terms;
@@ -210,7 +267,37 @@ async function handleOnboardingPost(runtime, request, principal, response) {
     await runtime.options.realizeInitialWorkspace?.(provisioned.tenantId, provisioned.workspaceId);
     sendHtml(response, 201, resultPage("試験利用を開始できます", `復旧識別子は一度だけ表示されます: ${provisioned.recoveryCredential ?? "既に発行済みです"}`));
 }
-export function createLlmthinkOnboardingHandler(options) {
+async function handleOnboardingGetRequest(runtime, pathname, request, response) {
+    if (pathname === "/onboarding/bootstrap.js") {
+        sendBootstrapScript(response);
+        return;
+    }
+    if (pathname !== "/onboarding")
+        throw new Error("invalid_form");
+    if (!request.headers.authorization) {
+        sendBootstrap(response);
+        return;
+    }
+    const principal = await authenticateOnboarding(runtime, request, response);
+    if (principal)
+        handleOnboardingGet(runtime, principal, response);
+}
+async function handleOnboardingPostRequest(runtime, pathname, request, response) {
+    if (pathname === "/onboarding/session") {
+        await exchangeTicket(runtime, request, response);
+        return;
+    }
+    if (pathname !== "/onboarding/agree")
+        throw new Error("invalid_form");
+    const hasAuthorization = Boolean(request.headers.authorization);
+    const principal = hasAuthorization
+        ? await authenticateOnboarding(runtime, request, response)
+        : undefined;
+    if (hasAuthorization && !principal)
+        return;
+    await handleOnboardingPost(runtime, request, principal, response);
+}
+export function createLlmthinkOnboardingBridge(options) {
     const runtime = {
         options,
         origin: exactOrigin(options.publicOrigin),
@@ -219,6 +306,7 @@ export function createLlmthinkOnboardingHandler(options) {
         ttl: options.nonceTtlMs ?? DEFAULT_NONCE_TTL_MS,
         maxSessions: options.maxSessions ?? DEFAULT_MAX_SESSIONS,
         sessions: new Map(),
+        tickets: new Map(),
     };
     if (!Number.isSafeInteger(runtime.ttl) ||
         runtime.ttl < 1_000 ||
@@ -226,29 +314,45 @@ export function createLlmthinkOnboardingHandler(options) {
         runtime.maxSessions < 1) {
         throw new Error("Onboarding session bounds are invalid");
     }
-    return async (request, response) => {
+    const handler = async (request, response) => {
         const pathname = new URL(request.url ?? "/", runtime.origin).pathname;
-        if (pathname !== "/onboarding" && pathname !== "/onboarding/agree")
+        if (pathname !== "/onboarding" &&
+            pathname !== "/onboarding/agree" &&
+            pathname !== "/onboarding/session" &&
+            pathname !== "/onboarding/bootstrap.js")
             return false;
-        const principal = await authenticateOnboarding(runtime, request, response);
-        if (!principal)
-            return true;
         try {
-            if (request.method === "GET" && pathname === "/onboarding") {
-                handleOnboardingGet(runtime, principal, response);
+            if (request.method === "GET") {
+                await handleOnboardingGetRequest(runtime, pathname, request, response);
             }
-            else if (request.method === "POST" &&
-                pathname === "/onboarding/agree") {
-                await handleOnboardingPost(runtime, request, principal, response);
+            else if (request.method === "POST") {
+                await handleOnboardingPostRequest(runtime, pathname, request, response);
             }
-            else {
+            else
                 throw new Error("invalid_form");
-            }
         }
         catch {
             sendHtml(response, 400, resultPage("手続を完了できません", "ページを開き直して、内容を再確認してください。"));
         }
         return true;
     };
+    return Object.freeze({
+        handler,
+        issueUrl: (identity) => {
+            cleanSessions(runtime);
+            if (runtime.tickets.size >= runtime.maxSessions) {
+                throw new Error("Onboarding ticket capacity is unavailable");
+            }
+            const ticket = runtime.entropy(32).toString("base64url");
+            runtime.tickets.set(ticket, {
+                identity,
+                expiresAt: runtime.now() + runtime.ttl,
+            });
+            return `${runtime.origin}/onboarding#ticket=${ticket}`;
+        },
+    });
+}
+export function createLlmthinkOnboardingHandler(options) {
+    return createLlmthinkOnboardingBridge(options).handler;
 }
 //# sourceMappingURL=onboarding.js.map

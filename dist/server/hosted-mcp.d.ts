@@ -2,6 +2,7 @@ import { type IncomingMessage, type Server, type ServerResponse } from "node:htt
 import { LlmthinkApplicationService } from "./application-service.js";
 import type { LlmthinkHttpAuthenticator } from "./http.js";
 import type { LlmthinkOnboardingHttpHandler } from "./onboarding.js";
+import type { OnboardingPrincipal } from "./onboarding.js";
 import { type LlmthinkOAuthDiscovery } from "./oauth-discovery.js";
 import { LlmthinkSecurityBoundary } from "./security.js";
 export declare const DEFAULT_MCP_REQUEST_LIMIT_BYTES: number;
@@ -14,6 +15,10 @@ export interface LlmthinkHostedMcpHandlerOptions {
     readonly requestLimitBytes?: number;
     readonly textLimitBytes?: number;
     readonly onboarding?: LlmthinkOnboardingHttpHandler;
+    readonly onboardingMcp?: {
+        readonly authenticate: (request: IncomingMessage) => Promise<OnboardingPrincipal>;
+        readonly issueUrl: (principal: OnboardingPrincipal) => string;
+    };
 }
 export declare function createLlmthinkHostedMcpHandler(options: LlmthinkHostedMcpHandlerOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void>;
 export declare function createLlmthinkHostedMcpServer(options: LlmthinkHostedMcpHandlerOptions): Server;

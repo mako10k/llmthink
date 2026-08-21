@@ -174,7 +174,9 @@ export type {
   LlmthinkHttpHandlerOptions,
 } from "./server/http.js";
 export {
+  createLlmthinkOnboardingBridge,
   createLlmthinkOnboardingHandler,
+  type LlmthinkOnboardingBridge,
   type LlmthinkOnboardingAuthenticator,
   type LlmthinkOnboardingHttpHandler,
   type LlmthinkOnboardingOptions,

@@ -20,4 +20,9 @@ export interface LlmthinkOnboardingOptions {
     readonly nonceTtlMs?: number;
     readonly maxSessions?: number;
 }
+export interface LlmthinkOnboardingBridge {
+    readonly handler: LlmthinkOnboardingHttpHandler;
+    readonly issueUrl: (identity: LlmthinkExternalOAuthIdentity) => string;
+}
+export declare function createLlmthinkOnboardingBridge(options: LlmthinkOnboardingOptions): LlmthinkOnboardingBridge;
 export declare function createLlmthinkOnboardingHandler(options: LlmthinkOnboardingOptions): LlmthinkOnboardingHttpHandler;

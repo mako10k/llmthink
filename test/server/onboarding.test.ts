@@ -8,12 +8,14 @@ import test from "node:test";
 
 import {
   createLlmthinkHostedMcpServer,
+  createLlmthinkOnboardingBridge,
   createLlmthinkOnboardingHandler,
   LlmthinkApplicationService,
   LlmthinkServerError,
   ServerFileThoughtRepository,
   SqliteLifecycleStore,
   type LlmthinkExternalOAuthIdentity,
+  type LlmthinkOnboardingBridge,
   type RequestContext,
 } from "../../src/index.js";
 
@@ -25,6 +27,7 @@ const POLICY_ID = "trial-default-v1";
 interface Fixture {
   readonly baseUrl: string;
   readonly store: SqliteLifecycleStore;
+  readonly bridge: LlmthinkOnboardingBridge;
   readonly close: () => Promise<void>;
 }
 
@@ -77,7 +80,7 @@ async function fixture(
   });
   createArtifacts(store);
   let entropyCounter = 0;
-  const onboarding = createLlmthinkOnboardingHandler({
+  const bridge = createLlmthinkOnboardingBridge({
     store,
     publicOrigin: ORIGIN,
     termsId: TERMS_ID,
@@ -105,7 +108,7 @@ async function fixture(
   });
   const server = createLlmthinkHostedMcpServer({
     application,
-    onboarding,
+    onboarding: bridge.handler,
     authenticate: async (): Promise<RequestContext> => {
       throw new LlmthinkServerError(
         "unauthenticated",
@@ -123,7 +126,7 @@ async function fixture(
     await rm(root, { recursive: true, force: true });
   };
   t.after(close);
-  return { baseUrl, store, close };
+  return { baseUrl, store, bridge, close };
 }
 
 function auth(subject = "user-a"): Record<string, string> {
@@ -181,7 +184,8 @@ async function agree(
 test("onboarding is separately authenticated and renders exact versioned documents accessibly", async (t) => {
   const { baseUrl } = await fixture(t);
   const unauthenticated = await fetch(`${baseUrl}/onboarding`);
-  assert.equal(unauthenticated.status, 401);
+  assert.equal(unauthenticated.status, 200);
+  assert.doesNotMatch(await unauthenticated.text(), /利用条件です/);
 
   const started = await begin(baseUrl);
   assert.equal(started.response.status, 200);
@@ -194,6 +198,55 @@ test("onboarding is separately authenticated and renders exact versioned documen
   assert.equal(started.form.get("terms_id"), TERMS_ID);
   assert.equal(started.form.get("privacy_id"), PRIVACY_ID);
   assert.match(started.form.get("content_sha256") ?? "", /^[a-f0-9]{64}$/);
+});
+
+test("fragment ticket exchanges once without putting OAuth bearer tokens in the browser", async (t) => {
+  const { baseUrl, store, bridge } = await fixture(t, {
+    realizeInitialWorkspace: true,
+  });
+  const url = new URL(bridge.issueUrl(identity("user-a")));
+  const ticket = new URLSearchParams(url.hash.slice(1)).get("ticket");
+  assert.ok(ticket);
+  assert.equal(url.search, "");
+  assert.equal(url.pathname, "/onboarding");
+
+  const exchange = await fetch(`${baseUrl}/onboarding/session`, {
+    method: "POST",
+    headers: {
+      origin: ORIGIN,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ ticket }),
+  });
+  const html = await exchange.text();
+  assert.equal(exchange.status, 200);
+  assert.match(html, /利用条件です/);
+  assert.doesNotMatch(html, /Bearer/);
+  const form = hiddenFields(html);
+  const cookie = csrfCookie(exchange);
+
+  const replay = await fetch(`${baseUrl}/onboarding/session`, {
+    method: "POST",
+    headers: {
+      origin: ORIGIN,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ ticket }),
+  });
+  assert.equal(replay.status, 400);
+
+  const agreed = await fetch(`${baseUrl}/onboarding/agree`, {
+    method: "POST",
+    headers: {
+      origin: ORIGIN,
+      cookie,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: form,
+  });
+  assert.equal(agreed.status, 201);
+  assert.equal(store.counts().accounts, 1);
+  assert.equal(store.counts().tenant_catalog, 1);
 });
 
 test("hosted realization activates exactly the provisioned tenant boundary", async (t) => {

@@ -24,8 +24,9 @@ import {
   type LlmthinkExternalOAuthIdentityVerifier,
 } from "./oauth-jwt.js";
 import {
-  createLlmthinkOnboardingHandler,
-  type LlmthinkOnboardingHttpHandler,
+  createLlmthinkOnboardingBridge,
+  type LlmthinkOnboardingBridge,
+  type OnboardingPrincipal,
 } from "./onboarding.js";
 import { assertServerBindPolicy } from "./policy.js";
 import {
@@ -231,22 +232,32 @@ function createOnboarding(
   config: HostedMcpRuntimeConfig,
   identityVerify: LlmthinkExternalOAuthIdentityVerifier | undefined,
   lifecycleStore: SqliteLifecycleStore | undefined,
-): LlmthinkOnboardingHttpHandler | undefined {
+):
+  | {
+      readonly bridge: LlmthinkOnboardingBridge;
+      readonly authenticate: (
+        request: import("node:http").IncomingMessage,
+      ) => Promise<OnboardingPrincipal>;
+    }
+  | undefined {
   if (!config.lifecycle || !identityVerify || !lifecycleStore) return undefined;
-  return createLlmthinkOnboardingHandler({
+  const authenticate = async (
+    request: import("node:http").IncomingMessage,
+  ): Promise<OnboardingPrincipal> => {
+    const authorization = request.headers.authorization;
+    const match =
+      typeof authorization === "string"
+        ? /^Bearer ([^\s]+)$/.exec(authorization)
+        : null;
+    if (!match) throw new Error("Bearer authentication is required");
+    return {
+      identity: await identityVerify(match[1]),
+      requestId: randomUUID(),
+    };
+  };
+  const bridge = createLlmthinkOnboardingBridge({
     store: lifecycleStore,
-    authenticate: async (request) => {
-      const authorization = request.headers.authorization;
-      const match =
-        typeof authorization === "string"
-          ? /^Bearer ([^\s]+)$/.exec(authorization)
-          : null;
-      if (!match) throw new Error("Bearer authentication is required");
-      return {
-        identity: await identityVerify(match[1]),
-        requestId: randomUUID(),
-      };
-    },
+    authenticate,
     publicOrigin: config.lifecycle.publicOrigin,
     termsId: config.lifecycle.termsId,
     privacyNoticeId: config.lifecycle.privacyNoticeId,
@@ -254,6 +265,7 @@ function createOnboarding(
     realizeInitialWorkspace: (tenantId, workspaceId) =>
       lifecycleStore.markInitialWorkspaceRealized(tenantId, workspaceId),
   });
+  return { bridge, authenticate };
 }
 
 function tokenMatches(actual: string, expected: string): boolean {
@@ -309,7 +321,16 @@ export async function startHostedMcpServer(
     application,
     authenticate,
     ...(config.oauthDiscovery ? { oauthDiscovery: config.oauthDiscovery } : {}),
-    ...(onboarding ? { onboarding } : {}),
+    ...(onboarding
+      ? {
+          onboarding: onboarding.bridge.handler,
+          onboardingMcp: {
+            authenticate: onboarding.authenticate,
+            issueUrl: (principal: OnboardingPrincipal) =>
+              onboarding.bridge.issueUrl(principal.identity),
+          },
+        }
+      : {}),
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);

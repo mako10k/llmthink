@@ -52,6 +52,8 @@ interface RpcBody {
       };
       readonly topic?: string;
       readonly storage_notice?: string;
+      readonly onboarding_url?: string;
+      readonly agreement_recorded?: boolean;
       readonly tools?: Record<
         string,
         {
@@ -239,6 +241,89 @@ test("hosted MCP publishes help and eight goal-oriented tools with effect annota
     tools.some((tool) => tool.name.includes("delete")),
     false,
   );
+});
+
+test("a verified unregistered identity sees only the onboarding bridge tool", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "llmthink-onboarding-mcp-"));
+  const application = new LlmthinkApplicationService({
+    repository: new ServerFileThoughtRepository({ dataRoot: root }),
+  });
+  let issued = 0;
+  const server = createLlmthinkHostedMcpServer({
+    application,
+    authenticate: async () => {
+      throw new LlmthinkServerError("unauthenticated", "Account unavailable");
+    },
+    onboardingMcp: {
+      authenticate: async (request) => {
+        if (request.headers.authorization !== "Bearer newcomer") {
+          throw new Error("invalid token");
+        }
+        return {
+          identity: {
+            issuer: "https://issuer.example",
+            subjectId: "new-user",
+            tokenScopes: ["openid"],
+          },
+          requestId: "onboarding-request",
+        };
+      },
+      issueUrl: () => {
+        issued += 1;
+        return "https://llmthink.example/onboarding#ticket=single-use";
+      },
+    },
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+    await rm(root, { recursive: true, force: true });
+  });
+  const request = async (method: string, params: Record<string, unknown>) => {
+    const response = await fetch(`${baseUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer newcomer",
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    return (await response.json()) as RpcBody;
+  };
+  const listed = await request("tools/list", {});
+  assert.deepEqual(
+    listed.result.tools.map(({ name }) => name),
+    ["begin_llmthink_onboarding"],
+  );
+  const started = await request("tools/call", {
+    name: "begin_llmthink_onboarding",
+    arguments: {},
+  });
+  assert.equal(
+    started.result.structuredContent.onboarding_url,
+    "https://llmthink.example/onboarding#ticket=single-use",
+  );
+  assert.equal(started.result.structuredContent.agreement_recorded, false);
+  assert.equal(issued, 1);
+  const invalid = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: {
+      authorization: "Bearer invalid",
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+      params: {},
+    }),
+  });
+  assert.equal(invalid.status, 401);
 });
 
 test("help mirrors CLI guidance and errors include actionable navigation", async (t) => {
