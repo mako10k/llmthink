@@ -448,6 +448,19 @@ task ACCEPT_PRODUCTION_R2_VPS_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_
     CODEX 1
   source "Owner acceptance of production R2 profile and bounded VPS rehearsal 2026-08-21"
 
+task EXECUTE_PRODUCTION_R2_VPS_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Execute production R2 profile and VPS synthetic rehearsal"
+  description "Rename value-free production secret entries after bounded secdat index repair; deliver exact-bucket credentials through SSH stdin into host-encrypted root-only VPS files; run one collected transient systemd synthetic backup/check/restore/forget/prune; prove exact-prefix and bucket cleanup; scan journal; remove the harness and local staging secrets while retaining the empty production bucket and encrypted runtime credential."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 74
+  requires:
+    CODEX 1
+  source "Accepted production R2 VPS rehearsal plan; owner credential-registration completion 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -847,3 +860,18 @@ work_event FINISH_ACCEPT_PRODUCTION_R2_VPS_REHEARSAL_20260821:
   occurred_at 2026-08-21T15:02:15+09:00
   active_time 19/3600h
   effort 19/3600ph
+
+work_event START_EXECUTE_PRODUCTION_R2_VPS_REHEARSAL_20260821:
+  model 1
+  task EXECUTE_PRODUCTION_R2_VPS_REHEARSAL
+  kind start
+  occurred_at 2026-08-21T15:39:56+09:00
+  planned_value 2p
+
+work_event FINISH_EXECUTE_PRODUCTION_R2_VPS_REHEARSAL_20260821:
+  model 1
+  task EXECUTE_PRODUCTION_R2_VPS_REHEARSAL
+  kind finish
+  occurred_at 2026-08-21T15:40:31+09:00
+  active_time 7/720h
+  effort 7/720ph
