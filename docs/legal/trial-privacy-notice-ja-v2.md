@@ -4,7 +4,7 @@
 
 - Status: draft for owner self-review
 - Public version: `trial-privacy-ja-2026-08-v2`
-- Effective date: 未定
+- Effective date: 2026-08-21
 - Controller: 勝又誠
 - Contact: `mako10k@mk10.org`
 - Address: 本人からの請求に応じ、遅滞なく個別に通知します

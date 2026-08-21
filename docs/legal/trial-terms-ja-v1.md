@@ -4,7 +4,7 @@
 
 - Status: draft for owner self-review
 - Public version: `trial-terms-ja-2026-08-v1`
-- Effective date: 未定
+- Effective date: 2026-08-21
 - Operator: 勝又誠
 - Contact: `mako10k@mk10.org`
 - Content language: 日本語

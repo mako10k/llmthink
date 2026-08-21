@@ -4,7 +4,7 @@
 
 - Status: draft for owner self-review
 - Terms version: `trial-terms-ja-2026-08-v1`
-- Effective date: 未定
+- Effective date: 2026-08-21
 
 この要約は、利用開始前に特に確認していただきたい事項です。要約と利用規約本文が異なる場合は、
 法令に反しない範囲で利用規約本文が優先します。

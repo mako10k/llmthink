@@ -8,17 +8,23 @@
 - Scope: 無償の試験利用のみ
 - Operator-address disclosure: owner accepted individual notice without public residential-address
   publication on 2026-08-21
+- Effective date: owner selected 2026-08-21
 - This package does not authorize publication, public enrollment, billing, OAuth Production
   activation, or deployment.
 
 ## Exact review set
 
-Owner self-approval must cover the exact UTF-8 bytes of these three files after the effective date
-is inserted:
+Owner self-approval must cover the exact UTF-8 bytes of these three files:
 
 1. `docs/legal/trial-terms-ja-v1.md`
 2. `docs/legal/trial-important-summary-ja-v1.md`
 3. `docs/legal/trial-privacy-notice-ja-v2.md`
+
+| Artifact                           | SHA-256                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `trial-terms-ja-v1.md`             | `f7dbfd78a03886cd23590b5c6d158a18550c658c4e3632284cd1473c1d073af5` |
+| `trial-important-summary-ja-v1.md` | `5520d713ad30b863421b4e1f55b427504062e337dff214dcafb6268ccc11e28f` |
+| `trial-privacy-notice-ja-v2.md`    | `c94877b83af0ec40b74408161c67afc075cb36f21640128d0997bd15d0a3ac22` |
 
 The final approval receipt will record each SHA-256, the Git revision, approval date, effective
 date, and absence of external legal review. Any later byte change requires a new digest and review;
@@ -78,12 +84,10 @@ not legal advice or an external legal opinion.
 
 ## Decisions still required from the owner
 
-1. Choose the effective date. Recommended rule: use the date on which the exact artifacts become
-   visible in onboarding, and do not activate enrollment before that date.
-2. Read and accept the exact three files, including the JPY 10,000 ordinary-negligence floor,
+1. Read and accept the exact three files, including the JPY 10,000 ordinary-negligence floor,
    14-day notice, 30-day archive period, five-year agreement-receipt retention, one-year security
    audit retention, and manual-backup limitation.
-3. Explicitly accept self-approval without external legal review and its residual enforceability
+2. Explicitly accept self-approval without external legal review and its residual enforceability
    and compliance risk.
 
 ## Accepted owner decision
@@ -92,6 +96,9 @@ The operator address will not be published as a residential address in the publi
 Privacy Notice will state that it is provided individually and without delay upon request. The
 owner accepted this disclosure method on 2026-08-21. This decision does not waive a disclosure
 obligation that applies to a particular request or transaction.
+
+The owner selected 2026-08-21 as the effective date. This does not itself publish the artifacts,
+activate onboarding, or authorize enrollment.
 
 ## Recommended approval wording
 
