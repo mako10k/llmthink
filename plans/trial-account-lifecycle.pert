@@ -474,6 +474,19 @@ task INITIALIZE_PRODUCTION_R2_REPOSITORY STORAGE_DECISION_ACCEPTED -> TERMS_COPY
     CODEX 1
   source "Accepted restic/R2 custody design; owner password-manager registration and continuation 2026-08-21"
 
+task CREATE_LEGACY_FIRST_LIVE_BACKUP STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Create first encrypted legacy live backup"
+  description "Under the owner-accepted current-state exception, briefly stop hosted writes, prepare a root-only legacy generation from exact thought data and OAuth account registry sources, restart service, upload one distinctly tagged encrypted snapshot, run exact reread/full-data/isolated-restore digest checks, and remove plaintext staging without creating service/timer or retention behavior."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 72
+  requires:
+    CODEX 1
+  source "Owner acceptance of one legacy recovery generation because production predates lifecycle SQLite 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -901,3 +914,16 @@ work_event FINISH_INITIALIZE_PRODUCTION_R2_REPOSITORY_20260821:
   task INITIALIZE_PRODUCTION_R2_REPOSITORY
   kind finish
   occurred_at 2026-08-21T15:52:17+09:00
+
+work_event START_CREATE_LEGACY_FIRST_LIVE_BACKUP_20260821:
+  model 1
+  task CREATE_LEGACY_FIRST_LIVE_BACKUP
+  kind start
+  occurred_at 2026-08-21T16:05:03+09:00
+  planned_value 2p
+
+work_event FINISH_CREATE_LEGACY_FIRST_LIVE_BACKUP_20260821:
+  model 1
+  task CREATE_LEGACY_FIRST_LIVE_BACKUP
+  kind finish
+  occurred_at 2026-08-21T16:06:10+09:00
