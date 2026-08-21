@@ -186,7 +186,7 @@ task DEFINE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED
   priority 94
   requires:
     CODEX 1
-  source "Owner sequencing decision 2026-08-21; ADR-0012 backup boundary"
+  source "Owner acceptance 2026-08-21; ADR-0012 backup boundary"
 
 task PRIORITIZE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
   title "Prioritize backup threat model for best-effort trial"
@@ -199,7 +199,7 @@ task PRIORITIZE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPR
   priority 93
   requires:
     CODEX 1
-  source "Owner direction 2026-08-21"
+  source "Owner acceptance of prioritized best-effort model 2026-08-21"
 
 task HYPOTHESIZE_OFF_CONOHA_BACKUP_STORAGE STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
   title "Reframe service-loss threats and hypothesize off-ConoHa storage"

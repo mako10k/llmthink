@@ -1,6 +1,6 @@
 # llmthink backup threat model
 
-- Status: draft for owner review
+- Status: accepted by owner on 2026-08-21
 - Date: 2026-08-21
 - Scope: hosted trial backup and restore requirements before infrastructure selection
 
@@ -318,9 +318,9 @@ tenant identity.
 - Meeting RPO/RTO does not guarantee business continuity, WorkOS availability, network access,
   or compatibility of external MCP clients.
 
-## 15. Decisions requested from the owner
+## 15. Accepted owner decisions
 
-Before hypothetical infrastructure evaluation, accept or change:
+The owner accepted the following on 2026-08-21:
 
 1. the three-tier policy: P0 launch blocker, P1 best-effort trial target, P2 improvement;
 2. the P0 assignment for confidentiality, consistency, tenant safety, integrity, isolated
