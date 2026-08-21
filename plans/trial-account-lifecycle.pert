@@ -416,6 +416,7 @@ task CONFIRM_R2D_EXTERNAL_CLEANUP STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROV
     optimistic 0.25p
     most_likely 0.5p
     pessimistic 1p
+  status done
   priority 77
   requires:
     CODEX 1
@@ -775,3 +776,18 @@ work_event FINISH_RUN_RESTIC_R2D_TECHNICAL_TEST_20260821:
   occurred_at 2026-08-21T14:40:55+09:00
   active_time 13/1200h
   effort 13/1200ph
+
+work_event START_CONFIRM_R2D_EXTERNAL_CLEANUP_20260821:
+  model 1
+  task CONFIRM_R2D_EXTERNAL_CLEANUP
+  kind start
+  occurred_at 2026-08-21T14:49:06+09:00
+  planned_value 13/24p
+
+work_event FINISH_CONFIRM_R2D_EXTERNAL_CLEANUP_20260821:
+  model 1
+  task CONFIRM_R2D_EXTERNAL_CLEANUP
+  kind finish
+  occurred_at 2026-08-21T14:49:23+09:00
+  active_time 17/3600h
+  effort 17/3600ph

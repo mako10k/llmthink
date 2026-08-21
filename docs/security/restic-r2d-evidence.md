@@ -1,6 +1,6 @@
 # disposable Cloudflare R2 compatibility evidence
 
-- Status: technical test passed; credential revocation and bucket deletion pending owner confirmation
+- Status: completed and externally cleaned
 - Date: 2026-08-21
 - Authorization: `security/restic-r2d-authorization`
 - Scope: local client, private disposable bucket, synthetic data only
@@ -53,11 +53,15 @@ owner gate when all of the following remain unchanged: exact dedicated bucket, s
 same credential scope, empty start, same destructive cleanup target, no secret exposure, and no
 scope or cost expansion.
 
-## Remaining gate
+## External cleanup completion
 
-The bucket is technically empty, but the Cloudflare credential and bucket still exist. The owner
-must revoke the R2D credential and delete the exact disposable bucket. Until both are confirmed,
-this evidence remains draft and the full R2D acceptance condition is incomplete.
+The owner confirmed on 2026-08-21 that the bucket-specific credential was revoked and the exact
+disposable bucket was deleted after its zero-object inventory. The three local secdat entries
+`R2D_ENDPOINT`, `R2D_ACCESS_KEY_ID`, and `R2D_SECRET_ACCESS_KEY` were then deleted with
+mask-impact rejection and a metadata-only reread. The unrelated pre-existing `R2D_TOKEN` entry was
+not modified.
+
+The full bounded R2D acceptance condition is complete and this evidence may be sealed.
 
 Successful R2D does not authorize or prove production credential custody, VPS R2 access, scheduled
 backup, live data transfer, deletion resistance, restore activation, or public backup capability.
