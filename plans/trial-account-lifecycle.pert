@@ -318,6 +318,19 @@ task DRAFT_RESTIC_OPERATIONAL_VERSION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_AP
     CODEX 1
   source "Official restic v0.19.1 release and installation documentation; completed local L1 and restore-validation evidence; owner continuation 2026-08-21"
 
+task ACCEPT_RESTIC_OPERATIONAL_VERSION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Accept restic operational version"
+  description "Record owner acceptance of ADR-0014 and seal restic 0.19.1 Linux amd64, its supply-chain verification profile, side-by-side update and rollback policy, and external-change boundaries without installing it or changing VPS, R2, credentials, or live data."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  status done
+  priority 84
+  requires:
+    CODEX 1
+  source "ADR-0014; owner acceptance 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -567,3 +580,18 @@ work_event FINISH_DRAFT_RESTIC_OPERATIONAL_VERSION_20260821:
   occurred_at 2026-08-21T13:50:09+09:00
   active_time 7/450h
   effort 7/450ph
+
+work_event START_ACCEPT_RESTIC_OPERATIONAL_VERSION_20260821:
+  model 1
+  task ACCEPT_RESTIC_OPERATIONAL_VERSION
+  kind start
+  occurred_at 2026-08-21T13:51:25+09:00
+  planned_value 13/24p
+
+work_event FINISH_ACCEPT_RESTIC_OPERATIONAL_VERSION_20260821:
+  model 1
+  task ACCEPT_RESTIC_OPERATIONAL_VERSION
+  kind finish
+  occurred_at 2026-08-21T13:51:39+09:00
+  active_time 7/1800h
+  effort 7/1800ph

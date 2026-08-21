@@ -2,7 +2,7 @@
 
 ## Status
 
-proposed
+accepted
 
 ## Date
 
@@ -113,7 +113,8 @@ activation、Production変更はそれぞれ別途承認を要する。
 - official release: `https://github.com/restic/restic/releases/tag/v0.19.1`
 - official installation and signature verification documentation:
   `https://restic.readthedocs.io/en/stable/020_installation.html`
-- this draft does not itself accept 0.19.1 or authorize any external change
+- acceptance does not authorize any external change
+- owner accepted this decision on 2026-08-21; the acceptance boundary above remains unchanged
 
 Reconsider this decision when:
 
