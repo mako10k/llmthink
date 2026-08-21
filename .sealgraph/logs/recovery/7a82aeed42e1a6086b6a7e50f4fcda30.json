@@ -1,0 +1,1 @@
+{"schema":"sealgraph/recovery/v1","operation_id":"7a82aeed42e1a6086b6a7e50f4fcda30","state":"COMMITTED","kind":"seal","transitions":[{"ref":"implementation/legacy-offhost-restore-rehearsal-attempt","before":null,"after":"eyJzY2hlbWEiOiJzZWFsZ3JhcGgvcmVmL3YxIiwiaGVhZCI6IjgzZTFlNDc1MTIxYjc5OTk0MjlhNTRmMTU4NzUwODYzNzQyMTFhM2JkMzdkNjJiOTJmZjdlNjg2NjlkMjEzYTAiLCJ0YWdzIjpbXX0="}]}

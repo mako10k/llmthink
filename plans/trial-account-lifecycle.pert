@@ -526,6 +526,32 @@ task ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_
     CODEX 1
   source "Owner explicit approval of legacy off-host restore rehearsal plan 2026-08-21"
 
+task RUN_LEGACY_OFFHOST_RESTORE_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Run legacy off-host restore rehearsal"
+  description "Acquire and independently verify restic 0.19.1, inject a fresh exact-bucket Object Read Only credential and password-manager repository password ephemerally, restore the exact legacy snapshot with no-lock semantics, validate full data/manifest/component/registry/thought structure, prove repository immutability, and remove all local plaintext and ephemeral entries."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 68
+  requires:
+    CODEX 1
+  source "Accepted legacy off-host restore authorization; owner recovery credential registration 2026-08-21"
+
+task CONFIRM_OFFHOST_RESTORE_CREDENTIAL_REVOCATION STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Confirm off-host restore credential revocation"
+  description "Record owner confirmation that the temporary exact-bucket Object Read Only Cloudflare credential used for the off-host restore rehearsal was revoked; only then finalize and seal the full rehearsal evidence."
+  estimate:
+    optimistic 0.1p
+    most_likely 0.25p
+    pessimistic 0.5p
+  status planned
+  priority 67
+  requires:
+    CODEX 1
+  source "Technical restore completed; Cloudflare revocation pending 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -1005,3 +1031,16 @@ work_event FINISH_ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL_20260821:
   task ACCEPT_LEGACY_OFFHOST_RESTORE_REHEARSAL
   kind finish
   occurred_at 2026-08-21T16:50:24+09:00
+
+work_event START_RUN_LEGACY_OFFHOST_RESTORE_REHEARSAL_20260821:
+  model 1
+  task RUN_LEGACY_OFFHOST_RESTORE_REHEARSAL
+  kind start
+  occurred_at 2026-08-21T16:40:00+09:00
+  planned_value 2p
+
+work_event FINISH_RUN_LEGACY_OFFHOST_RESTORE_REHEARSAL_20260821:
+  model 1
+  task RUN_LEGACY_OFFHOST_RESTORE_REHEARSAL
+  kind finish
+  occurred_at 2026-08-21T17:25:20+09:00
