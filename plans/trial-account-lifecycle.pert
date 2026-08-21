@@ -131,6 +131,7 @@ task IMPLEMENT_RECOVERY_EXPORT ONBOARDING_IMPLEMENTED -> RECOVERY_EXPORT_IMPLEME
     optimistic 2p
     most_likely 3p
     pessimistic 6p
+  status done
   priority 75
   requires:
     CODEX 1
@@ -1083,3 +1084,18 @@ work_event FINISH_IMPLEMENT_ONBOARDING_20260821:
   task IMPLEMENT_ONBOARDING
   kind finish
   occurred_at 2026-08-21T18:13:58+09:00
+
+work_event WE-e2bc291e5a5a879aee177604b76c14d50958c97e2f44ab05d4b5c58d4ff6e097:
+  model 1
+  task IMPLEMENT_RECOVERY_EXPORT
+  kind start
+  occurred_at 2026-08-21T18:14:00+09:00
+  planned_value 10/3p
+
+work_event WE-1fdfab53defb1842550ed8c2ba0659d688a2511a30faf30c4d227c6adad0fbac:
+  model 1
+  task IMPLEMENT_RECOVERY_EXPORT
+  kind finish
+  occurred_at 2026-08-21T18:44:00+09:00
+  active_time 0.5h
+  effort 0.5ph

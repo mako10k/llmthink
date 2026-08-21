@@ -14,6 +14,8 @@ import test from "node:test";
 
 import {
   SqliteLifecycleStore,
+  SQLITE_LIFECYCLE_MIGRATION_0001_SHA256,
+  SQLITE_LIFECYCLE_SCHEMA_VERSION,
   TRIAL_AGREEMENT_ACTION_VERSION,
 } from "../../src/server/sqlite-lifecycle-store.js";
 
@@ -326,5 +328,165 @@ test("operator lifecycle transitions fail closed and cannot skip export-only", a
     );
   } finally {
     store.close();
+  }
+});
+
+test("recovery requires operator review, replaces the exact identity, and rotates the credential", async () => {
+  const store = new SqliteLifecycleStore({
+    path: ":memory:",
+    allowMemory: true,
+    now: () => NOW,
+  });
+  try {
+    prepare(store);
+    const account = store.provisionTrialAccount({
+      identity: identity(),
+      termsId: "terms-trial-v1",
+      scopePolicyId: "scope-trial-v1",
+      actionVersion: TRIAL_AGREEMENT_ACTION_VERSION,
+    });
+    store.markInitialWorkspaceRealized(account.tenantId, account.workspaceId);
+    const credential = account.recoveryCredential ?? "";
+    const replacement = identity("workos-user-replacement");
+
+    assert.throws(
+      () => store.requestRecovery(`${credential}x`, replacement),
+      /Recovery request is unavailable/,
+    );
+    const request = store.requestRecovery(credential, replacement);
+    assert.equal(request.status, "pending_operator_review");
+    assert.deepEqual(await store.accountResolver()(identity()), {
+      subjectId: account.subjectId,
+      tenantId: account.tenantId,
+      workspaceId: account.workspaceId,
+      scopes: ["audit:run", "thought:read"],
+    });
+    await assert.rejects(
+      store.accountResolver()(replacement),
+      /mapping is unavailable/,
+    );
+
+    const approved = store.approveRecovery(
+      request.recoveryRequestId,
+      "operator-ticket-1",
+    );
+    assert.equal(approved.mappingRevision, 2);
+    assert.match(approved.recoveryCredential, /^llmthink-recovery-v1\./);
+    assert.notEqual(approved.recoveryCredential, credential);
+    await assert.rejects(
+      store.accountResolver()(identity()),
+      /mapping is unavailable/,
+    );
+    assert.equal(
+      (await store.accountResolver()(replacement)).subjectId,
+      account.subjectId,
+    );
+    assert.throws(
+      () => store.requestRecovery(credential, identity("third-identity")),
+      /Recovery request is unavailable/,
+    );
+    assert.throws(
+      () =>
+        store.approveRecovery(request.recoveryRequestId, "operator-ticket-1"),
+      /Recovery approval is unavailable/,
+    );
+  } finally {
+    store.close();
+  }
+});
+
+test("archive receipts are metadata-only and closure follows the retention window", async () => {
+  const store = new SqliteLifecycleStore({
+    path: ":memory:",
+    allowMemory: true,
+    now: () => NOW,
+  });
+  try {
+    prepare(store);
+    const account = store.provisionTrialAccount({
+      identity: identity(),
+      termsId: "terms-trial-v1",
+      scopePolicyId: "scope-trial-v1",
+      actionVersion: TRIAL_AGREEMENT_ACTION_VERSION,
+    });
+    store.markInitialWorkspaceRealized(account.tenantId, account.workspaceId);
+    store.transitionAccount(identity(), "export_only", "service_wind_down");
+
+    const digest = "ab".repeat(32);
+    const receipt = store.recordArchive(identity(), {
+      contentSha256: digest,
+      byteLength: 2048,
+      itemCount: 3,
+    });
+    assert.match(receipt.archiveReceiptId, /^archive-/);
+    assert.deepEqual(
+      { ...receipt, archiveReceiptId: "archive-redacted" },
+      {
+        archiveReceiptId: "archive-redacted",
+        formatVersion: "llmthink-archive-v1",
+        contentSha256: digest,
+        byteLength: 2048,
+        itemCount: 3,
+        createdAt: NOW.toISOString(),
+      },
+    );
+    store.transitionAccount(identity(), "closed", "archive_window_ended");
+    assert.throws(
+      () =>
+        store.recordArchive(identity(), {
+          contentSha256: digest,
+          byteLength: 0,
+          itemCount: 0,
+        }),
+      /Archive operation is unavailable/,
+    );
+  } finally {
+    store.close();
+  }
+});
+
+test("schema migration 0002 upgrades an exact migration 0001 database", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "llmthink-lifecycle-migrate-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, "lifecycle.sqlite");
+  new SqliteLifecycleStore({ path, now: () => NOW }).close();
+
+  const legacy = new DatabaseSync(path);
+  legacy.exec("DROP TABLE retention_transitions");
+  legacy.exec("DROP TABLE archive_receipts");
+  legacy.exec("DROP TABLE recovery_requests");
+  legacy
+    .prepare(
+      "UPDATE schema_metadata SET schema_version = 1, migration_id = '0001-initial-lifecycle', migration_sha256 = ? WHERE singleton = 1",
+    )
+    .run(Buffer.from(SQLITE_LIFECYCLE_MIGRATION_0001_SHA256, "hex"));
+  legacy.close();
+
+  new SqliteLifecycleStore({ path, now: () => NOW }).close();
+  const migrated = new DatabaseSync(path, { readOnly: true });
+  try {
+    const metadata = migrated
+      .prepare("SELECT schema_version, migration_id FROM schema_metadata")
+      .get() as { schema_version: number; migration_id: string };
+    assert.deepEqual(
+      { ...metadata },
+      {
+        schema_version: SQLITE_LIFECYCLE_SCHEMA_VERSION,
+        migration_id: "0002-recovery-export",
+      },
+    );
+    const tables = migrated
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('recovery_requests', 'archive_receipts', 'retention_transitions') ORDER BY name",
+      )
+      .all()
+      .map((row) => (row as { name: string }).name);
+    assert.deepEqual(tables, [
+      "archive_receipts",
+      "recovery_requests",
+      "retention_transitions",
+    ]);
+  } finally {
+    migrated.close();
   }
 });

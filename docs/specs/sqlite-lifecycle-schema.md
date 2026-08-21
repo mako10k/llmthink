@@ -309,6 +309,24 @@ write ports. Individual repositories cannot commit independently. Read-side admi
 one read transaction/snapshot for identity mapping, account state, tenant ownership,
 workspace state, and scope policy.
 
+### 5.1 Migration 0002: recovery and archive evidence
+
+Migration 0002 adds three logically separate append-oriented records without moving thought
+content into the lifecycle database:
+
+- `recovery_requests` binds a verified recovery credential to one proposed exact external
+  identity and remains pending until an operator approves or rejects it. The table contains no
+  recovery plaintext. Only one pending request per account is allowed.
+- `archive_receipts` records the archive format, SHA-256, byte length, item count, account,
+  tenant, workspace, and server time. Archive bytes remain outside SQLite.
+- `retention_transitions` records the start of the 30-day archive window and subsequent
+  operational-data closure. It is evidence of lifecycle intent, not proof that backup expiry or
+  physical deletion has completed.
+
+Recovery approval atomically replaces the old mapping, increments `mapping_revision`, rotates
+the active recovery verifier, and completes the request. Credential possession alone creates
+only a pending request and neither returns thought data nor changes authorization.
+
 ## 6. First-provisioning transaction
 
 Preparation outside the transaction:

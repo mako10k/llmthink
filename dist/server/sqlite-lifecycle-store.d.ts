@@ -48,6 +48,30 @@ export interface ProvisionedTrialAccount {
     readonly recoveryCredential?: string;
 }
 export type OperatorAccountState = "suspended" | "export_only" | "closed";
+export interface RecoveryRequest {
+    readonly recoveryRequestId: string;
+    readonly status: "pending_operator_review";
+}
+export interface ApprovedRecovery {
+    readonly recoveryRequestId: string;
+    readonly mappingRevision: number;
+    readonly recoveryCredential: string;
+}
+export interface ArchiveReceipt {
+    readonly archiveReceiptId: string;
+    readonly formatVersion: "llmthink-archive-v1";
+    readonly contentSha256: string;
+    readonly byteLength: number;
+    readonly itemCount: number;
+    readonly createdAt: string;
+}
+export interface ArchiveAccessContext {
+    readonly subjectId: string;
+    readonly tenantId: string;
+    readonly workspaceId: string;
+    readonly scopes: readonly ["thought:read"];
+    readonly requestId: string;
+}
 export declare class SqliteLifecycleStore {
     #private;
     constructor(options: SqliteLifecycleStoreOptions);
@@ -59,12 +83,22 @@ export declare class SqliteLifecycleStore {
     onboardingAccountState(identityInput: LlmthinkExternalOAuthIdentity): OnboardingAccountState;
     recordReconsent(identityInput: LlmthinkExternalOAuthIdentity, termsId: string, actionVersion: typeof ACTION_VERSION): string;
     transitionAccount(identityInput: LlmthinkExternalOAuthIdentity, toState: OperatorAccountState, reasonCode: string): OperatorAccountState;
+    requestRecovery(recoveryCredential: string, proposedIdentityInput: LlmthinkExternalOAuthIdentity): RecoveryRequest;
+    approveRecovery(recoveryRequestId: string, reviewerReference: string): ApprovedRecovery;
+    rejectRecovery(recoveryRequestId: string, reviewerReference: string): void;
+    recordArchive(identityInput: LlmthinkExternalOAuthIdentity, input: {
+        readonly contentSha256: string;
+        readonly byteLength: number;
+        readonly itemCount: number;
+    }): ArchiveReceipt;
+    archiveContext(identityInput: LlmthinkExternalOAuthIdentity): ArchiveAccessContext;
     createScopePolicy(input: NewScopePolicy): void;
     provisionTrialAccount(input: ProvisionTrialAccountInput): ProvisionedTrialAccount;
     markInitialWorkspaceRealized(tenantId: string, workspaceId: string): void;
     accountResolver(): LlmthinkOAuthAccountResolver;
     counts(): Readonly<Record<string, number>>;
 }
-export declare const SQLITE_LIFECYCLE_SCHEMA_VERSION = 1;
+export declare const SQLITE_LIFECYCLE_SCHEMA_VERSION = 2;
+export declare const SQLITE_LIFECYCLE_MIGRATION_0001_SHA256: string;
 export declare const TRIAL_AGREEMENT_ACTION_VERSION = "trial-agree-v1";
 export {};

@@ -1,4 +1,9 @@
-import { randomBytes, scryptSync, createHash } from "node:crypto";
+import {
+  randomBytes,
+  scryptSync,
+  createHash,
+  timingSafeEqual,
+} from "node:crypto";
 import {
   chmodSync,
   closeSync,
@@ -22,7 +27,7 @@ import type {
   LlmthinkOAuthAccountResolver,
 } from "./oauth-jwt.js";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const ACTION_VERSION = "trial-agree-v1";
 const RECOVERY_PREFIX = "llmthink-recovery-v1";
 const KNOWN_SCOPES = new Set<string>(LLMTHINK_SERVER_SCOPES);
@@ -181,6 +186,42 @@ CREATE TABLE realization_outbox (
 CREATE INDEX pending_realization_order ON realization_outbox(state, available_at, outbox_id);
 `;
 
+const MIGRATION_0002 = `
+CREATE TABLE recovery_requests (
+  recovery_request_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(account_id),
+  current_identity_mapping_id TEXT NOT NULL REFERENCES external_identity_mappings(identity_mapping_id),
+  proposed_issuer TEXT NOT NULL,
+  proposed_external_subject_id TEXT NOT NULL,
+  proposed_organization_key TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('pending', 'approved', 'rejected')),
+  created_at TEXT NOT NULL,
+  reviewed_at TEXT,
+  reviewer_reference TEXT
+) STRICT;
+CREATE UNIQUE INDEX one_pending_recovery_request_per_account
+  ON recovery_requests(account_id) WHERE state = 'pending';
+CREATE TABLE archive_receipts (
+  archive_receipt_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(account_id),
+  tenant_id TEXT NOT NULL REFERENCES tenant_catalog(tenant_id),
+  workspace_id TEXT NOT NULL REFERENCES workspace_catalog(workspace_id),
+  format_version TEXT NOT NULL CHECK (format_version = 'llmthink-archive-v1'),
+  content_sha256 BLOB NOT NULL CHECK (length(content_sha256) = 32),
+  byte_length INTEGER NOT NULL CHECK (byte_length >= 0),
+  item_count INTEGER NOT NULL CHECK (item_count >= 0),
+  created_at TEXT NOT NULL
+) STRICT;
+CREATE TABLE retention_transitions (
+  retention_transition_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(account_id),
+  transition_kind TEXT NOT NULL CHECK (transition_kind IN ('archive_window_started', 'operational_data_closed')),
+  effective_after TEXT NOT NULL,
+  reason_code TEXT NOT NULL,
+  created_at TEXT NOT NULL
+) STRICT;
+`;
+
 export interface SqliteLifecycleStoreOptions {
   readonly path: string;
   readonly allowMemory?: boolean;
@@ -239,6 +280,34 @@ export interface ProvisionedTrialAccount {
 }
 
 export type OperatorAccountState = "suspended" | "export_only" | "closed";
+
+export interface RecoveryRequest {
+  readonly recoveryRequestId: string;
+  readonly status: "pending_operator_review";
+}
+
+export interface ApprovedRecovery {
+  readonly recoveryRequestId: string;
+  readonly mappingRevision: number;
+  readonly recoveryCredential: string;
+}
+
+export interface ArchiveReceipt {
+  readonly archiveReceiptId: string;
+  readonly formatVersion: "llmthink-archive-v1";
+  readonly contentSha256: string;
+  readonly byteLength: number;
+  readonly itemCount: number;
+  readonly createdAt: string;
+}
+
+export interface ArchiveAccessContext {
+  readonly subjectId: string;
+  readonly tenantId: string;
+  readonly workspaceId: string;
+  readonly scopes: readonly ["thought:read"];
+  readonly requestId: string;
+}
 
 type Row = Record<string, SQLInputValue>;
 
@@ -602,6 +671,19 @@ export class SqliteLifecycleStore {
             "UPDATE workspace_catalog SET state = ?, updated_at = ? WHERE tenant_id = ?",
           )
           .run(toState, timestamp, row.tenant_id);
+        this.#run(
+          "INSERT INTO retention_transitions VALUES (?, ?, ?, ?, ?, ?)",
+          this.#id("retention"),
+          row.account_id,
+          toState === "export_only"
+            ? "archive_window_started"
+            : "operational_data_closed",
+          toState === "export_only"
+            ? new Date(Date.parse(timestamp) + 30 * 86_400_000).toISOString()
+            : timestamp,
+          reasonCode,
+          timestamp,
+        );
       }
       this.#run(
         "INSERT INTO account_state_events VALUES (?, ?, ?, ?, ?, 'operator', ?, ?)",
@@ -614,6 +696,260 @@ export class SqliteLifecycleStore {
         row.mapping_revision,
       );
       return toState;
+    });
+  }
+
+  requestRecovery(
+    recoveryCredential: string,
+    proposedIdentityInput: LlmthinkExternalOAuthIdentity,
+  ): RecoveryRequest {
+    const proposedIdentity = this.#identity(proposedIdentityInput);
+    const parsed = parseRecoveryCredential(recoveryCredential);
+    const rows = this.#db
+      .prepare(
+        `SELECT rc.recovery_id, rc.account_id, rc.verifier_bytes,
+          eim.identity_mapping_id
+        FROM recovery_credentials rc
+        JOIN external_identity_mappings eim ON eim.account_id = rc.account_id
+        JOIN accounts a ON a.account_id = rc.account_id
+        WHERE rc.state = 'active' AND eim.state = 'active' AND a.state != 'closed'
+          AND (? = '' OR rc.recovery_id = ?)`,
+      )
+      .all(parsed.recoveryId, parsed.recoveryId) as Row[];
+    let match: Row | undefined;
+    for (const row of rows) {
+      if (verifyRecoverySecret(parsed.secret, row.verifier_bytes)) match = row;
+    }
+    if (!match) throw new Error("Recovery request is unavailable");
+
+    const requestId = this.#id("recovery-request");
+    const timestamp = this.#timestamp();
+    try {
+      this.#transaction(() => {
+        const occupied = this.#db
+          .prepare(
+            `SELECT 1 AS found FROM external_identity_mappings
+            WHERE issuer = ? AND external_subject_id = ? AND organization_key = ?
+              AND state = 'active'`,
+          )
+          .get(
+            proposedIdentity.issuer,
+            proposedIdentity.subject,
+            proposedIdentity.organizationKey,
+          );
+        if (occupied) throw new Error("Recovery request is unavailable");
+        this.#run(
+          `INSERT INTO recovery_requests VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NULL, NULL)`,
+          requestId,
+          match.account_id,
+          match.identity_mapping_id,
+          proposedIdentity.issuer,
+          proposedIdentity.subject,
+          proposedIdentity.organizationKey,
+          timestamp,
+        );
+        this.#db
+          .prepare(
+            "UPDATE recovery_credentials SET last_used_at = ? WHERE recovery_id = ? AND state = 'active'",
+          )
+          .run(timestamp, match.recovery_id);
+      });
+    } catch (error) {
+      if (isUniqueConstraint(error)) {
+        throw new Error("Recovery request is unavailable");
+      }
+      throw error;
+    }
+    return Object.freeze({
+      recoveryRequestId: requestId,
+      status: "pending_operator_review",
+    });
+  }
+
+  approveRecovery(
+    recoveryRequestId: string,
+    reviewerReference: string,
+  ): ApprovedRecovery {
+    hostedId(recoveryRequestId, "recoveryRequestId");
+    boundedIdentity(reviewerReference, "reviewer reference");
+    const mappingId = this.#id("mapping");
+    const recoveryId = this.#id("recovery");
+    const secret = this.#entropy(32).toString("base64url");
+    const verifier = createRecoveryVerifier(secret, this.#entropy(16));
+    const timestamp = this.#timestamp();
+    return this.#transaction(() => {
+      const row = this.#db
+        .prepare(
+          `SELECT rr.*, a.mapping_revision, a.state AS account_state
+          FROM recovery_requests rr
+          JOIN accounts a ON a.account_id = rr.account_id
+          WHERE rr.recovery_request_id = ? AND rr.state = 'pending'`,
+        )
+        .get(recoveryRequestId) as Row | undefined;
+      if (!row || row.account_state === "closed") {
+        throw new Error("Recovery approval is unavailable");
+      }
+      const revision = Number(row.mapping_revision) + 1;
+      const occupied = this.#db
+        .prepare(
+          `SELECT 1 AS found FROM external_identity_mappings
+          WHERE issuer = ? AND external_subject_id = ? AND organization_key = ?
+            AND state = 'active'`,
+        )
+        .get(
+          row.proposed_issuer,
+          row.proposed_external_subject_id,
+          row.proposed_organization_key,
+        );
+      if (occupied) throw new Error("Recovery approval is unavailable");
+      this.#db
+        .prepare(
+          "UPDATE external_identity_mappings SET state = 'replaced', replaced_at = ? WHERE identity_mapping_id = ? AND state = 'active'",
+        )
+        .run(timestamp, row.current_identity_mapping_id);
+      this.#run(
+        "INSERT INTO external_identity_mappings VALUES (?, ?, ?, ?, ?, 'active', ?, ?, NULL)",
+        mappingId,
+        row.proposed_issuer,
+        row.proposed_external_subject_id,
+        row.proposed_organization_key,
+        row.account_id,
+        revision,
+        timestamp,
+      );
+      this.#db
+        .prepare(
+          "UPDATE accounts SET mapping_revision = ?, updated_at = ? WHERE account_id = ?",
+        )
+        .run(revision, timestamp, row.account_id);
+      this.#db
+        .prepare(
+          "UPDATE recovery_credentials SET state = 'rotated', rotated_at = ? WHERE account_id = ? AND state = 'active'",
+        )
+        .run(timestamp, row.account_id);
+      this.#run(
+        "INSERT INTO recovery_credentials VALUES (?, ?, 'scrypt-v1', ?, 'active', ?, NULL, NULL)",
+        recoveryId,
+        row.account_id,
+        verifier,
+        timestamp,
+      );
+      this.#db
+        .prepare(
+          "UPDATE recovery_requests SET state = 'approved', reviewed_at = ?, reviewer_reference = ? WHERE recovery_request_id = ? AND state = 'pending'",
+        )
+        .run(timestamp, reviewerReference, recoveryRequestId);
+      this.#run(
+        "INSERT INTO account_state_events VALUES (?, ?, ?, ?, 'identity_recovery_approved', 'operator', ?, ?)",
+        this.#id("event"),
+        row.account_id,
+        row.account_state,
+        row.account_state,
+        timestamp,
+        revision,
+      );
+      return Object.freeze({
+        recoveryRequestId,
+        mappingRevision: revision,
+        recoveryCredential: `${RECOVERY_PREFIX}.${recoveryId}.${secret}`,
+      });
+    });
+  }
+
+  rejectRecovery(recoveryRequestId: string, reviewerReference: string): void {
+    hostedId(recoveryRequestId, "recoveryRequestId");
+    boundedIdentity(reviewerReference, "reviewer reference");
+    const result = this.#db
+      .prepare(
+        "UPDATE recovery_requests SET state = 'rejected', reviewed_at = ?, reviewer_reference = ? WHERE recovery_request_id = ? AND state = 'pending'",
+      )
+      .run(this.#timestamp(), reviewerReference, recoveryRequestId);
+    if (result.changes !== 1)
+      throw new Error("Recovery rejection is unavailable");
+  }
+
+  recordArchive(
+    identityInput: LlmthinkExternalOAuthIdentity,
+    input: {
+      readonly contentSha256: string;
+      readonly byteLength: number;
+      readonly itemCount: number;
+    },
+  ): ArchiveReceipt {
+    const identity = this.#identity(identityInput);
+    if (!/^[0-9a-f]{64}$/.test(input.contentSha256)) {
+      throw new Error("Archive digest is invalid");
+    }
+    for (const value of [input.byteLength, input.itemCount]) {
+      if (!Number.isSafeInteger(value) || value < 0) {
+        throw new Error("Archive metadata is invalid");
+      }
+    }
+    const receiptId = this.#id("archive");
+    const timestamp = this.#timestamp();
+    return this.#transaction(() => {
+      const row = this.#db
+        .prepare(
+          `SELECT a.account_id, tc.tenant_id, wc.workspace_id
+          FROM external_identity_mappings eim
+          JOIN accounts a ON a.account_id = eim.account_id
+          JOIN tenant_catalog tc ON tc.owner_account_id = a.account_id
+          JOIN workspace_catalog wc ON wc.tenant_id = tc.tenant_id AND wc.kind = 'initial'
+          WHERE eim.issuer = ? AND eim.external_subject_id = ? AND eim.organization_key = ?
+            AND eim.state = 'active'
+            AND a.state IN ('active', 'reconsent_required', 'export_only')`,
+        )
+        .get(identity.issuer, identity.subject, identity.organizationKey) as
+        | Row
+        | undefined;
+      if (!row) throw new Error("Archive operation is unavailable");
+      this.#run(
+        "INSERT INTO archive_receipts VALUES (?, ?, ?, ?, 'llmthink-archive-v1', ?, ?, ?, ?)",
+        receiptId,
+        row.account_id,
+        row.tenant_id,
+        row.workspace_id,
+        Buffer.from(input.contentSha256, "hex"),
+        input.byteLength,
+        input.itemCount,
+        timestamp,
+      );
+      return Object.freeze({
+        archiveReceiptId: receiptId,
+        formatVersion: "llmthink-archive-v1",
+        contentSha256: input.contentSha256,
+        byteLength: input.byteLength,
+        itemCount: input.itemCount,
+        createdAt: timestamp,
+      });
+    });
+  }
+
+  archiveContext(
+    identityInput: LlmthinkExternalOAuthIdentity,
+  ): ArchiveAccessContext {
+    const identity = this.#identity(identityInput);
+    const row = this.#db
+      .prepare(
+        `SELECT a.subject_id, tc.tenant_id, wc.workspace_id
+        FROM external_identity_mappings eim
+        JOIN accounts a ON a.account_id = eim.account_id
+        JOIN tenant_catalog tc ON tc.owner_account_id = a.account_id
+        JOIN workspace_catalog wc ON wc.tenant_id = tc.tenant_id AND wc.kind = 'initial'
+        WHERE eim.issuer = ? AND eim.external_subject_id = ? AND eim.organization_key = ?
+          AND eim.state = 'active'
+          AND a.state IN ('active', 'reconsent_required', 'export_only')`,
+      )
+      .get(identity.issuer, identity.subject, identity.organizationKey) as
+      | Row
+      | undefined;
+    if (!row) throw new Error("Archive operation is unavailable");
+    return Object.freeze({
+      subjectId: text(row, "subject_id"),
+      tenantId: text(row, "tenant_id"),
+      workspaceId: text(row, "workspace_id"),
+      scopes: ["thought:read"] as const,
+      requestId: this.#id("archive-request"),
     });
   }
 
@@ -788,7 +1124,7 @@ export class SqliteLifecycleStore {
       workspaceId: generated.workspaceId,
       receiptId: generated.receiptId,
       provisioningOperationId: generated.operationId,
-      recoveryCredential: `${RECOVERY_PREFIX}.${recoverySecret}`,
+      recoveryCredential: `${RECOVERY_PREFIX}.${generated.recoveryId}.${recoverySecret}`,
     });
   }
 
@@ -914,14 +1250,15 @@ export class SqliteLifecycleStore {
       const timestamp = this.#timestamp();
       this.#transaction(() => {
         this.#db.exec(MIGRATION_0001);
+        this.#db.exec(MIGRATION_0002);
         this.#db
           .prepare(
-            "INSERT INTO schema_metadata VALUES (1, ?, ?, '0001-initial-lifecycle', ?)",
+            "INSERT INTO schema_metadata VALUES (1, ?, ?, '0002-recovery-export', ?)",
           )
           .run(
             SCHEMA_VERSION,
             timestamp,
-            sha256(Buffer.from(MIGRATION_0001, "utf8")),
+            sha256(Buffer.from(MIGRATION_0002, "utf8")),
           );
       });
       return;
@@ -931,11 +1268,29 @@ export class SqliteLifecycleStore {
         "SELECT schema_version, migration_id, migration_sha256 FROM schema_metadata WHERE singleton = 1",
       )
       .get() as Row | undefined;
-    const expectedDigest = sha256(Buffer.from(MIGRATION_0001, "utf8"));
+    const initialDigest = sha256(Buffer.from(MIGRATION_0001, "utf8"));
+    if (
+      row?.schema_version === 1 &&
+      row.migration_id === "0001-initial-lifecycle" &&
+      row.migration_sha256 instanceof Uint8Array &&
+      Buffer.from(row.migration_sha256).equals(initialDigest)
+    ) {
+      const timestamp = this.#timestamp();
+      this.#transaction(() => {
+        this.#db.exec(MIGRATION_0002);
+        this.#db
+          .prepare(
+            "UPDATE schema_metadata SET schema_version = 2, migrated_at = ?, migration_id = '0002-recovery-export', migration_sha256 = ? WHERE singleton = 1",
+          )
+          .run(timestamp, sha256(Buffer.from(MIGRATION_0002, "utf8")));
+      });
+      return;
+    }
+    const expectedDigest = sha256(Buffer.from(MIGRATION_0002, "utf8"));
     if (
       !row ||
       row.schema_version !== SCHEMA_VERSION ||
-      row.migration_id !== "0001-initial-lifecycle" ||
+      row.migration_id !== "0002-recovery-export" ||
       !(row.migration_sha256 instanceof Uint8Array) ||
       !Buffer.from(row.migration_sha256).equals(expectedDigest)
     ) {
@@ -1015,6 +1370,39 @@ function isUniqueConstraint(error: unknown): boolean {
   );
 }
 
+function parseRecoveryCredential(value: string): {
+  recoveryId: string;
+  secret: string;
+} {
+  const parts = value.split(".");
+  if (
+    parts[0] !== RECOVERY_PREFIX ||
+    (parts.length !== 2 && parts.length !== 3)
+  ) {
+    throw new Error("Recovery request is unavailable");
+  }
+  const recoveryId = parts.length === 3 ? parts[1]! : "";
+  const secret = parts.at(-1)!;
+  if (recoveryId && !/^recovery-[a-f0-9]{32}$/.test(recoveryId)) {
+    throw new Error("Recovery request is unavailable");
+  }
+  if (!/^[A-Za-z0-9_-]{43}$/.test(secret)) {
+    throw new Error("Recovery request is unavailable");
+  }
+  return { recoveryId, secret };
+}
+
+function createRecoveryVerifier(secret: string, salt: Uint8Array): Buffer {
+  return Buffer.concat([Buffer.from(salt), scryptSync(secret, salt, 32)]);
+}
+
+function verifyRecoverySecret(secret: string, value: SQLInputValue): boolean {
+  if (!(value instanceof Uint8Array) || value.byteLength !== 48) return false;
+  const verifier = Buffer.from(value);
+  const candidate = scryptSync(secret, verifier.subarray(0, 16), 32);
+  return timingSafeEqual(candidate, verifier.subarray(16));
+}
+
 function allowedOperatorTransition(
   fromState: string,
   toState: OperatorAccountState,
@@ -1061,4 +1449,7 @@ function prepareDatabasePath(path: string): void {
 }
 
 export const SQLITE_LIFECYCLE_SCHEMA_VERSION = SCHEMA_VERSION;
+export const SQLITE_LIFECYCLE_MIGRATION_0001_SHA256 = sha256(
+  Buffer.from(MIGRATION_0001, "utf8"),
+).toString("hex");
 export const TRIAL_AGREEMENT_ACTION_VERSION = ACTION_VERSION;

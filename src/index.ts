@@ -190,7 +190,17 @@ export {
   type ProvisionedTrialAccount,
   type ProvisionTrialAccountInput,
   type SqliteLifecycleStoreOptions,
+  type ApprovedRecovery,
+  type ArchiveAccessContext,
+  type ArchiveReceipt,
+  type RecoveryRequest,
 } from "./server/sqlite-lifecycle-store.js";
+export {
+  LlmthinkArchiveService,
+  type ArchiveLifecycleAuthority,
+  type LlmthinkArchive,
+  type LlmthinkArchiveServiceOptions,
+} from "./server/archive-service.js";
 export {
   loadOAuthAccountRegistry,
   OAUTH_ACCOUNT_REGISTRY_MAX_BYTES,
