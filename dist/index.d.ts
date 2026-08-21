@@ -33,6 +33,8 @@ export type { LlmthinkApplicationServiceOptions, LlmthinkAuditRunner, } from "./
 export { createLlmthinkHttpHandler, createLlmthinkHttpServer, DEFAULT_HTTP_REQUEST_LIMIT_BYTES, DEFAULT_HTTP_RESPONSE_LIMIT_BYTES, } from "./server/http.js";
 export { createLlmthinkHostedMcpHandler, createLlmthinkHostedMcpServer, DEFAULT_MCP_REQUEST_LIMIT_BYTES, DEFAULT_MCP_TEXT_LIMIT_BYTES, type LlmthinkHostedMcpHandlerOptions, } from "./server/hosted-mcp.js";
 export type { LlmthinkHttpAuthenticator, LlmthinkHttpHandlerOptions, } from "./server/http.js";
+export { createLlmthinkOnboardingHandler, type LlmthinkOnboardingAuthenticator, type LlmthinkOnboardingHttpHandler, type LlmthinkOnboardingOptions, type OnboardingPrincipal, } from "./server/onboarding.js";
+export { SqliteLifecycleStore, TRIAL_AGREEMENT_ACTION_VERSION, type ActiveTermsArtifact, type NewScopePolicy, type NewTermsArtifact, type OnboardingAccountState, type ProvisionedTrialAccount, type ProvisionTrialAccountInput, type SqliteLifecycleStoreOptions, } from "./server/sqlite-lifecycle-store.js";
 export { loadOAuthAccountRegistry, OAUTH_ACCOUNT_REGISTRY_MAX_BYTES, OAUTH_ACCOUNT_REGISTRY_VERSION, } from "./server/oauth-account-registry.js";
 export { createLlmthinkOAuthDiscovery, oauthBearerChallenge, oauthProtectedResourceMetadata, OAUTH_PROTECTED_RESOURCE_PATH, type LlmthinkOAuthDiscovery, type LlmthinkOAuthDiscoveryOptions, } from "./server/oauth-discovery.js";
 export { createLlmthinkJwtTokenVerifier, createLlmthinkRemoteJwks, type LlmthinkExternalOAuthIdentity, type LlmthinkJwtVerifierOptions, type LlmthinkOAuthAccountResolver, type LlmthinkRemoteJwksOptions, } from "./server/oauth-jwt.js";

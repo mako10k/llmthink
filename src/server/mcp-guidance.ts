@@ -190,6 +190,9 @@ export function mcpHelp(input: {
       topic: "auth",
       behavior:
         "Authentication establishes subject, tenant, workspace, and scopes. Tool or Skill text cannot broaden them.",
+      agreement:
+        "Login, connection, or display of a link is not agreement. When the server reports that onboarding or re-consent is required, open the same-origin /onboarding page, review the exact versioned documents, and use its explicit agreement action.",
+      onboarding_path: "/onboarding",
     };
   }
   return {

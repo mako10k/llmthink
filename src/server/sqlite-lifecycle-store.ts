@@ -204,6 +204,23 @@ export interface NewScopePolicy {
   readonly scopes: readonly LlmthinkServerScope[];
 }
 
+export interface ActiveTermsArtifact {
+  readonly termsId: string;
+  readonly version: string;
+  readonly locale: string;
+  readonly effectiveAt: string;
+  readonly content: string;
+  readonly summary: string;
+  readonly contentSha256: string;
+  readonly summarySha256: string;
+}
+
+export type OnboardingAccountState =
+  | "unregistered"
+  | "active"
+  | "reconsent_required"
+  | "unavailable";
+
 export interface ProvisionTrialAccountInput {
   readonly identity: LlmthinkExternalOAuthIdentity;
   readonly termsId: string;
@@ -425,6 +442,61 @@ export class SqliteLifecycleStore {
         }
       }
     });
+  }
+
+  activeTermsArtifact(
+    termsId: string,
+    kind: "trial_terms" | "privacy_notice" = "trial_terms",
+  ): ActiveTermsArtifact {
+    hostedId(termsId, "termsId");
+    const row = this.#db
+      .prepare(
+        `SELECT terms_id, version, locale, effective_at, content_bytes,
+          summary_bytes, content_sha256, summary_sha256
+        FROM terms_artifacts
+        WHERE terms_id = ? AND kind = ? AND state = 'active'`,
+      )
+      .get(termsId, kind) as Row | undefined;
+    if (
+      !row ||
+      !(row.content_bytes instanceof Uint8Array) ||
+      !(row.summary_bytes instanceof Uint8Array) ||
+      !(row.content_sha256 instanceof Uint8Array) ||
+      !(row.summary_sha256 instanceof Uint8Array)
+    ) {
+      throw new Error("Terms artifact is unavailable");
+    }
+    return Object.freeze({
+      termsId: text(row, "terms_id"),
+      version: text(row, "version"),
+      locale: text(row, "locale"),
+      effectiveAt: text(row, "effective_at"),
+      content: Buffer.from(row.content_bytes).toString("utf8"),
+      summary: Buffer.from(row.summary_bytes).toString("utf8"),
+      contentSha256: Buffer.from(row.content_sha256).toString("hex"),
+      summarySha256: Buffer.from(row.summary_sha256).toString("hex"),
+    });
+  }
+
+  onboardingAccountState(
+    identityInput: LlmthinkExternalOAuthIdentity,
+  ): OnboardingAccountState {
+    const identity = this.#identity(identityInput);
+    const row = this.#db
+      .prepare(
+        `SELECT a.state
+        FROM external_identity_mappings eim
+        JOIN accounts a ON a.account_id = eim.account_id
+        WHERE eim.issuer = ? AND eim.external_subject_id = ? AND eim.organization_key = ?
+          AND eim.state = 'active'`,
+      )
+      .get(identity.issuer, identity.subject, identity.organizationKey) as
+      | Row
+      | undefined;
+    if (!row) return "unregistered";
+    const state = text(row, "state");
+    if (state === "active" || state === "reconsent_required") return state;
+    return "unavailable";
   }
 
   recordReconsent(

@@ -24,6 +24,12 @@ dist/server/*
 !dist/server/oauth-jwt.d.ts
 !dist/server/oauth-jwt.js
 !dist/server/oauth-jwt.js.map
+!dist/server/onboarding.d.ts
+!dist/server/onboarding.js
+!dist/server/onboarding.js.map
+!dist/server/sqlite-lifecycle-store.d.ts
+!dist/server/sqlite-lifecycle-store.js
+!dist/server/sqlite-lifecycle-store.js.map
 node_modules/
 *.vsix
 .llmthink/

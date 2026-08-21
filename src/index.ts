@@ -174,6 +174,24 @@ export type {
   LlmthinkHttpHandlerOptions,
 } from "./server/http.js";
 export {
+  createLlmthinkOnboardingHandler,
+  type LlmthinkOnboardingAuthenticator,
+  type LlmthinkOnboardingHttpHandler,
+  type LlmthinkOnboardingOptions,
+  type OnboardingPrincipal,
+} from "./server/onboarding.js";
+export {
+  SqliteLifecycleStore,
+  TRIAL_AGREEMENT_ACTION_VERSION,
+  type ActiveTermsArtifact,
+  type NewScopePolicy,
+  type NewTermsArtifact,
+  type OnboardingAccountState,
+  type ProvisionedTrialAccount,
+  type ProvisionTrialAccountInput,
+  type SqliteLifecycleStoreOptions,
+} from "./server/sqlite-lifecycle-store.js";
+export {
   loadOAuthAccountRegistry,
   OAUTH_ACCOUNT_REGISTRY_MAX_BYTES,
   OAUTH_ACCOUNT_REGISTRY_VERSION,

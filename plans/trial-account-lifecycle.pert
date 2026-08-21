@@ -118,6 +118,7 @@ task IMPLEMENT_ONBOARDING LIFECYCLE_CORE_IMPLEMENTED -> ONBOARDING_IMPLEMENTED:
     optimistic 2p
     most_likely 3p
     pessimistic 5p
+  status done
   priority 80
   requires:
     CODEX 1
@@ -1069,3 +1070,16 @@ work_event FINISH_TERMS_COPY_OWNER_SELF_APPROVAL_20260821:
   task APPROVE_TERMS_COPY
   kind finish
   occurred_at 2026-08-21T17:59:03+09:00
+
+work_event START_IMPLEMENT_ONBOARDING_20260821:
+  model 1
+  task IMPLEMENT_ONBOARDING
+  kind start
+  occurred_at 2026-08-21T18:02:40+09:00
+  planned_value 19/6p
+
+work_event FINISH_IMPLEMENT_ONBOARDING_20260821:
+  model 1
+  task IMPLEMENT_ONBOARDING
+  kind finish
+  occurred_at 2026-08-21T18:13:58+09:00

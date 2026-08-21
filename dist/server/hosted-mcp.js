@@ -353,6 +353,9 @@ export function createLlmthinkHostedMcpHandler(options) {
     return async (request, response) => {
         const pathname = new URL(request.url ?? "/", "https://llmthink.invalid")
             .pathname;
+        if (options.onboarding && (await options.onboarding(request, response))) {
+            return;
+        }
         if (request.method === "GET" &&
             pathname === OAUTH_PROTECTED_RESOURCE_PATH &&
             options.oauthDiscovery) {

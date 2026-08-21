@@ -244,6 +244,18 @@ function restOperation(method, pathname) {
         return `${verb} thought`;
     return `${verb} unknown`;
 }
+async function dispatchControlRoute(options, request, response, url, requestId, responseLimit) {
+    if (request.method === "GET" && url.pathname === "/healthz") {
+        sendJson(response, 200, success({ status: "ok" }, requestId), responseLimit);
+        return true;
+    }
+    if (request.method === "GET" && url.pathname === "/readyz") {
+        const ready = (await options.isReady?.()) ?? true;
+        sendJson(response, ready ? 200 : 503, success({ status: ready ? "ready" : "not_ready" }, requestId), responseLimit);
+        return true;
+    }
+    return (await options.onboarding?.(request, response)) ?? false;
+}
 export function createLlmthinkHttpHandler(options) {
     const requestLimit = options.requestLimitBytes ?? DEFAULT_HTTP_REQUEST_LIMIT_BYTES;
     const responseLimit = options.responseLimitBytes ?? DEFAULT_HTTP_RESPONSE_LIMIT_BYTES;
@@ -253,13 +265,7 @@ export function createLlmthinkHttpHandler(options) {
         let requestId = responseRequestId(request);
         try {
             const url = new URL(request.url ?? "/", "https://llmthink.invalid");
-            if (request.method === "GET" && url.pathname === "/healthz") {
-                sendJson(response, 200, success({ status: "ok" }, requestId), responseLimit);
-                return;
-            }
-            if (request.method === "GET" && url.pathname === "/readyz") {
-                const ready = (await options.isReady?.()) ?? true;
-                sendJson(response, ready ? 200 : 503, success({ status: ready ? "ready" : "not_ready" }, requestId), responseLimit);
+            if (await dispatchControlRoute(options, request, response, url, requestId, responseLimit)) {
                 return;
             }
             const context = await security.authenticate(request);

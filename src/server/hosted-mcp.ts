@@ -18,6 +18,7 @@ import {
   type ThoughtRef,
 } from "./contracts.js";
 import type { LlmthinkHttpAuthenticator } from "./http.js";
+import type { LlmthinkOnboardingHttpHandler } from "./onboarding.js";
 import {
   errorNavigation,
   EXTERNAL_STORAGE_NOTICE,
@@ -43,6 +44,7 @@ export interface LlmthinkHostedMcpHandlerOptions {
   readonly oauthDiscovery?: LlmthinkOAuthDiscovery;
   readonly requestLimitBytes?: number;
   readonly textLimitBytes?: number;
+  readonly onboarding?: LlmthinkOnboardingHttpHandler;
 }
 
 const identityShape = {
@@ -545,6 +547,9 @@ export function createLlmthinkHostedMcpHandler(
   ): Promise<void> => {
     const pathname = new URL(request.url ?? "/", "https://llmthink.invalid")
       .pathname;
+    if (options.onboarding && (await options.onboarding(request, response))) {
+      return;
+    }
     if (
       request.method === "GET" &&
       pathname === OAUTH_PROTECTED_RESOURCE_PATH &&

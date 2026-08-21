@@ -254,6 +254,20 @@ test("help mirrors CLI guidance and errors include actionable navigation", async
     help.body.result.structuredContent.storage_notice ?? "",
     /external llmthink server/,
   );
+  const authHelp = await callTool(
+    baseUrl,
+    "llmthink_help",
+    { topic: "auth" },
+    [],
+  );
+  assert.equal(
+    authHelp.body.result.structuredContent.onboarding_path,
+    "/onboarding",
+  );
+  assert.match(
+    authHelp.body.result.structuredContent.agreement ?? "",
+    /Login, connection, or display of a link is not agreement/,
+  );
 
   const denied = await callTool(baseUrl, "list_thoughts", { limit: 20 }, []);
   assert.equal(denied.body.result.structuredContent.error?.code, "forbidden");

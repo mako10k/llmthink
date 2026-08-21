@@ -26,6 +26,7 @@ import {
   LlmthinkSecurityBoundary,
   type LlmthinkHostedAuthenticator,
 } from "./security.js";
+import type { LlmthinkOnboardingHttpHandler } from "./onboarding.js";
 
 export const DEFAULT_HTTP_REQUEST_LIMIT_BYTES = 1024 * 1024;
 export const DEFAULT_HTTP_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
@@ -39,6 +40,7 @@ export interface LlmthinkHttpHandlerOptions {
   readonly isReady?: () => boolean | Promise<boolean>;
   readonly requestLimitBytes?: number;
   readonly responseLimitBytes?: number;
+  readonly onboarding?: LlmthinkOnboardingHttpHandler;
 }
 
 interface HttpSuccess {
@@ -341,6 +343,36 @@ function restOperation(method: string | undefined, pathname: string): string {
   return `${verb} unknown`;
 }
 
+async function dispatchControlRoute(
+  options: LlmthinkHttpHandlerOptions,
+  request: IncomingMessage,
+  response: ServerResponse,
+  url: URL,
+  requestId: string,
+  responseLimit: number,
+): Promise<boolean> {
+  if (request.method === "GET" && url.pathname === "/healthz") {
+    sendJson(
+      response,
+      200,
+      success({ status: "ok" }, requestId),
+      responseLimit,
+    );
+    return true;
+  }
+  if (request.method === "GET" && url.pathname === "/readyz") {
+    const ready = (await options.isReady?.()) ?? true;
+    sendJson(
+      response,
+      ready ? 200 : 503,
+      success({ status: ready ? "ready" : "not_ready" }, requestId),
+      responseLimit,
+    );
+    return true;
+  }
+  return (await options.onboarding?.(request, response)) ?? false;
+}
+
 export function createLlmthinkHttpHandler(options: LlmthinkHttpHandlerOptions) {
   const requestLimit =
     options.requestLimitBytes ?? DEFAULT_HTTP_REQUEST_LIMIT_BYTES;
@@ -357,23 +389,16 @@ export function createLlmthinkHttpHandler(options: LlmthinkHttpHandlerOptions) {
     let requestId = responseRequestId(request);
     try {
       const url = new URL(request.url ?? "/", "https://llmthink.invalid");
-      if (request.method === "GET" && url.pathname === "/healthz") {
-        sendJson(
+      if (
+        await dispatchControlRoute(
+          options,
+          request,
           response,
-          200,
-          success({ status: "ok" }, requestId),
+          url,
+          requestId,
           responseLimit,
-        );
-        return;
-      }
-      if (request.method === "GET" && url.pathname === "/readyz") {
-        const ready = (await options.isReady?.()) ?? true;
-        sendJson(
-          response,
-          ready ? 200 : 503,
-          success({ status: ready ? "ready" : "not_ready" }, requestId),
-          responseLimit,
-        );
+        )
+      ) {
         return;
       }
 
