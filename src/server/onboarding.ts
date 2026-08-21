@@ -146,7 +146,7 @@ function securityHeaders(response: ServerResponse): void {
     "content-security-policy",
     "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   );
-  response.setHeader("referrer-policy", "no-referrer");
+  response.setHeader("referrer-policy", "same-origin");
   response.setHeader("x-content-type-options", "nosniff");
   response.setHeader("x-frame-options", "DENY");
 }

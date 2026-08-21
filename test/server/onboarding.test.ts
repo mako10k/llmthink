@@ -253,6 +253,7 @@ test("fragment bootstrap uses a same-origin document navigation for the ticket e
   const { baseUrl } = await fixture(t);
   const page = await fetch(`${baseUrl}/onboarding`);
   assert.match(page.headers.get("content-security-policy") ?? "", /form-action 'self'/);
+  assert.equal(page.headers.get("referrer-policy"), "same-origin");
 
   const script = await fetch(`${baseUrl}/onboarding/bootstrap.js`);
   const source = await script.text();
