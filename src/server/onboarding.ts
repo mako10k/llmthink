@@ -249,15 +249,16 @@ const BOOTSTRAP_SCRIPT = `(() => {
   const ticket = new URLSearchParams(location.hash.slice(1)).get("ticket");
   history.replaceState(null, "", "/onboarding");
   if (!ticket) return;
-  fetch("/onboarding/session", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ ticket }),
-  }).then(async (response) => {
-    const html = await response.text();
-    document.open(); document.write(html); document.close();
-  });
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = "/onboarding/session";
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "ticket";
+  input.value = ticket;
+  form.append(input);
+  document.body.append(form);
+  form.submit();
 })();\n`;
 
 function bootstrapPage(): string {
@@ -268,7 +269,7 @@ function sendBootstrap(response: ServerResponse): void {
   securityHeaders(response);
   response.setHeader(
     "content-security-policy",
-    "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+    "default-src 'none'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   );
   response.statusCode = 200;
   response.setHeader("content-type", "text/html; charset=utf-8");

@@ -249,6 +249,20 @@ test("fragment ticket exchanges once without putting OAuth bearer tokens in the 
   assert.equal(store.counts().tenant_catalog, 1);
 });
 
+test("fragment bootstrap uses a same-origin document navigation for the ticket exchange", async (t) => {
+  const { baseUrl } = await fixture(t);
+  const page = await fetch(`${baseUrl}/onboarding`);
+  assert.match(page.headers.get("content-security-policy") ?? "", /form-action 'self'/);
+
+  const script = await fetch(`${baseUrl}/onboarding/bootstrap.js`);
+  const source = await script.text();
+  assert.equal(script.status, 200);
+  assert.match(source, /form\.action = "\/onboarding\/session"/);
+  assert.match(source, /form\.submit\(\)/);
+  assert.doesNotMatch(source, /fetch\(/);
+  assert.doesNotMatch(source, /document\.write/);
+});
+
 test("hosted realization activates exactly the provisioned tenant boundary", async (t) => {
   const { baseUrl, store } = await fixture(t, {
     realizeInitialWorkspace: true,
