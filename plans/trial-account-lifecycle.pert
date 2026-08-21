@@ -344,6 +344,19 @@ task IMPLEMENT_RESTIC_SUPPLY_VERIFICATION STORAGE_DECISION_ACCEPTED -> TERMS_COP
     CODEX 1
   source "Accepted ADR-0014; owner implementation authorization 2026-08-21"
 
+task INSTALL_RESTIC_ON_VPS STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Install and read back pinned restic on VPS"
+  description "Verify the official restic 0.19.1 Linux amd64 signed supply chain locally, transfer only the verified binary and receipt through the approved ProxyJump route, install immutable versioned root-owned artifacts, and independently read back digest/version/mode while leaving R2, credentials, repositories, services, timers, and live data unchanged."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  status done
+  priority 82
+  requires:
+    CODEX 1
+  source "Accepted ADR-0014 and implementation/restic-supply-verification; owner VPS-install authorization 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -623,3 +636,18 @@ work_event FINISH_IMPLEMENT_RESTIC_SUPPLY_VERIFICATION_20260821:
   occurred_at 2026-08-21T13:58:36+09:00
   active_time 13/900h
   effort 13/900ph
+
+work_event START_INSTALL_RESTIC_ON_VPS_20260821:
+  model 1
+  task INSTALL_RESTIC_ON_VPS
+  kind start
+  occurred_at 2026-08-21T14:06:08+09:00
+  planned_value 13/12p
+
+work_event FINISH_INSTALL_RESTIC_ON_VPS_20260821:
+  model 1
+  task INSTALL_RESTIC_ON_VPS
+  kind finish
+  occurred_at 2026-08-21T14:07:14+09:00
+  active_time 11/600h
+  effort 11/600ph
