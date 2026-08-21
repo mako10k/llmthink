@@ -461,6 +461,19 @@ task EXECUTE_PRODUCTION_R2_VPS_REHEARSAL STORAGE_DECISION_ACCEPTED -> TERMS_COPY
     CODEX 1
   source "Accepted production R2 VPS rehearsal plan; owner credential-registration completion 2026-08-21"
 
+task INITIALIZE_PRODUCTION_R2_REPOSITORY STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Initialize empty production R2 repository"
+  description "Record owner-confirmed off-host password-manager custody; deliver the generated repository password through SSH stdin into one host-encrypted root-only VPS credential; initialize restic format 2 at the dedicated bucket root; run structural/full-data checks and prove zero snapshots; scan the journal and remove the transient harness without uploading live data or creating a service/timer."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 73
+  requires:
+    CODEX 1
+  source "Accepted restic/R2 custody design; owner password-manager registration and continuation 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -875,3 +888,16 @@ work_event FINISH_EXECUTE_PRODUCTION_R2_VPS_REHEARSAL_20260821:
   occurred_at 2026-08-21T15:40:31+09:00
   active_time 7/720h
   effort 7/720ph
+
+work_event START_INITIALIZE_PRODUCTION_R2_REPOSITORY_20260821:
+  model 1
+  task INITIALIZE_PRODUCTION_R2_REPOSITORY
+  kind start
+  occurred_at 2026-08-21T15:52:01+09:00
+  planned_value 2p
+
+work_event FINISH_INITIALIZE_PRODUCTION_R2_REPOSITORY_20260821:
+  model 1
+  task INITIALIZE_PRODUCTION_R2_REPOSITORY
+  kind finish
+  occurred_at 2026-08-21T15:52:17+09:00
