@@ -188,6 +188,19 @@ task DEFINE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED
     CODEX 1
   source "Owner sequencing decision 2026-08-21; ADR-0012 backup boundary"
 
+task PRIORITIZE_BACKUP_THREAT_MODEL STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Prioritize backup threat model for best-effort trial"
+  description "Replace the all-controls posture with P0 safety baseline, P1 best-effort trial targets, and P2 improvement backlog; distinguish launch rejection from recorded residual risk without selecting infrastructure."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  status done
+  priority 93
+  requires:
+    CODEX 1
+  source "Owner direction 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -287,3 +300,18 @@ work_event FINISH_BACKUP_THREAT_MODEL_20260821:
   occurred_at 2026-08-21T10:03:40+09:00
   active_time 0.0975h
   effort 0.0975ph
+
+work_event START_PRIORITIZE_BACKUP_THREAT_MODEL_20260821:
+  model 1
+  task PRIORITIZE_BACKUP_THREAT_MODEL
+  kind start
+  occurred_at 2026-08-21T10:13:40+09:00
+  planned_value 13/24p
+
+work_event FINISH_PRIORITIZE_BACKUP_THREAT_MODEL_20260821:
+  model 1
+  task PRIORITIZE_BACKUP_THREAT_MODEL
+  kind finish
+  occurred_at 2026-08-21T10:14:27+09:00
+  active_time 47/3600h
+  effort 47/3600ph

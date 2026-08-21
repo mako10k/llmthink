@@ -11,7 +11,7 @@ without assuming a provider, protocol, storage product, region, or key-managemen
 
 The decision sequence is deliberately separated:
 
-1. accept this infrastructure-independent threat model and its service objectives;
+1. accept this infrastructure-independent threat model, priority policy, and target objectives;
 2. construct one or more hypothetical infrastructure profiles that claim to satisfy it;
 3. map each requirement to what each profile can, cannot, or only partially realize;
 4. accept an infrastructure and its explicit residual risks in a later ADR;
@@ -19,6 +19,21 @@ The decision sequence is deliberately separated:
 
 Passing a backup creation test is not restore acceptance. Possessing a backup object is not
 evidence that it is confidential, complete, authentic, usable, or tenant-safe.
+
+This model is risk-prioritized rather than an assertion that every conceivable threat must be
+eliminated. Controls above the minimum safety baseline are pursued on a best-effort basis and
+may remain as explicitly recorded residual risk for the unpaid trial.
+
+### Priority policy
+
+| Priority             | Meaning                                                                                                                                                   | Infrastructure decision rule                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| P0 — safety baseline | A backup or restore implementation without this control could itself cause disclosure, tenant mixing, silent corruption, or destruction of the live copy. | Launch blocker. Reject or redesign the infrastructure; do not waive merely for convenience.                           |
+| P1 — trial target    | Materially improves recoverability or resistance to realistic compromise, but may be bounded by cost and single-operator capacity.                        | Best effort. Prefer support; otherwise document the gap, compensating operation, and review trigger.                  |
+| P2 — improvement     | Defense in depth against lower-probability, correlated, or sophisticated failure.                                                                         | Do not block the initial unpaid trial. Keep a visible backlog and reconsider as usage, sensitivity, or revenue grows. |
+
+“Best effort” means an explicit attempt, evidence of the achieved level, and disclosure of the
+remaining risk. It does not mean treating an unknown or failed control as satisfied.
 
 ## 2. System scope
 
@@ -101,32 +116,35 @@ be explicit.
 The initial service has one human operator. Operator absence and loss of the operator's devices
 are therefore availability threats even without hostile action.
 
-## 6. Threats and required controls
+## 6. Prioritized threats and control outcomes
 
-| ID     | Threat                                                     | Required result, independent of implementation                                                                                                                                                                           |
-| ------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| BTH-01 | Network interception or endpoint confusion during transfer | Only an authenticated destination receives an already encrypted artifact; a transport security failure stops the transfer.                                                                                               |
-| BTH-02 | Backup-storage read compromise                             | Storage disclosure reveals no usable thought content, identity mapping, recovery verifier, or secret without separately held key material.                                                                               |
-| BTH-03 | Live host compromise reads backup credentials or keys      | Compromise of the continuously running service alone must not grant both unrestricted historical read access and irreversible deletion of every backup generation.                                                       |
-| BTH-04 | Backup account compromise deletes or replaces generations  | Retention/version protection and separated authority preserve at least one verified generation; replacement is detected cryptographically.                                                                               |
-| BTH-05 | Operator workstation compromise                            | Long-lived key and deletion authority exposure is minimized; rotation and revocation have a documented path and create no plaintext backup copy.                                                                         |
-| BTH-06 | Inconsistent SQLite copy                                   | Snapshot includes a SQLite-supported consistent state, not a main-file-only copy that omits committed WAL data.                                                                                                          |
-| BTH-07 | Control-plane and thought-data skew                        | Every generation records a recovery-point relationship; restore reconciles ownership and fails closed on missing, orphaned, or conflicting data.                                                                         |
-| BTH-08 | Cross-tenant disclosure during restore                     | Restore targets an isolated absent destination and preserves server-derived tenant/workspace boundaries; no path or owner is inferred from user input.                                                                   |
-| BTH-09 | Silent corruption or substitution                          | Authenticated encryption plus an independently checked manifest detects modification, truncation, wrong generation, and wrong source before activation.                                                                  |
-| BTH-10 | Ransomware or destructive automation                       | Backup failure domains and deletion authority are sufficiently separate from the live writer that one compromised automation path cannot erase all accepted recovery points.                                             |
-| BTH-11 | Provider outage or termination                             | Recovery does not depend on one currently reachable provider control plane without an accepted residual-risk exception.                                                                                                  |
-| BTH-12 | Key loss                                                   | At least two controlled key-recovery copies or an accepted equivalent survive loss of one operator device; recovery is periodically proven without exposing the key in evidence.                                         |
-| BTH-13 | Excessive retention after user/account deletion            | Expiration and exceptional legal holds are bounded, recorded, and applied to backup generations; expiry is not silently reset by copying.                                                                                |
-| BTH-14 | Backup/log metadata leaks identities or content            | Receipts and normal logs contain only safe artifact IDs, time, size, schema/generation, result, and cryptographic digest; no content, token, raw external subject, recovery secret, key, or unnecessary filesystem path. |
-| BTH-15 | Unverified restore is activated                            | Restore validation and activation are distinct owner-gated steps; ambiguity, invariant failure, or incomplete evidence stops activation.                                                                                 |
-| BTH-16 | Backup tooling supply-chain compromise                     | Tool and version are pinned or otherwise verified, run with least privilege, and cannot silently broaden source paths or export secrets.                                                                                 |
-| BTH-17 | Backup job repeatedly fails unnoticed                      | Bounded freshness monitoring reports missed recovery points without exposing payload data; stale status cannot be interpreted as success.                                                                                |
-| BTH-18 | Restore destroys the only live copy                        | Restore never initially overwrites the live path and retains a rollback boundary until post-activation checks succeed.                                                                                                   |
+| ID     | Priority | Threat                                                     | Target result, independent of implementation                                                                                                                                                                |
+| ------ | -------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BTH-01 | P0       | Network interception or endpoint confusion during transfer | Only an authenticated destination receives an already encrypted artifact; a transport security failure stops the transfer.                                                                                  |
+| BTH-02 | P0       | Backup-storage read compromise                             | Storage disclosure reveals no usable thought content, identity mapping, recovery verifier, or secret without separately held key material.                                                                  |
+| BTH-03 | P1       | Live host compromise reads backup credentials or keys      | Compromise of the continuously running service alone should not grant both unrestricted historical read access and irreversible deletion of every backup generation.                                        |
+| BTH-04 | P1       | Backup account compromise deletes or replaces generations  | Retention/version protection and separated authority should preserve at least one verified generation; replacement is detected cryptographically.                                                           |
+| BTH-05 | P1       | Operator workstation compromise                            | Long-lived key and deletion-authority exposure is minimized; rotation and revocation have a documented path and create no plaintext backup copy.                                                            |
+| BTH-06 | P0       | Inconsistent SQLite copy                                   | Snapshot includes a SQLite-supported consistent state, not a main-file-only copy that omits committed WAL data.                                                                                             |
+| BTH-07 | P0       | Control-plane and thought-data skew                        | Every generation records a recovery-point relationship; restore reconciles ownership and fails closed on missing, orphaned, or conflicting data.                                                            |
+| BTH-08 | P0       | Cross-tenant disclosure during restore                     | Restore targets an isolated absent destination and preserves server-derived tenant/workspace boundaries; no path or owner is inferred from user input.                                                      |
+| BTH-09 | P0       | Silent corruption or substitution                          | Authenticated encryption plus a checked manifest detects modification, truncation, wrong generation, and wrong source before activation.                                                                    |
+| BTH-10 | P1       | Ransomware or destructive automation                       | Backup failure domains and deletion authority should be sufficiently separate that one compromised automation path cannot erase all accepted recovery points.                                               |
+| BTH-11 | P2       | Provider outage or termination                             | A second provider-independent recovery path is preferred as usage, sensitivity, or revenue grows.                                                                                                           |
+| BTH-12 | P1       | Key loss                                                   | Controlled key recovery should survive loss of one operator device and be rehearsed without exposing the key in evidence.                                                                                   |
+| BTH-13 | P1       | Excessive retention after user/account deletion            | Expiration and exceptional legal holds are bounded and recorded; expiry is not silently reset by copying.                                                                                                   |
+| BTH-14 | P0       | Backup/log metadata leaks identities or content            | Receipts and normal logs contain only safe artifact IDs, time, size, schema/generation, result, and digest; no content, token, raw external subject, recovery secret, key, or unnecessary identifying path. |
+| BTH-15 | P0       | Unverified restore is activated                            | Restore validation and activation are distinct owner-gated steps; ambiguity, invariant failure, or incomplete evidence stops activation.                                                                    |
+| BTH-16 | P2       | Backup tooling supply-chain compromise                     | Tool/version verification and least privilege are increased over time; source expansion and secret export remain prohibited.                                                                                |
+| BTH-17 | P1       | Backup job repeatedly fails unnoticed                      | Freshness monitoring should report missed recovery points without exposing payload data; stale state is never reported as success.                                                                          |
+| BTH-18 | P0       | Restore destroys the only live copy                        | Restore never initially overwrites the live path and retains a rollback boundary until post-activation checks succeed.                                                                                      |
 
-## 7. Non-negotiable security invariants
+Priority is initially assigned by consequence and feasibility, not numerical risk scoring. The
+infrastructure comparison may propose priority changes, but cannot silently apply them.
 
-The following are proposed hard requirements for infrastructure evaluation:
+## 7. Minimum safety baseline and best-effort controls
+
+The following are the proposed P0 minimum safety baseline:
 
 1. Payload encryption is applied before data crosses from the controlled snapshot or
    cryptographic boundary into backup storage. Transport encryption alone is insufficient.
@@ -134,44 +152,52 @@ The following are proposed hard requirements for infrastructure evaluation:
    reach activation.
 3. The backup-storage provider does not receive plaintext backup keys as part of ordinary
    storage access.
-4. One continuously available credential does not provide live-data write, backup plaintext
-   read, and destruction of all retained generations.
-5. Lifecycle control-plane and thought-data backups remain logically distinct artifacts but
+4. Lifecycle control-plane and thought-data backups remain logically distinct artifacts but
    share an explicit recovery-point manifest.
-6. Tenant isolation remains fail closed during restore and reconciliation. Missing ownership
+5. Tenant isolation remains fail closed during restore and reconciliation. Missing ownership
    data never causes a tenant to be guessed, merged, or reassigned.
-7. Restore is performed to a new isolated destination, verified, and only then activated by
+6. Restore is performed to a new isolated destination, verified, and only then activated by
    an explicit operator action.
-8. Backup and restore evidence is secret-free and does not contain user content.
-9. Backup retention is not a substitute for user archive. User-visible archive and operator
+7. Backup and restore evidence is secret-free and does not contain user content.
+8. Backup retention is not a substitute for user archive. User-visible archive and operator
    disaster recovery remain separate capabilities.
-10. A backup is not accepted until a representative restore has succeeded under the same
-    security boundary intended for operation.
+9. A backup is not accepted for trial activation until a representative restore has succeeded under the same
+   security boundary intended for operation.
 
-Any infrastructure unable to satisfy an invariant is rejected unless the owner explicitly
-changes this threat model and accepts the identified residual risk first.
+P1 controls—credential-role separation, deletion resistance, key recovery, freshness
+monitoring, and periodic restore rehearsal—are best-effort trial targets. Infrastructure must
+show the achieved level and compensating operation. P2 controls, including provider diversity
+and stronger supply-chain assurance, enter the improvement backlog and do not block the initial
+unpaid trial.
+
+Infrastructure unable to satisfy P0 is rejected. A P1/P2 gap is acceptable only when visible in
+the comparison and final ADR; it does not require pretending that the control exists.
 
 ## 8. Availability and lifecycle objectives for owner acceptance
 
-The following values are proposed for an unpaid trial. They are service requirements, not
-claims that the current system meets them:
+The following values are proposed targets for an unpaid trial. They are planning targets, not
+an SLA, warranty, or claim that the current system meets them:
 
-| Objective                      | Proposed requirement                                                                                                          |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Recovery point objective (RPO) | At most 24 hours of committed data loss after an infrastructure-loss event                                                    |
-| Recovery time objective (RTO)  | Restore decision and service recovery within 72 hours, excluding events where lawful access or the operator is unavailable    |
-| Backup frequency               | At least once per 24 hours, plus an on-demand verified backup before schema migration or destructive maintenance              |
-| Ordinary retention             | 30 rolling days                                                                                                               |
-| Minimum failure domains        | One live copy plus at least one encrypted off-host backup generation                                                          |
-| Restore rehearsal              | Before activation, after material format/key/infrastructure change, and at least once every 90 days while the trial is active |
-| Freshness alert                | Operator-visible failure if no accepted recovery point exists within 36 hours                                                 |
-| Key recovery                   | Loss of one ordinary operator device must not make all retained generations permanently unreadable                            |
+| Priority | Objective                      | Proposed target                                                                                                          |
+| -------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| P1       | Recovery point objective (RPO) | Aim for at most 24 hours of committed data loss after an infrastructure-loss event                                       |
+| P1       | Recovery time objective (RTO)  | Aim to decide and complete recovery within 72 hours, excluding events where lawful access or the operator is unavailable |
+| P1       | Backup frequency               | Aim for once per 24 hours; require an on-demand verified backup before schema migration or destructive maintenance       |
+| P1       | Ordinary retention             | Aim for 30 rolling days and keep the public notice aligned with actual capability                                        |
+| P0       | Minimum copy placement         | One live copy plus at least one encrypted off-host backup generation                                                     |
+| P0/P1    | Restore rehearsal              | Required before activation; thereafter aim for material-change-triggered and 90-day rehearsal                            |
+| P1       | Freshness alert                | Aim to notify the operator if no accepted recovery point exists within 36 hours                                          |
+| P1       | Key recovery                   | Aim to survive loss of one ordinary operator device                                                                      |
 
 These objectives do not promise uninterrupted service. If cost or operational constraints make
 them unrealistic, change them before infrastructure selection and before publishing matching
 terms.
 
 ## 9. Backup creation requirements
+
+Unless explicitly deferred by the infrastructure comparison, these are P0 because an unsafe
+backup artifact can create a confidentiality or integrity incident. Scheduling, automation, and
+additional generation durability are P1 where they do not weaken the P0 artifact itself.
 
 - Enumerate source roots explicitly; do not recursively back up the host, home directory, or
   unresolved environment-variable path.
@@ -193,6 +219,9 @@ terms.
 
 ## 10. Restore requirements
 
+These are P0 for any restore that may be activated. A trial may defer performing a restore, but
+it may not activate an unverified or tenant-unsafe restore.
+
 1. Select an immutable generation by exact identifier and expected manifest digest.
 2. Retrieve it into a new permission-protected restore area with adequate capacity.
 3. Authenticate and decrypt without writing secrets or plaintext to logs or shell history.
@@ -210,6 +239,10 @@ terms.
 
 ## 11. Deletion and incident requirements
 
+These are P1 operational targets except where applicable law, the public notice, or incident
+containment imposes a stronger obligation. The infrastructure comparison must identify which
+parts are automated and which depend on a manual operator procedure.
+
 - Ordinary expiry deletes generations according to the declared 30-day policy without
   extending retention merely because a generation was copied or re-encrypted.
 - A security incident, dispute, or legal hold may isolate a generation longer only with a
@@ -223,22 +256,24 @@ terms.
 - Loss of all readable generations, repeated freshness failure, or an unverified restore is a
   service incident and must not be hidden by reporting only that a job ran.
 
-## 12. Required evidence
+## 12. Prioritized evidence
 
-Infrastructure and implementation are not accepted without evidence for:
+Before trial activation, P0 evidence is required for:
 
 - exact source inventory and exclusion behavior;
 - consistent SQLite backup under active WAL writes;
 - control-plane/thought-data recovery-point and reconciliation behavior;
 - encrypted artifact unreadability without the backup key;
 - corruption, truncation, substitution, wrong-generation, and wrong-key rejection;
-- storage-read compromise and deletion-authority separation;
 - restore into an absent location and refusal of archive path escapes;
 - cross-tenant, missing-owner, multi-owner, and orphan-data fail-closed behavior;
-- key loss/recovery and credential rotation without secret-bearing logs;
-- retention expiry and exceptional-hold auditability;
-- missed-backup freshness detection;
-- full representative restore rehearsal and post-activation rollback check.
+- full representative restore rehearsal and post-activation rollback check;
+- absence of secret-bearing logs and evidence.
+
+P1 evidence is accumulated best effort for storage deletion resistance, credential separation,
+key loss/recovery, retention expiry, exceptional holds, and missed-backup detection. Missing P1
+evidence is reported as a gap, not converted to a pass. P2 evidence is optional for the initial
+trial and retained as improvement evidence when available.
 
 Evidence records may contain requirement IDs, safe artifact IDs, digests, sizes, timestamps,
 tool versions, and results. They must not contain content, tokens, raw external subjects,
@@ -262,13 +297,14 @@ tenant identity.
 
 Before hypothetical infrastructure evaluation, accept or change:
 
-1. the hard invariants in section 7;
-2. RPO 24 hours and RTO 72 hours;
-3. 30-day rolling retention and a 90-day restore-rehearsal interval;
-4. the requirement to survive loss of one operator device;
-5. the rule that provider/storage access alone must not decrypt backup payloads;
-6. the rule that infrastructure exceptions require explicit residual-risk acceptance rather
-   than silently weakening this model.
+1. the three-tier policy: P0 launch blocker, P1 best-effort trial target, P2 improvement;
+2. the P0 assignment for confidentiality, consistency, tenant safety, integrity, isolated
+   restore, secret-free evidence, and non-destructive activation;
+3. RPO 24 hours, RTO 72 hours, 30-day retention, 36-hour freshness notification, and 90-day
+   rehearsal as P1 targets rather than guarantees;
+4. provider diversity and stronger supply-chain assurance as P2, not initial launch blockers;
+5. the rule that a P1/P2 shortfall is recorded as residual risk, while a P0 shortfall rejects
+   the infrastructure.
 
 No provider, account, credential, transfer, or Production change is authorized by accepting
 this threat model.
