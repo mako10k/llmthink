@@ -2,7 +2,7 @@
 
 ## 文書情報
 
-- Status: draft for owner self-review
+- Status: accepted by owner for the free trial
 - Public version: `trial-privacy-ja-2026-08-v2`
 - Effective date: 2026-08-21
 - Controller: 勝又誠

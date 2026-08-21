@@ -2,15 +2,15 @@
 
 ## 文書情報
 
-- Status: draft for owner self-review
+- Status: accepted by owner for the free trial
 - Public version: `trial-terms-ja-2026-08-v1`
 - Effective date: 2026-08-21
 - Operator: 勝又誠
 - Contact: `mako10k@mk10.org`
 - Content language: 日本語
 
-この文書は公開前のドラフトです。status pageは公開済みですが、発効日を確定し、本文と重要事項要約の
-exact bytesおよびSHA-256を固定するまで利用者の同意対象にしてはなりません。
+status pageは公開済みです。本規約は、本文と重要事項要約のexact bytesおよびSHA-256を固定し、
+onboardingで利用者へ提示するまでは、利用者の同意対象として使用してはなりません。
 
 ## 第1条（適用と同意）
 

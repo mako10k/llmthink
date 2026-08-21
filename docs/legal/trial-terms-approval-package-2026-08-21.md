@@ -3,7 +3,7 @@
 ## Status
 
 - Prepared: 2026-08-21
-- Decision state: owner review pending
+- Decision state: exact draft bytes approved; publication-status normalization pending confirmation
 - External legal review: not performed
 - Scope: 無償の試験利用のみ
 - Operator-address disclosure: owner accepted individual notice without public residential-address
@@ -99,6 +99,18 @@ obligation that applies to a particular request or transaction.
 
 The owner selected 2026-08-21 as the effective date. This does not itself publish the artifacts,
 activate onboarding, or authorize enrollment.
+
+On 2026-08-21, the owner explicitly self-approved the three recorded draft-byte digests, their
+versions, effective date, and residual risks without external legal review. That approval authorized
+document sealing and onboarding implementation, but not publication, public enrollment, billing,
+or Production activation. Before the non-draft Seal, the public candidates mechanically replace
+their self-review status labels; those resulting bytes require a final digest confirmation.
+
+| Publication candidate              | SHA-256                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `trial-terms-ja-v1.md`             | `b40e20f16af8f927027b34ca97c8a729d65178a93f999006f77e8a3821723af1` |
+| `trial-important-summary-ja-v1.md` | `c81803b0b85713ccc0a79908949774ece7023439fe34088051140d84e53fef2c` |
+| `trial-privacy-notice-ja-v2.md`    | `88028714e007f7aea2c5ef829b9fa42a9c428136eb3a8ced942669e83c9be610` |
 
 ## Recommended approval wording
 

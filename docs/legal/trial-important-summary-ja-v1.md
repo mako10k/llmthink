@@ -2,7 +2,7 @@
 
 ## 文書情報
 
-- Status: draft for owner self-review
+- Status: accepted by owner for the free trial
 - Terms version: `trial-terms-ja-2026-08-v1`
 - Effective date: 2026-08-21
 
