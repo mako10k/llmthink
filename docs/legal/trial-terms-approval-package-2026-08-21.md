@@ -6,6 +6,8 @@
 - Decision state: owner review pending
 - External legal review: not performed
 - Scope: 無償の試験利用のみ
+- Operator-address disclosure: owner accepted individual notice without public residential-address
+  publication on 2026-08-21
 - This package does not authorize publication, public enrollment, billing, OAuth Production
   activation, or deployment.
 
@@ -78,14 +80,18 @@ not legal advice or an external legal opinion.
 
 1. Choose the effective date. Recommended rule: use the date on which the exact artifacts become
    visible in onboarding, and do not activate enrollment before that date.
-2. Confirm that providing the operator address individually upon request is acceptable. Publishing
-   a full residential address in the notice is the more conservative disclosure option but exposes
-   additional personal information.
-3. Read and accept the exact three files, including the JPY 10,000 ordinary-negligence floor,
+2. Read and accept the exact three files, including the JPY 10,000 ordinary-negligence floor,
    14-day notice, 30-day archive period, five-year agreement-receipt retention, one-year security
    audit retention, and manual-backup limitation.
-4. Explicitly accept self-approval without external legal review and its residual enforceability
+3. Explicitly accept self-approval without external legal review and its residual enforceability
    and compliance risk.
+
+## Accepted owner decision
+
+The operator address will not be published as a residential address in the public notice. The
+Privacy Notice will state that it is provided individually and without delay upon request. The
+owner accepted this disclosure method on 2026-08-21. This decision does not waive a disclosure
+obligation that applies to a particular request or transaction.
 
 ## Recommended approval wording
 
