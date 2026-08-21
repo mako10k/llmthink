@@ -77,6 +77,7 @@ const env = {
 
 let commands = 0;
 function execute(executable, args, label, options = {}) {
+  const { allowedStderr = "", ...spawnOptions } = options;
   commands += 1;
   if (commands > 40) fail("r2d_command_ceiling_exceeded");
   const result = spawnSync(executable, args, {
@@ -84,13 +85,13 @@ function execute(executable, args, label, options = {}) {
     encoding: "utf8",
     maxBuffer: 2 * 1024 * 1024,
     timeout: 5 * 60 * 1000,
-    ...options,
+    ...spawnOptions,
   });
   if (
     result.error ||
     result.status !== 0 ||
     result.signal !== null ||
-    result.stderr.trim() !== ""
+    result.stderr.trim() !== allowedStderr
   )
     fail(`r2d_command_failed:${label}`);
   return result.stdout;
@@ -104,8 +105,8 @@ const resticOptions = [
   "-o",
   "s3.region=auto",
 ];
-function restic(args, label) {
-  return execute(RESTIC, [...resticOptions, ...args], label);
+function restic(args, label, options) {
+  return execute(RESTIC, [...resticOptions, ...args], label, options);
 }
 
 function aws(args, label) {
@@ -200,15 +201,23 @@ try {
   if (digest(restored) !== expectedDigests[2])
     fail("r2d_restore_digest_mismatch");
 
-  restic(["forget", snapshotIds[0], "--dry-run"], "retention-dry-run");
+  const exactForgetStderr =
+    'Ignoring "filters": explicit snapshot ids are given';
+  restic(["forget", snapshotIds[0], "--dry-run"], "retention-dry-run", {
+    allowedStderr: exactForgetStderr,
+  });
   if (snapshots().length !== 3) fail("r2d_retention_dry_run_mutated");
-  restic(["forget", snapshotIds[0]], "retention-apply");
+  restic(["forget", snapshotIds[0]], "retention-apply", {
+    allowedStderr: exactForgetStderr,
+  });
   if (snapshots().length !== 2) fail("r2d_retention_apply_mismatch");
   restic(["prune"], "prune-after-retention");
   restic(["check", "--read-data"], "full-data-check-after");
 
   const beforeCleanup = inventory();
-  restic(["forget", snapshotIds[1], snapshotIds[2]], "forget-exact-remaining");
+  restic(["forget", snapshotIds[1], snapshotIds[2]], "forget-exact-remaining", {
+    allowedStderr: exactForgetStderr,
+  });
   restic(["prune"], "prune-exact-remaining");
   if (snapshots().length !== 0) fail("r2d_snapshot_cleanup_mismatch");
 

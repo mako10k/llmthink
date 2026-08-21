@@ -396,6 +396,31 @@ task RECORD_RESTIC_R2D_ATTEMPT_1 STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVE
     CODEX 1
   source "Accepted R2D authorization; fail-closed execution and cleanup evidence 2026-08-21"
 
+task RUN_RESTIC_R2D_TECHNICAL_TEST STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Run disposable R2 technical compatibility test"
+  description "Run the corrected bounded harness against the exact empty private test bucket with synthetic data; verify format 2 init, three backups and exact rereads, structural/full-data checks, isolated restore, retention preview/apply, prune, strict known-stderr classification, and final zero-object cleanup while recording corrective attempts proportionally."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 3p
+  status done
+  priority 78
+  requires:
+    CODEX 1
+  source "Accepted R2D retry and owner request for proportional handling 2026-08-21"
+
+task CONFIRM_R2D_EXTERNAL_CLEANUP STORAGE_DECISION_ACCEPTED -> TERMS_COPY_APPROVED:
+  title "Confirm R2D credential revocation and bucket deletion"
+  description "After technical R2D returns the exact dedicated bucket to zero objects, obtain owner confirmation that the bucket-specific credential was revoked and the exact disposable bucket was deleted; then finalize and seal the R2D evidence."
+  estimate:
+    optimistic 0.25p
+    most_likely 0.5p
+    pessimistic 1p
+  priority 77
+  requires:
+    CODEX 1
+  source "Accepted R2D cleanup condition; technical R2D evidence 2026-08-21"
+
 work_event START_SQLITE_SCHEMA_20260820:
   model 1
   task DESIGN_SQLITE_SCHEMA
@@ -735,3 +760,18 @@ work_event FINISH_RECORD_RESTIC_R2D_ATTEMPT_1_20260821:
   occurred_at 2026-08-21T14:30:52+09:00
   active_time 7/720h
   effort 7/720ph
+
+work_event START_RUN_RESTIC_R2D_TECHNICAL_TEST_20260821:
+  model 1
+  task RUN_RESTIC_R2D_TECHNICAL_TEST
+  kind start
+  occurred_at 2026-08-21T14:40:16+09:00
+  planned_value 2p
+
+work_event FINISH_RUN_RESTIC_R2D_TECHNICAL_TEST_20260821:
+  model 1
+  task RUN_RESTIC_R2D_TECHNICAL_TEST
+  kind finish
+  occurred_at 2026-08-21T14:40:55+09:00
+  active_time 13/1200h
+  effort 13/1200ph
