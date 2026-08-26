@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { TRIAL_AGREEMENT_ACTION_VERSION, } from "./sqlite-lifecycle-store.js";
+import { SqliteLifecycleBusyError, TRIAL_AGREEMENT_ACTION_VERSION, } from "./sqlite-lifecycle-store.js";
 const DEFAULT_NONCE_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_MAX_SESSIONS = 1_000;
 const MAX_FORM_BYTES = 16 * 1024;
@@ -67,7 +67,7 @@ async function readForm(request) {
 function securityHeaders(response) {
     response.setHeader("cache-control", "no-store");
     response.setHeader("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-    response.setHeader("referrer-policy", "no-referrer");
+    response.setHeader("referrer-policy", "same-origin");
     response.setHeader("x-content-type-options", "nosniff");
     response.setHeader("x-frame-options", "DENY");
 }
@@ -132,22 +132,23 @@ const BOOTSTRAP_SCRIPT = `(() => {
   const ticket = new URLSearchParams(location.hash.slice(1)).get("ticket");
   history.replaceState(null, "", "/onboarding");
   if (!ticket) return;
-  fetch("/onboarding/session", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ ticket }),
-  }).then(async (response) => {
-    const html = await response.text();
-    document.open(); document.write(html); document.close();
-  });
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = "/onboarding/session";
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "ticket";
+  input.value = ticket;
+  form.append(input);
+  document.body.append(form);
+  form.submit();
 })();\n`;
 function bootstrapPage() {
     return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>llmthink オンボーディング</title><script defer src="/onboarding/bootstrap.js"></script></head><body><main><h1>llmthink オンボーディング</h1><p>認証済みクライアントから発行されたリンクを開いてください。</p></main></body></html>`;
 }
 function sendBootstrap(response) {
     securityHeaders(response);
-    response.setHeader("content-security-policy", "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
+    response.setHeader("content-security-policy", "default-src 'none'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
     response.statusCode = 200;
     response.setHeader("content-type", "text/html; charset=utf-8");
     response.end(bootstrapPage());
@@ -331,7 +332,12 @@ export function createLlmthinkOnboardingBridge(options) {
             else
                 throw new Error("invalid_form");
         }
-        catch {
+        catch (error) {
+            if (error instanceof SqliteLifecycleBusyError) {
+                response.setHeader("retry-after", "5");
+                sendHtml(response, 503, resultPage("現在利用できません", "処理が集中しています。ページを開き直して再度お試しください。"));
+                return true;
+            }
             sendHtml(response, 400, resultPage("手続を完了できません", "ページを開き直して、内容を再確認してください。"));
         }
         return true;

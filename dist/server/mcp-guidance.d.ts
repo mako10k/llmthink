@@ -76,6 +76,20 @@ declare const TOOL_GUIDANCE: {
             readonly example: `sha256:${string}`;
         };
     };
+    readonly delete_thought: {
+        readonly effect: "consequential_external_write";
+        readonly use_when: "The user explicitly asks to permanently delete one thought.";
+        readonly required: readonly ["thought_id", "expected_revision", "idempotency_key", "request_digest"];
+        readonly request_digest: {
+            readonly mutation_fields: readonly ["thought_id", "expected_revision"];
+            readonly format: "sha256:<64 lowercase hex>";
+            readonly pattern: "^sha256:[a-f0-9]{64}$";
+            readonly procedure: readonly ["Build an object from the mutation fields listed for the selected tool.", "Serialize it deterministically as UTF-8 (for example, canonical JSON with lexicographically sorted object keys and no insignificant whitespace).", "Compute SHA-256 over those bytes and prefix the 64-character lowercase hexadecimal result with sha256:."];
+            readonly excludes: readonly ["idempotency_key", "request_digest"];
+            readonly server_behavior: "The server validates the digest format and uses it to distinguish idempotent replays; it does not rederive the digest from request fields.";
+            readonly example: `sha256:${string}`;
+        };
+    };
     readonly get_thought_history: {
         readonly effect: "read_only";
         readonly use_when: "Read the append-only event history for one thought.";

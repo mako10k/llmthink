@@ -66,6 +66,15 @@ export interface AddReflectionCommand extends RevisionPrecondition {
     readonly text: string;
     readonly identity: CommandIdentity;
 }
+export interface DeleteThoughtCommand extends RevisionPrecondition {
+    readonly ref: ThoughtRef;
+    readonly identity: CommandIdentity;
+}
+export interface ThoughtDeletionReceipt {
+    readonly thoughtId: string;
+    readonly deleted: true;
+    readonly deletedRevision: number;
+}
 export interface ThoughtListQuery {
     readonly cursor?: string;
     readonly limit: number;
@@ -90,6 +99,7 @@ export interface ThoughtRepository {
     recordAudit(command: RecordAuditCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
     finalize(command: FinalizeThoughtCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
     addReflection(command: AddReflectionCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
+    delete(command: DeleteThoughtCommand, context: RequestContext): Promise<ThoughtDeletionReceipt>;
     events(ref: ThoughtRef, context: RequestContext): Promise<readonly ThoughtEvent[]>;
 }
 export interface ServerThoughtFileRecord {

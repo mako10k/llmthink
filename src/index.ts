@@ -202,7 +202,11 @@ export {
   type OnboardingPrincipal,
 } from "./server/onboarding.js";
 export {
+  assertSqliteLifecycleNodeVersion,
   SqliteLifecycleStore,
+  SqliteLifecycleBusyError,
+  SQLITE_LIFECYCLE_BUSY_TIMEOUT_MS,
+  SQLITE_LIFECYCLE_NODE_RANGE,
   TRIAL_AGREEMENT_ACTION_VERSION,
   type ActiveTermsArtifact,
   type NewScopePolicy,

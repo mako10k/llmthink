@@ -97,7 +97,8 @@ ThoughtRepository data plane
 
 - database file、WAL、shared-memory file、backupを同じ機密区分で管理する
 - service以外の非特権userからread/writeできないowner/group permissionを設定する
-- foreign keys、WAL mode、bounded busy timeout、transaction retry上限、integrity checkを明示設定する
+- foreign keys、WAL mode、bounded busy timeout、transaction retry上限、integrity checkを明示設定する。
+  driver、Node.js runtime、同時writer、busy時の0回blind retry契約はADR-0017で具体化する
 - schema migrationはversioned、forward-only、backup後、単一writerで実行し、未知schemaはfail closedとする
 - backupはSQLite online backup APIまたは整合したsnapshotを使用し、DB fileだけの不整合copyを行わない
 - restore acceptanceではregistry、agreement、tenant catalog、outbox、data rootの対応を検査し、欠落や

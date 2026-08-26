@@ -19,3 +19,4 @@ ADR の作成規則は [ADR ルール](../process/adr-rules.md) を参照する�
 | [0013](0013-cloudflare-r2-backup-storage.md)                         | accepted | 初期 off-ConoHa backup storage に Cloudflare R2 Standard を採用する               |
 | [0014](0014-restic-operational-version.md)                           | accepted | 初期運用版として restic 0.19.1 を固定する                                         |
 | [0015](0015-rational-confidence-interval-propagation.md)             | accepted | 信頼度を有理数区間と認識状態で伝搬する                                            |
+| [0017](0017-node-sqlite-lifecycle-driver.md)                         | accepted | Hosted lifecycle driverにNode.js組込みSQLiteを限定採択する                        |

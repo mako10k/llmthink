@@ -31,6 +31,11 @@ const SCHEMA_VERSION = 2;
 const ACTION_VERSION = "trial-agree-v1";
 const RECOVERY_PREFIX = "llmthink-recovery-v1";
 const KNOWN_SCOPES = new Set<string>(LLMTHINK_SERVER_SCOPES);
+const DEFAULT_BUSY_TIMEOUT_MS = 5_000;
+const MAX_BUSY_TIMEOUT_MS = 60_000;
+const MIN_NODE_MAJOR = 24;
+const MIN_NODE_MINOR = 15;
+const MAX_NODE_MAJOR_EXCLUSIVE = 25;
 
 const MIGRATION_0001 = `
 CREATE TABLE schema_metadata (
@@ -226,6 +231,7 @@ export interface SqliteLifecycleStoreOptions {
   readonly path: string;
   readonly createNew?: boolean;
   readonly allowMemory?: boolean;
+  readonly busyTimeoutMs?: number;
   readonly now?: () => Date;
   readonly entropy?: (bytes: number) => Buffer;
 }
@@ -376,6 +382,56 @@ function text(row: Row, field: string): string {
   return value;
 }
 
+export class SqliteLifecycleBusyError extends Error {
+  readonly code = "lifecycle_database_busy";
+
+  constructor(cause?: unknown) {
+    super("Lifecycle database is busy", { cause });
+    this.name = "SqliteLifecycleBusyError";
+  }
+}
+
+export function assertSqliteLifecycleNodeVersion(
+  version = process.versions.node,
+): void {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
+  const major = match ? Number(match[1]) : Number.NaN;
+  const minor = match ? Number(match[2]) : Number.NaN;
+  if (
+    !match ||
+    major < MIN_NODE_MAJOR ||
+    major >= MAX_NODE_MAJOR_EXCLUSIVE ||
+    (major === MIN_NODE_MAJOR && minor < MIN_NODE_MINOR)
+  ) {
+    throw new Error("SQLite lifecycle requires Node.js >=24.15.0 and <25.0.0");
+  }
+}
+
+function boundedBusyTimeout(value: number | undefined): number {
+  const timeout = value ?? DEFAULT_BUSY_TIMEOUT_MS;
+  if (
+    !Number.isSafeInteger(timeout) ||
+    timeout < 1 ||
+    timeout > MAX_BUSY_TIMEOUT_MS
+  ) {
+    throw new Error("Lifecycle database busy timeout is invalid");
+  }
+  return timeout;
+}
+
+function isSqliteBusy(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const sqlite = error as Error & { code?: unknown; errcode?: unknown };
+  return (
+    sqlite.code === "ERR_SQLITE_ERROR" &&
+    (sqlite.errcode === 5 || sqlite.message === "database is locked")
+  );
+}
+
+function normalizeSqliteError(error: unknown): unknown {
+  return isSqliteBusy(error) ? new SqliteLifecycleBusyError(error) : error;
+}
+
 export class SqliteLifecycleStore {
   readonly #db: DatabaseSync;
   readonly #now: () => Date;
@@ -388,18 +444,27 @@ export class SqliteLifecycleStore {
     if (options.path === ":memory:" && !options.allowMemory) {
       throw new Error("In-memory lifecycle database is test-only");
     }
+    assertSqliteLifecycleNodeVersion();
+    const busyTimeoutMs = boundedBusyTimeout(options.busyTimeoutMs);
     this.#now = options.now ?? (() => new Date());
     this.#entropy = options.entropy ?? randomBytes;
     if (options.path !== ":memory:") {
       prepareDatabasePath(options.path, options.createNew ?? false);
     }
-    this.#db = new DatabaseSync(options.path, { allowExtension: false });
+    this.#db = new DatabaseSync(options.path, {
+      allowExtension: false,
+      defensive: true,
+      enableDoubleQuotedStringLiterals: false,
+      allowBareNamedParameters: false,
+      allowUnknownNamedParameters: false,
+      timeout: busyTimeoutMs,
+    });
     try {
-      this.#configure();
+      this.#configure(busyTimeoutMs);
       this.#migrate();
     } catch (error) {
       this.#db.close();
-      throw error;
+      throw normalizeSqliteError(error);
     }
   }
 
@@ -418,6 +483,10 @@ export class SqliteLifecycleStore {
       chmodSync(path, 0o600);
       const restored = new DatabaseSync(path, {
         allowExtension: false,
+        defensive: true,
+        enableDoubleQuotedStringLiterals: false,
+        allowBareNamedParameters: false,
+        allowUnknownNamedParameters: false,
       });
       try {
         restored.exec("PRAGMA journal_mode = DELETE");
@@ -450,14 +519,12 @@ export class SqliteLifecycleStore {
     hostedId(input.termsId, "termsId");
     const content = Buffer.from(input.content, "utf8");
     const summary = Buffer.from(input.summary, "utf8");
-    this.#db
-      .prepare(
+    this.#transaction(() => {
+      this.#run(
         `INSERT INTO terms_artifacts (
-        terms_id, kind, version, locale, state, effective_at, content_type,
-        content_bytes, content_sha256, summary_bytes, summary_sha256, created_at
-      ) VALUES (?, ?, ?, ?, 'draft', ?, 'text/markdown; charset=utf-8', ?, ?, ?, ?, ?)`,
-      )
-      .run(
+          terms_id, kind, version, locale, state, effective_at, content_type,
+          content_bytes, content_sha256, summary_bytes, summary_sha256, created_at
+        ) VALUES (?, ?, ?, ?, 'draft', ?, 'text/markdown; charset=utf-8', ?, ?, ?, ?, ?)`,
         input.termsId,
         input.kind,
         boundedIdentity(input.version, "terms version"),
@@ -469,6 +536,7 @@ export class SqliteLifecycleStore {
         sha256(summary),
         this.#timestamp(),
       );
+    });
   }
 
   activateTerms(termsId: string): void {
@@ -862,13 +930,16 @@ export class SqliteLifecycleStore {
   rejectRecovery(recoveryRequestId: string, reviewerReference: string): void {
     hostedId(recoveryRequestId, "recoveryRequestId");
     boundedIdentity(reviewerReference, "reviewer reference");
-    const result = this.#db
-      .prepare(
-        "UPDATE recovery_requests SET state = 'rejected', reviewed_at = ?, reviewer_reference = ? WHERE recovery_request_id = ? AND state = 'pending'",
-      )
-      .run(this.#timestamp(), reviewerReference, recoveryRequestId);
-    if (result.changes !== 1)
-      throw new Error("Recovery rejection is unavailable");
+    this.#transaction(() => {
+      const result = this.#db
+        .prepare(
+          "UPDATE recovery_requests SET state = 'rejected', reviewed_at = ?, reviewer_reference = ? WHERE recovery_request_id = ? AND state = 'pending'",
+        )
+        .run(this.#timestamp(), reviewerReference, recoveryRequestId);
+      if (result.changes !== 1) {
+        throw new Error("Recovery rejection is unavailable");
+      }
+    });
   }
 
   recordArchive(
@@ -961,18 +1032,17 @@ export class SqliteLifecycleStore {
     if (!Number.isSafeInteger(input.version) || input.version < 1) {
       throw new Error("Scope policy version is invalid");
     }
-    this.#db
-      .prepare(
+    this.#transaction(() => {
+      this.#run(
         `INSERT INTO scope_policies
-        (scope_policy_id, version, state, scopes_json, created_at)
-        VALUES (?, ?, 'active', ?, ?)`,
-      )
-      .run(
+          (scope_policy_id, version, state, scopes_json, created_at)
+          VALUES (?, ?, 'active', ?, ?)`,
         input.scopePolicyId,
         input.version,
         canonicalScopes(input.scopes),
         this.#timestamp(),
       );
+    });
   }
 
   provisionTrialAccount(
@@ -1219,11 +1289,10 @@ export class SqliteLifecycleStore {
     );
   }
 
-  #configure(): void {
+  #configure(busyTimeoutMs: number): void {
     this.#db.exec("PRAGMA foreign_keys = ON");
     this.#db.exec("PRAGMA journal_mode = WAL");
     this.#db.exec("PRAGMA synchronous = FULL");
-    this.#db.exec("PRAGMA busy_timeout = 5000");
     this.#db.exec("PRAGMA trusted_schema = OFF");
     this.#db.exec("PRAGMA recursive_triggers = OFF");
     const foreignKeys = this.#db.prepare("PRAGMA foreign_keys").get() as Row;
@@ -1232,10 +1301,12 @@ export class SqliteLifecycleStore {
       .get() as Row;
     const synchronous = this.#db.prepare("PRAGMA synchronous").get() as Row;
     const journalMode = this.#db.prepare("PRAGMA journal_mode").get() as Row;
+    const busyTimeout = this.#db.prepare("PRAGMA busy_timeout").get() as Row;
     if (
       foreignKeys.foreign_keys !== 1 ||
       trustedSchema.trusted_schema !== 0 ||
       Number(synchronous.synchronous) < 2 ||
+      busyTimeout.timeout !== busyTimeoutMs ||
       (journalMode.journal_mode !== "wal" &&
         journalMode.journal_mode !== "memory")
     ) {
@@ -1353,14 +1424,27 @@ export class SqliteLifecycleStore {
   }
 
   #transaction<T>(action: () => T): T {
-    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      this.#db.exec("BEGIN IMMEDIATE");
+    } catch (error) {
+      throw normalizeSqliteError(error);
+    }
     try {
       const result = action();
       this.#db.exec("COMMIT");
       return result;
     } catch (error) {
-      this.#db.exec("ROLLBACK");
-      throw error;
+      if (this.#db.isTransaction) {
+        try {
+          this.#db.exec("ROLLBACK");
+        } catch (rollbackError) {
+          throw new AggregateError(
+            [error, rollbackError],
+            "Lifecycle transaction rollback failed",
+          );
+        }
+      }
+      throw normalizeSqliteError(error);
     }
   }
 }
@@ -1453,6 +1537,8 @@ function prepareDatabasePath(path: string, createNew: boolean): void {
 }
 
 export const SQLITE_LIFECYCLE_SCHEMA_VERSION = SCHEMA_VERSION;
+export const SQLITE_LIFECYCLE_BUSY_TIMEOUT_MS = DEFAULT_BUSY_TIMEOUT_MS;
+export const SQLITE_LIFECYCLE_NODE_RANGE = ">=24.15.0 <25.0.0";
 export const SQLITE_LIFECYCLE_MIGRATION_0001_SHA256 = sha256(
   Buffer.from(MIGRATION_0001, "utf8"),
 ).toString("hex");

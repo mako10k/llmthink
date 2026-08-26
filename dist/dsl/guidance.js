@@ -61,7 +61,7 @@ const HELP_NODES = [
         summary: "DSL の top-level block と各 statement の基本文法。",
         quick: [
             "標準拡張子は `.think`。既存の `.dsl` も同じ文法の互換 alias として使える。",
-            "top-level では framework / domain / problem / step / query に加え、statement role を直接置く flatten 記法も使える。",
+            "top-level では framework / domain / problem / step / confidence / declared_confidence / query に加え、statement role を直接置く flatten 記法も使える。",
             "step は `step S1:`、`step:`、`evidence EV1:` の 3 形を受理する。",
             "text-bearing field は 1 行 quoted text か block text を使い分ける。",
             "query block の body は DSLQL 1 行式。",
@@ -70,6 +70,7 @@ const HELP_NODES = [
             "problem や decision などの text-bearing field は quoted text か `|` marker 付き block text を取れる。",
             "statement role は premise / evidence / decision / comparison / pending / viewpoint / partition。",
             "decision based_on は任意だが、未指定 decision は監査対象になりうる。",
+            "confidence は入力端または明示 scoring edge にだけ付け、based_on だけから scoring edge を推測しない。",
         ],
         index: [
             {
@@ -80,7 +81,7 @@ const HELP_NODES = [
             {
                 key: "syntax.top-level",
                 label: "top-level",
-                summary: "framework / domain / problem / step / query の入口",
+                summary: "framework / domain / problem / step / confidence / declared_confidence / query の入口",
             },
             {
                 key: "syntax.step",
@@ -106,6 +107,11 @@ const HELP_NODES = [
                 key: "syntax.comparison",
                 label: "comparison",
                 summary: "problem / viewpoint scope を持つ decision 比較文法",
+            },
+            {
+                key: "syntax.confidence",
+                label: "confidence",
+                summary: "有理数区間、epistemic tag、明示 scoring edge",
             },
             {
                 key: "syntax.query-block",
@@ -305,6 +311,41 @@ const HELP_NODES = [
         ],
         exampleSamples: ["decision-comparison"],
         related: ["syntax.decision", "syntax.step", "samples.decision-comparison"],
+    },
+    {
+        key: "syntax.confidence",
+        title: "Confidence Syntax",
+        summary: "入力端と明示 scoring edge の信頼度を、有理数区間と直交する認識タグで宣言する。",
+        quick: [
+            "入力端は `confidence EV1:`、scoring edge は `confidence EV1 -> D1:` と書く。",
+            "decisionの自己申告値は`declared_confidence D1:`とし、derived confidenceを上書きしない。",
+            "明示評価は estimate / range / epistemic の 3 field をすべて指定する。",
+            "`keyword IDENTIFIER` は support-trace-v1 の版付き表から区間と tag を展開する。source と edge は別の語彙を使う。",
+            "`default` は support-trace-v1 の幅付き既定値を使い、評価済みの事実を意味しない。",
+        ],
+        detail: [
+            "estimate と range は 0/1..1/1 の正確な有理数で、lower <= estimate <= upper を満たす。known は point interval だけを許す。",
+            "epistemic は known / estimated / unknown の直交タグであり、数値へ乗算しない。unknown でも数値区間は伝搬する。",
+            "source keyword は defined / common_fact / strong_assumption / rough_assumption / unsupported_assumption / unlikely_assumption / likely_refuted / refuted。edge keyword は exact_transform / reliable_inference / strong_inference / approximate_inference / unsupported_inference / weak_inference / likely_invalid / invalid。",
+            "keyword 展開値は origin=keyword、profile_id、keyword_id を保持する。defined と exact_transform だけが 1/1 known で、明示した domain 内の定義または意味を失わない変換に限定する。",
+            "edge は target decision の based_on に含まれる source だけを明示分類できる。based_on だけから scoring edge は生成しない。",
+            "複数の incoming scoring parent は coordinate_min を保守的baselineとして返し、自動加点しない。aggregation は unresolved_dependency、boosted_estimate は未算出のまま下流へ伝搬する。",
+            "required / alternative / corroborating の分類、直交度、交差量、独立性による合成は、実例が集まるまで導入しない。",
+            "declared confidenceのestimateがderived interval外ならsemantic_hint warningを返す。区間内なら比較結果だけを保持し、issueにはしない。",
+            "cycle、未解決参照、scope 不一致は unknown ではなく uncomputable になる。結果は監査補助で、真偽、severity、finalize、承認の authority ではない。",
+        ],
+        examples: [
+            "confidence EV1:",
+            "  keyword strong_assumption",
+            "",
+            "confidence EV1 -> D1:",
+            "  keyword approximate_inference",
+            "",
+            "declared_confidence D1:",
+            "  keyword rough_assumption",
+        ],
+        exampleSamples: ["confidence-propagation"],
+        related: ["syntax.decision", "query.roots", "syntax.top-level"],
     },
     {
         key: "syntax.query-block",

@@ -1,5 +1,5 @@
 import type { ThoughtEvent } from "../thought/store.js";
-import { type AddReflectionCommand, type CreateThoughtCommand, type RecordAuditCommand, type RequestContext, type SaveDraftCommand, type ServerThoughtSnapshot, type ThoughtListQuery, type ThoughtPage, type ThoughtRef, type ThoughtRepository, type ThoughtSearchQuery, type FinalizeThoughtCommand } from "./contracts.js";
+import { type AddReflectionCommand, type CreateThoughtCommand, type DeleteThoughtCommand, type RecordAuditCommand, type RequestContext, type SaveDraftCommand, type ServerThoughtSnapshot, type ThoughtListQuery, type ThoughtDeletionReceipt, type ThoughtPage, type ThoughtRef, type ThoughtRepository, type ThoughtSearchQuery, type FinalizeThoughtCommand } from "./contracts.js";
 export interface ServerFileThoughtRepositoryOptions {
     readonly dataRoot: string;
     readonly idempotencyRetentionSeconds?: number;
@@ -20,6 +20,7 @@ export declare class ServerFileThoughtRepository implements ThoughtRepository {
     finalize(command: FinalizeThoughtCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
     addReflection(command: AddReflectionCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
     events(ref: ThoughtRef, context: RequestContext): Promise<readonly ThoughtEvent[]>;
+    delete(command: DeleteThoughtCommand, context: RequestContext): Promise<ThoughtDeletionReceipt>;
     private update;
     private commit;
     private writeRevisionFiles;
@@ -40,6 +41,7 @@ export declare class ServerFileThoughtRepository implements ThoughtRepository {
     private thoughtPath;
     private currentPath;
     private idempotencyPath;
+    private deletionReceiptPath;
     private assertPageQuery;
     private encodeCursor;
     private decodeCursor;

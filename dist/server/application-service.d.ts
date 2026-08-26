@@ -1,6 +1,6 @@
 import type { AuditReport } from "../model/diagnostics.js";
 import type { ThoughtEvent } from "../thought/store.js";
-import { type AddReflectionCommand, type AuditTextCommand, type CreateThoughtCommand, type FinalizeThoughtCommand, type PureAuditResult, type RecordAuditCommand, type RequestContext, type SaveDraftCommand, type ServerThoughtSnapshot, type ThoughtListQuery, type ThoughtPage, type ThoughtRef, type ThoughtRepository, type ThoughtSearchQuery } from "./contracts.js";
+import { type AddReflectionCommand, type AuditTextCommand, type CreateThoughtCommand, type DeleteThoughtCommand, type FinalizeThoughtCommand, type PureAuditResult, type RecordAuditCommand, type RequestContext, type SaveDraftCommand, type ServerThoughtSnapshot, type ThoughtListQuery, type ThoughtDeletionReceipt, type ThoughtPage, type ThoughtRef, type ThoughtRepository, type ThoughtSearchQuery } from "./contracts.js";
 export type LlmthinkAuditRunner = (command: AuditTextCommand) => Promise<AuditReport>;
 export interface LlmthinkApplicationServiceOptions {
     readonly repository: ThoughtRepository;
@@ -20,6 +20,7 @@ export declare class LlmthinkApplicationService {
     finalizeThought(command: FinalizeThoughtCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
     addReflection(command: AddReflectionCommand, context: RequestContext): Promise<ServerThoughtSnapshot>;
     events(ref: ThoughtRef, context: RequestContext): Promise<readonly ThoughtEvent[]>;
+    deleteThought(command: DeleteThoughtCommand, context: RequestContext): Promise<ThoughtDeletionReceipt>;
     private assertRevisionCommand;
     private repositoryCall;
 }

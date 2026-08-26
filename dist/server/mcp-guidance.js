@@ -117,6 +117,20 @@ const TOOL_GUIDANCE = {
             mutation_fields: ["thought_id", "expected_revision", "kind", "text"],
         },
     },
+    delete_thought: {
+        effect: "consequential_external_write",
+        use_when: "The user explicitly asks to permanently delete one thought.",
+        required: [
+            "thought_id",
+            "expected_revision",
+            "idempotency_key",
+            "request_digest",
+        ],
+        request_digest: {
+            ...REQUEST_DIGEST_GUIDANCE,
+            mutation_fields: ["thought_id", "expected_revision"],
+        },
+    },
     get_thought_history: {
         effect: "read_only",
         use_when: "Read the append-only event history for one thought.",

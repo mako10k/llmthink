@@ -179,8 +179,16 @@ tenant per external identity. A conflicting retry re-reads the winning committed
 The lifecycle store must support atomic transactions and durable unique constraints.
 ADR-0012 selects a local SQLite database outside the distributable package and inside the
 existing protected service data boundary as the initial lifecycle control-plane authority.
+ADR-0017 selects the Node.js built-in `node:sqlite` driver for Node.js
+`>=24.15.0 <25.0.0`, with `v24.19.0` as the accepted Stage baseline.
 The implementation-ready logical schema, repository ports, transaction, outbox, migration,
 backup, and restore contracts are defined in [SQLite lifecycle control-plane schema](sqlite-lifecycle-schema.md).
+
+Each connection uses WAL, synchronous FULL, foreign keys, defensive mode, disabled extensions,
+and a bounded busy timeout. Write transactions begin with `BEGIN IMMEDIATE`. SQLite serializes
+writers; after the busy timeout, the store fails with `lifecycle_database_busy` without partial
+rows or blind retries. A caller may explicitly retry the whole idempotent operation after the
+lock is released.
 
 Registry, agreement, account state, tenant catalog, workspace catalog, scope-policy binding,
 recovery verification, and outbox are separate tables behind separate repository ports. They
@@ -232,6 +240,7 @@ After JWT verification, account admission returns one of these stable states:
 | `account_suspended`          |  403 | operator/security suspension      | show bounded support guidance   |
 | `account_export_only`        |  403 | ordinary MCP use ended            | open archive/closure URL        |
 | `account_unavailable`        |  403 | mapping cannot be safely resolved | retry later or contact support  |
+| `lifecycle_database_busy`    |  503 | bounded writer lock wait expired  | reopen and retry after delay    |
 
 401 remains reserved for absent or invalid credentials and its OAuth challenge. Responses
 must not include raw WorkOS claims, email, account IDs, tenant IDs, recovery material, or
@@ -260,6 +269,8 @@ Implementation acceptance requires tests proving:
 - no receipt is created by GET, login, link display, failed POST, or MCP retry;
 - changed terms between display and POST cannot be accepted accidentally;
 - concurrent first-agreement requests produce one receipt, account, tenant, and workspace;
+- a writer lock held past the timeout returns 503, leaves no partial rows, and permits a later
+  explicit idempotent retry;
 - retries return the same provisioning result without revealing the recovery secret again;
 - every account state permits only its declared operation subset;
 - cross-account, cross-tenant, client-selected-ID, and client-selected-scope attempts fail;

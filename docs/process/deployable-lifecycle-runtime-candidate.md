@@ -6,6 +6,15 @@
 
 ## Runtime boundary
 
+ADR-0017 selects the built-in `node:sqlite` driver for the lifecycle authority. The supported
+hosted lifecycle runtime is Node.js `>=24.15.0 <25.0.0`, and the accepted Stage baseline is
+`v24.19.0`. Lifecycle initialization and startup fail closed outside that range. This constraint
+does not change the runtime contract of local DSL/CLI/LSP use when lifecycle authority is disabled.
+
+Each lifecycle connection uses WAL, synchronous FULL, foreign keys, defensive mode, disabled
+extensions, and a 5000ms default busy timeout. Write transactions acquire the writer slot with
+`BEGIN IMMEDIATE`; a timeout is not retried blindly and becomes a retryable HTTP 503 at onboarding.
+
 When lifecycle onboarding is enabled, the hosted process uses one verified OAuth identity in two
 different authorization paths:
 
@@ -65,6 +74,9 @@ Deployment remains a separate owner-authorized action. Its candidate must be an 
 revision and must pass build and repository tests. Readback must cover:
 
 - active release revision and service state;
+- exact `/opt/node/current/bin/node --version` within the ADR-0017 range;
+- two independent connections producing one committed onboarding result, plus a forced writer-lock
+  timeout producing no partial lifecycle rows;
 - OAuth protected-resource discovery and unauthenticated MCP challenge;
 - unauthenticated `/onboarding` denial;
 - an invited test identity seeing the exact terms versions and SHA-256 values;

@@ -14,8 +14,12 @@ import test from "node:test";
 import { Worker } from "node:worker_threads";
 
 import {
+  assertSqliteLifecycleNodeVersion,
   SqliteLifecycleStore,
+  SqliteLifecycleBusyError,
+  SQLITE_LIFECYCLE_BUSY_TIMEOUT_MS,
   SQLITE_LIFECYCLE_MIGRATION_0001_SHA256,
+  SQLITE_LIFECYCLE_NODE_RANGE,
   SQLITE_LIFECYCLE_SCHEMA_VERSION,
   TRIAL_AGREEMENT_ACTION_VERSION,
 } from "../../src/server/sqlite-lifecycle-store.js";
@@ -206,6 +210,84 @@ test("concurrent first provisioning commits one account and returns one replay",
   } finally {
     readback.close();
   }
+});
+
+test("writer lock timeout fails closed without partial provisioning and permits an explicit retry", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "llmthink-lifecycle-busy-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, "lifecycle.sqlite");
+  const store = new SqliteLifecycleStore({
+    path,
+    busyTimeoutMs: 25,
+    now: () => NOW,
+  });
+  t.after(() => store.close());
+  prepare(store);
+
+  const blocker = new DatabaseSync(path, { timeout: 0 });
+  t.after(() => {
+    if (blocker.isOpen) blocker.close();
+  });
+  blocker.exec("BEGIN IMMEDIATE");
+  const startedAt = Date.now();
+  assert.throws(
+    () =>
+      store.provisionTrialAccount({
+        identity: identity("busy-user"),
+        termsId: "terms-trial-v1",
+        scopePolicyId: "scope-trial-v1",
+        actionVersion: TRIAL_AGREEMENT_ACTION_VERSION,
+      }),
+    (error) =>
+      error instanceof SqliteLifecycleBusyError &&
+      error.code === "lifecycle_database_busy",
+  );
+  const elapsedMs = Date.now() - startedAt;
+  assert.ok(elapsedMs < 2_000, `busy timeout took ${elapsedMs}ms`);
+  assert.deepEqual(store.counts(), {
+    accounts: 0,
+    external_identity_mappings: 0,
+    agreement_receipts: 0,
+    tenant_catalog: 0,
+    workspace_catalog: 0,
+    recovery_credentials: 0,
+    provisioning_operations: 0,
+    realization_outbox: 0,
+  });
+
+  blocker.exec("ROLLBACK");
+  blocker.close();
+  const retried = store.provisionTrialAccount({
+    identity: identity("busy-user"),
+    termsId: "terms-trial-v1",
+    scopePolicyId: "scope-trial-v1",
+    actionVersion: TRIAL_AGREEMENT_ACTION_VERSION,
+  });
+  assert.equal(retried.status, "provisioned");
+  assert.equal(store.counts().accounts, 1);
+});
+
+test("SQLite lifecycle freezes its Node range and default busy timeout", () => {
+  assert.equal(SQLITE_LIFECYCLE_NODE_RANGE, ">=24.15.0 <25.0.0");
+  assert.equal(SQLITE_LIFECYCLE_BUSY_TIMEOUT_MS, 5_000);
+  for (const version of ["24.15.0", "24.19.0", "24.99.1"]) {
+    assert.doesNotThrow(() => assertSqliteLifecycleNodeVersion(version));
+  }
+  for (const version of ["24.14.9", "25.0.0", "23.99.0", "invalid"]) {
+    assert.throws(
+      () => assertSqliteLifecycleNodeVersion(version),
+      />=24\.15\.0 and <25\.0\.0/,
+    );
+  }
+  assert.throws(
+    () =>
+      new SqliteLifecycleStore({
+        path: ":memory:",
+        allowMemory: true,
+        busyTimeoutMs: 0,
+      }),
+    /busy timeout is invalid/,
+  );
 });
 
 test("SQLite lifecycle keeps absent and present organization identities separate", () => {

@@ -1,5 +1,6 @@
 export { auditDslFile, auditDslText } from "./analyzer/audit.js";
 export type { AuditOptions } from "./analyzer/audit.js";
+export { evaluateConfidence } from "./analyzer/confidence.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
 export { alternateLlmthinkFilePath, isLlmthinkFilePath, llmthinkFileExtension, stripLlmthinkFileExtension, LLMTHINK_CANONICAL_FILE_EXTENSION, LLMTHINK_FILE_EXTENSIONS, LLMTHINK_LEGACY_FILE_EXTENSIONS, } from "./dsl/file-extension.js";
 export type { LlmthinkFileExtension } from "./dsl/file-extension.js";
@@ -15,6 +16,8 @@ export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot
 export type { ConfigDomain, ResolveRuntimeConfigOptions, ResolvedRuntimeConfig, ResolvedValueSource, ResolvedEmbeddingConfig, } from "./config/runtime.js";
 export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
+export { CONFIDENCE_PROFILE_ID, confidenceKeywordsFor, ConfidenceValueError, createConfidenceAssessment, createRationalValue, DEFAULT_EDGE_CONFIDENCE, DEFAULT_SOURCE_CONFIDENCE, MAX_RATIONAL_DIGITS, multiplyConfidenceAssessments, parseUnitRational, rationalToString, resolveConfidenceKeyword, serializeConfidenceAssessment, EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, } from "./model/confidence.js";
+export type * from "./model/confidence.js";
 export { createEvidenceResource, EvidenceResourceValidationError, validateEvidenceResource, } from "./model/evidence-resource.js";
 export type { EvidenceResourceInput } from "./model/evidence-resource.js";
 export type * from "./model/diagnostics.js";
@@ -34,7 +37,7 @@ export { createLlmthinkHttpHandler, createLlmthinkHttpServer, DEFAULT_HTTP_REQUE
 export { createLlmthinkHostedMcpHandler, createLlmthinkHostedMcpServer, DEFAULT_MCP_REQUEST_LIMIT_BYTES, DEFAULT_MCP_TEXT_LIMIT_BYTES, type LlmthinkHostedMcpHandlerOptions, } from "./server/hosted-mcp.js";
 export type { LlmthinkHttpAuthenticator, LlmthinkHttpHandlerOptions, } from "./server/http.js";
 export { createLlmthinkOnboardingBridge, createLlmthinkOnboardingHandler, type LlmthinkOnboardingBridge, type LlmthinkOnboardingAuthenticator, type LlmthinkOnboardingHttpHandler, type LlmthinkOnboardingOptions, type OnboardingPrincipal, } from "./server/onboarding.js";
-export { SqliteLifecycleStore, TRIAL_AGREEMENT_ACTION_VERSION, type ActiveTermsArtifact, type NewScopePolicy, type NewTermsArtifact, type OnboardingAccountState, type ProvisionedTrialAccount, type ProvisionTrialAccountInput, type SqliteLifecycleStoreOptions, type ApprovedRecovery, type ArchiveAccessContext, type ArchiveReceipt, type RecoveryRequest, } from "./server/sqlite-lifecycle-store.js";
+export { assertSqliteLifecycleNodeVersion, SqliteLifecycleStore, SqliteLifecycleBusyError, SQLITE_LIFECYCLE_BUSY_TIMEOUT_MS, SQLITE_LIFECYCLE_NODE_RANGE, TRIAL_AGREEMENT_ACTION_VERSION, type ActiveTermsArtifact, type NewScopePolicy, type NewTermsArtifact, type OnboardingAccountState, type ProvisionedTrialAccount, type ProvisionTrialAccountInput, type SqliteLifecycleStoreOptions, type ApprovedRecovery, type ArchiveAccessContext, type ArchiveReceipt, type RecoveryRequest, } from "./server/sqlite-lifecycle-store.js";
 export { LlmthinkArchiveService, type ArchiveLifecycleAuthority, type LlmthinkArchive, type LlmthinkArchiveServiceOptions, } from "./server/archive-service.js";
 export { loadOAuthAccountRegistry, OAUTH_ACCOUNT_REGISTRY_MAX_BYTES, OAUTH_ACCOUNT_REGISTRY_VERSION, } from "./server/oauth-account-registry.js";
 export { createLlmthinkOAuthDiscovery, oauthBearerChallenge, oauthProtectedResourceMetadata, OAUTH_PROTECTED_RESOURCE_PATH, type LlmthinkOAuthDiscovery, type LlmthinkOAuthDiscoveryOptions, } from "./server/oauth-discovery.js";

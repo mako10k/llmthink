@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
 import {
@@ -26,6 +27,7 @@ const POLICY_ID = "trial-default-v1";
 
 interface Fixture {
   readonly baseUrl: string;
+  readonly databasePath: string;
   readonly store: SqliteLifecycleStore;
   readonly bridge: LlmthinkOnboardingBridge;
   readonly close: () => Promise<void>;
@@ -72,11 +74,14 @@ async function fixture(
   options: {
     readonly now?: () => number;
     readonly realizeInitialWorkspace?: boolean;
+    readonly busyTimeoutMs?: number;
   } = {},
 ): Promise<Fixture> {
   const root = await mkdtemp(join(tmpdir(), "llmthink-onboarding-"));
+  const databasePath = join(root, "lifecycle.sqlite");
   const store = new SqliteLifecycleStore({
-    path: join(root, "lifecycle.sqlite"),
+    path: databasePath,
+    busyTimeoutMs: options.busyTimeoutMs,
   });
   createArtifacts(store);
   let entropyCounter = 0;
@@ -126,7 +131,7 @@ async function fixture(
     await rm(root, { recursive: true, force: true });
   };
   t.after(close);
-  return { baseUrl, store, bridge, close };
+  return { baseUrl, databasePath, store, bridge, close };
 }
 
 function auth(subject = "user-a"): Record<string, string> {
@@ -300,6 +305,34 @@ test("explicit same-origin POST provisions once and consumes its identity-bound 
   });
   assert.equal(already.status, 200);
   assert.match(await already.text(), /同意済みです/);
+});
+
+test("writer contention returns retryable 503 without partial onboarding", async (t) => {
+  const { baseUrl, databasePath, store } = await fixture(t, {
+    busyTimeoutMs: 25,
+  });
+  const started = await begin(baseUrl);
+  const blocker = new DatabaseSync(databasePath, { timeout: 0 });
+  t.after(() => {
+    if (blocker.isOpen) blocker.close();
+  });
+  blocker.exec("BEGIN IMMEDIATE");
+
+  const unavailable = await agree(baseUrl, started.form, started.cookie);
+  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.headers.get("retry-after"), "5");
+  assert.match(await unavailable.text(), /処理が集中しています/);
+  assert.equal(store.counts().accounts, 0);
+  assert.equal(store.counts().agreement_receipts, 0);
+
+  blocker.exec("ROLLBACK");
+  blocker.close();
+  const retried = await begin(baseUrl);
+  assert.equal(
+    (await agree(baseUrl, retried.form, retried.cookie)).status,
+    201,
+  );
+  assert.equal(store.counts().accounts, 1);
 });
 
 test("CSRF, another identity, tampering, and stale terms fail closed", async (t) => {

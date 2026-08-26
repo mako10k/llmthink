@@ -61,6 +61,11 @@ server gate. Local repository-wide validation for the implementation commit had 
 
 ## Residual boundary
 
+The driver-governance residual recorded by Issue #28 was closed on 2026-08-26 by ADR-0017. That
+decision retains `node:sqlite`, freezes the supported lifecycle runtime to
+`>=24.15.0 <25.0.0`, and adds explicit writer-lock timeout and partial-write regression coverage.
+It does not retroactively broaden this Stage acceptance.
+
 - This accepts the lifecycle implementation on an isolated VPS Stage execution boundary. It does
   not claim that the current public hosted process uses SQLite lifecycle authority; the deployed
   process remains the unchanged legacy/static-registry release.

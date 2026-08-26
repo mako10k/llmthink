@@ -5,7 +5,10 @@ dedicated unprivileged user. The Node process binds only to loopback; Caddy owns
 public ports and TLS.
 
 The service expects an official supported Node.js LTS installation at
-`/opt/node/current`. Caddy uses Let's Encrypt's production ACME endpoint and
+`/opt/node/current`. When lifecycle authority is enabled, ADR-0017 limits this
+runtime to `>=24.15.0 <25.0.0`; the accepted Stage baseline is exactly
+`v24.19.0`. Verify `/opt/node/current/bin/node --version` before initialization
+or service start. Caddy uses Let's Encrypt's production ACME endpoint and
 automatically renews the certificate before expiry.
 
 ## Public status page

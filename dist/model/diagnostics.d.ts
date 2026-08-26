@@ -1,4 +1,5 @@
 import type { DslqlValue } from "../dslql/evaluator.js";
+import type { ConfidenceResult } from "./confidence.js";
 export declare const AUDIT_RESULT_CATEGORIES: readonly ["contradiction", "contradiction_candidate", "contract_violation", "mece_assessment", "semantic_hint", "query_result"];
 export type AuditResultCategory = (typeof AUDIT_RESULT_CATEGORIES)[number];
 export type AuditCategory = AuditResultCategory | "output_limit";
@@ -39,5 +40,6 @@ export interface AuditReport {
     generated_at: string;
     summary: AuditSummary;
     results: AuditIssue[];
+    confidence_results?: ConfidenceResult[];
     query_results: QueryResult[];
 }

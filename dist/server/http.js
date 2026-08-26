@@ -1,5 +1,6 @@
 import { createServer, } from "node:http";
 import { z } from "zod";
+import { createConfidenceAssessment, parseUnitRational, rationalToString, } from "../model/confidence.js";
 import { LlmthinkServerError, } from "./contracts.js";
 import { LlmthinkSecurityBoundary, } from "./security.js";
 export const DEFAULT_HTTP_REQUEST_LIMIT_BYTES = 1024 * 1024;
@@ -10,6 +11,223 @@ const identitySchema = z.object({
 });
 const revisionSchema = z.object({
     expected_revision: z.number().int().nonnegative(),
+});
+const rationalConfidenceSchema = z
+    .string()
+    .regex(/^(0|[1-9]\d{0,255})\/[1-9]\d{0,255}$/);
+const confidenceAssessmentSchema = z
+    .object({
+    lower: rationalConfidenceSchema,
+    estimate: rationalConfidenceSchema,
+    upper: rationalConfidenceSchema,
+    epistemic_tag: z.enum(["known", "estimated", "unknown"]),
+    origin: z.enum(["explicit", "keyword", "default", "derived"]),
+    profile_id: z.string().min(1),
+    keyword_id: z
+        .string()
+        .regex(/^[A-Za-z][A-Za-z0-9_-]*$/)
+        .optional(),
+})
+    .strict()
+    .superRefine((assessment, context) => {
+    try {
+        const lower = parseUnitRational(assessment.lower);
+        const estimate = parseUnitRational(assessment.estimate);
+        const upper = parseUnitRational(assessment.upper);
+        for (const [field, value, parsed] of [
+            ["lower", assessment.lower, lower],
+            ["estimate", assessment.estimate, estimate],
+            ["upper", assessment.upper, upper],
+        ]) {
+            if (rationalToString(parsed) !== value) {
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: [field],
+                    message: "confidence rational must be in canonical reduced form",
+                });
+            }
+        }
+        createConfidenceAssessment({
+            lower,
+            estimate,
+            upper,
+            epistemicTag: assessment.epistemic_tag,
+            origin: assessment.origin,
+            profileId: assessment.profile_id,
+            keywordId: assessment.keyword_id,
+        });
+    }
+    catch (error) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: error instanceof Error
+                ? error.message
+                : "invalid confidence assessment",
+        });
+    }
+});
+const confidenceAggregationSchema = z
+    .object({
+    status: z.literal("unresolved_dependency"),
+    baseline_method: z.literal("coordinate_min"),
+    boost_applied: z.literal(false),
+    boosted_estimate: z.null(),
+    unresolved_nodes: z
+        .array(z
+        .object({
+        target_id: z.string().min(1),
+        parent_count: z.number().int().min(2),
+    })
+        .strict())
+        .min(1),
+})
+    .strict()
+    .superRefine((aggregation, context) => {
+    const ids = aggregation.unresolved_nodes.map((node) => node.target_id);
+    if (new Set(ids).size !== ids.length) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["unresolved_nodes"],
+            message: "confidence aggregation node IDs must be unique",
+        });
+    }
+});
+const confidenceResultBaseSchema = z
+    .object({
+    target_id: z.string().min(1),
+    node_kind: z.enum(["source", "derived"]),
+    status: z.enum(["computed", "uncomputable"]),
+    assessment: confidenceAssessmentSchema.optional(),
+    declared_assessment: confidenceAssessmentSchema.optional(),
+    declared_comparison: z
+        .object({
+        relation: z.enum([
+            "below_derived_interval",
+            "within_derived_interval",
+            "above_derived_interval",
+        ]),
+    })
+        .strict()
+        .optional(),
+    weakest_path: z.array(z.string().min(1)).min(1).optional(),
+    aggregation: confidenceAggregationSchema.optional(),
+    cause_ids: z.array(z.string().min(1)),
+    reasons: z.array(z.string().min(1)),
+})
+    .strict();
+function validateComputedConfidenceResult(result, context) {
+    if (!result.assessment) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["assessment"],
+            message: "computed confidence requires assessment",
+        });
+    }
+    if (!result.weakest_path) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["weakest_path"],
+            message: "computed confidence requires weakest_path",
+        });
+    }
+    if (result.reasons.length > 0) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["reasons"],
+            message: "computed confidence must not have failure reasons",
+        });
+    }
+    validateComputedConfidencePath(result, context);
+    validateConfidenceOrigin(result, context);
+    if (result.node_kind === "source" && result.aggregation) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["aggregation"],
+            message: "source confidence cannot have multi-parent aggregation",
+        });
+    }
+}
+function validateDeclaredConfidence(result, context) {
+    if (result.status === "computed" &&
+        Boolean(result.declared_assessment) !== Boolean(result.declared_comparison)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["declared_comparison"],
+            message: "computed declared confidence requires both assessment and comparison",
+        });
+    }
+    if (result.declared_assessment &&
+        !["explicit", "keyword"].includes(result.declared_assessment.origin)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["declared_assessment", "origin"],
+            message: "declared confidence origin must be explicit or keyword",
+        });
+    }
+    if (result.node_kind === "source" && result.declared_assessment) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["declared_assessment"],
+            message: "source confidence cannot have a declared derived assessment",
+        });
+    }
+}
+function validateComputedConfidencePath(result, context) {
+    if (result.weakest_path &&
+        result.weakest_path[result.weakest_path.length - 1] !== result.target_id) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["weakest_path"],
+            message: "weakest_path must end at target_id",
+        });
+    }
+    if (result.node_kind === "source" &&
+        result.weakest_path &&
+        (result.weakest_path.length !== 1 ||
+            result.weakest_path[0] !== result.target_id)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["weakest_path"],
+            message: "source confidence path must contain only target_id",
+        });
+    }
+}
+function validateConfidenceOrigin(result, context) {
+    if (result.assessment &&
+        ((result.node_kind === "derived" &&
+            result.assessment.origin !== "derived") ||
+            (result.node_kind === "source" && result.assessment.origin === "derived"))) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["assessment", "origin"],
+            message: "confidence origin must match node_kind",
+        });
+    }
+}
+function validateUncomputableConfidenceResult(result, context) {
+    if (result.assessment ||
+        result.weakest_path ||
+        result.aggregation ||
+        result.declared_comparison) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "uncomputable confidence must not have computed values",
+        });
+    }
+    if (result.reasons.length === 0) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["reasons"],
+            message: "uncomputable confidence requires a reason",
+        });
+    }
+}
+const confidenceResultSchema = confidenceResultBaseSchema.superRefine((result, context) => {
+    validateDeclaredConfidence(result, context);
+    const validate = result.status === "computed"
+        ? validateComputedConfidenceResult
+        : validateUncomputableConfidenceResult;
+    validate(result, context);
 });
 const auditSchema = z.object({
     engine_version: z.string(),
@@ -23,6 +241,7 @@ const auditSchema = z.object({
         hint_count: z.number().int().nonnegative(),
     }),
     results: z.array(z.unknown()),
+    confidence_results: z.array(confidenceResultSchema).optional(),
     query_results: z.array(z.unknown()),
 });
 const auditTextSchema = z.object({

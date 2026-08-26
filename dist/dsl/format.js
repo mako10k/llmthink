@@ -1,3 +1,4 @@
+import { rationalToString } from "../model/confidence.js";
 import { validateEvidenceResource } from "../model/evidence-resource.js";
 import { parseDocument } from "../parser/parser.js";
 function quote(value) {
@@ -118,6 +119,30 @@ function formatStep(step) {
 function formatQuery(query) {
     return [`query ${query.id}:`, indent(query.expression)].join("\n");
 }
+function confidenceHeader(confidence) {
+    if (confidence.kind === "source") {
+        return `confidence ${confidence.sourceId}:`;
+    }
+    if (confidence.kind === "edge") {
+        return `confidence ${confidence.sourceId} -> ${confidence.targetId}:`;
+    }
+    return `declared_confidence ${confidence.targetId}:`;
+}
+function formatConfidence(confidence) {
+    const header = confidenceHeader(confidence);
+    if (confidence.syntax === "default" || !confidence.assessment) {
+        return [header, indent("default")].join("\n");
+    }
+    if (confidence.syntax === "keyword" && confidence.assessment.keywordId) {
+        return [header, indent(`keyword ${confidence.assessment.keywordId}`)].join("\n");
+    }
+    return [
+        header,
+        indent(`estimate ${rationalToString(confidence.assessment.estimate)}`),
+        indent(`range ${rationalToString(confidence.assessment.lower)}..${rationalToString(confidence.assessment.upper)}`),
+        indent(`epistemic ${confidence.assessment.epistemicTag}`),
+    ].join("\n");
+}
 export function formatDocument(document) {
     const sections = [];
     if (document.framework) {
@@ -133,6 +158,7 @@ export function formatDocument(document) {
         ...formatAnnotations(problem.annotations).map(indent),
     ].join("\n")));
     sections.push(...document.steps.map(formatStep));
+    sections.push(...document.confidence.map(formatConfidence));
     sections.push(...document.queries.map(formatQuery));
     return `${sections.join("\n\n")}\n`;
 }

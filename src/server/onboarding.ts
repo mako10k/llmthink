@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { LlmthinkExternalOAuthIdentity } from "./oauth-jwt.js";
 import {
   type ActiveTermsArtifact,
+  SqliteLifecycleBusyError,
   SqliteLifecycleStore,
   TRIAL_AGREEMENT_ACTION_VERSION,
 } from "./sqlite-lifecycle-store.js";
@@ -561,7 +562,19 @@ export function createLlmthinkOnboardingBridge(
       } else if (request.method === "POST") {
         await handleOnboardingPostRequest(runtime, pathname, request, response);
       } else throw new Error("invalid_form");
-    } catch {
+    } catch (error) {
+      if (error instanceof SqliteLifecycleBusyError) {
+        response.setHeader("retry-after", "5");
+        sendHtml(
+          response,
+          503,
+          resultPage(
+            "現在利用できません",
+            "処理が集中しています。ページを開き直して再度お試しください。",
+          ),
+        );
+        return true;
+      }
       sendHtml(
         response,
         400,

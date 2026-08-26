@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Hosted lifecycle SQLite driverをNode.js 24 LTSの`node:sqlite`へ限定し、runtime範囲、安全なconnection profile、bounded writer競合を固定
+- SQLite busy timeoutをstable domain errorとretryable HTTP 503へ変換し、部分更新なしと明示再実行を同時アクセス回帰試験で検証
+
 ## 1.2.0 - 2026-08-13
 
 - LLMThink 文書の標準拡張子を `.think` とし、`.dsl` を警告や暗黙 rename のない互換 alias として維持

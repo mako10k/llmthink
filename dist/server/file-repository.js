@@ -238,6 +238,54 @@ export class ServerFileThoughtRepository {
             throw new LlmthinkServerError("not_found", "Thought not found");
         return snapshot.history;
     }
+    async delete(command, context) {
+        assertContext(context);
+        assertThoughtRef(command.ref, context);
+        assertRevision(command.expectedRevision);
+        assertCommandIdentity(command.identity);
+        return this.serialized(command.ref, async () => {
+            const receiptPath = this.deletionReceiptPath(command.ref, context.subjectId, command.identity.idempotencyKey);
+            const prior = await readOptional(receiptPath);
+            if (prior !== undefined) {
+                const record = parseJson(prior, "deletion receipt");
+                assertSchema(record, "deletion receipt");
+                if (record.request_digest !== command.identity.requestDigest)
+                    throw new LlmthinkServerError("idempotency_conflict", "Idempotency key was used for a different request");
+                return {
+                    thoughtId: command.ref.thoughtId,
+                    deleted: true,
+                    deletedRevision: record.deleted_revision,
+                };
+            }
+            const current = await this.readFiles(command.ref);
+            if (current.record.revision !== command.expectedRevision)
+                throw new LlmthinkServerError("revision_conflict", "Expected revision does not match", {
+                    expectedRevision: command.expectedRevision,
+                    actualRevision: current.record.revision,
+                });
+            const parent = this.thoughtsPath(context);
+            const temporary = join(parent, `.deleting-${digest(command.ref.thoughtId)}-${randomUUID()}`);
+            await rename(this.thoughtPath(command.ref), temporary);
+            const directory = join(parent, ".deletions", digest(command.ref.thoughtId));
+            await mkdir(directory, { recursive: true });
+            const record = {
+                ...this.commandRecord("delete", command.identity, context),
+                resource_digest: `sha256:${digest(command.ref.thoughtId)}`,
+                deleted_revision: current.record.revision,
+            };
+            await writeFile(receiptPath, json(record), {
+                encoding: "utf8",
+                flag: "wx",
+            });
+            await syncPath(receiptPath);
+            await rm(temporary, { recursive: true });
+            return {
+                thoughtId: command.ref.thoughtId,
+                deleted: true,
+                deletedRevision: current.record.revision,
+            };
+        });
+    }
     async update(operation, command, context, mutate) {
         assertContext(context);
         assertThoughtRef(command.ref, context);
@@ -552,6 +600,10 @@ export class ServerFileThoughtRepository {
     idempotencyPath(ref, subjectId, operation, key) {
         const scope = `${subjectId}\0${operation}\0${key}`;
         return join(this.thoughtPath(ref), "idempotency", `${digest(scope)}.json`);
+    }
+    deletionReceiptPath(ref, subjectId, key) {
+        const scope = `${subjectId}\0delete\0${key}`;
+        return join(this.dataRoot, "tenants", ref.tenantId, "workspaces", ref.workspaceId, "thoughts", ".deletions", digest(ref.thoughtId), `${digest(scope)}.json`);
     }
     assertPageQuery(limit) {
         if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {

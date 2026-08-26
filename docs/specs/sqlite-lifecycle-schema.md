@@ -2,7 +2,7 @@
 
 ## 1. Status
 
-Status: implementation-ready schema design under accepted ADR-0012. This document does
+Status: implementation-ready schema design under accepted ADR-0012 and ADR-0017. This document does
 not authorize code changes, data migration, Stage deployment, or Production activation.
 
 The schema keeps registry, agreement, account lifecycle, tenant/workspace catalog, scope,
@@ -13,6 +13,11 @@ Thought bodies, thought revisions, audit bodies, OAuth tokens, email addresses, 
 names, and filesystem paths are deliberately absent.
 
 ## 2. Database profile
+
+ADR-0017 selects Node.js built-in `node:sqlite` on `>=24.15.0 <25.0.0`; the accepted Stage
+baseline is `v24.19.0`. The constructor disables extension loading, enables defensive mode,
+disables double-quoted string compatibility, and sets the 5000ms busy timeout before serving
+requests.
 
 On every connection, before serving requests:
 
@@ -31,13 +36,14 @@ Requirements:
 - The process opens an explicit absolute path with no symlink traversal at the final path.
 - Database, `-wal`, `-shm`, backup, and restore-candidate files use the same protected
   owner/group boundary. They are never served by HTTP or included in package artifacts.
-- `foreign_keys`, `journal_mode`, `synchronous`, and `trusted_schema` are read back and
+- `foreign_keys`, `journal_mode`, `synchronous`, `busy_timeout`, and `trusted_schema` are read back and
   checked. An unsupported or weakened effective value fails startup.
 - Normal request handlers do not run DDL, `ATTACH`, extension loading, arbitrary PRAGMA,
   `VACUUM INTO` to client-selected paths, or user-supplied SQL.
-- One bounded connection owner serializes schema migration. Request transactions use a
-  bounded retry policy for `SQLITE_BUSY`; exhaustion returns a privacy-safe unavailable
-  state and does not retry an agreement action blindly at the HTTP layer.
+- One bounded connection owner serializes schema migration. SQLite's connection-local busy
+  handler waits up to the configured timeout; application-level blind retry is zero. Exhaustion
+  returns `lifecycle_database_busy`, maps onboarding to HTTP 503 with `Retry-After: 5`, and leaves
+  whole-operation retry to the caller and existing idempotency constraints.
 
 WAL permits concurrent readers but still has one writer. Initial provisioning therefore
 uses a short `BEGIN IMMEDIATE` transaction and performs no network, filesystem, hashing-KDF,
@@ -447,6 +453,8 @@ it does not assign ownership, delete data, or auto-promote an orphan.
 ## 11. Required tests
 
 - two concurrent first agreements for one identity produce exactly one account and tenant;
+- a writer lock held beyond the busy timeout returns `lifecycle_database_busy`, leaves no partial
+  rows, and permits an explicit whole-operation retry after lock release;
 - different identities cannot collide into one account, tenant, workspace, or recovery row;
 - absent and present `org_id` remain distinct and exact;
 - terms activation racing with agreement cannot record undisplayed bytes;

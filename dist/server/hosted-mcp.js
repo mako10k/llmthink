@@ -113,6 +113,7 @@ function registerTools(server, application, context, textLimit, security) {
                 "search_thoughts",
                 "finalize_thought",
                 "add_thought_reflection",
+                "delete_thought",
                 "get_thought_history",
             ])
                 .optional(),
@@ -234,6 +235,24 @@ function registerTools(server, application, context, textLimit, security) {
             requestDigest: request_digest,
         },
     }, context))));
+    server.registerTool("delete_thought", {
+        description: "Permanently delete one thought from the authenticated tenant/workspace. Requires the current revision and a unique idempotency identity.",
+        inputSchema: {
+            ...thoughtIdShape,
+            ...revisionShape,
+            ...identityShape,
+        },
+        annotations: CONSEQUENTIAL_WRITE,
+    }, ({ thought_id, expected_revision, idempotency_key, request_digest }) => run("delete_thought", async () => ({
+        ...(await application.deleteThought({
+            ref: ref(context, thought_id),
+            expectedRevision: expected_revision,
+            identity: {
+                idempotencyKey: idempotency_key,
+                requestDigest: request_digest,
+            },
+        }, context)),
+    })));
     server.registerTool("get_thought_history", {
         description: "Get the append-only event history from the authenticated llmthink tenant/workspace.",
         inputSchema: thoughtIdShape,
@@ -346,6 +365,7 @@ const MCP_TOOL_NAMES = new Set([
     "search_thoughts",
     "finalize_thought",
     "add_thought_reflection",
+    "delete_thought",
     "get_thought_history",
 ]);
 async function handleMcpRequest(request, response, options, requestLimit, textLimit, security, onboardingRateLimiter) {

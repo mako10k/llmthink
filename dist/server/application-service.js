@@ -83,6 +83,11 @@ export class LlmthinkApplicationService {
         assertThoughtRef(ref, context);
         return this.repositoryCall(() => this.repository.events(ref, context));
     }
+    async deleteThought(command, context) {
+        requireScope(context, "thought:write");
+        this.assertRevisionCommand(command, context);
+        return this.repositoryCall(() => this.repository.delete(command, context));
+    }
     assertRevisionCommand(command, context) {
         assertThoughtRef(command.ref, context);
         assertRevision(command.expectedRevision);

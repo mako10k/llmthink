@@ -5,6 +5,7 @@ export interface SqliteLifecycleStoreOptions {
     readonly path: string;
     readonly createNew?: boolean;
     readonly allowMemory?: boolean;
+    readonly busyTimeoutMs?: number;
     readonly now?: () => Date;
     readonly entropy?: (bytes: number) => Buffer;
 }
@@ -73,6 +74,11 @@ export interface ArchiveAccessContext {
     readonly scopes: readonly ["thought:read"];
     readonly requestId: string;
 }
+export declare class SqliteLifecycleBusyError extends Error {
+    readonly code = "lifecycle_database_busy";
+    constructor(cause?: unknown);
+}
+export declare function assertSqliteLifecycleNodeVersion(version?: string): void;
 export declare class SqliteLifecycleStore {
     #private;
     constructor(options: SqliteLifecycleStoreOptions);
@@ -100,6 +106,8 @@ export declare class SqliteLifecycleStore {
     counts(): Readonly<Record<string, number>>;
 }
 export declare const SQLITE_LIFECYCLE_SCHEMA_VERSION = 2;
+export declare const SQLITE_LIFECYCLE_BUSY_TIMEOUT_MS = 5000;
+export declare const SQLITE_LIFECYCLE_NODE_RANGE = ">=24.15.0 <25.0.0";
 export declare const SQLITE_LIFECYCLE_MIGRATION_0001_SHA256: string;
 export declare const TRIAL_AGREEMENT_ACTION_VERSION = "trial-agree-v1";
 export {};

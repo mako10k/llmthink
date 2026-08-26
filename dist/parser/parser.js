@@ -1,3 +1,4 @@
+import { ConfidenceValueError, createConfidenceAssessment, parseUnitRational, resolveConfidenceKeyword, } from "../model/confidence.js";
 import { createDocumentDeclarationIndex, DuplicateDocumentDeclarationError, } from "../model/declarations.js";
 import { createEvidenceResource, EvidenceResourceValidationError, } from "../model/evidence-resource.js";
 const IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
@@ -388,12 +389,32 @@ function validateDocumentDeclarationNamespace(document, lines) {
         throw new ParseError(error.message, error.duplicate.span.line, identifierColumn, identifierColumn + error.duplicate.id.length);
     }
 }
+function validateConfidenceDeclarationUniqueness(declarations) {
+    const seen = new Set();
+    for (const declaration of declarations) {
+        const key = confidenceDeclarationKey(declaration);
+        if (seen.has(key)) {
+            throw new ParseError(`Duplicate confidence declaration '${key}'`, declaration.span.line, declaration.span.column);
+        }
+        seen.add(key);
+    }
+}
+function confidenceDeclarationKey(declaration) {
+    if (declaration.kind === "source") {
+        return `source:${declaration.sourceId}`;
+    }
+    if (declaration.kind === "edge") {
+        return `edge:${declaration.sourceId}->${declaration.targetId}`;
+    }
+    return `declared:${declaration.targetId}`;
+}
 export function parseDocument(input) {
     const lines = input.replace(/\r\n/g, "\n").split("\n");
     const document = {
         domains: [],
         problems: [],
         steps: [],
+        confidence: [],
         queries: [],
     };
     let index = 0;
@@ -435,16 +456,208 @@ export function parseDocument(input) {
             index = nextIndex;
             continue;
         }
-        if (line.startsWith("query ")) {
-            const [query, nextIndex] = parseQuery(lines, index);
-            document.queries.push(query);
-            index = nextIndex;
+        const auxiliaryNextIndex = parseAuxiliaryTopLevel(document, lines, index, line);
+        if (auxiliaryNextIndex !== undefined) {
+            index = auxiliaryNextIndex;
             continue;
         }
         throw new ParseError(`Unexpected top-level statement: ${line}`, index + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
     }
     validateDocumentDeclarationNamespace(document, lines);
+    validateConfidenceDeclarationUniqueness(document.confidence);
     return document;
+}
+function parseAuxiliaryTopLevel(document, lines, index, line) {
+    if (line.startsWith("confidence ")) {
+        const [confidence, nextIndex] = parseConfidence(lines, index);
+        document.confidence.push(confidence);
+        return nextIndex;
+    }
+    if (line.startsWith("declared_confidence ")) {
+        const [confidence, nextIndex] = parseConfidence(lines, index);
+        document.confidence.push(confidence);
+        return nextIndex;
+    }
+    if (line.startsWith("query ")) {
+        const [query, nextIndex] = parseQuery(lines, index);
+        document.queries.push(query);
+        return nextIndex;
+    }
+    return undefined;
+}
+const CONFIDENCE_FIELD_NAMES = ["estimate", "range", "epistemic"];
+function parseConfidenceHeader(header) {
+    const edge = /^confidence\s+([A-Za-z][A-Za-z0-9_-]*)\s*->\s*([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
+    if (edge) {
+        return { kind: "edge", sourceId: edge[1], targetId: edge[2] };
+    }
+    const declared = /^declared_confidence\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
+    if (declared) {
+        return { kind: "declared", targetId: declared[1] };
+    }
+    const source = /^confidence\s+([A-Za-z][A-Za-z0-9_-]*):$/.exec(header);
+    return source ? { kind: "source", sourceId: source[1] } : undefined;
+}
+function confidenceParseError(error, rawLine, lineIndex) {
+    return new ParseError(error.message, lineIndex + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+}
+function parseDefaultConfidence(lines, bodyIndex, headerIndent, parsedHeader, rawHeader, startIndex) {
+    if (parsedHeader.kind === "declared") {
+        throw new ParseError("Declared confidence must use an explicit assessment or keyword", bodyIndex + 1, firstNonWhitespaceColumn(lines[bodyIndex] ?? ""), (lines[bodyIndex] ?? "").length + 1);
+    }
+    const nextIndex = nextSignificantLineIndex(lines, bodyIndex + 1);
+    const rawNext = lines[nextIndex] ?? "";
+    if (nextIndex < lines.length && currentIndent(rawNext) > headerIndent) {
+        throw new ParseError("Default confidence must not have additional fields", nextIndex + 1, firstNonWhitespaceColumn(rawNext), rawNext.length + 1);
+    }
+    return [
+        {
+            ...parsedHeader,
+            syntax: "default",
+            span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+        },
+        nextIndex,
+    ];
+}
+function parseKeywordConfidence(lines, bodyIndex, headerIndent, parsedHeader, rawHeader, startIndex) {
+    const rawBody = lines[bodyIndex] ?? "";
+    const match = /^keyword\s+([A-Za-z][A-Za-z0-9_-]*)$/.exec(rawBody.trim());
+    if (!match) {
+        throw new ParseError("Keyword confidence must use 'keyword IDENTIFIER' syntax", bodyIndex + 1, firstNonWhitespaceColumn(rawBody), rawBody.length + 1);
+    }
+    const nextIndex = nextSignificantLineIndex(lines, bodyIndex + 1);
+    const rawNext = lines[nextIndex] ?? "";
+    if (nextIndex < lines.length && currentIndent(rawNext) > headerIndent) {
+        throw new ParseError("Keyword confidence must not have additional fields", nextIndex + 1, firstNonWhitespaceColumn(rawNext), rawNext.length + 1);
+    }
+    try {
+        return [
+            {
+                ...parsedHeader,
+                assessment: resolveConfidenceKeyword(parsedHeader.kind === "edge" ? "edge" : "source", match[1]),
+                syntax: "keyword",
+                span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+            },
+            nextIndex,
+        ];
+    }
+    catch (error) {
+        if (error instanceof ConfidenceValueError) {
+            throw confidenceParseError(error, rawBody, bodyIndex);
+        }
+        throw error;
+    }
+}
+function confidenceFieldName(line) {
+    return CONFIDENCE_FIELD_NAMES.find((name) => line.startsWith(name) && /\s/.test(line.charAt(name.length)));
+}
+function collectConfidenceFields(lines, bodyIndex, headerIndent, expectedIndent) {
+    const fields = new Map();
+    let index = bodyIndex;
+    while (index < lines.length) {
+        const rawLine = lines[index] ?? "";
+        if (!rawLine.trim() || isCommentLine(rawLine)) {
+            index += 1;
+            continue;
+        }
+        const indent = currentIndent(rawLine);
+        if (indent <= headerIndent)
+            break;
+        if (indent !== expectedIndent) {
+            throw new ParseError("Invalid confidence field indentation", index + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+        }
+        const line = rawLine.trim();
+        const name = confidenceFieldName(line);
+        if (!name) {
+            throw new ParseError("Invalid confidence field", index + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+        }
+        if (fields.has(name)) {
+            throw new ParseError(`Duplicate confidence field '${name}'`, index + 1, firstNonWhitespaceColumn(rawLine), rawLine.length + 1);
+        }
+        fields.set(name, {
+            value: line.slice(name.length).trim(),
+            raw: rawLine,
+            index,
+        });
+        index += 1;
+    }
+    return { fields, nextIndex: index };
+}
+function requireConfidenceFields(fields, rawHeader, startIndex) {
+    for (const required of CONFIDENCE_FIELD_NAMES) {
+        if (!fields.has(required)) {
+            throw new ParseError(`Confidence field '${required}' is required`, startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+        }
+    }
+}
+function parseConfidenceRange(field) {
+    const parts = field.value.split("..");
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        throw new ParseError("Confidence range must use lower..upper syntax", field.index + 1, firstNonWhitespaceColumn(field.raw), field.raw.length + 1);
+    }
+    return [parts[0], parts[1]];
+}
+function validateConfidenceEpistemic(field) {
+    if (/^(known|estimated|unknown)$/.test(field.value))
+        return;
+    throw new ParseError("Confidence epistemic value must be known, estimated, or unknown", field.index + 1, firstNonWhitespaceColumn(field.raw), field.raw.length + 1);
+}
+function parseExplicitConfidence(parsedHeader, fields, nextIndex, rawHeader, startIndex) {
+    requireConfidenceFields(fields, rawHeader, startIndex);
+    const estimateField = fields.get("estimate");
+    const rangeField = fields.get("range");
+    const epistemicField = fields.get("epistemic");
+    const [lower, upper] = parseConfidenceRange(rangeField);
+    validateConfidenceEpistemic(epistemicField);
+    try {
+        const assessment = createConfidenceAssessment({
+            lower: parseUnitRational(lower),
+            estimate: parseUnitRational(estimateField.value),
+            upper: parseUnitRational(upper),
+            epistemicTag: epistemicField.value,
+            origin: "explicit",
+        });
+        return [
+            {
+                ...parsedHeader,
+                assessment,
+                syntax: "explicit",
+                span: span(startIndex + 1, firstNonWhitespaceColumn(rawHeader)),
+            },
+            nextIndex,
+        ];
+    }
+    catch (error) {
+        if (error instanceof ConfidenceValueError) {
+            throw confidenceParseError(error, rawHeader, startIndex);
+        }
+        throw error;
+    }
+}
+function parseConfidence(lines, startIndex) {
+    const rawHeader = lines[startIndex] ?? "";
+    const parsedHeader = parseConfidenceHeader(rawHeader.trim());
+    if (!parsedHeader) {
+        throw new ParseError("Invalid confidence declaration", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
+    }
+    const headerIndent = currentIndent(rawHeader);
+    const bodyIndex = nextSignificantLineIndex(lines, startIndex + 1);
+    const rawBody = lines[bodyIndex] ?? "";
+    if (currentIndent(rawBody) <= headerIndent) {
+        throw new ParseError("Confidence body is required", bodyIndex + 1, firstNonWhitespaceColumn(rawBody), rawBody.length + 1);
+    }
+    const expectedIndent = headerIndent + 2;
+    if (currentIndent(rawBody) !== expectedIndent) {
+        throw new ParseError("Invalid confidence field indentation", bodyIndex + 1, firstNonWhitespaceColumn(rawBody), rawBody.length + 1);
+    }
+    if (rawBody.trim() === "default") {
+        return parseDefaultConfidence(lines, bodyIndex, headerIndent, parsedHeader, rawHeader, startIndex);
+    }
+    if (rawBody.trim().startsWith("keyword")) {
+        return parseKeywordConfidence(lines, bodyIndex, headerIndent, parsedHeader, rawHeader, startIndex);
+    }
+    const { fields, nextIndex } = collectConfidenceFields(lines, bodyIndex, headerIndent, expectedIndent);
+    return parseExplicitConfidence(parsedHeader, fields, nextIndex, rawHeader, startIndex);
 }
 function parseFramework(lines, startIndex) {
     const header = lines[startIndex]?.trim() ?? "";
