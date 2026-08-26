@@ -25,6 +25,14 @@ evidence の匿名 `resource:` block は URL / file / blob locator と任意の 
 - 関数補完、hover、syntax highlight の関数名は core の `DSLQL_FUNCTION_SPECS` と被覆検査される
 - query の監査結果は evaluator の順序付き `values` を保持し、順位付けは `nearest_to()` を明示した場合だけ行う
 
+## LSP 編集支援
+
+- TextMate grammarはdeclaration、statement role、annotation、resource、confidence、DSLQLを別scopeに分類する
+- `step` bodyではstatement role header、evidence内ではresource、query式ではDSLQL functionを文脈別に補完する
+- annotation kind、comparison relation、confidence keywordは閉じた語彙だけを補完する
+- 参照とquery targetのinline説明は常時inlay hintではなくon-demand hoverを使い、表示ノイズとdocument change時の追加計算を避ける
+- workspace横断navigationは別途Issue #1で扱う
+
 ## 提供コマンド
 
 - LLMThink: DSL Audit

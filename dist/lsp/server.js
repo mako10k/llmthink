@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { CompletionItemKind, DocumentHighlightKind, DiagnosticSeverity, DidChangeConfigurationNotification, Location, MarkupKind, Position, ProposedFeatures, Range, SymbolKind, TextEdit, TextDocumentSyncKind, createConnection, InsertTextFormat, } from "vscode-languageserver/node.js";
+import { CompletionItemKind, DocumentHighlightKind, DiagnosticSeverity, DidChangeConfigurationNotification, Location, MarkupKind, Position, ProposedFeatures, Range, SymbolKind, TextEdit, TextDocumentSyncKind, createConnection, } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { auditDslText } from "../analyzer/audit.js";
@@ -9,6 +9,7 @@ import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, } from "../model/
 import { collectDocumentDeclarations } from "../model/declarations.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 import { buildCodeActions } from "./code-actions.js";
+import { buildContextualDslCompletions, buildDslqlCompletionItems, isDslqlQueryPosition, } from "./completions.js";
 import { DEFAULT_LSP_DIAGNOSTIC_SETTINGS, normalizeLspDiagnosticSettings, resolveLspDiagnosticSeverity, } from "./diagnostics.js";
 function confidenceReferenceIds(confidence) {
     if (confidence.kind === "edge") {
@@ -30,21 +31,6 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let fallbackDiagnosticSettings = DEFAULT_LSP_DIAGNOSTIC_SETTINGS;
-const ANNOTATION_KINDS = [
-    "explanation",
-    "rationale",
-    "status",
-    "caveat",
-    "todo",
-    "orphan_future",
-    "orphan_reference",
-];
-const COMPARISON_RELATIONS = [
-    "preferred_over",
-    "weaker_than",
-    "incomparable",
-    "counterexample_to",
-];
 const KEYWORD_DOCS = {
     framework: "文書全体の制約や期待役割を宣言します。",
     domain: "評価対象の分類軸や対象領域を定義します。",
@@ -423,118 +409,6 @@ function lineTextAt(document, line) {
         end: Position.create(line + 1, 0),
     });
 }
-function linePrefixAt(document, position) {
-    return document.getText({
-        start: Position.create(position.line, 0),
-        end: position,
-    });
-}
-function previousSignificantLineText(document, line) {
-    for (let currentLine = line - 1; currentLine >= 0; currentLine -= 1) {
-        const text = lineTextAt(document, currentLine);
-        const trimmed = text.trim();
-        if (!trimmed || trimmed.startsWith("#")) {
-            continue;
-        }
-        return text;
-    }
-    return undefined;
-}
-function isInsideEvidenceBody(document, line, childLine) {
-    const childIndent = /^\s*/.exec(childLine)?.[0].length ?? 0;
-    for (let currentLine = line - 1; currentLine >= 0; currentLine -= 1) {
-        const text = lineTextAt(document, currentLine);
-        const trimmed = text.trim();
-        if (!trimmed || trimmed.startsWith("#"))
-            continue;
-        const indent = /^\s*/.exec(text)?.[0].length ?? 0;
-        if (indent >= childIndent)
-            continue;
-        return /^evidence\s+[A-Za-z][A-Za-z0-9_-]*\s*:\s*$/.test(trimmed);
-    }
-    return false;
-}
-function buildKeywordCompletionItems(labels, detail, options) {
-    return labels.map((label) => ({
-        label,
-        kind: options?.kind ?? CompletionItemKind.Keyword,
-        detail,
-        documentation: KEYWORD_DOCS[label],
-        insertText: `${label}${options?.insertTextSuffix ?? ""}`,
-    }));
-}
-function buildAnnotationHeaderCompletionItems() {
-    return ANNOTATION_KINDS.map((label) => ({
-        label: `annotation ${label}`,
-        kind: CompletionItemKind.Snippet,
-        detail: "annotation snippet",
-        documentation: KEYWORD_DOCS[label],
-        insertText: `annotation ${label}:`,
-    }));
-}
-function buildEvidenceResourceCompletionItem() {
-    return {
-        label: "resource",
-        kind: CompletionItemKind.Snippet,
-        detail: "evidence resource snippet",
-        documentation: KEYWORD_DOCS.resource,
-        insertText: [
-            "resource:",
-            '  ${1|url,file,blob|} "${2:locator}"',
-            '  mime "${3:application/octet-stream}"',
-            '  label "${4:evidence resource}"',
-        ].join("\n"),
-        insertTextFormat: InsertTextFormat.Snippet,
-    };
-}
-function confidenceValueCompletions(document, position, trimmedPrefix) {
-    if (/^epistemic(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
-        return buildKeywordCompletionItems(["known", "estimated", "unknown"], "confidence epistemic tag", { kind: CompletionItemKind.EnumMember });
-    }
-    if (/^keyword(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
-        const header = previousSignificantLineText(document, position.line);
-        const labels = header?.includes("->")
-            ? EDGE_CONFIDENCE_KEYWORDS
-            : SOURCE_CONFIDENCE_KEYWORDS;
-        return buildKeywordCompletionItems(labels, "confidence profile keyword", {
-            kind: CompletionItemKind.EnumMember,
-        });
-    }
-    return undefined;
-}
-function contextualDslCompletions(document, position) {
-    const prefix = linePrefixAt(document, position);
-    const trimmedPrefix = prefix.trim();
-    if (/^annotation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
-        return buildKeywordCompletionItems(ANNOTATION_KINDS, "annotation kind", {
-            kind: CompletionItemKind.EnumMember,
-            insertTextSuffix: ":",
-        });
-    }
-    if (/^comparison\b.*\brelation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
-        return buildKeywordCompletionItems(COMPARISON_RELATIONS, "comparison relation", {
-            kind: CompletionItemKind.EnumMember,
-        });
-    }
-    const confidenceItems = confidenceValueCompletions(document, position, trimmedPrefix);
-    if (confidenceItems)
-        return confidenceItems;
-    if (!trimmedPrefix) {
-        const previousLine = previousSignificantLineText(document, position.line);
-        if (previousLine?.trim().startsWith('"')) {
-            const items = buildAnnotationHeaderCompletionItems();
-            if (isInsideEvidenceBody(document, position.line, previousLine)) {
-                items.unshift(buildEvidenceResourceCompletionItem());
-            }
-            return items;
-        }
-        if (previousLine &&
-            /^(?:resource:|(?:url|file|blob|digest|mime|label)\s+")/.test(previousLine.trim())) {
-            return buildKeywordCompletionItems(["url", "file", "blob", "digest", "mime", "label"], "evidence resource field", { kind: CompletionItemKind.Field, insertTextSuffix: ' "' });
-        }
-    }
-    return undefined;
-}
 function identifierRangeOnLine(lineText, line, identifier, startCharacter = 0) {
     const pattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "g");
     pattern.lastIndex = startCharacter;
@@ -820,19 +694,6 @@ function getWordAtPosition(document, position) {
         return position.character >= start && position.character <= end;
     })?.[0];
 }
-function queryAtPosition(document, position) {
-    try {
-        const ast = parseDocument(document.getText());
-        return ast.queries.find((query) => query.expressionSpan.line - 1 === position.line &&
-            position.character >= query.expressionSpan.column - 1);
-    }
-    catch {
-        return undefined;
-    }
-}
-function isDslqlQueryPosition(document, position) {
-    return Boolean(queryAtPosition(document, position));
-}
 function buildHover(document, position) {
     const word = getWordAtPosition(document, position);
     if (!word) {
@@ -850,16 +711,6 @@ function buildHover(document, position) {
             value: `**${word}**\n\n${description}`,
         },
     };
-}
-function buildDslqlCompletionItems() {
-    return DSLQL_COMPLETIONS.map((item) => ({
-        label: item.label,
-        kind: item.kind ?? CompletionItemKind.Function,
-        detail: item.detail,
-        documentation: item.documentation,
-        insertText: item.insertText ?? item.label,
-        insertTextFormat: InsertTextFormat.Snippet,
-    }));
 }
 function buildRenameEdit(document, name, newName) {
     const parsed = parseIndexedDocument(document);
@@ -1061,10 +912,10 @@ connection.onCompletion((params) => {
         documentation,
     }));
     if (document && isDslqlQueryPosition(document, params.position)) {
-        return [...buildDslqlCompletionItems(), ...queryItems];
+        return [...buildDslqlCompletionItems(DSLQL_COMPLETIONS), ...queryItems];
     }
     if (document) {
-        const contextualItems = contextualDslCompletions(document, params.position);
+        const contextualItems = buildContextualDslCompletions(document, params.position, KEYWORD_DOCS);
         if (contextualItems?.length) {
             return contextualItems;
         }

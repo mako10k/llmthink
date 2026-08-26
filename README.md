@@ -175,6 +175,7 @@ llmthink thought audit --id review-002 --pretty
 - MCP の `dsl action=audit` と `thought action=audit|show` では、`minSeverity`、`suppressCategories`、`maxIssues` を監査出力へ指定できる
 - VS Code の Problems 診断は `llmthink.diagnostics.minimumSeverity` と `llmthink.diagnostics.suppressedCategories` で絞り込める
 - `llmthink.diagnostics.categorySeverityOverrides` では補助カテゴリ `semantic_hint` / `contradiction_candidate` を `error|warning|info|hint|off` へ明示的に変更できる。既定値は監査結果の severity を維持する
+- LSPはquery、statement role、annotation、comparison、resource、confidenceを文脈別に補完する。参照説明は常時inlayではなくon-demand hoverを使う
 
 ## 埋め込み設定
 
