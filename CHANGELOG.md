@@ -3,6 +3,7 @@
 ## Unreleased
 
 - LSPのformat、missing `based_on`、missing reference Code Actionを純粋な生成境界へ分離し、audit diagnosticの正確なspanへ紐付ける回帰テストを追加
+- LSP診断へ最低severity、category抑制、`semantic_hint` / `contradiction_candidate`のseverity overrideを追加し、設定変更時にopen documentを再診断
 
 ## 1.3.0 - 2026-08-26
 

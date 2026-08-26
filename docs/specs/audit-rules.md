@@ -410,7 +410,18 @@ fatal が発生した場合、query_result の生成は省略可能とする。
 
 ---
 
-## 6. 実装メモ
+## 6. LSP 診断表示
+
+- LSP の既定表示は raw audit の category と severity を維持する
+- `minimumSeverity` は effective severity より弱い診断を除外する
+- `suppressedCategories` は指定カテゴリを除外する
+- category severity override は補助カテゴリ `semantic_hint` と `contradiction_candidate` に限定し、`error | warning | info | hint | off` を指定できる
+- override を適用してから `minimumSeverity` を判定する
+- `off` と category suppression は Problems 表示だけに作用し、raw audit report を変更しない
+- 設定変更時は open document を再診断する
+- 同じ `based_on` を共有するだけの decision 組は `contradiction_candidate/hint` とし、明示 comparison の preference cycle または incomparable との競合は `contradiction_candidate/warning` のまま区別する。LSP はこれを自動昇格しない
+
+## 7. 実装メモ
 
 - contradiction は MVP で無理に断定しない
 - contradiction_candidate を先に実装する

@@ -9,6 +9,7 @@ import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, } from "../model/
 import { collectDocumentDeclarations } from "../model/declarations.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 import { buildCodeActions } from "./code-actions.js";
+import { DEFAULT_LSP_DIAGNOSTIC_SETTINGS, normalizeLspDiagnosticSettings, resolveLspDiagnosticSeverity, } from "./diagnostics.js";
 function confidenceReferenceIds(confidence) {
     if (confidence.kind === "edge") {
         return [confidence.sourceId, confidence.targetId];
@@ -28,6 +29,7 @@ function confidenceSymbolName(confidence) {
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
+let fallbackDiagnosticSettings = DEFAULT_LSP_DIAGNOSTIC_SETTINGS;
 const ANNOTATION_KINDS = [
     "explanation",
     "rationale",
@@ -664,19 +666,6 @@ function parseIndexedDocument(document) {
         return undefined;
     }
 }
-function severityToDiagnostic(severity) {
-    switch (severity) {
-        case "fatal":
-        case "error":
-            return DiagnosticSeverity.Error;
-        case "warning":
-            return DiagnosticSeverity.Warning;
-        case "info":
-            return DiagnosticSeverity.Information;
-        case "hint":
-            return DiagnosticSeverity.Hint;
-    }
-}
 function buildReferenceRanges(document) {
     const ranges = new Map();
     const add = (key, span, label) => {
@@ -723,18 +712,23 @@ function isPositiveFinite(value) {
 async function validateTextDocument(textDocument) {
     const diagnostics = [];
     try {
+        const settings = await diagnosticSettingsForDocument(textDocument.uri);
         const ast = parseDocument(textDocument.getText());
         const report = await auditDslText(textDocument.getText(), textDocument.uri, {
             embeddings: { provider: "none" },
         });
         const referenceRanges = buildReferenceRanges(ast);
         for (const issue of report.results) {
+            const severity = resolveLspDiagnosticSeverity(issue, settings);
+            if (severity === undefined) {
+                continue;
+            }
             const issueRange = metadataRange(textDocument, issue);
             diagnostics.push({
                 range: issueRange ??
                     referenceRanges.get(issue.target_refs[0]?.ref_id ?? "") ??
                     Range.create(Position.create(0, 0), Position.create(0, 1)),
-                severity: severityToDiagnostic(issue.severity),
+                severity,
                 source: "llmthink",
                 code: issue.category,
                 message: [issue.message, issue.rationale, issue.suggestion]
@@ -757,6 +751,21 @@ async function validateTextDocument(textDocument) {
         }
     }
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+}
+async function diagnosticSettingsForDocument(uri) {
+    if (!hasConfigurationCapability) {
+        return fallbackDiagnosticSettings;
+    }
+    try {
+        const settings = await connection.workspace.getConfiguration({
+            scopeUri: uri,
+            section: "llmthink.diagnostics",
+        });
+        return normalizeLspDiagnosticSettings(settings);
+    }
+    catch {
+        return DEFAULT_LSP_DIAGNOSTIC_SETTINGS;
+    }
 }
 function symbolRange(span, name) {
     return Range.create(Position.create(span.line - 1, 0), Position.create(span.line - 1, name.length + 20));
@@ -894,6 +903,14 @@ connection.onInitialize((params) => {
 connection.onInitialized(() => {
     if (hasConfigurationCapability) {
         connection.client.register(DidChangeConfigurationNotification.type);
+    }
+});
+connection.onDidChangeConfiguration((change) => {
+    if (!hasConfigurationCapability) {
+        fallbackDiagnosticSettings = normalizeLspDiagnosticSettings(change.settings?.llmthink?.diagnostics);
+    }
+    for (const document of documents.all()) {
+        void validateTextDocument(document);
     }
 });
 documents.onDidOpen((event) => {

@@ -284,6 +284,65 @@
           "type": "string",
           "default": "",
           "markdownDescription": "LSP サーバの実行ファイルまたはスクリプトへの絶対パス、または PATH 上のコマンド名。設定が未指定または解決不可のときは、まず PATH 上の llmthink-lsp を使い、その後に拡張機能同梱サーバを試します。"
+        },
+        "llmthink.diagnostics.minimumSeverity": {
+          "type": "string",
+          "enum": [
+            "fatal",
+            "error",
+            "warning",
+            "info",
+            "hint"
+          ],
+          "default": "hint",
+          "scope": "resource",
+          "markdownDescription": "Problems に表示する最低監査 severity。既定の `hint` は全診断を表示します。"
+        },
+        "llmthink.diagnostics.suppressedCategories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "contradiction",
+              "contradiction_candidate",
+              "contract_violation",
+              "mece_assessment",
+              "semantic_hint"
+            ]
+          },
+          "uniqueItems": true,
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Problems に表示しない監査カテゴリ。明示したカテゴリだけを抑制します。"
+        },
+        "llmthink.diagnostics.categorySeverityOverrides": {
+          "type": "object",
+          "properties": {
+            "semantic_hint": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "hint",
+                "off"
+              ]
+            },
+            "contradiction_candidate": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "hint",
+                "off"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "default": {},
+          "scope": "resource",
+          "markdownDescription": "補助的カテゴリの LSP severity を上書きします。`off` はそのカテゴリを非表示にします。監査レポート自体は変更しません。"
         }
       }
     },

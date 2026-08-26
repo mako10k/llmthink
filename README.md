@@ -173,6 +173,8 @@ llmthink thought audit --id review-002 --pretty
 - Copilot 向けの開発運用ルールは `.github/copilot-instructions.md` を正とする
 - 利用者としては、必要に応じて `#llmthink-dsl` で `action=audit` や `action=help` を使って DSL を確認できる
 - MCP の `dsl action=audit` と `thought action=audit|show` では、`minSeverity`、`suppressCategories`、`maxIssues` を監査出力へ指定できる
+- VS Code の Problems 診断は `llmthink.diagnostics.minimumSeverity` と `llmthink.diagnostics.suppressedCategories` で絞り込める
+- `llmthink.diagnostics.categorySeverityOverrides` では補助カテゴリ `semantic_hint` / `contradiction_candidate` を `error|warning|info|hint|off` へ明示的に変更できる。既定値は監査結果の severity を維持する
 
 ## 埋め込み設定
 

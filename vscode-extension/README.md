@@ -67,6 +67,14 @@ evidence の匿名 `resource:` block は URL / file / blob locator と任意の 
 - PATH 上の `llmthink-lsp`
 - 上記が見つからない場合は VSIX に同梱した `llmthink-lsp.js`
 
+## Problems 診断設定
+
+- `llmthink.diagnostics.minimumSeverity`: 表示する最低 severity。既定値 `hint` は全診断を表示する
+- `llmthink.diagnostics.suppressedCategories`: 明示した監査カテゴリを非表示にする
+- `llmthink.diagnostics.categorySeverityOverrides`: `semantic_hint` と `contradiction_candidate` を `error` / `warning` / `info` / `hint` / `off` へ変更する
+- 既定では監査結果の severity を変更しない。設定変更後は開いている `.think` / `.dsl` 文書を自動で再診断する
+- これらはエディタ表示だけを変更し、CLI / MCP の監査レポートや保存済み audit は変更しない
+
 ## VSIX パッケージ
 
 - npm run package:vsix
