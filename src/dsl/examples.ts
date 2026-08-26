@@ -50,6 +50,12 @@ const DSL_EXAMPLES: DslExampleEntry[] = [
     summary: "evidence に複数の匿名 resource を付ける代表例",
   },
   {
+    id: "confidence-propagation",
+    path: "docs/examples/confidence-propagation.think",
+    summary:
+      "版付きキーワード、有理数区間、自己申告値比較、未解決の複数親aggregationを使う信頼度伝搬例",
+  },
+  {
     id: "contradiction-pending",
     path: "docs/examples/contradiction-pending.think",
     summary: "decision と pending が同居する監査例",

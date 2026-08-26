@@ -66,6 +66,14 @@
 - incomparable
 - counterexample_to
 - pending
+- confidence
+- estimate
+- range
+- epistemic
+- known
+- estimated
+- unknown
+- default
 - query
 - requires
 - forbids
@@ -85,7 +93,7 @@
 
 ```ebnf
 Document        = { TopLevelBlock } ;
-TopLevelBlock   = FrameworkDecl | DomainDecl | ProblemDecl | StepDecl | ImplicitStepDecl | QueryDecl ;
+TopLevelBlock   = FrameworkDecl | DomainDecl | ProblemDecl | StepDecl | ImplicitStepDecl | ConfidenceDecl | QueryDecl ;
 ```
 
 トップレベルでは、複数の domain や query を宣言してよい。
@@ -185,7 +193,44 @@ ComparisonDecl  = "comparison" Identifier "on" Identifier "viewpoint" Identifier
 ComparisonRelation = "preferred_over" | "weaker_than" | "incomparable" | "counterexample_to" ;
 ```
 
-### 5.12 query 宣言
+### 5.12 confidence 宣言
+
+```ebnf
+ConfidenceDecl       = ConfidenceSourceDecl | ConfidenceEdgeDecl | DeclaredConfidenceDecl ;
+ConfidenceSourceDecl = "confidence" Identifier ":" Newline Indent ConfidenceSourceBody Dedent ;
+ConfidenceEdgeDecl   = "confidence" Identifier "->" Identifier ":" Newline Indent ConfidenceEdgeBody Dedent ;
+DeclaredConfidenceDecl = "declared_confidence" Identifier ":" Newline Indent DeclaredConfidenceBody Dedent ;
+ConfidenceSourceBody = DefaultConfidence | SourceKeywordConfidence | ExplicitConfidence ;
+ConfidenceEdgeBody   = DefaultConfidence | EdgeKeywordConfidence | ExplicitConfidence ;
+DeclaredConfidenceBody = SourceKeywordConfidence | ExplicitConfidence ;
+DefaultConfidence    = "default" Newline ;
+SourceKeywordConfidence = "keyword" SourceConfidenceKeyword Newline ;
+EdgeKeywordConfidence = "keyword" EdgeConfidenceKeyword Newline ;
+SourceConfidenceKeyword = "defined" | "common_fact" | "strong_assumption" | "rough_assumption" | "unsupported_assumption" | "unlikely_assumption" | "likely_refuted" | "refuted" ;
+EdgeConfidenceKeyword = "exact_transform" | "reliable_inference" | "strong_inference" | "approximate_inference" | "unsupported_inference" | "weak_inference" | "likely_invalid" | "invalid" ;
+ExplicitConfidence   = ConfidenceField ConfidenceField ConfidenceField ;
+ConfidenceField      = EstimateLine | RangeLine | EpistemicLine ;
+EstimateLine         = "estimate" Rational Newline ;
+RangeLine            = "range" Rational ".." Rational Newline ;
+EpistemicLine        = "epistemic" ("known" | "estimated" | "unknown") Newline ;
+Rational             = UnsignedInteger "/" PositiveInteger ;
+```
+
+- source form は入力端の命題評価、edge form は source から target decision への scoring support 分類を表す
+- explicit form の 3 field は順不同だが、各 1 回だけ必須とする
+- `default` は単独 field とし、`support-trace-v1` の幅付き既定値を選ぶ
+- `keyword IDENTIFIER` も単独 field とし、source form は source keyword、edge form は edge keyword
+  だけを受理する。展開表は ADR-0015 の `support-trace-v1` を正とする
+- keyword 展開後も `origin keyword`、`profile_id`、`keyword_id` を保持する
+- `declared_confidence`はincoming scoring edgeを持つderived decisionだけを対象とし、source用keyword
+  またはexplicit assessmentを取る。`default`は許さない
+- rational は正確に既約化し、`0/1 <= lower <= estimate <= upper <= 1/1` を要求する
+- `known` は `lower == estimate == upper` の point interval だけを許す
+- `unknown` は数値を欠損させず、数値区間と直交するタグとして扱う
+- edge source は target decision の `based_on` に含まれていなければならない
+- `based_on` だけから scoring edge を暗黙生成しない
+
+### 5.13 query 宣言
 
 ```ebnf
 QueryDecl       = "query" Identifier ":" Newline Indent QueryExprLine Dedent ;
@@ -231,6 +276,11 @@ DSLQL の評価意味論、組み込み関数、semantic operand、遅延 embedd
 - blob と digest の併記、resource field の重複、未知 field、named resource を拒否する
 - parser と通常 audit の resource 検査は I/O を行わず、URL 到達性、file existence、content digest、MIME sniff は検査しない
 - resource は匿名 structural value であり、宣言 ID namespace、`@ID`、`based_on`、semantic operand の対象にしない
+- confidence 宣言は ID を所有せず、宣言 ID namespace へ追加しない
+- confidence の source node 評価は入力端だけに明示でき、中間・結論 node は scoring edge から派生計算する
+- declared confidenceはderived confidenceを上書きせず、別の自己申告assessmentとして保持する
+- confidence graph の cycle、未解決参照、scope 不一致は `unknown` ではなく `uncomputable` とする
+- confidence 結果は監査補助であり、真偽、audit severity、finalize、承認、公開の authority にしない
 
 ---
 

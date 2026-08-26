@@ -1,3 +1,5 @@
+import type { ConfidenceAssessment } from "./confidence.js";
+
 export type StatementRole =
   | "premise"
   | "viewpoint"
@@ -197,10 +199,41 @@ export interface QueryDecl {
   expressionSpan: SourceSpan;
 }
 
+export interface ConfidenceSourceDecl {
+  kind: "source";
+  sourceId: string;
+  assessment?: ConfidenceAssessment;
+  syntax: "explicit" | "keyword" | "default";
+  span: SourceSpan;
+}
+
+export interface ConfidenceEdgeDecl {
+  kind: "edge";
+  sourceId: string;
+  targetId: string;
+  assessment?: ConfidenceAssessment;
+  syntax: "explicit" | "keyword" | "default";
+  span: SourceSpan;
+}
+
+export interface DeclaredConfidenceDecl {
+  kind: "declared";
+  targetId: string;
+  assessment: ConfidenceAssessment;
+  syntax: "explicit" | "keyword";
+  span: SourceSpan;
+}
+
+export type ConfidenceDecl =
+  | ConfidenceSourceDecl
+  | ConfidenceEdgeDecl
+  | DeclaredConfidenceDecl;
+
 export interface DocumentAst {
   framework?: FrameworkDecl;
   domains: DomainDecl[];
   problems: ProblemDecl[];
   steps: StepDecl[];
+  confidence: ConfidenceDecl[];
   queries: QueryDecl[];
 }

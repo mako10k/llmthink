@@ -1,6 +1,7 @@
 import type {
   Annotation,
   ComparisonStatement,
+  ConfidenceDecl,
   DecisionStatement,
   DocumentAst,
   EvidenceStatement,
@@ -13,6 +14,7 @@ import type {
   TextBody,
   ViewpointStatement,
 } from "../model/ast.js";
+import { rationalToString } from "../model/confidence.js";
 import { validateEvidenceResource } from "../model/evidence-resource.js";
 import { parseDocument } from "../parser/parser.js";
 
@@ -166,6 +168,36 @@ function formatQuery(query: QueryDecl): string {
   return [`query ${query.id}:`, indent(query.expression)].join("\n");
 }
 
+function confidenceHeader(confidence: ConfidenceDecl): string {
+  if (confidence.kind === "source") {
+    return `confidence ${confidence.sourceId}:`;
+  }
+  if (confidence.kind === "edge") {
+    return `confidence ${confidence.sourceId} -> ${confidence.targetId}:`;
+  }
+  return `declared_confidence ${confidence.targetId}:`;
+}
+
+function formatConfidence(confidence: ConfidenceDecl): string {
+  const header = confidenceHeader(confidence);
+  if (confidence.syntax === "default" || !confidence.assessment) {
+    return [header, indent("default")].join("\n");
+  }
+  if (confidence.syntax === "keyword" && confidence.assessment.keywordId) {
+    return [header, indent(`keyword ${confidence.assessment.keywordId}`)].join(
+      "\n",
+    );
+  }
+  return [
+    header,
+    indent(`estimate ${rationalToString(confidence.assessment.estimate)}`),
+    indent(
+      `range ${rationalToString(confidence.assessment.lower)}..${rationalToString(confidence.assessment.upper)}`,
+    ),
+    indent(`epistemic ${confidence.assessment.epistemicTag}`),
+  ].join("\n");
+}
+
 export function formatDocument(document: DocumentAst): string {
   const sections: string[] = [];
 
@@ -197,6 +229,7 @@ export function formatDocument(document: DocumentAst): string {
   );
 
   sections.push(...document.steps.map(formatStep));
+  sections.push(...document.confidence.map(formatConfidence));
   sections.push(...document.queries.map(formatQuery));
 
   return `${sections.join("\n\n")}\n`;

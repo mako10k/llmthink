@@ -35,6 +35,10 @@ import {
 } from "../dslql/query.js";
 import type { AuditIssue } from "../model/diagnostics.js";
 import type { DocumentAst, SourceSpan, StepDecl } from "../model/ast.js";
+import {
+  EDGE_CONFIDENCE_KEYWORDS,
+  SOURCE_CONFIDENCE_KEYWORDS,
+} from "../model/confidence.js";
 import { collectDocumentDeclarations } from "../model/declarations.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
 
@@ -55,6 +59,28 @@ interface DslqlCompletionSpec {
   documentation: string;
   insertText?: string;
   kind?: CompletionItemKind;
+}
+
+function confidenceReferenceIds(
+  confidence: DocumentAst["confidence"][number],
+): string[] {
+  if (confidence.kind === "edge") {
+    return [confidence.sourceId, confidence.targetId];
+  }
+  return [
+    confidence.kind === "source" ? confidence.sourceId : confidence.targetId,
+  ];
+}
+
+function confidenceSymbolName(
+  confidence: DocumentAst["confidence"][number],
+): string {
+  if (confidence.kind === "edge") {
+    return `${confidence.sourceId} -> ${confidence.targetId}`;
+  }
+  return confidence.kind === "source"
+    ? confidence.sourceId
+    : confidence.targetId;
 }
 
 const connection = createConnection(ProposedFeatures.all);
@@ -127,6 +153,35 @@ const KEYWORD_DOCS: Record<string, string> = {
   counterexample_to:
     "comparison relation です。左側 decision が右側 decision の反例や反証になることを表します。",
   pending: "未解決事項を表す step body です。",
+  confidence:
+    "入力端または明示 scoring edge の信頼度評価を宣言します。数値区間と epistemic tag は別軸です。",
+  declared_confidence:
+    "decisionの自己申告confidenceを派生値と別に宣言します。派生値を上書きせず、区間との関係を監査します。",
+  estimate: "confidence の有理数代表値です。0/1 から 1/1 の範囲で指定します。",
+  range:
+    "confidence の有理数区間です。lower..upper 形式で estimate を包含させます。",
+  epistemic:
+    "confidence 数値の認識状態です。known / estimated / unknown のいずれかを指定します。",
+  known: "confidence の評価値と区間が明示的に確定した認識状態です。",
+  estimated: "confidence に明示的な推定または幅がある認識状態です。",
+  unknown:
+    "confidence に未評価要素がある認識状態です。数値を消去せず、直交タグとして伝搬します。",
+  default:
+    "support-trace-v1 の幅付き既定値を使います。既定評価済みの事実を意味しません。",
+  keyword:
+    "support-trace-v1 の版付きキーワードを数値区間と epistemic tag へ展開します。source と edge は別の語彙です。",
+  ...Object.fromEntries(
+    SOURCE_CONFIDENCE_KEYWORDS.map((label) => [
+      label,
+      `support-trace-v1 の source confidence keyword '${label}' です。`,
+    ]),
+  ),
+  ...Object.fromEntries(
+    EDGE_CONFIDENCE_KEYWORDS.map((label) => [
+      label,
+      `support-trace-v1 の edge confidence keyword '${label}' です。`,
+    ]),
+  ),
   query: "DSL 文書に対する問い合わせを宣言します。",
   requires: "framework が要求する役割を表します。",
   forbids: "framework が禁止する要素を表します。",
@@ -139,12 +194,41 @@ const QUERY_FUNCTION_DOCS: Record<string, string> = Object.fromEntries(
 
 const DSLQL_IDENTIFIER_DOCS: Record<string, string> = {
   document:
-    "document AST view です。framework、domains、problems、steps、queries を持ちます。",
+    "document AST view です。framework、domains、problems、steps、confidence、confidence_results、queries を持ちます。",
   framework: "framework 宣言の root です。",
   domains: "domain 一覧の root stream です。",
   problems: "problem 一覧の root stream です。",
   steps: "step AST 一覧です。statement は各 step の .statement にあります。",
   queries: "query 一覧の root stream です。",
+  confidence: "明示された confidence 宣言の root stream です。",
+  confidence_results:
+    "support-trace-v1 で計算した confidence 結果の root stream です。",
+  estimate: "confidence assessment の正確な有理数字列です。",
+  lower: "confidence assessment の区間下限です。",
+  upper: "confidence assessment の区間上限です。",
+  epistemic_tag:
+    "confidence assessment の known / estimated / unknown 認識状態です。",
+  profile_id: "confidence 計算規則の versioned profile ID です。",
+  keyword_id:
+    "origin=keyword の confidence assessment を展開した profile keyword ID です。",
+  weakest_path: "派生 confidence の代表的な最弱経路です。",
+  aggregation:
+    "複数親の依存関係が未解決で、confidenceが保守的baselineであることを表します。",
+  baseline_method:
+    "複数親confidenceの保守的baseline計算方式です。現行値はcoordinate_minです。",
+  boost_applied: "複数経路による信頼度上昇を適用したかを表します。",
+  boosted_estimate:
+    "複数経路を厳密合成した推定値です。依存関係未解決の場合はnullです。",
+  unresolved_nodes:
+    "依存関係未解決の複数親nodeとparent数を保持し、下流resultへ伝搬します。",
+  parent_count: "未解決aggregation nodeのincoming scoring parent数です。",
+  declared_assessment:
+    "decision作者が自己申告したconfidence assessmentです。derived assessmentを上書きしません。",
+  declared_comparison:
+    "自己申告estimateがderived intervalの下、内側、上のどこにあるかを表します。",
+  relation: "declared confidenceとderived intervalの位置関係です。",
+  cause_ids: "known でない confidence 要因の ID 一覧です。",
+  reasons: "confidence が計算不能な場合の理由一覧です。",
   audit: "latest audit result の root です。",
   thought: "thought metadata の root です。",
   search: "thought search result の root stream です。",
@@ -216,6 +300,21 @@ const DSLQL_COMPLETIONS: DslqlCompletionSpec[] = [
     detail: "DSLQL root",
     documentation: "query 一覧を stream として展開します。",
     insertText: ".document.queries[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".document.confidence[]",
+    detail: "DSLQL confidence declarations",
+    documentation: "明示された confidence 宣言を source 順に展開します。",
+    insertText: ".document.confidence[]",
+    kind: CompletionItemKind.Field,
+  },
+  {
+    label: ".document.confidence_results[]",
+    detail: "DSLQL derived confidence results",
+    documentation:
+      "support-trace-v1 で計算した区間、epistemic tag、原因または計算不能理由を展開します。",
+    insertText: ".document.confidence_results[]",
     kind: CompletionItemKind.Field,
   },
   {
@@ -522,6 +621,30 @@ function buildEvidenceResourceCompletionItem() {
   };
 }
 
+function confidenceValueCompletions(
+  document: TextDocument,
+  position: Position,
+  trimmedPrefix: string,
+) {
+  if (/^epistemic(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+    return buildKeywordCompletionItems(
+      ["known", "estimated", "unknown"],
+      "confidence epistemic tag",
+      { kind: CompletionItemKind.EnumMember },
+    );
+  }
+  if (/^keyword(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+    const header = previousSignificantLineText(document, position.line);
+    const labels = header?.includes("->")
+      ? EDGE_CONFIDENCE_KEYWORDS
+      : SOURCE_CONFIDENCE_KEYWORDS;
+    return buildKeywordCompletionItems(labels, "confidence profile keyword", {
+      kind: CompletionItemKind.EnumMember,
+    });
+  }
+  return undefined;
+}
+
 function contextualDslCompletions(document: TextDocument, position: Position) {
   const prefix = linePrefixAt(document, position);
   const trimmedPrefix = prefix.trim();
@@ -542,6 +665,13 @@ function contextualDslCompletions(document: TextDocument, position: Position) {
       },
     );
   }
+
+  const confidenceItems = confidenceValueCompletions(
+    document,
+    position,
+    trimmedPrefix,
+  );
+  if (confidenceItems) return confidenceItems;
 
   if (!trimmedPrefix) {
     const previousLine = previousSignificantLineText(document, position.line);
@@ -738,6 +868,15 @@ function buildSymbolIndex(
         step.statement.axis,
       ]);
     }
+  }
+
+  for (const confidence of ast.confidence) {
+    addReferencesFromLine(
+      index,
+      document,
+      confidence.span.line - 1,
+      confidenceReferenceIds(confidence),
+    );
   }
 
   ast.queries.forEach((query) => addDslqlReferences(index, document, query));
@@ -996,6 +1135,16 @@ function buildDocumentSymbols(document: DocumentAst): DocumentSymbol[] {
   symbols.push(
     ...document.queries.map((query) =>
       makeSymbol(query.id, SymbolKind.Function, query.span, "query"),
+    ),
+  );
+  symbols.push(
+    ...document.confidence.map((confidence) =>
+      makeSymbol(
+        confidenceSymbolName(confidence),
+        SymbolKind.Number,
+        confidence.span,
+        "confidence",
+      ),
     ),
   );
 

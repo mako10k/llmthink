@@ -1,5 +1,6 @@
 export { auditDslFile, auditDslText } from "./analyzer/audit.js";
 export type { AuditOptions } from "./analyzer/audit.js";
+export { evaluateConfidence } from "./analyzer/confidence.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
 export {
   alternateLlmthinkFilePath,
@@ -74,6 +75,24 @@ export {
   AUDIT_SEVERITIES,
 } from "./model/diagnostics.js";
 export type * from "./model/ast.js";
+export {
+  CONFIDENCE_PROFILE_ID,
+  confidenceKeywordsFor,
+  ConfidenceValueError,
+  createConfidenceAssessment,
+  createRationalValue,
+  DEFAULT_EDGE_CONFIDENCE,
+  DEFAULT_SOURCE_CONFIDENCE,
+  MAX_RATIONAL_DIGITS,
+  multiplyConfidenceAssessments,
+  parseUnitRational,
+  rationalToString,
+  resolveConfidenceKeyword,
+  serializeConfidenceAssessment,
+  EDGE_CONFIDENCE_KEYWORDS,
+  SOURCE_CONFIDENCE_KEYWORDS,
+} from "./model/confidence.js";
+export type * from "./model/confidence.js";
 export {
   createEvidenceResource,
   EvidenceResourceValidationError,

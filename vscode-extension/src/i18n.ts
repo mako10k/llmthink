@@ -31,8 +31,23 @@ interface PreviewStrings {
     problems: string;
     steps: string;
     comparisons: string;
+    confidence: string;
     queries: string;
     references: string;
+  };
+  confidenceLabels: {
+    estimate: string;
+    range: string;
+    epistemicTag: string;
+    origin: string;
+    profile: string;
+    keyword: string;
+    aggregation: string;
+    declaredAssessment: string;
+    declaredComparison: string;
+    weakestPath: string;
+    causes: string;
+    uncomputable: string;
   };
   noBasedOnEdges: string;
   noComparisons: string;
@@ -71,8 +86,23 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       problems: "Problems",
       steps: "Steps",
       comparisons: "Comparisons",
+      confidence: "Confidence",
       queries: "Queries",
       references: "References",
+    },
+    confidenceLabels: {
+      estimate: "推定値",
+      range: "範囲",
+      epistemicTag: "認識タグ",
+      origin: "由来",
+      profile: "プロファイル",
+      keyword: "キーワード",
+      aggregation: "複数親集約",
+      declaredAssessment: "自己申告値",
+      declaredComparison: "派生区間との関係",
+      weakestPath: "最弱経路",
+      causes: "非 known 要因",
+      uncomputable: "計算不能",
     },
     noBasedOnEdges: "明示的な based_on edge はありません。",
     noComparisons: "comparison はまだありません。",
@@ -121,8 +151,23 @@ const STRINGS: Record<PreviewLocale, PreviewStrings> = {
       problems: "Problems",
       steps: "Steps",
       comparisons: "Comparisons",
+      confidence: "Confidence",
       queries: "Queries",
       references: "References",
+    },
+    confidenceLabels: {
+      estimate: "Estimate",
+      range: "Range",
+      epistemicTag: "Epistemic tag",
+      origin: "Origin",
+      profile: "Profile",
+      keyword: "Keyword",
+      aggregation: "Multi-parent aggregation",
+      declaredAssessment: "Declared assessment",
+      declaredComparison: "Relation to derived interval",
+      weakestPath: "Weakest path",
+      causes: "Non-known causes",
+      uncomputable: "Uncomputable",
     },
     noBasedOnEdges: "No explicit based_on edges.",
     noComparisons: "No comparisons yet.",

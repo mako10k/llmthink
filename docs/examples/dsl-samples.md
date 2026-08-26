@@ -19,6 +19,9 @@
 5. [framework-contract.think](framework-contract.think)
    framework 契約の骨格定義。
 
+6. [confidence-propagation.think](confidence-propagation.think)
+   版付きキーワード、有理数区間、自己申告値との比較、未解決の複数親aggregationを使う信頼度伝搬例。
+
 ## 使い方
 
 - まず標準拡張子 `.think` の個別ファイルを読む。既存の `.dsl` も同じ言語として利用できる

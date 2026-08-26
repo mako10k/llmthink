@@ -239,6 +239,8 @@ document
 ├── problems: problem[]
 ├── steps: step[]
 │   └── statement: statement
+├── confidence: confidence[]
+├── confidence_results: confidence_result[]
 └── queries: query[]
 ```
 
@@ -246,17 +248,32 @@ document
 
 正規化 schema は次のとおり。`span` は `{line, column}`、text body は `{syntax, span, line_count}` である。
 
-| `node_kind`      | field                                                  |
-| ---------------- | ------------------------------------------------------ |
-| `document`       | `framework`, `domains`, `problems`, `steps`, `queries` |
-| `framework`      | `id`, `rules`, `span`                                  |
-| `framework_rule` | `rule_kind`, `value`, `span`                           |
-| `domain`         | `id`, `description`, `description_body`, `span`        |
-| `problem`        | `id`, `text`, `text_body`, `annotations`, `span`       |
-| `step`           | `id`, `statement`, `syntax: {step, step_id}`, `span`   |
-| `statement`      | 共通の `role`, `id`, `span` と、下記の role 固有 field |
-| `annotation`     | `annotation_kind`, `text`, `body`, `span`              |
-| `query`          | `id`, `expression`, `span`, `expression_span`          |
+| `node_kind`         | field                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `document`          | `framework`, `domains`, `problems`, `steps`, `confidence`, `confidence_results`, `queries`                                                            |
+| `framework`         | `id`, `rules`, `span`                                                                                                                                 |
+| `framework_rule`    | `rule_kind`, `value`, `span`                                                                                                                          |
+| `domain`            | `id`, `description`, `description_body`, `span`                                                                                                       |
+| `problem`           | `id`, `text`, `text_body`, `annotations`, `span`                                                                                                      |
+| `step`              | `id`, `statement`, `syntax: {step, step_id}`, `span`                                                                                                  |
+| `statement`         | 共通の `role`, `id`, `span` と、下記の role 固有 field                                                                                                |
+| `annotation`        | `annotation_kind`, `text`, `body`, `span`                                                                                                             |
+| `confidence`        | `confidence_kind`, `source_id`, `target_id`, `assessment`, `syntax`, `span`                                                                           |
+| `confidence_result` | `target_id`, `node_kind`, `status`, `assessment`, `declared_assessment`, `declared_comparison`, `weakest_path`, `aggregation`, `cause_ids`, `reasons` |
+| `query`             | `id`, `expression`, `span`, `expression_span`                                                                                                         |
+
+confidence assessment は `lower`、`estimate`、`upper` を既約な有理数字列で返し、`epistemic_tag`、`origin`、`profile_id` を併記する。keyword 展開値は `keyword_id` も返す。`unknown` は数値欠損ではない。`uncomputable` result の `assessment` と `weakest_path` は `null` で、`reasons` に cycle、未解決参照、scope 不一致などを保持する。
+
+複数親のconfidence resultとその下流は、`aggregation.status = "unresolved_dependency"`、
+`baseline_method = "coordinate_min"`、`boost_applied = false`、`boosted_estimate = null`、
+`unresolved_nodes[] = {target_id, parent_count}` を返す。これはresult全体の計算不能ではなく、
+複数経路による上昇値だけが未算出であることを表す。該当しないresultの`aggregation`は`null`である。
+
+`declared_confidence`を持つcomputed resultは`declared_assessment`と
+`declared_comparison.relation`を返す。relationは`below_derived_interval`、
+`within_derived_interval`、`above_derived_interval`のいずれかで、自己申告estimateをderived intervalと
+正確な有理数で比較する。derived resultがuncomputableの場合も`declared_assessment`は保持するが、
+comparisonは`null`になる。
 
 statement の role 固有 field は次のとおり。
 

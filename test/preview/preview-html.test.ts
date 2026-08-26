@@ -84,6 +84,36 @@ test("preview:html renders evidence resource provenance", () => {
   }
 });
 
+test("preview:html renders confidence interval, tag, path, and causes", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-confidence-"));
+  const outputPath = join(tempDir, "preview.html");
+
+  try {
+    renderPreview("docs/examples/confidence-propagation.think", outputPath);
+    const html = readFileSync(outputPath, "utf8");
+    assert.match(html, /Confidence/);
+    assert.match(html, /推定値/);
+    assert.match(html, /171\/250/);
+    assert.match(html, /1071\/2000\.\.171\/200/);
+    assert.match(html, /認識タグ/);
+    assert.match(html, /estimated/);
+    assert.match(html, /キーワード/);
+    assert.match(html, /strong_assumption/);
+    assert.match(html, /複数親集約/);
+    assert.match(html, /unresolved_dependency/);
+    assert.match(html, /D1\(2\)/);
+    assert.match(html, /自己申告値/);
+    assert.match(html, /派生区間との関係/);
+    assert.match(html, /within_derived_interval/);
+    assert.match(html, /EV1 -&gt; D1 -&gt; D2/);
+    assert.match(html, /EV1-&gt;D1/);
+    assert.match(html, /EV2-&gt;D1/);
+    assert.match(html, /D1-&gt;D2/);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("preview:html defaults to fit and keeps the outer map area stable on zoom", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "llmthink-preview-"));
   const outputPath = join(tempDir, "preview.html");

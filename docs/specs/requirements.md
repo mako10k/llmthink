@@ -207,7 +207,10 @@ Must:
 Should:
 
 - 時系列順に思考ステップを記述できること
-- 各判断に信頼度または確度を付与できること
+- 各判断に信頼度または確度を付与し、明示された scoring support graph 上で
+  [ADR-0015](../adr/0015-rational-confidence-interval-propagation.md) の有理数区間と認識状態を
+  伝搬できること
+- 頻用する source / scoring edge 評価を版付きキーワードから区間へ再現可能に展開できること
 - 各記述に参照元を付与できること
 - ユースケース別に最低限必要な role の組み合わせと代表例を guidance と examples から逆引きできること
 
@@ -215,6 +218,37 @@ Could:
 
 - 意味近傍情報を補助メタデータとして付与できること
 - グラフ関係を補助可視化として利用できること
+
+### 7.3 信頼度伝搬拡張
+
+信頼度伝搬機能を提供する場合、次を満たす。
+
+Must:
+
+- 信頼度を `lower`、`estimate`、`upper` の既約有理数で保持し、
+  `0/1 <= lower <= estimate <= upper <= 1/1` を満たすこと
+- `known | estimated | unknown` の認識状態を数値と直交して保持し、`unknown` を理由に
+  数値区間を破棄しないこと
+- 明示値、既定値、派生値と、計算に使った profile ID を区別できること。将来キーワード値を
+  導入する場合も `keyword` origin と versioned profile で区別すること
+- path の区間を成分ごとの積で計算すること。複数の incoming scoring parent は成分ごとの
+  最小値を保守的baselineとして保持し、厳密な合成値または信頼度上昇として扱わないこと
+- 初期 profile `support-trace-v1` の default source を `1/2 [1/4..3/4]`、default scoring edge を
+  `19/20 [9/10..1/1]` とし、いずれも `unknown`、`default` として識別すること
+- cycle、未解決参照、不正区間を含む計算範囲を `unknown` と混同せず `uncomputable` として
+  報告すること
+- 派生結果から最弱経路と、`unknown` または `estimated` の原因 ID を追跡できること
+- 複数親resultとその下流では、依存関係未解決、`coordinate_min` baseline、上昇未適用、
+  上昇値未算出、原因nodeとparent数を追跡できること
+- derived decisionに自己申告confidenceを明示でき、derived assessmentを上書きせず両方を保持すること
+- 自己申告estimateがderived intervalの下、内側、上のどこにあるかを正確な有理数比較で分類し、
+  区間外だけをwarningとして報告すること
+
+Must not:
+
+- 信頼度を命題の真理証明、条件付き確率、独立性、相関、因果関係として暗黙解釈しないこと
+- 信頼度を thought の finalize、承認、公開、保存、audit severity の authority にしないこと
+- default 値を明示評価済みの値として表示しないこと
 
 ---
 
@@ -473,7 +507,9 @@ query_resultはqueryが与えられた場合にのみ生成される補助出力
 - text or expression
 - references
 - status
-- optional confidence
+- optional declared confidence assessment (`lower`, `estimate`, `upper`, `epistemic_tag`, `origin`, `profile_id`, optional `keyword_id`)
+- optional derived confidence result（区間、認識状態、最弱経路、原因 ID、未解決aggregation、
+  optional declared assessmentとcomparison）
 - optional timestamp
 
 ### 13.2 Domain

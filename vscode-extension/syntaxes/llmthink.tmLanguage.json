@@ -25,7 +25,7 @@
       "patterns": [
         {
           "name": "keyword.control.llmthink",
-          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|query|requires|forbids|warns)\\b"
+          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|confidence|declared_confidence|estimate|range|epistemic|keyword|default|query|requires|forbids|warns)\\b"
         },
         {
           "name": "support.type.property-name.resource.llmthink",
@@ -66,6 +66,26 @@
         {
           "name": "entity.name.function.query.llmthink",
           "match": "(?<=\\bquery\\s)[A-Za-z][A-Za-z0-9_-]*(?=:)"
+        },
+        {
+          "name": "entity.name.function.confidence.llmthink",
+          "match": "(?<=\\bconfidence\\s)[A-Za-z][A-Za-z0-9_-]*"
+        },
+        {
+          "name": "entity.name.function.declared-confidence.llmthink",
+          "match": "(?<=\\bdeclared_confidence\\s)[A-Za-z][A-Za-z0-9_-]*"
+        },
+        {
+          "name": "variable.other.reference.confidence.llmthink",
+          "match": "(?<=->\\s)[A-Za-z][A-Za-z0-9_-]*"
+        },
+        {
+          "name": "constant.language.epistemic.llmthink",
+          "match": "(?<=\\bepistemic\\s)(known|estimated|unknown)\\b"
+        },
+        {
+          "name": "constant.language.confidence-keyword.llmthink",
+          "match": "(?<=\\bkeyword\\s)(defined|common_fact|strong_assumption|rough_assumption|unsupported_assumption|unlikely_assumption|likely_refuted|refuted|exact_transform|reliable_inference|strong_inference|approximate_inference|unsupported_inference|weak_inference|likely_invalid|invalid)\\b"
         },
         {
           "name": "variable.parameter.partition.llmthink",

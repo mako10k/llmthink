@@ -1,4 +1,5 @@
 import type { DslqlValue } from "../dslql/evaluator.js";
+import type { ConfidenceResult } from "./confidence.js";
 
 export const AUDIT_RESULT_CATEGORIES = [
   "contradiction",
@@ -61,5 +62,6 @@ export interface AuditReport {
   generated_at: string;
   summary: AuditSummary;
   results: AuditIssue[];
+  confidence_results?: ConfidenceResult[];
   query_results: QueryResult[];
 }
