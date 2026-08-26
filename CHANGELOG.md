@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- LSPのformat、missing `based_on`、missing reference Code Actionを純粋な生成境界へ分離し、audit diagnosticの正確なspanへ紐付ける回帰テストを追加
+
 ## 1.3.0 - 2026-08-26
 
 - Hosted Application Service、tenant/workspace境界付きfile repository、REST / HTTP MCP adapter、request digest、rate limitとbounded security observationを追加
