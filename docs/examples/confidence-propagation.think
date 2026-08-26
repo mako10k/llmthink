@@ -1,0 +1,35 @@
+problem P1:
+  "根拠経路が長くなるときの信頼度劣化を確認する"
+
+evidence EV1:
+  "検証済みの入力根拠"
+
+evidence EV2:
+  "別経路だが独立性は未確認の入力根拠"
+
+decision D1 based_on P1, EV1, EV2:
+  "入力根拠から最初の判断を導く"
+
+decision D2 based_on D1:
+  "最初の判断を要約して結論にする"
+
+confidence EV1:
+  keyword strong_assumption
+
+confidence EV1 -> D1:
+  keyword approximate_inference
+
+confidence EV2:
+  keyword common_fact
+
+confidence EV2 -> D1:
+  keyword reliable_inference
+
+confidence D1 -> D2:
+  default
+
+declared_confidence D2:
+  keyword rough_assumption
+
+query Q1:
+  .document.confidence_results[]

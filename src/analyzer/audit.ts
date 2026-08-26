@@ -20,6 +20,7 @@ import type {
   AuditSeverity,
   QueryResult,
 } from "../model/diagnostics.js";
+import type { ConfidenceResult } from "../model/confidence.js";
 import { createDocumentDeclarationIndex } from "../model/declarations.js";
 import { stripLlmthinkFileExtension } from "../dsl/file-extension.js";
 import {
@@ -43,6 +44,7 @@ import {
   type DslqlValue,
 } from "../dslql/query.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
+import { evaluateConfidence } from "./confidence.js";
 import {
   cosineSimilarity,
   embedTexts,
@@ -1294,6 +1296,67 @@ async function buildQueryResults(
   });
 }
 
+function addUncomputableConfidenceIssue(
+  issues: AuditIssue[],
+  result: ConfidenceResult,
+): boolean {
+  if (result.status !== "uncomputable") return false;
+  createIssue(issues, {
+    category: "semantic_hint",
+    severity: "warning",
+    target_refs: [{ ref_id: result.target_id, role: result.node_kind }],
+    message: `confidence ${result.target_id} を計算できない。`,
+    rationale: result.reasons.join(" | "),
+    suggestion:
+      "scoring support edge、based_on、参照先、cycle、confidence interval を確認する。",
+    metadata: {
+      confidence_status: result.status,
+      cause_ids: result.cause_ids,
+      reasons: result.reasons,
+    },
+  });
+  return true;
+}
+
+function addDeclaredConfidenceIssue(
+  issues: AuditIssue[],
+  result: ConfidenceResult,
+): void {
+  if (
+    !result.declared_comparison ||
+    result.declared_comparison.relation === "within_derived_interval"
+  ) {
+    return;
+  }
+  createIssue(issues, {
+    category: "semantic_hint",
+    severity: "warning",
+    target_refs: [{ ref_id: result.target_id, role: result.node_kind }],
+    message: `declared confidence ${result.target_id} がderived intervalの外側にある。`,
+    rationale: `relation=${result.declared_comparison.relation}; declared=${result.declared_assessment?.estimate}; derived=${result.assessment?.estimate} [${result.assessment?.lower}..${result.assessment?.upper}]`,
+    suggestion:
+      "自己申告値、scoring support、前提、またはedge評価のどこに差があるか確認する。",
+    metadata: {
+      declared_confidence_relation: result.declared_comparison.relation,
+      declared_estimate: result.declared_assessment?.estimate,
+      derived_estimate: result.assessment?.estimate,
+      derived_lower: result.assessment?.lower,
+      derived_upper: result.assessment?.upper,
+    },
+  });
+}
+
+function addConfidenceIssues(
+  issues: AuditIssue[],
+  confidenceResults: readonly ConfidenceResult[],
+): void {
+  for (const result of confidenceResults) {
+    if (!addUncomputableConfidenceIssue(issues, result)) {
+      addDeclaredConfidenceIssue(issues, result);
+    }
+  }
+}
+
 async function auditDocument(
   document: DocumentAst,
   documentId: string,
@@ -1317,6 +1380,9 @@ async function auditDocument(
   addStatusAnnotationIssues(issues, document, decisions, comparisons);
   addPendingHintIssue(issues, pendingSteps, decisions);
 
+  const confidenceResults = evaluateConfidence(document);
+  addConfidenceIssues(issues, confidenceResults);
+
   const semanticContext = await createSemanticContext(decisions, options);
   addDecisionSemanticHint(issues, decisions, semanticContext);
 
@@ -1328,6 +1394,9 @@ async function auditDocument(
     generated_at: new Date().toISOString(),
     summary: summarize(issues),
     results: issues,
+    ...(confidenceResults.length > 0
+      ? { confidence_results: confidenceResults }
+      : {}),
     query_results: queryResults,
   };
 }

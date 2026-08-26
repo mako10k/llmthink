@@ -1,6 +1,7 @@
 import ELK from "elkjs/lib/elk.bundled.js";
 import type {
   Annotation,
+  ConfidenceResult,
   DocumentAst,
   EvidenceResource,
   FrameworkRule,
@@ -770,8 +771,97 @@ async function buildSvgOverview(
   `;
 }
 
+type PreviewStrings = ReturnType<typeof getPreviewStrings>;
+
+function computedConfidenceMarkdownLines(
+  result: ConfidenceResult,
+  strings: PreviewStrings,
+): string[] {
+  const assessment = result.assessment!;
+  const lines = [
+    `- ${strings.confidenceLabels.estimate}: ${assessment.estimate}`,
+    `- ${strings.confidenceLabels.range}: ${assessment.lower}..${assessment.upper}`,
+    `- ${strings.confidenceLabels.epistemicTag}: ${assessment.epistemic_tag}`,
+    `- ${strings.confidenceLabels.origin}: ${assessment.origin}`,
+    `- ${strings.confidenceLabels.profile}: ${assessment.profile_id}`,
+  ];
+  if (assessment.keyword_id) {
+    lines.push(
+      `- ${strings.confidenceLabels.keyword}: ${assessment.keyword_id}`,
+    );
+  }
+  if (result.weakest_path?.length) {
+    lines.push(
+      `- ${strings.confidenceLabels.weakestPath}: ${result.weakest_path.join(" -> ")}`,
+    );
+  }
+  if (result.aggregation) {
+    const nodes = result.aggregation.unresolved_nodes
+      .map((node) => `${node.target_id}(${node.parent_count})`)
+      .join(", ");
+    lines.push(
+      `- ${strings.confidenceLabels.aggregation}: ${result.aggregation.status}; baseline=${result.aggregation.baseline_method}; boost_applied=false; boosted_estimate=unresolved; nodes=${nodes}`,
+    );
+  }
+  if (result.declared_assessment && result.declared_comparison) {
+    lines.push(
+      `- ${strings.confidenceLabels.declaredAssessment}: ${result.declared_assessment.estimate} [${result.declared_assessment.lower}..${result.declared_assessment.upper}]`,
+      `- ${strings.confidenceLabels.declaredComparison}: ${result.declared_comparison.relation}`,
+    );
+  }
+  return lines;
+}
+
+function uncomputableConfidenceMarkdownLines(
+  result: ConfidenceResult,
+  strings: PreviewStrings,
+): string[] {
+  const lines = [
+    `- ${strings.confidenceLabels.uncomputable}: ${result.reasons.join("; ")}`,
+  ];
+  if (result.declared_assessment) {
+    lines.push(
+      `- ${strings.confidenceLabels.declaredAssessment}: ${result.declared_assessment.estimate} [${result.declared_assessment.lower}..${result.declared_assessment.upper}]`,
+      `- ${strings.confidenceLabels.declaredComparison}: unavailable`,
+    );
+  }
+  return lines;
+}
+
+function confidenceResultMarkdownLines(
+  result: ConfidenceResult,
+  strings: PreviewStrings,
+): string[] {
+  const detailLines =
+    result.status === "computed" && result.assessment
+      ? computedConfidenceMarkdownLines(result, strings)
+      : uncomputableConfidenceMarkdownLines(result, strings);
+  if (result.cause_ids.length > 0) {
+    detailLines.push(
+      `- ${strings.confidenceLabels.causes}: ${result.cause_ids.join(", ")}`,
+    );
+  }
+  return [`### ${result.target_id}`, "", ...detailLines, ""];
+}
+
+function buildConfidenceSection(
+  confidenceResults: readonly ConfidenceResult[],
+  locale: PreviewLocale,
+): string[] {
+  if (confidenceResults.length === 0) return [];
+  const strings = getPreviewStrings(locale);
+  return [
+    `## ${strings.sections.confidence}`,
+    "",
+    ...confidenceResults.flatMap((result) =>
+      confidenceResultMarkdownLines(result, strings),
+    ),
+  ];
+}
+
 function buildPreviewMarkdown(
   document: DocumentAst,
+  confidenceResults: readonly ConfidenceResult[],
   title: string,
   locale: PreviewLocale,
 ): string {
@@ -826,6 +916,8 @@ function buildPreviewMarkdown(
       strings.noComparisons,
     ),
   );
+
+  lines.push(...buildConfidenceSection(confidenceResults, locale));
 
   if (document.queries.length > 0) {
     lines.push(`## ${strings.sections.queries}`, "");
@@ -2229,7 +2321,13 @@ export async function renderDslPreview(
         continue;
       }
     }
-    const markdown = buildPreviewMarkdown(document, title, locale);
+    const confidenceResults = core.evaluateConfidence(document);
+    const markdown = buildPreviewMarkdown(
+      document,
+      confidenceResults,
+      title,
+      locale,
+    );
     const svgOverview = await buildSvgOverview(document, locale);
     const localizedMarkdown = markdown.replaceAll(
       "__UNRESOLVED_REFERENCE__",

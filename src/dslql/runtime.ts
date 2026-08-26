@@ -6,6 +6,8 @@ import type {
   StepStatement,
   TextBody,
 } from "../model/ast.js";
+import { evaluateConfidence } from "../analyzer/confidence.js";
+import { serializeConfidenceAssessment } from "../model/confidence.js";
 import {
   createDocumentDeclarationIndex,
   type DocumentDeclarationKind,
@@ -58,6 +60,54 @@ function normalizeEvidenceResource(resource: EvidenceResource): DslqlObject {
     mime: resource.mime?.value ?? null,
     label: resource.label?.value ?? null,
     span: normalizeSpan(resource.span),
+  };
+}
+
+function normalizeConfidenceAssessment(
+  assessment: ReturnType<typeof serializeConfidenceAssessment>,
+): DslqlObject {
+  return {
+    lower: assessment.lower,
+    estimate: assessment.estimate,
+    upper: assessment.upper,
+    epistemic_tag: assessment.epistemic_tag,
+    origin: assessment.origin,
+    profile_id: assessment.profile_id,
+    keyword_id: assessment.keyword_id ?? null,
+  };
+}
+
+function normalizeConfidenceResult(
+  result: ReturnType<typeof evaluateConfidence>[number],
+): DslqlObject {
+  return {
+    target_id: result.target_id,
+    node_kind: result.node_kind,
+    status: result.status,
+    assessment: result.assessment
+      ? normalizeConfidenceAssessment(result.assessment)
+      : null,
+    declared_assessment: result.declared_assessment
+      ? normalizeConfidenceAssessment(result.declared_assessment)
+      : null,
+    declared_comparison: result.declared_comparison
+      ? { relation: result.declared_comparison.relation }
+      : null,
+    weakest_path: result.weakest_path ? [...result.weakest_path] : null,
+    aggregation: result.aggregation
+      ? {
+          status: result.aggregation.status,
+          baseline_method: result.aggregation.baseline_method,
+          boost_applied: result.aggregation.boost_applied,
+          boosted_estimate: result.aggregation.boosted_estimate,
+          unresolved_nodes: result.aggregation.unresolved_nodes.map((node) => ({
+            target_id: node.target_id,
+            parent_count: node.parent_count,
+          })),
+        }
+      : null,
+    cause_ids: [...result.cause_ids],
+    reasons: [...result.reasons],
   };
 }
 
@@ -163,6 +213,22 @@ function normalizeDocument(document: DocumentAst): DslqlObject {
       },
       span: normalizeSpan(step.span),
     })),
+    confidence: document.confidence.map((confidence) => ({
+      node_kind: "confidence",
+      confidence_kind: confidence.kind,
+      source_id: confidence.kind === "declared" ? null : confidence.sourceId,
+      target_id: confidence.kind === "source" ? null : confidence.targetId,
+      assessment: confidence.assessment
+        ? normalizeConfidenceAssessment(
+            serializeConfidenceAssessment(confidence.assessment),
+          )
+        : null,
+      syntax: confidence.syntax,
+      span: normalizeSpan(confidence.span),
+    })),
+    confidence_results: evaluateConfidence(document).map(
+      normalizeConfidenceResult,
+    ),
     queries: document.queries.map((query) => ({
       node_kind: "query",
       id: query.id,

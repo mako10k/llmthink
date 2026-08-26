@@ -255,6 +255,60 @@ test("mutation routes preserve audit, reflection, finalization, and event semant
       hint_count: 0,
     },
     results: [],
+    confidence_results: [
+      {
+        target_id: "EV1",
+        node_kind: "source",
+        status: "computed",
+        assessment: {
+          lower: "17/20",
+          estimate: "9/10",
+          upper: "19/20",
+          epistemic_tag: "estimated",
+          origin: "keyword",
+          profile_id: "support-trace-v1",
+          keyword_id: "strong_assumption",
+        },
+        weakest_path: ["EV1"],
+        cause_ids: ["EV1"],
+        reasons: [],
+      },
+      {
+        target_id: "D1",
+        node_kind: "derived",
+        status: "computed",
+        assessment: {
+          lower: "17/20",
+          estimate: "9/10",
+          upper: "19/20",
+          epistemic_tag: "estimated",
+          origin: "derived",
+          profile_id: "support-trace-v1",
+        },
+        declared_assessment: {
+          lower: "17/20",
+          estimate: "9/10",
+          upper: "19/20",
+          epistemic_tag: "estimated",
+          origin: "keyword",
+          profile_id: "support-trace-v1",
+          keyword_id: "strong_assumption",
+        },
+        declared_comparison: {
+          relation: "within_derived_interval",
+        },
+        weakest_path: ["EV1", "D1"],
+        aggregation: {
+          status: "unresolved_dependency",
+          baseline_method: "coordinate_min",
+          boost_applied: false,
+          boosted_estimate: null,
+          unresolved_nodes: [{ target_id: "D1", parent_count: 2 }],
+        },
+        cause_ids: ["EV1"],
+        reasons: [],
+      },
+    ],
     query_results: [],
   };
   const audit = await fetch(`${baseUrl}/api/v1/thoughts/thought-1/audits`, {
@@ -307,6 +361,68 @@ test("mutation routes preserve audit, reflection, finalization, and event semant
   assert.deepEqual(
     eventItems.map((event) => field(event, "kind")),
     ["draft_saved", "audit_recorded", "reflect_recorded", "finalized"],
+  );
+});
+
+test("record audit rejects non-canonical confidence assessments", async (t) => {
+  const { baseUrl } = await fixture(t);
+  await fetch(`${baseUrl}/api/v1/thoughts`, {
+    method: "POST",
+    headers: headers(["thought:write"]),
+    body: JSON.stringify({
+      thought_id: "thought-1",
+      draft_text: "draft",
+      idempotency_key: "create-1",
+      request_digest: DIGESTS.a,
+    }),
+  });
+
+  const response = await fetch(`${baseUrl}/api/v1/thoughts/thought-1/audits`, {
+    method: "POST",
+    headers: headers(["thought:write", "audit:run"]),
+    body: JSON.stringify({
+      report: {
+        engine_version: "test",
+        document_id: "thought-1",
+        generated_at: "2026-08-26T00:00:00.000Z",
+        summary: {
+          fatal_count: 0,
+          error_count: 0,
+          warning_count: 0,
+          info_count: 0,
+          hint_count: 0,
+        },
+        results: [],
+        confidence_results: [
+          {
+            target_id: "EV1",
+            node_kind: "source",
+            status: "computed",
+            assessment: {
+              lower: "9/10",
+              estimate: "18/20",
+              upper: "9/10",
+              epistemic_tag: "known",
+              origin: "explicit",
+              profile_id: "support-trace-v1",
+            },
+            weakest_path: ["EV1"],
+            cause_ids: [],
+            reasons: [],
+          },
+        ],
+        query_results: [],
+      },
+      expected_revision: 1,
+      idempotency_key: "audit-1",
+      request_digest: DIGESTS.b,
+    }),
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(
+    field(await json(response), "error", "code"),
+    "invalid_argument",
   );
 });
 

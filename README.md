@@ -299,6 +299,36 @@ evidence EV1:
 - named/shared resource、resource-only evidence、sha256 以外の digest、resource の自動取得・抽出・embedding は未導入
 - 完全な例は [docs/examples/evidence-resource.think](docs/examples/evidence-resource.think) を参照する
 
+### 信頼度の伝搬
+
+入力端と明示した scoring edge に、有理数の代表値・区間・認識タグを宣言できます。
+
+```dsl
+confidence EV1:
+  keyword strong_assumption
+
+confidence EV1 -> D1:
+  keyword approximate_inference
+
+declared_confidence D1:
+  keyword rough_assumption
+```
+
+- 内部計算は正確な有理数を使い、`lower <= estimate <= upper` を保持する
+- `known | estimated | unknown` は数値と直交する。`unknown` でも区間は失われない
+- 未指定 source は `1/2 [1/4..3/4] unknown`、未指定 scoring edge は `19/20 [9/10..1/1] unknown` の `support-trace-v1` profile を使う
+- `keyword` は版付き表から区間へ展開する。source では `defined`、`common_fact`、`strong_assumption`、`rough_assumption`、`unsupported_assumption`、`unlikely_assumption`、`likely_refuted`、`refuted`、edge では対応する `exact_transform` から `invalid` までの推論用語彙を使う
+- 展開結果には `origin=keyword`、`profile_id`、`keyword_id` が残り、後から数値の由来を確認できる
+- scoring edge は `confidence SOURCE -> DECISION:` で明示し、`based_on` だけから暗黙生成しない
+- 複数のincoming scoring parentは、成分ごとの`min`を保守的baselineとして返し、信頼度を
+  自動上昇させない。`aggregation`には依存関係未解決、上昇未適用、原因nodeとparent数が残り、
+  下流resultにも伝搬する
+- `declared_confidence`はdecision作者の自己申告値をderived assessmentと別に保持する。自己申告
+  estimateがderived interval外ならwarning、区間内ならcomparisonだけを返し、派生値は上書きしない
+- cycle、未解決参照、scope 不一致、算術上限は `uncomputable` として局所報告する
+- 結果は監査・再読用の派生ビューであり、真偽、severity、finalize、承認の authority ではない
+- 完全な例は [docs/examples/confidence-propagation.think](docs/examples/confidence-propagation.think) を参照する
+
 - query block の評価結果は `query_results[].values` に順序どおり格納し、boolean、string、object、semantic match を decision 候補へ暗黙変換しない
 - query expression 自体や参照先本文を補助 embedding せず、固定 score、lexical fallback、暗黙再順位付けを行わない。順位が必要な場合だけ `nearest_to()` を式に明示する
 - raw report は lossless で、presentation 上限を適用したコピーだけが `total_value_count` と `truncated: true` で省略を明示する

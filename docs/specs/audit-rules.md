@@ -84,6 +84,21 @@
 
 - hint
 
+### 3.7 confidence_results
+
+- 明示された confidence source / scoring edge から `support-trace-v1` の派生ビューを返す
+- `keyword` 宣言は source / edge 別の版付き表から区間へ展開し、展開元 `keyword_id` を保持する
+- 計算済み result は audit issue に変換せず、`confidence_results` に区間、epistemic tag、profile、最弱経路、原因 ID を保持する
+- 複数の incoming scoring parent は成分ごとの最小値を保守的baselineとして返すが、厳密な
+  合成または上昇とは扱わない。`aggregation` に `unresolved_dependency`、
+  `coordinate_min`、`boost_applied: false`、`boosted_estimate: null`、原因nodeとparent数を保持し、
+  そのbaselineを使う下流resultにも伝搬する
+- `declared_confidence`はderived assessmentと別に保持する。自己申告estimateがderived interval外なら
+  `semantic_hint` warningを返し、区間内ならcomparisonだけを保持してissueにしない
+- cycle、未解決参照、scope 不一致、算術上限は `uncomputable` とし、`semantic_hint` warning も返す
+- `unknown` は数値欠損または計算不能を意味せず、区間と直交する認識タグとして扱う
+- confidence は真偽、audit severity、finalize、承認、公開の authority にしない
+
 ---
 
 ## 4. ルール一覧

@@ -58,6 +58,12 @@
         "$ref": "#/$defs/result"
       }
     },
+    "confidence_results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/confidenceResult"
+      }
+    },
     "query_results": {
       "type": "array",
       "items": {
@@ -67,6 +73,192 @@
     }
   },
   "$defs": {
+    "confidenceResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "node_kind", "status", "cause_ids", "reasons"],
+      "properties": {
+        "target_id": { "type": "string", "minLength": 1 },
+        "node_kind": { "enum": ["source", "derived"] },
+        "status": { "enum": ["computed", "uncomputable"] },
+        "assessment": { "$ref": "#/$defs/confidenceAssessment" },
+        "declared_assessment": {
+          "allOf": [
+            { "$ref": "#/$defs/confidenceAssessment" },
+            {
+              "properties": {
+                "origin": { "enum": ["explicit", "keyword"] }
+              }
+            }
+          ]
+        },
+        "declared_comparison": {
+          "$ref": "#/$defs/declaredConfidenceComparison"
+        },
+        "weakest_path": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "aggregation": { "$ref": "#/$defs/confidenceAggregation" },
+        "cause_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "computed" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["assessment", "weakest_path"],
+            "properties": { "reasons": { "maxItems": 0 } }
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                { "required": ["assessment"] },
+                { "required": ["weakest_path"] },
+                { "required": ["aggregation"] },
+                { "required": ["declared_comparison"] }
+              ]
+            },
+            "properties": { "reasons": { "minItems": 1 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "node_kind": { "const": "source" } },
+            "required": ["node_kind"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["aggregation"] },
+                { "required": ["declared_assessment"] },
+                { "required": ["declared_comparison"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "allOf": [
+              {
+                "properties": { "status": { "const": "computed" } },
+                "required": ["status"]
+              },
+              { "required": ["declared_assessment"] }
+            ]
+          },
+          "then": { "required": ["declared_comparison"] }
+        },
+        {
+          "if": {
+            "allOf": [
+              {
+                "properties": { "status": { "const": "computed" } },
+                "required": ["status"]
+              },
+              { "required": ["declared_comparison"] }
+            ]
+          },
+          "then": { "required": ["declared_assessment"] }
+        }
+      ]
+    },
+    "declaredConfidenceComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation"],
+      "properties": {
+        "relation": {
+          "enum": [
+            "below_derived_interval",
+            "within_derived_interval",
+            "above_derived_interval"
+          ]
+        }
+      }
+    },
+    "confidenceAggregation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "baseline_method",
+        "boost_applied",
+        "boosted_estimate",
+        "unresolved_nodes"
+      ],
+      "properties": {
+        "status": { "const": "unresolved_dependency" },
+        "baseline_method": { "const": "coordinate_min" },
+        "boost_applied": { "const": false },
+        "boosted_estimate": { "type": "null" },
+        "unresolved_nodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target_id", "parent_count"],
+            "properties": {
+              "target_id": { "type": "string", "minLength": 1 },
+              "parent_count": { "type": "integer", "minimum": 2 }
+            }
+          }
+        }
+      }
+    },
+    "confidenceAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lower",
+        "estimate",
+        "upper",
+        "epistemic_tag",
+        "origin",
+        "profile_id"
+      ],
+      "properties": {
+        "lower": { "$ref": "#/$defs/rational" },
+        "estimate": { "$ref": "#/$defs/rational" },
+        "upper": { "$ref": "#/$defs/rational" },
+        "epistemic_tag": { "enum": ["known", "estimated", "unknown"] },
+        "origin": { "enum": ["explicit", "keyword", "default", "derived"] },
+        "profile_id": { "type": "string", "minLength": 1 },
+        "keyword_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "origin": { "const": "keyword" } },
+            "required": ["origin"]
+          },
+          "then": { "required": ["keyword_id"] },
+          "else": { "not": { "required": ["keyword_id"] } }
+        }
+      ]
+    },
+    "rational": {
+      "type": "string",
+      "description": "Canonical reduced rational in the closed unit interval; cross-field interval ordering is enforced by the producer and HTTP validation boundary.",
+      "pattern": "^(0|[1-9][0-9]{0,255})/[1-9][0-9]{0,255}$"
+    },
     "category": {
       "type": "string",
       "enum": [

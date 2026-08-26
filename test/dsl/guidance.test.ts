@@ -103,6 +103,27 @@ test("getDslSyntaxGuidanceText exposes comparison syntax guidance", () => {
   assert.match(text, /decision-comparison/);
 });
 
+test("getDslSyntaxGuidanceText exposes confidence semantics and sample", () => {
+  const text = getDslSyntaxGuidanceText({
+    topic: "syntax",
+    subtopic: "confidence",
+    detail: "detail",
+  });
+  assert.match(text, /Topic: syntax\.confidence/);
+  assert.match(text, /estimate \/ range \/ epistemic/);
+  assert.match(text, /keyword strong_assumption/);
+  assert.match(text, /approximate_inference/);
+  assert.match(text, /keyword_id/);
+  assert.match(text, /coordinate_min/);
+  assert.match(text, /unresolved_dependency/);
+  assert.match(text, /required \/ alternative \/ corroborating/);
+  assert.match(text, /declared_confidence D1/);
+  assert.match(text, /derived interval/);
+  assert.match(text, /unknown.*数値/);
+  assert.match(text, /uncomputable/);
+  assert.match(text, /confidence-propagation/);
+});
+
 test("getDslSyntaxGuidanceText exposes status annotations in decision guidance", () => {
   const text = getDslSyntaxGuidanceText({
     topic: "syntax",
