@@ -91,6 +91,11 @@ const DSL_EXAMPLES: DslExampleEntry[] = [
     summary: "framework requires and/or 例の監査出力",
   },
   {
+    id: "confidence-propagation-audit",
+    path: "docs/examples/confidence-propagation.audit.json",
+    summary: "confidence propagation 例に対応する監査出力",
+  },
+  {
     id: "audit-output-sample",
     path: "docs/examples/audit-output-sample.json",
     summary: "監査結果 JSON の全体像",
