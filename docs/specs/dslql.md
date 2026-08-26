@@ -301,7 +301,9 @@ statement の role 固有 field は次のとおり。
 - `expressionSpan` → `expression_span`
 - step syntax の `stepId` → `step_id`
 
-`evidence.resources[]` は source 順の匿名 object value であり、各要素は `node_kind: "evidence_resource"`、`locator_kind`、`locator`、`digest`、`mime`、`label`、`span` を持つ。省略可能 metadata は `null` に正規化する。resource は宣言ではないため `@ID` では参照できず、その locator や metadata を semantic operand の暗黙本文にも含めない。
+`evidence.resources[]` は source 順の匿名 object value であり、各要素は `node_kind: "evidence_resource"`、`locator_kind`、`locator`、`digest`、`mime`、`label`、`span` を持つ。省略可能 metadata は `null` に正規化する。resource は宣言ではないため `@ID` では参照できず、その locator や metadata を semantic operand の暗黙本文にも含めない。`mime` は記述者の metadata claim であり、embedding provider / model の選択authorityには使わない。
+
+resourceの自動取得、本文抽出、OCR、caption、transcription、binary fingerprint、media別embedding、content-derived embeddingは、段階的な実装予定ではなく現時点の非目標である。採用する場合はADR-0016の再入場条件に従い、別Issueと別ADRで判断する。
 
 step は `id`、`syntax`、`span`、`statement` を保持する。statement を flat にした別名 collection は作らない。
 

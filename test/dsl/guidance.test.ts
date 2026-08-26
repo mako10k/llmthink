@@ -158,6 +158,9 @@ test("getDslSyntaxGuidanceText exposes evidence resource boundaries", () => {
   assert.match(text, /url \/ file \/ blob/);
   assert.match(text, /URL fetch/);
   assert.match(text, /semantic operand/);
+  assert.match(text, /embedding input/);
+  assert.match(text, /現時点の非目標/);
+  assert.match(text, /別 Issue と ADR/);
   assert.match(text, /evidence-resource/);
 });
 

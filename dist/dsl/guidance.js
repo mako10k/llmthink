@@ -211,6 +211,8 @@ const HELP_NODES = [
             "blob と digest は identity authority が重複するため併記できない。formatter は locator、digest、mime、label の順へ正規化する。",
             "通常の parse / audit は構造だけを検査し、URL fetch、file read、digest verification、MIME sniff を実行しない。相対 file path の暗黙 process.cwd 解決も行わない。",
             "resource は anonymous structural value で、宣言 ID、based_on、@ID、definition / rename、semantic operand の対象ではない。DSLQL では evidence の .resources[] から lossless に読める。",
+            "resource の locator / digest / mime / label は semantic text や embedding input へ暗黙追加せず、mime claim を provider / model 選択に使わない。",
+            "resource 取得、本文抽出、OCR、caption、transcription、fingerprint、media 別 embedding は実装予定ではなく現時点の非目標である。採用する場合は別 Issue と ADR で判断する。",
         ],
         examples: [
             "evidence EV1:",

@@ -418,12 +418,20 @@ evidence EV1:
 });
 
 test("evidence resource metadata does not expand semantic text", async () => {
+  const digest = `sha256:${"a".repeat(64)}`;
   const document = parseDocument(`
 evidence EV1:
   "Canonical evidence text"
   resource:
     url "https://example.test/secret-metadata"
     label "Resource-only label"
+  resource:
+    file "private/resource-notes.txt"
+    digest "${digest}"
+    mime "text/plain"
+    label "Local notes"
+  resource:
+    blob "${digest}"
 `);
   const batches: string[][] = [];
 

@@ -777,6 +777,9 @@ query Q1:
 - evidence resource は匿名の 0..N structural value とし、locator は url / file / blob のいずれかちょうど 1 つ、digest / mime / label は任意 metadata とする
 - resource の mandatory validation は I/O を行わない。到達性、file existence、content digest、MIME sniff は明示的 resolver capability へ分離し、相対 file path に source document base がない場合も process.cwd へ暗黙 fallback しない
 - resource は `based_on`、宣言 ID namespace、`@ID`、semantic operand の対象にせず、DSLQL では evidence の `.resources[]` から lossless に取得する
+- resource の locator、digest、mime、label を evidence の semantic text、semantic candidate、embedding input へ暗黙追加しない。mime claim を embedding provider / model の選択authorityにしない
+- resource の自動取得、本文抽出、OCR、caption、transcription、binary fingerprint、media別embedding、content-derived embeddingは現時点の非目標であり、将来実装を約束しない。採用提案は別 Issue と別 ADR で I/O authority、上限、失敗意味論、再現性、security を再判断する
+- resource-only evidence は導入せず、evidence の利用者記述本文を必須のまま維持する
 
 ### 18.2 このサンプルが示すこと
 

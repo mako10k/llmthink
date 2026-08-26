@@ -20,7 +20,7 @@ problem P5:
   "parser だけを拡張して他の公開 surface を不整合にしない受入条件を定める"
 
 problem P6:
-  "Issue #5 と resource embedding を分離し、保留中の Issue #6 を暗黙に実装しない"
+  "resource provenance と semantic input を分離し、未採用の media 処理を暗黙に実装しない"
 
 step S1:
   evidence EV1:
@@ -171,15 +171,23 @@ step S21:
     "sha256 以外の digest algorithm は具体的な interoperability 要求が出るまで追加しない"
 
 step S22:
-  pending PD3:
-    "resource-only evidence は evidence text の意味契約と embedding 対象が定まるまで許可しない"
+  decision DA3 based_on P1, PR1, EV4:
+    "resource-only evidence を導入する"
+    annotation status:
+      "rejected"
+    annotation rationale:
+      |
+        evidence の利用者記述本文を semantic input authority として維持する。resource locator や
+        metadata だけを根拠本文へ昇格させると、provenance と意味内容の責務が混在する
 
 step S23:
-  decision D8 based_on P6, EV4, PD1, PD2, PD3:
+  decision D8 based_on P6, EV4, PR1:
     |
-      Issue #5 では resource の自動取得、本文抽出、画像 caption、binary fingerprint、embedding、
-      semantic view を実装しない。evidence の semantic text は従来の text のままとし、resource metadata の
-      embedding 組み込みは Issue #6、named resource と resource-only evidence は別の明示判断へ残す
+      resource の自動取得、本文抽出、OCR、画像 caption、audio transcription、binary fingerprint、
+      media 別 provider 選択、content-derived embedding、semantic view を実装しない。
+      evidence の resource 由来 semantic input は必須 text のままとし、resource locator、digest、mime、label を
+      embedding input へ暗黙追加しない。これらは follow-up phase ではなく採否を含めて現時点の非目標とする。
+      再提案する場合は ADR-0016 の再入場条件を満たす別 Issue と別 ADR を要求する
 
 step S24:
   decision D9 based_on P5, D1, D2, D3, D4, D5, D6, D7, D8:

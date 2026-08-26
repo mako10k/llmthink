@@ -301,7 +301,9 @@ evidence EV1:
 - 通常の parse / audit は構造だけを検査し、URL fetch、file read、digest verification、MIME sniff を実行しない
 - resource は匿名 value で、宣言 ID、`based_on`、`@ID`、semantic operand にはしない
 - DSLQL では evidence の `.resources[]` から `locator_kind`、`locator`、`digest`、`mime`、`label`、`span` を取得できる
-- named/shared resource、resource-only evidence、sha256 以外の digest、resource の自動取得・抽出・embedding は未導入
+- resource locator / digest / mime / label は semantic text や embedding input へ暗黙追加せず、mime claim を provider / model 選択に使わない
+- resource-only evidence、自動取得・抽出・OCR・caption・transcription・fingerprint・media 別 embedding・content-derived embedding は現時点の非目標で、将来実装を約束しない。採用する場合は別 Issue と ADR で再判断する
+- named/shared resource と sha256 以外の digest も現行契約には含めない
 - 完全な例は [docs/examples/evidence-resource.think](docs/examples/evidence-resource.think) を参照する
 
 ### 信頼度の伝搬
