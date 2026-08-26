@@ -1,0 +1,265 @@
+{
+  "engine_version": "0.1.0",
+  "document_id": "confidence-propagation",
+  "generated_at": "<generated>",
+  "summary": {
+    "fatal_count": 0,
+    "error_count": 0,
+    "warning_count": 0,
+    "info_count": 0,
+    "hint_count": 1
+  },
+  "results": [
+    {
+      "issue_id": "ISSUE-001",
+      "category": "semantic_hint",
+      "severity": "hint",
+      "target_refs": [
+        {
+          "ref_id": "D1",
+          "role": "decision",
+          "step_id": "S-D1"
+        },
+        {
+          "ref_id": "D2",
+          "role": "decision",
+          "step_id": "S-D2"
+        }
+      ],
+      "message": "D1 と D2 は意味的に近接している可能性がある。",
+      "metadata": {
+        "line": 10,
+        "column": 10,
+        "end_column": 12,
+        "similarity": 0.75,
+        "semantic_distance": 0.25
+      }
+    }
+  ],
+  "confidence_results": [
+    {
+      "target_id": "EV1",
+      "node_kind": "source",
+      "status": "computed",
+      "assessment": {
+        "lower": "17/20",
+        "estimate": "9/10",
+        "upper": "19/20",
+        "epistemic_tag": "estimated",
+        "origin": "keyword",
+        "profile_id": "support-trace-v1",
+        "keyword_id": "strong_assumption"
+      },
+      "weakest_path": ["EV1"],
+      "cause_ids": ["EV1"],
+      "reasons": []
+    },
+    {
+      "target_id": "D1",
+      "node_kind": "derived",
+      "status": "computed",
+      "assessment": {
+        "lower": "119/200",
+        "estimate": "18/25",
+        "upper": "171/200",
+        "epistemic_tag": "estimated",
+        "origin": "derived",
+        "profile_id": "support-trace-v1"
+      },
+      "weakest_path": ["EV1", "D1"],
+      "aggregation": {
+        "status": "unresolved_dependency",
+        "baseline_method": "coordinate_min",
+        "boost_applied": false,
+        "boosted_estimate": null,
+        "unresolved_nodes": [
+          {
+            "target_id": "D1",
+            "parent_count": 2
+          }
+        ]
+      },
+      "cause_ids": ["EV1", "EV1->D1", "EV2", "EV2->D1"],
+      "reasons": []
+    },
+    {
+      "target_id": "EV2",
+      "node_kind": "source",
+      "status": "computed",
+      "assessment": {
+        "lower": "49/50",
+        "estimate": "99/100",
+        "upper": "1/1",
+        "epistemic_tag": "estimated",
+        "origin": "keyword",
+        "profile_id": "support-trace-v1",
+        "keyword_id": "common_fact"
+      },
+      "weakest_path": ["EV2"],
+      "cause_ids": ["EV2"],
+      "reasons": []
+    },
+    {
+      "target_id": "D2",
+      "node_kind": "derived",
+      "status": "computed",
+      "assessment": {
+        "lower": "1071/2000",
+        "estimate": "171/250",
+        "upper": "171/200",
+        "epistemic_tag": "unknown",
+        "origin": "derived",
+        "profile_id": "support-trace-v1"
+      },
+      "declared_assessment": {
+        "lower": "7/10",
+        "estimate": "4/5",
+        "upper": "9/10",
+        "epistemic_tag": "estimated",
+        "origin": "keyword",
+        "profile_id": "support-trace-v1",
+        "keyword_id": "rough_assumption"
+      },
+      "declared_comparison": {
+        "relation": "within_derived_interval"
+      },
+      "weakest_path": ["EV1", "D1", "D2"],
+      "aggregation": {
+        "status": "unresolved_dependency",
+        "baseline_method": "coordinate_min",
+        "boost_applied": false,
+        "boosted_estimate": null,
+        "unresolved_nodes": [
+          {
+            "target_id": "D1",
+            "parent_count": 2
+          }
+        ]
+      },
+      "cause_ids": ["EV1", "EV1->D1", "EV2", "EV2->D1", "D1->D2"],
+      "reasons": []
+    }
+  ],
+  "query_results": [
+    {
+      "query_id": "Q1",
+      "severity": "hint",
+      "values": [
+        {
+          "target_id": "EV1",
+          "node_kind": "source",
+          "status": "computed",
+          "assessment": {
+            "lower": "17/20",
+            "estimate": "9/10",
+            "upper": "19/20",
+            "epistemic_tag": "estimated",
+            "origin": "keyword",
+            "profile_id": "support-trace-v1",
+            "keyword_id": "strong_assumption"
+          },
+          "declared_assessment": null,
+          "declared_comparison": null,
+          "weakest_path": ["EV1"],
+          "aggregation": null,
+          "cause_ids": ["EV1"],
+          "reasons": []
+        },
+        {
+          "target_id": "D1",
+          "node_kind": "derived",
+          "status": "computed",
+          "assessment": {
+            "lower": "119/200",
+            "estimate": "18/25",
+            "upper": "171/200",
+            "epistemic_tag": "estimated",
+            "origin": "derived",
+            "profile_id": "support-trace-v1",
+            "keyword_id": null
+          },
+          "declared_assessment": null,
+          "declared_comparison": null,
+          "weakest_path": ["EV1", "D1"],
+          "aggregation": {
+            "status": "unresolved_dependency",
+            "baseline_method": "coordinate_min",
+            "boost_applied": false,
+            "boosted_estimate": null,
+            "unresolved_nodes": [
+              {
+                "target_id": "D1",
+                "parent_count": 2
+              }
+            ]
+          },
+          "cause_ids": ["EV1", "EV1->D1", "EV2", "EV2->D1"],
+          "reasons": []
+        },
+        {
+          "target_id": "EV2",
+          "node_kind": "source",
+          "status": "computed",
+          "assessment": {
+            "lower": "49/50",
+            "estimate": "99/100",
+            "upper": "1/1",
+            "epistemic_tag": "estimated",
+            "origin": "keyword",
+            "profile_id": "support-trace-v1",
+            "keyword_id": "common_fact"
+          },
+          "declared_assessment": null,
+          "declared_comparison": null,
+          "weakest_path": ["EV2"],
+          "aggregation": null,
+          "cause_ids": ["EV2"],
+          "reasons": []
+        },
+        {
+          "target_id": "D2",
+          "node_kind": "derived",
+          "status": "computed",
+          "assessment": {
+            "lower": "1071/2000",
+            "estimate": "171/250",
+            "upper": "171/200",
+            "epistemic_tag": "unknown",
+            "origin": "derived",
+            "profile_id": "support-trace-v1",
+            "keyword_id": null
+          },
+          "declared_assessment": {
+            "lower": "7/10",
+            "estimate": "4/5",
+            "upper": "9/10",
+            "epistemic_tag": "estimated",
+            "origin": "keyword",
+            "profile_id": "support-trace-v1",
+            "keyword_id": "rough_assumption"
+          },
+          "declared_comparison": {
+            "relation": "within_derived_interval"
+          },
+          "weakest_path": ["EV1", "D1", "D2"],
+          "aggregation": {
+            "status": "unresolved_dependency",
+            "baseline_method": "coordinate_min",
+            "boost_applied": false,
+            "boosted_estimate": null,
+            "unresolved_nodes": [
+              {
+                "target_id": "D1",
+                "parent_count": 2
+              }
+            ]
+          },
+          "cause_ids": ["EV1", "EV1->D1", "EV2", "EV2->D1", "D1->D2"],
+          "reasons": []
+        }
+      ],
+      "total_value_count": 4,
+      "truncated": false
+    }
+  ]
+}

@@ -21,6 +21,7 @@
 
 6. [confidence-propagation.think](confidence-propagation.think)
    版付きキーワード、有理数区間、自己申告値との比較、未解決の複数親aggregationを使う信頼度伝搬例。
+   期待される監査結果は [confidence-propagation.audit.json](confidence-propagation.audit.json)。
 
 ## 使い方
 
