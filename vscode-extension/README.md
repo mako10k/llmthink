@@ -2,7 +2,7 @@
 
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
-現行 release version は [1.2.0](https://github.com/mako10k/llmthink/releases/tag/v1.2.0)。
+現行 release version は [1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0)。
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 
@@ -12,6 +12,9 @@
 DSLQL 導入後は、query 行に対して LSP の completion と hover が入り、VSIX 側でも DSLQL snippets と syntax highlight が使える。
 
 evidence の匿名 `resource:` block は URL / file / blob locator と任意の digest / MIME / label を編集でき、preview と `.resources[]` query から確認できる。通常 audit は外部 resource を取得しない。
+
+`confidence SOURCE:`、`confidence SOURCE -> DECISION:`、`declared_confidence DECISION:`はLSPのcompletion / hoverとsyntax highlightに対応する。previewでは正確な有理数区間、認識タグ、最弱経路、未解決の複数親aggregation、自己申告値と派生区間の比較を確認できる。
+
 また、DSL Preview コマンドでアクティブな DSL 文書を Markdown ベースの HTML プレビューとして横に表示できる。標準拡張子は `.think` で、既存の `.dsl` も同じ language ID `llmthink` の互換 alias として扱う。プレビューは custom editor として開くため、Markdown Preview に近い別エディタ種別として扱える。右上の editor title action が環境により見えない場合でも、`.think` / `.dsl` 編集中は status bar に `LLMThink Preview` ボタンが出る。プレビュー上部には `elkjs` を使った step 関係の SVG グラフが表示され、role ごとの lane 維持、orthogonal edge routing、overflow-safe なノード文面表示、ノードクリックから元 DSL 行への移動にも対応する。
 
 ## DSLQL 編集支援
@@ -74,7 +77,7 @@ evidence の匿名 `resource:` block は URL / file / blob locator と任意の 
 
 ## インストール
 
-- 公開済み VSIX は [GitHub Release v1.2.0](https://github.com/mako10k/llmthink/releases/tag/v1.2.0) の `llmthink.vsix` を使う
+- 公開済み VSIX は [GitHub Release v1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0) の `llmthink.vsix` を使う
 - VS Code で Extensions: Install from VSIX... を開き、取得または生成した llmthink.vsix を選ぶ
 - 配布物と release 手順は repo の docs/process/release-checklist.md と CHANGELOG.md を参照する
 

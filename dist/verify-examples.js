@@ -19,6 +19,10 @@ const exampleCases = [
         inputId: "framework-requires-and",
         expectedId: "framework-requires-and-audit",
     },
+    {
+        inputId: "confidence-propagation",
+        expectedId: "confidence-propagation-audit",
+    },
 ];
 function normalize(report) {
     return {

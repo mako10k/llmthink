@@ -1,4 +1,5 @@
 export { auditDslFile, auditDslText } from "./analyzer/audit.js";
+export { evaluateConfidence } from "./analyzer/confidence.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
 export { alternateLlmthinkFilePath, isLlmthinkFilePath, llmthinkFileExtension, stripLlmthinkFileExtension, LLMTHINK_CANONICAL_FILE_EXTENSION, LLMTHINK_FILE_EXTENSIONS, LLMTHINK_LEGACY_FILE_EXTENSIONS, } from "./dsl/file-extension.js";
 export { getDslSyntaxGuidanceText, isDslHelpRequest, parseDslHelpRequest, } from "./dsl/guidance.js";
@@ -10,6 +11,7 @@ export { addThoughtReflection, deleteThought, relateThought, ensureThoughtRecord
 export { auditAndPersistThought, deriveThoughtIdFromDocumentId, deriveThoughtIdFromFilePath, normalizeThoughtId, } from "./thought/workflow.js";
 export { resolveRuntimeConfig, resolveEmbeddingConfig, resolveThoughtStorageRoot, } from "./config/runtime.js";
 export { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "./model/diagnostics.js";
+export { CONFIDENCE_PROFILE_ID, confidenceKeywordsFor, ConfidenceValueError, createConfidenceAssessment, createRationalValue, DEFAULT_EDGE_CONFIDENCE, DEFAULT_SOURCE_CONFIDENCE, MAX_RATIONAL_DIGITS, multiplyConfidenceAssessments, parseUnitRational, rationalToString, resolveConfidenceKeyword, serializeConfidenceAssessment, EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, } from "./model/confidence.js";
 export { createEvidenceResource, EvidenceResourceValidationError, validateEvidenceResource, } from "./model/evidence-resource.js";
 export { collectDocumentDeclarations, createDocumentDeclarationIndex, DocumentDeclarationIndex, DOCUMENT_DECLARATION_KINDS, DuplicateDocumentDeclarationError, } from "./model/declarations.js";
 export { assertCommandIdentity, assertHostedId, assertIdempotencyRetention, assertRevision, assertThoughtRef, DEFAULT_IDEMPOTENCY_RETENTION_SECONDS, LLMTHINK_SERVER_API_VERSION, LLMTHINK_SERVER_ERROR_CODES, LLMTHINK_SERVER_FILE_SCHEMA_VERSION, LLMTHINK_SERVER_SCOPES, LlmthinkServerError, MAX_IDEMPOTENCY_RETENTION_SECONDS, MIN_IDEMPOTENCY_RETENTION_SECONDS, } from "./server/contracts.js";

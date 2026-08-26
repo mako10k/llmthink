@@ -131,6 +131,58 @@ function appendOptionalLine(lines, label, value) {
         lines.push(`  ${label}: ${value}`);
     }
 }
+function confidenceAggregationNodesText(aggregation) {
+    return aggregation.unresolved_nodes
+        .map((node) => `${node.target_id}(${node.parent_count})`)
+        .join(", ");
+}
+function uncomputableConfidenceTextEntry(result) {
+    const lines = [
+        `- ${result.target_id} [uncomputable]: ${result.reasons.join(" | ")}`,
+    ];
+    if (result.declared_assessment) {
+        const declared = result.declared_assessment;
+        lines.push(`  declared: ${declared.estimate} [${declared.lower}..${declared.upper}] relation=unavailable`);
+    }
+    return lines;
+}
+function computedConfidenceTextEntry(result) {
+    const assessment = result.assessment;
+    const keywordSuffix = assessment.keyword_id
+        ? ` keyword=${assessment.keyword_id}`
+        : "";
+    const lines = [
+        `- ${result.target_id}: ${assessment.estimate} [${assessment.lower}..${assessment.upper}] epistemic=${assessment.epistemic_tag} origin=${assessment.origin} profile=${assessment.profile_id}${keywordSuffix}`,
+    ];
+    if (result.weakest_path?.length) {
+        lines.push(`  weakest_path: ${result.weakest_path.join(" -> ")}`);
+    }
+    if (result.cause_ids.length > 0) {
+        lines.push(`  causes: ${result.cause_ids.join(", ")}`);
+    }
+    if (result.aggregation) {
+        lines.push(`  aggregation: status=${result.aggregation.status} baseline=${result.aggregation.baseline_method} boost_applied=false boosted_estimate=unresolved nodes=${confidenceAggregationNodesText(result.aggregation)}`);
+    }
+    if (result.declared_assessment && result.declared_comparison) {
+        const declared = result.declared_assessment;
+        lines.push(`  declared: ${declared.estimate} [${declared.lower}..${declared.upper}] relation=${result.declared_comparison.relation}`);
+    }
+    return lines;
+}
+function confidenceResultTextEntry(result) {
+    return result.status === "uncomputable"
+        ? uncomputableConfidenceTextEntry(result)
+        : computedConfidenceTextEntry(result);
+}
+function confidenceResultTextLines(report) {
+    if ((report.confidence_results?.length ?? 0) === 0)
+        return [];
+    return [
+        "",
+        "confidence_results:",
+        ...(report.confidence_results ?? []).flatMap(confidenceResultTextEntry),
+    ];
+}
 export function formatAuditReportText(report, options = {}) {
     const limitedReport = limitAuditReport(report, options);
     const lines = [];
@@ -145,6 +197,7 @@ export function formatAuditReportText(report, options = {}) {
             appendIssueDetails(lines, issue);
         }
     }
+    lines.push(...confidenceResultTextLines(limitedReport));
     if (limitedReport.query_results.length > 0) {
         lines.push("");
         lines.push("query_results:");
@@ -217,6 +270,51 @@ export function formatAuditReportHtml(report, options = {}) {
         const omittedSuffix = omittedValues > 0 ? `, ... ${omittedValues} more` : "";
         return `
         <li><strong>${escapeHtml(queryResult.query_id)}</strong>: ${renderedValues}${omittedSuffix}</li>`;
+    })
+        .join("");
+    const confidenceRows = (limitedReport.confidence_results ?? [])
+        .map((result) => {
+        if (result.status === "uncomputable") {
+            const declared = result.declared_assessment
+                ? `; declared ${result.declared_assessment.estimate} [${result.declared_assessment.lower}..${result.declared_assessment.upper}]; relation unavailable`
+                : "";
+            return `
+        <tr>
+          <td>${escapeHtml(result.target_id)}</td>
+          <td>uncomputable</td>
+          <td>-</td>
+          <td>${escapeHtml(result.reasons.join(" | "))}${escapeHtml(declared)}</td>
+        </tr>`;
+        }
+        const assessment = result.assessment;
+        const aggregationNodes = result.aggregation
+            ? confidenceAggregationNodesText(result.aggregation)
+            : undefined;
+        const declaredDetails = result.declared_assessment && result.declared_comparison
+            ? `declared ${result.declared_assessment.estimate} [${result.declared_assessment.lower}..${result.declared_assessment.upper}]; relation ${result.declared_comparison.relation}`
+            : undefined;
+        const details = [
+            assessment.keyword_id ? `keyword ${assessment.keyword_id}` : undefined,
+            result.weakest_path?.length
+                ? `path ${result.weakest_path.join(" -> ")}`
+                : undefined,
+            result.cause_ids.length > 0
+                ? `causes ${result.cause_ids.join(", ")}`
+                : undefined,
+            result.aggregation
+                ? `aggregation ${result.aggregation.status}; baseline ${result.aggregation.baseline_method}; boost not applied; nodes ${aggregationNodes}`
+                : undefined,
+            declaredDetails,
+        ]
+            .filter((value) => Boolean(value))
+            .join("; ");
+        return `
+        <tr>
+          <td>${escapeHtml(result.target_id)}</td>
+          <td>${escapeHtml(assessment.epistemic_tag)}</td>
+          <td><code>${escapeHtml(assessment.estimate)} [${escapeHtml(assessment.lower)}..${escapeHtml(assessment.upper)}]</code></td>
+          <td>${escapeHtml(details)}</td>
+        </tr>`;
     })
         .join("");
     return `<!DOCTYPE html>
@@ -312,6 +410,15 @@ export function formatAuditReportHtml(report, options = {}) {
           <tr><th>Severity</th><th>Category</th><th>Refs</th><th>Message</th></tr>
         </thead>
         <tbody>${issueRows || '<tr><td colspan="4">No issues</td></tr>'}</tbody>
+      </table>
+    </section>
+    <section class="card">
+      <h2>Confidence Results</h2>
+      <table>
+        <thead>
+          <tr><th>Target</th><th>Epistemic</th><th>Estimate / Range</th><th>Trace</th></tr>
+        </thead>
+        <tbody>${confidenceRows || '<tr><td colspan="4">No confidence results</td></tr>'}</tbody>
       </table>
     </section>
     <section class="card">

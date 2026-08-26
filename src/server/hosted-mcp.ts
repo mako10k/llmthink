@@ -500,7 +500,7 @@ async function handleMcpRequest(
       request.method === "POST"
         ? await readBoundedJson(request, requestLimit)
         : undefined;
-    server = new McpServer({ name: "llmthink-hosted", version: "1.2.0" });
+    server = new McpServer({ name: "llmthink-hosted", version: "1.3.0" });
     registerTools(server, options.application, context, textLimit, security);
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

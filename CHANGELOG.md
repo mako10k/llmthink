@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.3.0 - 2026-08-26
+
+- Hosted Application Service、tenant/workspace境界付きfile repository、REST / HTTP MCP adapter、request digest、rate limitとbounded security observationを追加
+- local CLI / stdio MCPとhosted adapterが同じ監査・revision・idempotency契約を共有し、Plugin / Skillsからserver authorizationを弱められない境界を追加
+- 入力端と明示scoring edgeの信頼度を、正確な有理数区間、認識タグ、版付き`support-trace-v1`キーワードで宣言・伝搬するDSLを追加
+- 複数親は`coordinate_min`の保守的baselineと未解決aggregationを返し、独立性不明の経路による信頼度上昇を自動適用しない
+- decision作者の`declared_confidence`をDAG派生値と分離し、自己申告estimateと派生区間の位置関係をaudit、DSLQL、CLI report、LSP、VSIX previewへ同期
+- confidence sampleとgolden audit outputを通常のexample verificationへ追加
+- MCP SDKとlint toolchainを互換範囲内で更新し、release candidateのproduction / development dependency auditを解消
+
 ## 1.2.0 - 2026-08-13
 
 - LLMThink 文書の標準拡張子を `.think` とし、`.dsl` を警告や暗黙 rename のない互換 alias として維持

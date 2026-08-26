@@ -4,7 +4,7 @@
 
 LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法・language ID の互換 alias として、警告や暗黙 rename なしで引き続き利用できる。
 
-現行 release version は [1.2.0](https://github.com/mako10k/llmthink/releases/tag/v1.2.0)。
+現行 release version は [1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0)。
 
 ## 構成
 
@@ -27,9 +27,11 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 - docs/adr/0002-audit-severity-model.md
 - docs/adr/0003-mece-as-structural-discipline.md
 - docs/adr/0004-unified-interface-architecture.md
+- docs/adr/0015-rational-confidence-interval-propagation.md
 - docs/specs/ui-architecture.md
 - docs/specs/dslql.md
 - docs/examples/dsl-samples.md
+- docs/examples/confidence-propagation.think
 - docs/examples/audit-output-sample.json
 - schemas/audit-result.schema.json
 
@@ -57,10 +59,10 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 
 ## 配布
 
-- npm package の現行公開版は [llmthink@1.2.0](https://www.npmjs.com/package/llmthink/v/1.2.0)
-- npm package は `npm install -g llmthink@1.2.0` で CLI / MCP / LSP をインストールできる
+- npm package の現行公開版は [llmthink@1.3.0](https://www.npmjs.com/package/llmthink/v/1.3.0)
+- npm package は `npm install -g llmthink@1.3.0` で CLI / MCP / LSP をインストールできる
 - library として利用する場合は `npm install llmthink` を使う
-- VS Code 拡張の現行配布物は [GitHub Release v1.2.0](https://github.com/mako10k/llmthink/releases/tag/v1.2.0) の `llmthink.vsix`
+- VS Code 拡張の現行配布物は [GitHub Release v1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0) の `llmthink.vsix`
 - ローカルで VS Code 拡張を生成する場合は vscode-extension/llmthink.vsix を使う
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
@@ -366,6 +368,7 @@ declared_confidence D1:
 - 1.1.0 は evidence resource の匿名 0..N payload、構造検証、DSLQL projection、Help/LSP/preview/VSIX 同期をまとめた minor release とする
 - 1.1.1 は 1.1.0 公開文書と VSIX 同梱 README の version 整合、および fail-closed release gate の整備をまとめた patch release とする
 - 1.2.0 は `.think` 標準拡張子、`.dsl` 互換 alias、既存 thought store の in-place 互換をまとめた minor release とする
+- 1.3.0 は hosted server境界と、信頼度の有理数区間伝搬、版付きキーワード、複数親baseline、自己申告値比較をまとめた minor release とする
 
 ## ライセンス
 

@@ -5,6 +5,7 @@ import { stripLlmthinkFileExtension } from "../dsl/file-extension.js";
 import { createDslGuidanceReport, createParseErrorReport, isDslHelpRequest, } from "../dsl/guidance.js";
 import { collectDslqlReferences, createDocumentDslqlRuntime, createSemanticDocumentDslqlRuntime, DslqlEvaluationError, DslqlParseError, DslqlSemanticError, DslqlSemanticUnavailableError, evaluateDslqlExpression, parseDslqlExpression, usesSemanticDslql, } from "../dslql/query.js";
 import { ParseError, parseDocument } from "../parser/parser.js";
+import { evaluateConfidence } from "./confidence.js";
 import { cosineSimilarity, embedTexts, } from "../semantic/embeddings.js";
 const ENGINE_VERSION = "0.1.0";
 function statementIdentifierColumn(statement) {
@@ -912,6 +913,52 @@ async function buildQueryResults(issues, document, options) {
         };
     });
 }
+function addUncomputableConfidenceIssue(issues, result) {
+    if (result.status !== "uncomputable")
+        return false;
+    createIssue(issues, {
+        category: "semantic_hint",
+        severity: "warning",
+        target_refs: [{ ref_id: result.target_id, role: result.node_kind }],
+        message: `confidence ${result.target_id} を計算できない。`,
+        rationale: result.reasons.join(" | "),
+        suggestion: "scoring support edge、based_on、参照先、cycle、confidence interval を確認する。",
+        metadata: {
+            confidence_status: result.status,
+            cause_ids: result.cause_ids,
+            reasons: result.reasons,
+        },
+    });
+    return true;
+}
+function addDeclaredConfidenceIssue(issues, result) {
+    if (!result.declared_comparison ||
+        result.declared_comparison.relation === "within_derived_interval") {
+        return;
+    }
+    createIssue(issues, {
+        category: "semantic_hint",
+        severity: "warning",
+        target_refs: [{ ref_id: result.target_id, role: result.node_kind }],
+        message: `declared confidence ${result.target_id} がderived intervalの外側にある。`,
+        rationale: `relation=${result.declared_comparison.relation}; declared=${result.declared_assessment?.estimate}; derived=${result.assessment?.estimate} [${result.assessment?.lower}..${result.assessment?.upper}]`,
+        suggestion: "自己申告値、scoring support、前提、またはedge評価のどこに差があるか確認する。",
+        metadata: {
+            declared_confidence_relation: result.declared_comparison.relation,
+            declared_estimate: result.declared_assessment?.estimate,
+            derived_estimate: result.assessment?.estimate,
+            derived_lower: result.assessment?.lower,
+            derived_upper: result.assessment?.upper,
+        },
+    });
+}
+function addConfidenceIssues(issues, confidenceResults) {
+    for (const result of confidenceResults) {
+        if (!addUncomputableConfidenceIssue(issues, result)) {
+            addDeclaredConfidenceIssue(issues, result);
+        }
+    }
+}
 async function auditDocument(document, documentId, options) {
     const issues = [];
     const basedOnTargetIds = collectBasedOnTargetIds(document);
@@ -929,6 +976,8 @@ async function auditDocument(document, documentId, options) {
     addTextBodyLintIssues(issues, document);
     addStatusAnnotationIssues(issues, document, decisions, comparisons);
     addPendingHintIssue(issues, pendingSteps, decisions);
+    const confidenceResults = evaluateConfidence(document);
+    addConfidenceIssues(issues, confidenceResults);
     const semanticContext = await createSemanticContext(decisions, options);
     addDecisionSemanticHint(issues, decisions, semanticContext);
     const queryResults = await buildQueryResults(issues, document, options);
@@ -938,6 +987,9 @@ async function auditDocument(document, documentId, options) {
         generated_at: new Date().toISOString(),
         summary: summarize(issues),
         results: issues,
+        ...(confidenceResults.length > 0
+            ? { confidence_results: confidenceResults }
+            : {}),
         query_results: queryResults,
     };
 }

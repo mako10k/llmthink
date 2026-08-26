@@ -42,6 +42,11 @@ const DSL_EXAMPLES = [
         summary: "evidence に複数の匿名 resource を付ける代表例",
     },
     {
+        id: "confidence-propagation",
+        path: "docs/examples/confidence-propagation.think",
+        summary: "版付きキーワード、有理数区間、自己申告値比較、未解決の複数親aggregationを使う信頼度伝搬例",
+    },
+    {
         id: "contradiction-pending",
         path: "docs/examples/contradiction-pending.think",
         summary: "decision と pending が同居する監査例",
@@ -75,6 +80,11 @@ const DSL_EXAMPLES = [
         id: "framework-requires-and-audit",
         path: "docs/examples/framework-requires-and.audit.json",
         summary: "framework requires and/or 例の監査出力",
+    },
+    {
+        id: "confidence-propagation-audit",
+        path: "docs/examples/confidence-propagation.audit.json",
+        summary: "confidence propagation 例に対応する監査出力",
     },
     {
         id: "audit-output-sample",
