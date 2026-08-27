@@ -7,6 +7,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      "packages/core/dist/**",
       "vscode-extension/dist/**",
       "node_modules/**",
       ".llmthink/**",
@@ -21,6 +22,7 @@ export default tseslint.config(
   sonarjs.configs.recommended,
   {
     files: [
+      "packages/core/src/**/*.ts",
       "src/**/*.ts",
       "vscode-extension/src/**/*.ts",
       "*.js",

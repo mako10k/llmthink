@@ -80,8 +80,8 @@ Neutral:
 
 ## Implementation Notes
 
-- runtime変更は不要である。`src/dslql/semantic.ts`はresource fieldsをsemantic text対象に含めていない
-- `test/dslql/query.test.ts`で、全locator / metadata系文字列がembedding batchへ入らないことを回帰検査する
+- runtime変更は不要である。`packages/core/src/dslql/semantic.ts`はresource fieldsをsemantic text対象に含めていない
+- `packages/core/test/dslql/query.test.ts`で、全locator / metadata系文字列がembedding batchへ入らないことを回帰検査する
 - requirements、DSLQL spec、Help、README、evidence resource設計文書を同じ境界へ同期する
 - Issue #6のstaged roadmap表現は本ADRで却下されたため、Issue本文もAccepted boundaryへ更新する
 
@@ -95,7 +95,7 @@ Neutral:
 
 - Claim `C-RES-EMB-001`: resource追加によって、利用者が明示していないsemantic inputを生成してはならない
   - Evidence `E-RES-EMB-001`: resource metadataはprovenance claimであり、取得contentではない
-  - Evidence `E-RES-EMB-002`: `test/dslql/query.test.ts`はresource metadataを除外したembedding batchを検証している
+  - Evidence `E-RES-EMB-002`: `packages/core/test/dslql/query.test.ts`はresource metadataを除外したembedding batchを検証している
 - Claim `C-RES-EMB-002`: 通常auditとsemantic queryの入力は、暗黙resource I/Oに依存してはならない
   - Evidence `E-RES-EMB-003`: evidence resource contractは通常parse / auditで外部I/Oを行わない
   - Evidence `E-RES-EMB-004`: 現行runtimeにはresource取得、OCR、caption、fingerprint capabilityが存在しない

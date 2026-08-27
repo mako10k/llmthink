@@ -8,8 +8,8 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   EDGE_CONFIDENCE_KEYWORDS,
   SOURCE_CONFIDENCE_KEYWORDS,
-} from "../model/confidence.js";
-import { parseDocument } from "../parser/parser.js";
+  parseDocument,
+} from "@llmthink/core";
 
 export interface DslqlCompletionSpec {
   label: string;

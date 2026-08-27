@@ -1,4 +1,4 @@
-import { parseDocument } from "../parser/parser.js";
+import { parseDocument } from "@llmthink/core";
 const SEMANTIC_AUDIT_HEADER = /^semantic_audit\s+([A-Za-z][A-Za-z0-9_-]*)\s+on\s+([A-Za-z][A-Za-z0-9_-]*)\s+support\s+([A-Za-z][A-Za-z0-9_-]*)\s+verdict\s+(supported|unsupported|mixed|unknown):$/;
 function stripQuotedValue(value) {
     return value.replace(/^"/, "").replace(/"$/, "");

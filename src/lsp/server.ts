@@ -23,21 +23,22 @@ import {
 } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { auditDslText } from "../analyzer/audit.js";
-import { formatDslText } from "../dsl/format.js";
-import {
-  assertDslqlFunctionImplementationCoverage,
-  collectDslqlReferences,
-  DSLQL_FUNCTION_SPECS,
-} from "../dslql/query.js";
-import type { AuditIssue } from "../model/diagnostics.js";
-import type { DocumentAst, SourceSpan, StepDecl } from "../model/ast.js";
 import {
   EDGE_CONFIDENCE_KEYWORDS,
   SOURCE_CONFIDENCE_KEYWORDS,
-} from "../model/confidence.js";
-import { collectDocumentDeclarations } from "../model/declarations.js";
-import { ParseError, parseDocument } from "../parser/parser.js";
+  assertDslqlFunctionImplementationCoverage,
+  auditDslText,
+  collectDslqlReferences,
+  collectDocumentDeclarations,
+  DSLQL_FUNCTION_SPECS,
+  formatDslText,
+  ParseError,
+  parseDocument,
+  type AuditIssue,
+  type DocumentAst,
+  type SourceSpan,
+  type StepDecl,
+} from "@llmthink/core";
 import { buildCodeActions } from "./code-actions.js";
 import {
   buildContextualDslCompletions,

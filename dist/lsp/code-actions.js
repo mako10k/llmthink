@@ -1,5 +1,5 @@
 import { CodeActionKind, Position, Range, TextEdit, } from "vscode-languageserver/node.js";
-import { formatDslText } from "../dsl/format.js";
+import { formatDslText, } from "@llmthink/core";
 function lineTextAt(document, line) {
     return document.getText({
         start: Position.create(line, 0),

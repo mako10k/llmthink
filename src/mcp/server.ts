@@ -4,23 +4,19 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { resolveThoughtStorageRoot } from "../config/runtime.js";
-import {
-  getDslSyntaxGuidanceText,
-  isDslHelpRequest,
-  parseDslHelpRequest,
-} from "../dsl/guidance.js";
 import {
   AUDIT_RESULT_CATEGORIES,
   AUDIT_SEVERITIES,
-  type AuditResultCategory,
-  type AuditSeverity,
-} from "../model/diagnostics.js";
-import {
   formatAuditReportText,
+  getDslSyntaxGuidanceText,
+  isDslHelpRequest,
   limitAuditReport,
+  parseDslHelpRequest,
+  resolveThoughtStorageRoot,
+  type AuditResultCategory,
   type AuditReportFormatOptions,
-} from "../presentation/report.js";
+  type AuditSeverity,
+} from "@llmthink/core";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,

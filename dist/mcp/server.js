@@ -2,10 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { resolveThoughtStorageRoot } from "../config/runtime.js";
-import { getDslSyntaxGuidanceText, isDslHelpRequest, parseDslHelpRequest, } from "../dsl/guidance.js";
-import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "../model/diagnostics.js";
-import { formatAuditReportText, limitAuditReport, } from "../presentation/report.js";
+import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, formatAuditReportText, getDslSyntaxGuidanceText, isDslHelpRequest, limitAuditReport, parseDslHelpRequest, resolveThoughtStorageRoot, } from "@llmthink/core";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "../presentation/thought.js";
 import { addThoughtReflection, deleteThought, relateThought, finalizeThought, listThoughts, loadThought, draftThought, saveThoughtSemanticAudit, searchThoughtRecords, } from "../thought/store.js";
 import { auditAndPersistThought } from "../thought/workflow.js";

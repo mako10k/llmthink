@@ -182,5 +182,5 @@ test("getDslSyntaxGuidanceText exposes ideation profile aliases and samples", ()
   assert.match(text, /idea seed/);
   assert.match(text, /cluster/);
   assert.match(text, /ideation-profile/);
-  assert.match(text, /docs\/examples\/ideation-profile\.think/);
+  assert.match(text, /resolved_path: unavailable in current distribution/);
 });

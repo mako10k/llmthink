@@ -1,4 +1,4 @@
-import type { AuditReport } from "../model/diagnostics.js";
+import type { AuditReport } from "@llmthink/core";
 import type { ThoughtEvent, ThoughtReflection, ThoughtReflectionKind, ThoughtSnapshot, ThoughtStatus } from "../thought/store.js";
 export declare const LLMTHINK_SERVER_API_VERSION: "v1";
 export declare const LLMTHINK_SERVER_FILE_SCHEMA_VERSION: 1;

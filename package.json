@@ -1,6 +1,9 @@
 {
   "name": "llmthink",
   "version": "1.3.0",
+  "workspaces": [
+    "packages/core"
+  ],
   "license": "MPL-2.0",
   "publishConfig": {
     "access": "public"
@@ -35,24 +38,33 @@
     "llmthink-lsp": "dist/lsp/server.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "node --import tsx --test test/**/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "cli": "tsx src/cli.ts",
-    "preview:html": "tsx vscode-extension/src/render-preview-html.ts",
-    "verify-examples": "tsx src/verify-examples.ts",
-    "mcp": "tsx src/mcp/server.ts",
+    "build": "npm run build:core && tsc -p tsconfig.json",
+    "build:core": "npm run build --workspace @llmthink/core",
+    "test": "npm run test:app",
+    "test:core": "npm test --workspace @llmthink/core",
+    "test:app": "npm run build:core && node --import tsx --test test/**/*.test.ts",
+    "test:contract": "npm run build:core && node --import tsx --test test/contracts/*.test.ts && tsc -p tsconfig.json --noEmit",
+    "test:all": "npm run test:core && npm run test:app",
+    "typecheck": "npm run typecheck:core && npm run typecheck:app",
+    "typecheck:core": "npm run typecheck --workspace @llmthink/core",
+    "typecheck:app": "npm run build:core && tsc -p tsconfig.json --noEmit",
+    "cli": "node --import tsx src/cli.ts",
+    "preview:html": "node --import tsx vscode-extension/src/render-preview-html.ts",
+    "verify-examples": "node --import tsx src/verify-examples.ts",
+    "mcp": "node --import tsx src/mcp/server.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "deadcode": "knip",
     "code-clone": "jscpd --config .jscpd.json",
-    "complexity": "eslint src vscode-extension/src --ext .ts --rule 'complexity: [error, 12]' --rule 'sonarjs/cognitive-complexity: [error, 20]'",
+    "complexity": "eslint packages/core/src src vscode-extension/src --ext .ts --rule 'complexity: [error, 12]' --rule 'sonarjs/cognitive-complexity: [error, 20]'",
     "typecheck:extension": "npm --prefix vscode-extension run typecheck",
     "build:extension": "npm --prefix vscode-extension run build",
-    "package:vsix": "npm --prefix vscode-extension run package:vsix"
+    "package:vsix": "npm --prefix vscode-extension run package:vsix",
+    "prepack": "npm run build"
   },
   "dependencies": {
+    "@llmthink/core": "1.3.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.11",

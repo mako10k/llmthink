@@ -4,22 +4,18 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import {
-  type ConfigDomain,
-  resolveRuntimeConfig,
-  resolveThoughtStorageRoot,
-} from "./config/runtime.js";
-import { getDslSyntaxGuidanceText } from "./dsl/guidance.js";
-import {
   AUDIT_RESULT_CATEGORIES,
   AUDIT_SEVERITIES,
-  type AuditResultCategory,
-  type AuditSeverity,
-} from "./model/diagnostics.js";
-import {
   formatAuditReportText,
+  getDslSyntaxGuidanceText,
   limitAuditReport,
+  resolveRuntimeConfig,
+  resolveThoughtStorageRoot,
+  type AuditResultCategory,
   type AuditReportFormatOptions,
-} from "./presentation/report.js";
+  type AuditSeverity,
+  type ConfigDomain,
+} from "@llmthink/core";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,

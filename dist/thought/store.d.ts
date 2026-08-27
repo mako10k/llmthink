@@ -1,5 +1,4 @@
-import type { AuditReport } from "../model/diagnostics.js";
-import { type EmbeddingRequestOptions } from "../semantic/embeddings.js";
+import { type AuditReport, type EmbeddingRequestOptions } from "@llmthink/core";
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtReflectionKind = "note" | "concern" | "decision" | "follow_up" | "audit_response";
 export type ThoughtSemanticAuditVerdict = "supported" | "unsupported" | "mixed" | "unknown";

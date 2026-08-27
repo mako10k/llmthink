@@ -8,13 +8,13 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { resolveThoughtStorageRoot } from "../config/runtime.js";
-import type { AuditReport } from "../model/diagnostics.js";
 import {
   cosineSimilarity,
   embedTexts,
+  resolveThoughtStorageRoot,
+  type AuditReport,
   type EmbeddingRequestOptions,
-} from "../semantic/embeddings.js";
+} from "@llmthink/core";
 
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtReflectionKind =

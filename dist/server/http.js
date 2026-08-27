@@ -1,6 +1,6 @@
 import { createServer, } from "node:http";
 import { z } from "zod";
-import { createConfidenceAssessment, parseUnitRational, rationalToString, } from "../model/confidence.js";
+import { createConfidenceAssessment, parseUnitRational, rationalToString, } from "@llmthink/core";
 import { LlmthinkServerError, } from "./contracts.js";
 import { LlmthinkSecurityBoundary, } from "./security.js";
 export const DEFAULT_HTTP_REQUEST_LIMIT_BYTES = 1024 * 1024;

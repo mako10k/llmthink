@@ -15,3 +15,4 @@ ADR の作成規則は [ADR ルール](../process/adr-rules.md) を参照する�
 | [0009](0009-hosted-interfaces-and-plugin-trust-boundary.md) | proposed | REST、HTTP MCP、Plugin を同一 service の独立 adapter とする |
 | [0015](0015-rational-confidence-interval-propagation.md)    | accepted | 信頼度を有理数区間と認識状態で伝搬する                      |
 | [0016](0016-evidence-resource-semantic-boundary.md)         | accepted | Evidence resourceをsemantic inputへ暗黙昇格させない         |
+| [0017](0017-core-workspace-and-test-boundary.md)            | accepted | Coreを独立workspaceとテスト境界にする                       |

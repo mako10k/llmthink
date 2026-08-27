@@ -21,7 +21,7 @@ accepted
 
 採用方針は次のとおりとする。
 
-- 監査ロジックは root package の TypeScript 実装に集約する
+- 監査ロジックは`@llmthink/core` workspaceのTypeScript実装に集約する
 - CLI は共通 API を直接呼ぶ
 - MCP サーバは stdio transport を使い、tool 経由で共通 API を呼ぶ
 - VSIX 拡張は active editor のテキストを共通 API に渡す
@@ -40,7 +40,7 @@ accepted
 
 - core API の安定性が重要になる
 - UI 層は薄く保つ必要がある
-- root package と VSIX 拡張のビルド導線を分ける必要がある
+- Core、root application、VSIX拡張のビルド・テスト導線を分ける必要がある
 - MCP 用の依存と VS Code 拡張用の依存が増える
 
 ## Auditability Notes
@@ -48,3 +48,4 @@ accepted
 - UI ごとに監査結果差異が出始めた場合に再評価する
 - 共通 API が UI 固有事情で複雑化し始めた場合に再評価する
 - 将来 Web UI を追加する場合も同じ原則に従う
+- package/test境界の具体化はADR-0017を正とする

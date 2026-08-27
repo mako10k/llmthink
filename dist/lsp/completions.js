@@ -1,6 +1,5 @@
 import { CompletionItemKind, InsertTextFormat, Position, } from "vscode-languageserver/node.js";
-import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, } from "../model/confidence.js";
-import { parseDocument } from "../parser/parser.js";
+import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, parseDocument, } from "@llmthink/core";
 const ANNOTATION_KINDS = [
     "explanation",
     "rationale",

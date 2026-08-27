@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, } from "node:fs";
 import { join, resolve } from "node:path";
-import { resolveThoughtStorageRoot } from "../config/runtime.js";
-import { cosineSimilarity, embedTexts, } from "../semantic/embeddings.js";
+import { cosineSimilarity, embedTexts, resolveThoughtStorageRoot, } from "@llmthink/core";
 function resolveStoreRoot(location) {
     if (typeof location === "string") {
         return resolve(location, ".llmthink");

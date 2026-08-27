@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { auditDslFile } from "./analyzer/audit.js";
-import { getDslExample } from "./dsl/examples.js";
+import { auditDslFile, getDslExample } from "@llmthink/core";
 const exampleCases = [
     {
         inputId: "contradiction-pending",

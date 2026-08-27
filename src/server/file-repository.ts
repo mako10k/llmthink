@@ -11,7 +11,7 @@ import {
 } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 
-import type { AuditReport } from "../model/diagnostics.js";
+import type { AuditReport } from "@llmthink/core";
 import type {
   ThoughtEvent,
   ThoughtReflection,
