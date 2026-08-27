@@ -7,12 +7,12 @@ import {
 
 import { z } from "zod";
 
-import type { AuditReport } from "../model/diagnostics.js";
 import {
   createConfidenceAssessment,
   parseUnitRational,
   rationalToString,
-} from "../model/confidence.js";
+  type AuditReport,
+} from "@llmthink/core";
 import type {
   ThoughtEvent,
   ThoughtReflection,

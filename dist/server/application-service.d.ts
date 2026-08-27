@@ -1,4 +1,4 @@
-import type { AuditReport } from "../model/diagnostics.js";
+import { type AuditReport } from "@llmthink/core";
 import type { ThoughtEvent } from "../thought/store.js";
 import { type AddReflectionCommand, type AuditTextCommand, type CreateThoughtCommand, type FinalizeThoughtCommand, type PureAuditResult, type RecordAuditCommand, type RequestContext, type SaveDraftCommand, type ServerThoughtSnapshot, type ThoughtListQuery, type ThoughtPage, type ThoughtRef, type ThoughtRepository, type ThoughtSearchQuery } from "./contracts.js";
 export type LlmthinkAuditRunner = (command: AuditTextCommand) => Promise<AuditReport>;

@@ -20,7 +20,7 @@ proposed
 
 hosted server の中心に transport 非依存の Application Service を置く。
 
-- Core は parse、format、audit、DSLQL と thought lifecycle の意味規則を所有する
+- `@llmthink/core`はparse、format、audit、DSLQLを所有し、thought lifecycleの意味規則はroot applicationのthought/Application Service層が所有する
 - Application Service は command/query、認可要求、transaction boundary、revision 検査を調停する
 - REST、Streamable HTTP MCP、stdio MCP、CLI、VSIX は Application Service を呼ぶ adapter とする
 - adapter は入出力変換と transport 固有 metadata を扱えるが、監査結果や状態遷移の意味を変更しない

@@ -1,4 +1,4 @@
-import type { AuditReport } from "../model/diagnostics.js";
+import type { AuditReport } from "@llmthink/core";
 import type {
   ThoughtEvent,
   ThoughtReflection,

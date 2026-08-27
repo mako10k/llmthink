@@ -127,15 +127,25 @@ VSIX は、編集中の DSL ドキュメントを即座に監査するための�
 
 ## 7. 実装配置
 
-### 7.1 root package
+### 7.1 Core workspace
 
-- src/analyzer
-- src/parser
-- src/model
+- packages/core/src/analyzer
+- packages/core/src/parser
+- packages/core/src/model
+- packages/core/src/dslql
+- packages/core/src/presentation/report.ts
+
+### 7.2 root application package
+
 - src/cli.ts
 - src/mcp/server.ts
+- src/lsp
+- src/thought
+- src/server
 
-### 7.2 VSIX extension package
+root applicationは`@llmthink/core`の公開entrypointだけを利用する。
+
+### 7.3 VSIX extension package
 
 - vscode-extension/package.json
 - vscode-extension/src/extension.ts
@@ -147,7 +157,10 @@ VSIX 拡張は root package を依存として使う。
 
 ## 8. 検証方針
 
-- root package は typecheck、build、examples 回帰確認を通す
+- Core内部変更はCore workspaceのtypecheckとunit testを通す
+- Core公開surface変更はdownstream contract gateを追加で通す
+- root applicationはCoreの正確versionに対してtypecheckとadapter testを通す
+- release candidateはCoreとroot applicationの全体回帰を明示的に通す
 - MCP サーバは起動確認と tool 登録確認を行う
 - VSIX 拡張は typecheck とビルド確認を行う
 

@@ -1,6 +1,5 @@
 import type { LlmthinkServerErrorCode } from "./contracts.js";
 export declare const EXTERNAL_STORAGE_NOTICE = "Thought tools use an external llmthink server outside the current ChatGPT/Codex workspace. Writes remain confined to the authenticated tenant and workspace, but are externally persisted.";
-export declare const REQUEST_DIGEST_FORMAT = "sha256:<64 lowercase hex>";
 export declare const REQUEST_DIGEST_PATTERN = "^sha256:[a-f0-9]{64}$";
 export declare const REQUEST_DIGEST_DESCRIPTION = "Request identity digest. Expected sha256:<64 lowercase hex> (pattern ^sha256:[a-f0-9]{64}$). Compute SHA-256 over a stable UTF-8 representation of the mutation fields; exclude idempotency_key and request_digest.";
 export declare function errorNavigation(code: LlmthinkServerErrorCode): {
@@ -82,7 +81,7 @@ declare const TOOL_GUIDANCE: {
         readonly required: readonly ["thought_id"];
     };
 };
-export type LlmthinkHelpTopic = "overview" | "tools" | "errors" | "dsl" | "storage" | "auth";
+type LlmthinkHelpTopic = "overview" | "tools" | "errors" | "dsl" | "storage" | "auth";
 export declare function mcpHelp(input: {
     topic: LlmthinkHelpTopic;
     tool?: keyof typeof TOOL_GUIDANCE;

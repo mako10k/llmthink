@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { auditDslFile } from "./analyzer/audit.js";
-import { getDslExample } from "./dsl/examples.js";
-import type { AuditReport } from "./model/diagnostics.js";
+import { auditDslFile, getDslExample, type AuditReport } from "@llmthink/core";
 
 interface ExampleCase {
   inputId: string;

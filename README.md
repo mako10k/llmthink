@@ -13,7 +13,8 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 - docs/adr: Architecture Decision Record
 - docs/examples: DSL サンプル
 - schemas: 監査結果などの機械可読スキーマ
-- src: 共通監査コア、CLI、MCP 実装
+- packages/core: `@llmthink/core` のDSL、parser、監査、DSLQLと単体テスト
+- src: CLI、MCP、LSP、thought、Hosted serverなどCore利用側の実装
 - vscode-extension: VSIX 拡張パッケージ
 
 ## 主要ドキュメント
@@ -44,6 +45,10 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 ## 開発コマンド
 
 - npm install
+- npm run test:core
+- npm run test:contract
+- npm run test:app
+- npm run test:all
 - npm run typecheck
 - npm run build
 - npm run cli -- dsl audit docs/examples/contradiction-pending.think

@@ -4,13 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { auditDslFile } from "../../src/analyzer/audit.js";
 import {
   alternateLlmthinkFilePath,
+  auditDslFile,
   isLlmthinkFilePath,
   llmthinkFileExtension,
   stripLlmthinkFileExtension,
-} from "../../src/dsl/file-extension.js";
+} from "@llmthink/core";
 import {
   deriveThoughtIdFromFilePath,
   normalizeThoughtId,

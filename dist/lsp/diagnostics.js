@@ -1,5 +1,5 @@
 import { DiagnosticSeverity } from "vscode-languageserver/node.js";
-import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "../model/diagnostics.js";
+import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, } from "@llmthink/core";
 const CONFIGURABLE_HINT_CATEGORIES = [
     "semantic_hint",
     "contradiction_candidate",

@@ -1,6 +1,6 @@
-import { getDslSyntaxGuidanceText } from "../dsl/guidance.js";
+import { getDslSyntaxGuidanceText } from "@llmthink/core";
 export const EXTERNAL_STORAGE_NOTICE = "Thought tools use an external llmthink server outside the current ChatGPT/Codex workspace. Writes remain confined to the authenticated tenant and workspace, but are externally persisted.";
-export const REQUEST_DIGEST_FORMAT = "sha256:<64 lowercase hex>";
+const REQUEST_DIGEST_FORMAT = "sha256:<64 lowercase hex>";
 export const REQUEST_DIGEST_PATTERN = "^sha256:[a-f0-9]{64}$";
 export const REQUEST_DIGEST_DESCRIPTION = "Request identity digest. Expected sha256:<64 lowercase hex> (pattern ^sha256:[a-f0-9]{64}$). Compute SHA-256 over a stable UTF-8 representation of the mutation fields; exclude idempotency_key and request_digest.";
 const REQUEST_DIGEST_GUIDANCE = {

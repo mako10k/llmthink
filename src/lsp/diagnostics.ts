@@ -2,12 +2,10 @@ import { DiagnosticSeverity } from "vscode-languageserver/node.js";
 import {
   AUDIT_RESULT_CATEGORIES,
   AUDIT_SEVERITIES,
-} from "../model/diagnostics.js";
-import type {
-  AuditCategory,
-  AuditIssue,
-  AuditSeverity,
-} from "../model/diagnostics.js";
+  type AuditCategory,
+  type AuditIssue,
+  type AuditSeverity,
+} from "@llmthink/core";
 
 const CONFIGURABLE_HINT_CATEGORIES = [
   "semantic_hint",

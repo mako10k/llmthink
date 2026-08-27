@@ -1,5 +1,8 @@
 {
   "workspaces": {
+    "packages/core": {
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
     "vscode-extension": {
       "project": ["src/**/*.ts", "*.mjs"]
     }

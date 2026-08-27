@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
-import { auditDslText } from "../analyzer/audit.js";
 import {
   alternateLlmthinkFilePath,
+  auditDslText,
   stripLlmthinkFileExtension,
-} from "../dsl/file-extension.js";
-import type { AuditReport } from "../model/diagnostics.js";
+  type AuditReport,
+} from "@llmthink/core";
 import {
   draftThought,
   recordThoughtAudit,

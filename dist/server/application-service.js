@@ -1,4 +1,4 @@
-import { auditDslText } from "../analyzer/audit.js";
+import { auditDslText } from "@llmthink/core";
 import { assertCommandIdentity, assertHostedId, assertRevision, assertThoughtRef, LlmthinkServerError, } from "./contracts.js";
 import { assertVerifiedRequestContext } from "./security.js";
 function requireScope(context, required) {

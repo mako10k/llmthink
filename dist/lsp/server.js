@@ -2,12 +2,7 @@
 import { CompletionItemKind, DocumentHighlightKind, DiagnosticSeverity, DidChangeConfigurationNotification, Location, MarkupKind, Position, ProposedFeatures, Range, SymbolKind, TextEdit, TextDocumentSyncKind, createConnection, } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { auditDslText } from "../analyzer/audit.js";
-import { formatDslText } from "../dsl/format.js";
-import { assertDslqlFunctionImplementationCoverage, collectDslqlReferences, DSLQL_FUNCTION_SPECS, } from "../dslql/query.js";
-import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, } from "../model/confidence.js";
-import { collectDocumentDeclarations } from "../model/declarations.js";
-import { ParseError, parseDocument } from "../parser/parser.js";
+import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, assertDslqlFunctionImplementationCoverage, auditDslText, collectDslqlReferences, collectDocumentDeclarations, DSLQL_FUNCTION_SPECS, formatDslText, ParseError, parseDocument, } from "@llmthink/core";
 import { buildCodeActions } from "./code-actions.js";
 import { buildContextualDslCompletions, buildDslqlCompletionItems, isDslqlQueryPosition, } from "./completions.js";
 import { DEFAULT_LSP_DIAGNOSTIC_SETTINGS, normalizeLspDiagnosticSettings, resolveLspDiagnosticSeverity, } from "./diagnostics.js";

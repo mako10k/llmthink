@@ -1,5 +1,4 @@
-import { auditDslText } from "../analyzer/audit.js";
-import type { AuditReport } from "../model/diagnostics.js";
+import { auditDslText, type AuditReport } from "@llmthink/core";
 import type { ThoughtEvent } from "../thought/store.js";
 import {
   assertCommandIdentity,

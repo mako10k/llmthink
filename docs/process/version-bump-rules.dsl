@@ -4,10 +4,10 @@ framework VersionBumpRules:
   warns pending
 
 domain ReleaseVersioning:
-  description "llmthink の root package、MCP server、VSIX extension の version bump ルールを定義する"
+  description "llmthink の Core package、root package、MCP server、VSIX extension の version bump ルールを定義する"
 
 problem P1:
-  "root package.json、MCP server、VSIX extension が別々に更新されると、利用者がどの配布物にどの機能が入ったか追跡しづらい"
+  "Core package、root package、MCP server、VSIX extension が別々に更新されると、利用者がどの配布物にどの機能が入ったか追跡しづらい"
 
 problem P2:
   "変更が積み重なってからまとめて version を動かすと、どの差分で何が公開されたかが曖昧になる"
@@ -51,8 +51,8 @@ step S6:
 step S7:
   decision D1 based_on P1, P2, PR1, PR2, EV1, EV2:
     |
-      root package.json、vscode-extension/package.json、src/mcp/server.ts の version は同じ release version を共有し、
-      main へ入る公開差分ごとに同時に bump する
+      packages/core/package.json、root package.json、vscode-extension/package.json、src/mcp/server.ts の version は
+      同じ release version を共有し、main へ入る公開差分ごとに同時に bump する。root packageはCoreの正確versionへ依存する
 
 step S8:
   decision D2 based_on P2, P3, PR2, EV2:
@@ -91,5 +91,5 @@ step S13:
 step S14:
   pending PD1:
     |
-      将来 package publish と VSIX publish を別 cadence に分離する場合は、
+      将来 Core、root、server、plugin、VSIXのpublishを別cadenceに分離する場合は、
       共有 release version を維持したまま配布タイミングだけずらすか、個別 version へ分離するか再判断が必要である

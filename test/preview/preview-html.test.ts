@@ -9,13 +9,13 @@ import test from "node:test";
 import { chromium, type Page } from "playwright";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const tsxCli = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
 
 function renderPreview(inputPath: string, outputPath: string): void {
   execFileSync(
     process.execPath,
     [
-      tsxCli,
+      "--import",
+      "tsx",
       "vscode-extension/src/render-preview-html.ts",
       inputPath,
       "--out",

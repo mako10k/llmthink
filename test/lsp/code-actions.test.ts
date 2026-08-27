@@ -4,10 +4,8 @@ import test from "node:test";
 import { CodeActionKind, type CodeAction } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { auditDslText } from "../../src/analyzer/audit.ts";
-import { formatDslText } from "../../src/dsl/format.ts";
+import { auditDslText, formatDslText, parseDocument } from "@llmthink/core";
 import { buildCodeActions } from "../../src/lsp/code-actions.ts";
-import { parseDocument } from "../../src/parser/parser.ts";
 
 const DOCUMENT_URI = "file:///workspace/code-actions.think";
 

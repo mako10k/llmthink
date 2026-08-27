@@ -8,9 +8,11 @@ import {
 } from "vscode-languageserver/node.js";
 import type { TextDocument } from "vscode-languageserver-textdocument";
 
-import { formatDslText } from "../dsl/format.js";
-import type { DocumentAst } from "../model/ast.js";
-import type { AuditIssue } from "../model/diagnostics.js";
+import {
+  formatDslText,
+  type AuditIssue,
+  type DocumentAst,
+} from "@llmthink/core";
 
 function lineTextAt(document: TextDocument, line: number): string {
   return document.getText({

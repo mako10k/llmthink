@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { auditDslText } from "../analyzer/audit.js";
-import { alternateLlmthinkFilePath, stripLlmthinkFileExtension, } from "../dsl/file-extension.js";
+import { alternateLlmthinkFilePath, auditDslText, stripLlmthinkFileExtension, } from "@llmthink/core";
 import { draftThought, recordThoughtAudit, } from "./store.js";
 function generatedThoughtId() {
     return `thought-${new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")}`;
