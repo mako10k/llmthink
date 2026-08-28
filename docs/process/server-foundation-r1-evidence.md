@@ -1,5 +1,12 @@
 # Server Foundation R1 evidence candidate
 
+> Historical evidence notice: this receipt preserves the exact paths, hashes, commands, and results
+> collected for the 2026-08-19 candidate. ADR-0019 later moved the successor source and tests from
+> `src/server` / `test/server` / `dist/server` to `packages/server/src` /
+> `packages/server/test` / `packages/server/dist`. The historical hashes below are not claims about
+> the moved files. See [ADR-0019](../adr/0019-staged-server-workspace-and-live-contract-binding.md)
+> for the current ownership boundary.
+
 ## Status
 
 - Milestone: `SERVER_FOUNDATION_IMPLEMENTED`

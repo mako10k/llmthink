@@ -42,9 +42,9 @@ WIP固有66 commitsは次の連続範囲で全件を覆う。
 | `8da524f..725c41d` |    12 | backup generation、restic adapter、restore、supply verification、technical tests | server                       | forward-port and re-test                                 |
 | `ab7f2f2..53de27d` |    10 | backup evidence、production rehearsal、off-host restore                          | server operations            | preserve evidence and rebind exact revisions             |
 | `9748b34..8f433ed` |     5 | trial terms approval and acceptance records                                      | server operations            | preserve governance evidence                             |
-| `60b229f..b54ea44` |     4 | onboarding、recovery/archive、Stage lifecycle acceptance                         | server                       | forward-port and re-test                                 |
+| `60b229f..b54ea44` |     4 | onboarding、recovery/archive、Stage lifecycle acceptance                         | server                       | onboarding bridge migrated by #35; remainder pending     |
 | `df62f34`          |     1 | limited trial Plugin distribution candidate                                      | plugin                       | migrated to `llmthink-chatgpt-plugin@b480c84`            |
-| `8c0c0ca..df8e683` |     9 | hosted lifecycle deployment、OAuth scopes、browser onboarding、tenant deletion   | server                       | forward-port; deployment remains separately authorized   |
+| `8c0c0ca..df8e683` |     9 | hosted lifecycle deployment、OAuth scopes、browser onboarding、tenant deletion   | server                       | delete migrated by #35; lifecycle/operations pending     |
 | `a40cc59`          |     1 | sealgraph artifact formatting exclusion                                          | history only                 | do not port unless successor reproduces the need         |
 | `d5b61da`          |     1 | OAuth limited trial distribution candidate                                       | plugin and server operations | plugin migrated at `b480c84`; operations remain on WIP   |
 | `78f2fa3..82ac156` |     2 | rational confidence implementation and example verification                      | core                         | already patch-equivalent on main; do not port            |
@@ -82,15 +82,30 @@ Coverage count: `4 + 4 + 4 + 8 + 12 + 10 + 5 + 4 + 1 + 9 + 1 + 1 + 2 + 1 = 66`.
 - Conformance Kitはserver/plugin sourceをimportせず、artifact、producer descriptor、consumer
   snapshotを検証する。
 - contract/schema/dependency pathだけでfocused testとdownstream plugin compatibilityを起動する。
-- current main Hosted MCP adapterはtested surfaceより古いため挙動を変更せず、live producer bindingを
-  Issue #29のserver分離へ移管した。実施記録は[Issue #33](https://github.com/mako10k/llmthink/issues/33)で管理する。
+- 抽出時点のHosted MCP adapterはtested surfaceより古かったため、live producer bindingをIssue #29の
+  server分離へ移管した。artifact/Kit抽出は[Issue #33](https://github.com/mako10k/llmthink/issues/33)、
+  producer結合は[Issue #35](https://github.com/mako10k/llmthink/issues/35)で管理する。
 
-### 3. Hosted server
+### 3a. Hosted server workspace and live producer — completed 2026-08-28
 
-- `llmthink-server`へHosted MCP、REST、OAuth、lifecycle、SQLite、backup、archiveを移管する。
-- `@llmthink/core`とcontract artifactを検証済みの正確versionへ固定する。
-- WIPのserver codeをCore workspace後のimport境界へforward-portし、server固有testを再実行する。
+- private workspace `@llmthink/server@1.0.0`へHosted Application Service、file repository、REST、
+  Streamable HTTP MCP、policy/securityとserver専用testを移した。
+- `@llmthink/core@1.3.0`と`@llmthink/contracts@1.0.0`へ正確versionで固定し、server sourceから
+  root application/local thought storeへのimportを禁止した。
+- retained WIPからcanonical surfaceに必要なonboarding bridgeとtenant/revision/idempotency-bound deleteだけを
+  forward-portした。OAuth、trial lifecycle、backup、deployment evidenceは混ぜていない。
+- implementation-owned registryをcanonical SHA-256
+  `774fb22a3ce4d6225cef7c791dc006414cf2795c54de308d08db17ed0245343d`とConformance Kitで照合する。
+- rootには既存Hosted bin/exportを保つcompatibility facadeを残し、path-limited server CIを追加した。
+- external repository、package publication、deployment、Production activationは実行していない。
+
+### 3b. Hosted server remaining migrations
+
+- managed OAuth、account registry、browser onboarding、trial lifecycleを個別にforward-portする。
+- SQLite lifecycle control planeとaccepted Node SQLite driver decisionをfocused testで再現する。
+- backup/archive/restore implementationとoperations evidenceを分けて移管する。
 - `plans/oauth-implementation.pert`、`plans/trial-account-lifecycle.pert`、release/security/operations義務を後継ownerへ移す。
+- private server packageのdistribution、external repository visibility、release ownerを決めるまでroot packageを公開しない。
 - ADR番号は後継repository内で一意性を再確認し、旧branch上の証拠参照を失わない形で正規化する。
 
 ### 4. VS Code
