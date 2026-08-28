@@ -8,6 +8,10 @@ accepted
 
 2026-08-27
 
+## Partial Supersession
+
+[ADR-0020](0020-root-package-excludes-hosted-server.md)は、root applicationがHosted serverを所有する記述を置き換える。Core workspace、public entrypoint、Core/root test境界に関する判断は本ADRを引き続き正とする。
+
 ## Decision Owner
 
 llmthink decision owner
@@ -26,7 +30,7 @@ Coreを同一repository内の独立npm workspace `@llmthink/core` として分�
 
 - `packages/core`はDSL、parser、model、analyzer、DSLQL、audit report presentationを所有する
 - v1 API互換性のため、runtime configとembedding adapterはこの段階ではCoreに残す
-- root applicationはserver、LSP、thought persistence、CLI/MCP adapter、plugin/VSIX integrationを所有する
+- root applicationはLSP、thought persistence、CLI/local MCP adapter、plugin/VSIX integrationを所有する。Hosted server ownershipはADR-0020でprivate service workspaceへ移す
 - root applicationからCore実装への参照は`@llmthink/core`の公開entrypointだけを通す
 - root `llmthink` packageは検証済みCoreの正確versionに依存し、workspace内でもversion一致を契約検査する
 - Core sourceからroot applicationまたはadapter implementationへのimportを禁止する

@@ -5,6 +5,8 @@ on:
     paths:
       - "packages/contracts/**"
       - "test/contracts/**"
+      - "src/index.ts"
+      - "src/server/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/contracts.yml"
@@ -13,6 +15,8 @@ on:
     paths:
       - "packages/contracts/**"
       - "test/contracts/**"
+      - "src/index.ts"
+      - "src/server/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/contracts.yml"

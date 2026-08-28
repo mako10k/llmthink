@@ -2,7 +2,7 @@
 
 ## 1. Status and scope
 
-本書は hosted llmthink server の proposed design であり、実装済み仕様ではない。
+本書はprivate `@llmthink/server` workspaceに実装したHosted foundationと、未移管のservice scopeを定義する。OAuth、SQLite、backup/operations、external repository、deploymentは引き続きproposedである。
 
 対象:
 
@@ -26,25 +26,27 @@
 ## 2. Architecture
 
 ```text
-CLI   VSIX   stdio MCP      REST /api/v1   HTTP MCP /mcp
- |      |        |                |               |
- +------+--------+----------------+---------------+
-                         |
-                 Application Service
-                  command/query/policy
-                         |
-        +----------------+----------------+
-        |                                 |
- llmthink Core                    ThoughtRepository
- parse/audit/DSLQL                revision/transaction
-                                          |
-                     +--------------------+--------------------+
-                     |                    |                    |
-               ServerFileStore       SQL adapter        Graph adapters
-                    first              future              undecided
+public root package                         private Hosted service
+
+CLI   VSIX   local stdio MCP                REST /api/v1   HTTP MCP /mcp
+ |      |            |                           |               |
+ +------+------------+                           +-------+-------+
+          |                                               |
+  llmthink Core + local store                    Application Service
+  parse/audit/DSLQL/thought                       command/query/policy
+                                                          |
+                                          +---------------+---------------+
+                                          |                               |
+                                   llmthink Core                  ThoughtRepository
+                                   parse/audit/DSLQL              revision/transaction
+                                                                          |
+                                                     +--------------------+--------------------+
+                                                     |                    |                    |
+                                               ServerFileStore       SQL adapter        Graph adapters
+                                                    first              future              undecided
 ```
 
-依存方向は adapter から Application Service、Application Service から Core と port までとする。Core と port は HTTP、MCP SDK、ChatGPT、filesystem layout を知らない。
+rootとHosted serviceはCoreの意味規則を共有するが、Application Service、repository、runtime dependency、release artifactは共有しない。Hosted側の依存方向はREST/HTTP MCP adapterからApplication Service、Application ServiceからCoreとportまでとする。CoreとportはHTTP、MCP SDK、ChatGPT、filesystem layoutを知らない。
 
 ## 3. Application contracts
 
@@ -226,20 +228,23 @@ HTTP status と error code の対応は API schema 作成時に固定する。me
 
 ## 8. MCP interfaces
 
-local compatibility の stdio MCP は維持する。hosted MCP は Streamable HTTP `/mcp` を使う。
+local stdio MCPはroot packageの`dsl` / `thought` interfaceとして維持し、Hosted Application Serviceへ接続しない。hosted MCPはprivate service workspaceのStreamable HTTP `/mcp`を使う。
 
-初期 hosted tools:
+canonical Hosted MCP v1 tools:
 
-| Tool                     | Use case            | Effect              |
-| ------------------------ | ------------------- | ------------------- |
-| `audit_thought`          | text を保存せず監査 | read-only           |
-| `create_thought_draft`   | draft 作成          | write               |
-| `get_thought`            | snapshot 取得       | read-only           |
-| `list_thoughts`          | 一覧取得            | read-only           |
-| `search_thoughts`        | 検索                | read-only           |
-| `finalize_thought`       | revision 指定で確定 | consequential write |
-| `add_thought_reflection` | reflection 追記     | write               |
-| `get_thought_history`    | event 取得          | read-only           |
+| Tool                        | Use case                 | Effect              |
+| --------------------------- | ------------------------ | ------------------- |
+| `begin_llmthink_onboarding` | admission前のbrowser導線 | write               |
+| `llmthink_help`             | service guidance         | read-only           |
+| `audit_thought`             | text を保存せず監査      | read-only           |
+| `create_thought_draft`      | draft 作成               | write               |
+| `get_thought`               | snapshot 取得            | read-only           |
+| `list_thoughts`             | 一覧取得                 | read-only           |
+| `search_thoughts`           | 検索                     | read-only           |
+| `finalize_thought`          | revision 指定で確定      | consequential write |
+| `add_thought_reflection`    | reflection 追記          | write               |
+| `delete_thought`            | revision指定で削除       | consequential write |
+| `get_thought_history`       | event 取得               | read-only           |
 
 tool result は machine-readable structured content を正本とし、text は model と人間向けの bounded presentation とする。tool は内部で REST endpoint を呼ばず、同じ Application Service を直接利用する。
 
@@ -303,6 +308,7 @@ backend 移行は同じ repository contract test を使う。
 - pure audit が永続化しない
 - REST と MCP が同じ use case contract test を通る
 - stdio MCP、CLI、VSIX の既存 behavior が回帰しない
+- root packageがHosted serverをdependency、export、bin、tarball artifactとして含まない
 - authentication 無効時は loopback 以外への bind を拒否する
 
 ### Plugin gate

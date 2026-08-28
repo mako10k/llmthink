@@ -5,13 +5,13 @@
 
 ## 対象と不変条件
 
-対象は Core npm package、root npm package、MCP server、VSIX extension、README、CHANGELOG、Git tag、GitHub Release とする。
+対象は Core npm package、root npm package、local stdio MCP、VSIX extension、README、CHANGELOG、Git tag、GitHub Release とする。private Hosted server workspaceはこのreleaseの対象、dependency、同梱物ではない。
 
-### Current publication hold
+### Hosted service exclusion and next major
 
-`@llmthink/server@1.0.0`は分離検証中のprivate workspaceであり、current unreleased root sourceはこのpackageへ実行時依存する。この状態ではroot tarballをregistryから完全にinstallできないため、次回releaseのGate 1を開始しない。
+root sourceは`@llmthink/server`へ依存せず、Hosted server export、bin、`dist/server/**`を配布しない。private server workspaceのpackage publication、external repository、service deploymentは別のrelease authorityを必要とし、本checklistでは実行しない。
 
-release作業の前に、accepted ADRでserver distribution方式を決定し、公開対象、version同期規則、tarball digest、公開順、readbackを本checklistへ追加する。workspace抽出だけを根拠に`@llmthink/server`をpublishしたり、root releaseを進めたりしない。
+`llmthink@1.3.0`で公開したHosted server exportと`llmthink-hosted-mcp` binを削除するため、次回root releaseはversion bump ruleに従うmajorとする。この記録はrelease、version bump、publish自体を認可しない。
 
 release ごとに次の値を一度だけ確定し、作業記録へ残す。
 
@@ -47,9 +47,10 @@ VSIX を生成した後に version、README、extension source を変更した�
 7. `npm run build`
 8. `npm run verify-examples`
 9. `npm pack --dry-run --workspace @llmthink/core` と root `npm pack --dry-run` で各公開対象ファイルを確認する
-10. VSIX 内の extension/package.json と extension/readme.md を展開し、version と文面が source と一致することを確認する
-11. current tree と git history 全体を secret scan し、結果とコマンドを作業記録へ残す
-12. `git diff --check` と `git status --short` で想定外の差分がないことを確認する
+10. root tarballのmanifestとfile listに`@llmthink/server` dependency、`llmthink-hosted-mcp` bin、`dist/server/**`がないことを確認する
+11. VSIX 内の extension/package.json と extension/readme.md を展開し、version と文面が source と一致することを確認する
+12. current tree と git history 全体を secret scan し、結果とコマンドを作業記録へ残す
+13. `git diff --check` と `git status --short` で想定外の差分がないことを確認する
 
 いずれかが不一致なら公開せず Gate 1 へ戻る。
 

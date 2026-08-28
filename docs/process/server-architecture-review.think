@@ -6,7 +6,7 @@ domain LLMThinkServer:
   description "hosted llmthink の共通 service、file backend、API、MCP、Plugin 境界を設計する"
 
 problem P1:
-  "REST、HTTP MCP、CLI、stdio MCP、VSIX が意味規則を重複せず利用できる中心境界を決める"
+  "Hosted REST/HTTP MCPとlocal CLI/stdio MCP/VSIXが意味規則を重複せず、service runtimeを共有せずに利用できる境界を決める"
 
 problem P2:
   "最初は file backend を使いながら concurrent server write と将来の backend 交換を成立させる"
@@ -49,8 +49,9 @@ step S4:
 step S5:
   decision D1 based_on P1, EV1, PR1:
     |
-      transport 非依存 Application Service を中心に置き、REST、Streamable HTTP MCP、stdio MCP、CLI、VSIX を
-      並列 adapter とする。adapter は同じ command/query と repository port を利用し、相互に loopback 呼出ししない
+      Hosted側はtransport非依存Application Serviceを中心にRESTとStreamable HTTP MCPを並列adapterとし、同じ
+      command/queryとrepository portを利用する。local CLI、stdio MCP、VSIXはCoreとlocal storeを直接利用し、
+      Hosted Application Service、network、tenant repositoryへ依存しない。両境界はCoreの意味規則だけを共有する
 
 step S6:
   decision DA2 based_on P2, EV2:

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +13,9 @@ interface PackageManifest {
   readonly version: string;
   readonly private?: boolean;
   readonly dependencies?: Readonly<Record<string, string>>;
+  readonly bin?: Readonly<Record<string, string>>;
   readonly files?: readonly string[];
+  readonly scripts?: Readonly<Record<string, string>>;
 }
 
 async function manifest(path: string): Promise<PackageManifest> {
@@ -32,7 +35,7 @@ async function typescriptFiles(root: string): Promise<string[]> {
   ).flat();
 }
 
-test("root and server pin exact workspace dependency versions", async () => {
+test("root excludes Hosted server while server pins exact dependencies", async () => {
   const root = await manifest(join(repoRoot, "package.json"));
   const core = await manifest(
     join(repoRoot, "packages", "core", "package.json"),
@@ -43,10 +46,14 @@ test("root and server pin exact workspace dependency versions", async () => {
   const server = await manifest(join(serverRoot, "package.json"));
   assert.equal(server.name, "@llmthink/server");
   assert.equal(server.private, true);
-  assert.equal(root.dependencies?.[server.name], server.version);
+  assert.equal(root.dependencies?.[server.name], undefined);
+  assert.equal(root.bin?.["llmthink-hosted-mcp"], undefined);
   assert.equal(server.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[contracts.name], contracts.version);
-  assert.ok(root.files?.includes("!dist/server/backup"));
+  assert.ok(root.files?.includes("!dist/server"));
+  assert.doesNotMatch(root.scripts?.["test:app"] ?? "", /server/);
+  assert.doesNotMatch(root.scripts?.["typecheck:app"] ?? "", /server/);
+  assert.doesNotMatch(root.scripts?.prepack ?? "", /server/);
 });
 
 test("server source cannot import root application or adapter implementation", async () => {
@@ -66,15 +73,9 @@ test("server source cannot import root application or adapter implementation", a
   }
 });
 
-test("root keeps only the hosted-main compatibility facade", async () => {
-  const files = await readdir(join(repoRoot, "src", "server"));
-  assert.deepEqual(files, ["hosted-main.ts"]);
-  const facade = await readFile(
-    join(repoRoot, "src", "server", "hosted-main.ts"),
-    "utf8",
-  );
-  assert.match(facade, /@llmthink\/server\/hosted-main/);
+test("root source has no Hosted server facade or public re-export", async () => {
+  assert.equal(existsSync(join(repoRoot, "src", "server")), false);
   const rootIndex = await readFile(join(repoRoot, "src", "index.ts"), "utf8");
-  assert.match(rootIndex, /from "@llmthink\/server"/);
+  assert.doesNotMatch(rootIndex, /@llmthink\/server/);
   assert.doesNotMatch(rootIndex, /from "\.\/server\//);
 });
