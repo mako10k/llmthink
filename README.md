@@ -15,8 +15,8 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 - schemas: 監査結果などの機械可読スキーマ
 - packages/core: `@llmthink/core` のDSL、parser、監査、DSLQLと単体テスト
 - packages/contracts: Hosted MCPの版付きartifact、hash manifest、Conformance Kit
-- packages/server: private `@llmthink/server` workspaceとHosted server専用テスト
-- src: CLI、stdio MCP、LSP、thought、Core互換facade、Hosted server互換entrypoint
+- packages/server: rootから独立したprivate Hosted service workspaceと専用テスト
+- src: CLI、local stdio MCP、LSP、thought、Core互換facade
 - vscode-extension: VSIX 拡張パッケージ
 
 ## 主要ドキュメント
@@ -54,6 +54,7 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 - npm run test:all
 - npm run typecheck
 - npm run typecheck:server
+- npm run build:app
 - npm run build
 - npm run cli -- dsl audit docs/examples/contradiction-pending.think
 - npm run cli -- dsl audit docs/examples/contradiction-pending.think --pretty
@@ -65,6 +66,8 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 - npm run typecheck:extension
 - npm run build:extension
 - npm run package:vsix
+
+`build:app`、`test:app`、`typecheck:app`はpublic root packageだけを検証し、Hosted serverをbuild/testしない。`build`と`test:all`は明示的なrepository-wide gateである。
 
 ## 配布
 
@@ -370,8 +373,8 @@ declared_confidence D1:
 
 - release version の判断基準は docs/process/version-bump-rules.dsl を正とする
 - root package、local stdio MCP、VSIX extension は同じ release version を共有する
-- private `@llmthink/server@1.0.0` workspaceは分離検証用で、外部package/repositoryとして未公開である
-- root sourceはprivate server workspaceへ依存するため、server配布方式を決定するまで次回npm releaseを開始しない
+- private `@llmthink/server@1.0.0`はservice-only workspaceで、root packageは依存・同梱・再公開しない
+- `llmthink@1.3.0`で公開したHosted server export/binの削除は、次回root releaseでmajor変更として扱う
 - main へ入る公開差分ごとに version を bump する
 - 0.4.0 は preview HTML CLI、Playwright 回帰テスト、sample registry、DSL help 導線整理、VSIX preview UX 改善をまとめた minor release とする
 - 0.4.1 は MPL-2.0 への切替、`based_on` 文言明確化、preview の problem node 表示と配色調整をまとめた patch release とする

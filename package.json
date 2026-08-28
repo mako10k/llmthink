@@ -29,26 +29,26 @@
   },
   "files": [
     "dist",
-    "!dist/server/backup",
+    "!dist/server",
     "docs/examples",
     "README.md",
     "schemas"
   ],
   "bin": {
     "llmthink": "dist/cli.js",
-    "llmthink-hosted-mcp": "dist/server/hosted-main.js",
     "llmthink-mcp": "dist/mcp/server.js",
     "llmthink-lsp": "dist/lsp/server.js"
   },
   "scripts": {
     "build": "npm run build:core && npm run build:contracts && npm run build:server && tsc -p tsconfig.json",
+    "build:app": "npm run build:core && tsc -p tsconfig.json",
     "build:core": "npm run build --workspace @llmthink/core",
     "build:contracts": "npm run build --workspace @llmthink/contracts",
     "build:server": "npm run build --workspace @llmthink/server",
     "test": "npm run test:app",
     "test:core": "npm test --workspace @llmthink/core",
     "test:server": "npm run build:core && npm run build:contracts && npm test --workspace @llmthink/server",
-    "test:app": "npm run build:core && npm run build:server && node --import tsx --test test/**/*.test.ts",
+    "test:app": "npm run build:core && node --import tsx --test test/cli/*.test.ts test/dsl/*.test.ts test/integration/*.test.ts test/lsp/*.test.ts test/preview/*.test.ts test/thought/*.test.ts test/vscode/*.test.ts",
     "test:contracts": "npm run build:core && npm run build:contracts && npm test --workspace @llmthink/contracts && node --import tsx --test test/contracts/*.test.ts",
     "test:contract": "npm run test:contracts && npm run build:server && tsc -p tsconfig.json --noEmit",
     "test:all": "npm run test:core && npm run test:contracts && npm run test:server && npm run test:app",
@@ -56,7 +56,7 @@
     "typecheck:core": "npm run typecheck --workspace @llmthink/core",
     "typecheck:contracts": "npm run typecheck --workspace @llmthink/contracts",
     "typecheck:server": "npm run typecheck --workspace @llmthink/server",
-    "typecheck:app": "npm run build:core && npm run build:server && tsc -p tsconfig.json --noEmit",
+    "typecheck:app": "npm run build:core && tsc -p tsconfig.json --noEmit",
     "cli": "node --import tsx src/cli.ts",
     "preview:html": "node --import tsx vscode-extension/src/render-preview-html.ts",
     "verify-examples": "node --import tsx src/verify-examples.ts",
@@ -70,11 +70,10 @@
     "typecheck:extension": "npm --prefix vscode-extension run typecheck",
     "build:extension": "npm --prefix vscode-extension run build",
     "package:vsix": "npm --prefix vscode-extension run package:vsix",
-    "prepack": "npm run build"
+    "prepack": "npm run build:app"
   },
   "dependencies": {
     "@llmthink/core": "1.3.0",
-    "@llmthink/server": "1.0.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.11",

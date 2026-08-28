@@ -1,30 +1,13 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import {
-  LlmthinkApplicationService,
-  ServerFileThoughtRepository,
-  draftThought,
-  loadThought,
-  type RequestContext,
-} from "../../src/index.js";
-
 const executeFile = promisify(execFile);
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const CONTEXT: RequestContext = {
-  subjectId: "user-1",
-  tenantId: "tenant-1",
-  workspaceId: "workspace-1",
-  scopes: ["thought:read", "thought:write"],
-  requestId: "local-parity-1",
-};
 
 test("CLI pure audit remains a local process with no hosted server", async () => {
   const { stdout } = await executeFile(
@@ -121,67 +104,7 @@ test("local adapters do not loop back through hosted HTTP or MCP", async () => {
     const source = await readFile(join(repoRoot, relativePath), "utf8");
     assert.equal(source.includes("server/http"), false, relativePath);
     assert.equal(source.includes("server/hosted-mcp"), false, relativePath);
+    assert.equal(source.includes("@llmthink/server"), false, relativePath);
     assert.equal(source.includes("fetch("), false, relativePath);
   }
-});
-
-test("local and hosted stores retain distinct authority and layout contracts", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "llmthink-local-hosted-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const localRoot = join(root, "local");
-  const hostedRoot = join(root, "hosted");
-  draftThought("same-id", "local draft", { storageRoot: localRoot });
-  const application = new LlmthinkApplicationService({
-    repository: new ServerFileThoughtRepository({ dataRoot: hostedRoot }),
-  });
-  await application.createThought(
-    {
-      thoughtId: "same-id",
-      draftText: "hosted draft",
-      identity: {
-        idempotencyKey: "create-1",
-        requestDigest: `sha256:${"a".repeat(64)}`,
-      },
-    },
-    CONTEXT,
-  );
-
-  assert.equal(
-    loadThought("same-id", { storageRoot: localRoot }).draftText,
-    "local draft",
-  );
-  assert.equal(
-    (
-      await application.getThought(
-        {
-          tenantId: CONTEXT.tenantId,
-          workspaceId: CONTEXT.workspaceId,
-          thoughtId: "same-id",
-        },
-        CONTEXT,
-      )
-    ).draftText,
-    "hosted draft",
-  );
-  assert.equal(
-    existsSync(join(localRoot, "thoughts", "same-id", "thought.json")),
-    true,
-  );
-  assert.equal(
-    existsSync(
-      join(
-        hostedRoot,
-        "tenants",
-        CONTEXT.tenantId,
-        "workspaces",
-        CONTEXT.workspaceId,
-        "thoughts",
-        "same-id",
-        "CURRENT",
-      ),
-    ),
-    true,
-  );
-  assert.equal(existsSync(join(localRoot, "tenants")), false);
-  assert.equal(existsSync(join(hostedRoot, "thoughts")), false);
 });
