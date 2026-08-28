@@ -6,13 +6,14 @@ Coreの内部変更をHosted server、LSP、plugin、VSIXの全回帰検査か�
 
 ## 所有範囲
 
-| 境界                | 所有するもの                                                                                  | 所有しないもの                                 |
-| ------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `@llmthink/core`    | DSL、parser、AST/model、analyzer、DSLQL、audit report、v1互換runtime config/embedding adapter | server、thought persistence、LSP、plugin、VSIX |
-| root `llmthink`     | CLI/MCP adapter、thought persistence、LSP、Hosted server、Core互換facade                      | Core内部実装                                   |
-| downstream contract | Core public export、正確version、DSLQL/help/VSIX共有surface                                   | Core内部関数、private file layout              |
+| 境界                                                                            | 所有するもの                                                                                  | 所有しないもの                                 |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `@llmthink/core`                                                                | DSL、parser、AST/model、analyzer、DSLQL、audit report、v1互換runtime config/embedding adapter | server、thought persistence、LSP、plugin、VSIX |
+| root `llmthink`                                                                 | CLI/MCP adapter、thought persistence、LSP、Hosted server、Core互換facade                      | Core内部実装、plugin配布物                     |
+| [`llmthink-chatgpt-plugin`](https://github.com/mako10k/llmthink-chatgpt-plugin) | manifest、Skills、assets、evals、plugin固有contract/secret検査                                | Core/server source、Hosted service運用         |
+| downstream contract                                                             | Core public export、正確version、DSLQL/help/VSIX共有surface                                   | Core内部関数、private file layout              |
 
-依存方向はroot applicationから`@llmthink/core`への一方向とする。Core sourceはroot `src`、plugin、vscode-extensionを参照しない。
+依存方向はroot applicationから`@llmthink/core`への一方向とする。Core sourceはroot `src`、外部plugin、vscode-extensionを参照しない。pluginは固定MCP contract snapshotだけに依存し、本repositoryのsourceをimportしない。
 
 ## 変更別の検査
 

@@ -247,6 +247,10 @@ tool result は machine-readable structured content を正本とし、text は m
 
 Plugin は hosted MCP 接続、Skills、将来の optional UI を配布する client integration である。server の認可境界ではない。
 
+Pluginの配布物と通常検査は独立したpublic
+[`mako10k/llmthink-chatgpt-plugin`](https://github.com/mako10k/llmthink-chatgpt-plugin)で管理する。
+server sourceを直接importせず、固定MCP contract version/hashとtested server revisionで互換性を記録する。
+
 初期 Skills:
 
 - `llmthink-author`: problem、evidence、decision を draft に構造化する
