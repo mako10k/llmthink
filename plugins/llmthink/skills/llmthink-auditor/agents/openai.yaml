@@ -1,4 +1,0 @@
-interface:
-  display_name: "LLMThink Auditor"
-  short_description: "Audit reasoning without persisting or guessing"
-  default_prompt: "Use $llmthink-auditor to audit this LLMThink text without persisting it."

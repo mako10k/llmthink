@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "llmthink": {
-      "type": "http",
-      "url": "https://llmthink.mk10.org/mcp",
-      "bearer_token_env_var": "LLMTHINK_MCP_TOKEN"
-    }
-  }
-}
