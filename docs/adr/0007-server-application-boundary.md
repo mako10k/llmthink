@@ -8,10 +8,6 @@ proposed
 
 2026-08-18
 
-## Partial Supersession
-
-[ADR-0019](0019-staged-server-workspace-and-live-contract-binding.md)と[ADR-0020](0020-root-package-excludes-hosted-server.md)はHosted Application Serviceの所有先をprivate server workspaceへ移し、rootにはlocal thought lifecycleだけを残す。transport非依存Application Serviceと並列adapterの判断は本ADRのproposed設計として維持する。
-
 ## Context
 
 - ADR-0004 は CLI、stdio MCP、VSIX が共通監査 API を使う構成を採用している

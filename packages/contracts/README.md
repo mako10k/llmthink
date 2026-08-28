@@ -26,6 +26,6 @@ node packages/contracts/dist/cli.js verify-candidate \
   --exact
 ```
 
-The private `@llmthink/server` workspace owns the live producer registry for onboarding plus the
-ten admitted tools and verifies it against this package. The public root `llmthink` package does not
-import or re-export the producer implementation.
+The current `llmthink` main Hosted MCP adapter predates onboarding and deletion in the tested
+trial surface. Binding a live producer to this package belongs to the `llmthink-server` split; this
+workspace does not silently add those operations to current main.

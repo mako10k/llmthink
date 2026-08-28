@@ -8,10 +8,6 @@ accepted
 
 2026-08-28
 
-## Partial Supersession
-
-[ADR-0020](0020-root-package-excludes-hosted-server.md)は、root compatibility facadeを残す判断と未解決のserver distribution方式を置き換える。private server workspace、live contract binding、残存WIPの段階移管は本ADRを引き続き正とする。
-
 ## Decision Owner
 
 llmthink decision owner
@@ -33,7 +29,7 @@ llmthink decision owner
 - server workspaceは`@llmthink/core@1.3.0`と`@llmthink/contracts@1.0.0`へ正確versionで依存する
 - server sourceはroot application、local thought store、stdio MCP、LSP、plugin、VS Code implementationをimportしない
 - hosted thought lifecycleに必要なsnapshot、event、reflection型はserver contractが所有し、root local store型をauthorityにしない
-- current root server実装はworkspaceへ移し、初期抽出ではrootに既存binとpublic exportを保つ薄いcompatibility facadeだけを残す。このfacadeはADR-0020で後に削除する
+- current root server実装はworkspaceへ移し、rootには既存binとpublic exportを保つ薄いcompatibility facadeだけを残す
 - retained WIPから今回forward-portする機能は、canonical contractのlive producerに必要なtenant/revision-bound deleteとMCP onboarding bridgeに限定する
 - implementation-owned tool registryからproducer surfaceを生成し、canonical artifact SHA-256 `774fb22a3ce4d6225cef7c791dc006414cf2795c54de308d08db17ed0245343d`のsurfaceとConformance Kitで照合する
 - server path、contract path、正確dependency pathの変更時だけfocused server CIを起動する
@@ -58,14 +54,14 @@ llmthink decision owner
 Good:
 
 - server変更は55件以上のfocused testとserver typecheckで検証でき、Core/plugin/VSIXの全検査を通常要求しない
-- 初期抽出時点のroot public surfaceとlocal CLI/stdio MCPを維持しながらserver source ownershipを分離できる。root Hosted surfaceはADR-0020で後に削除する
+- current mainのroot public surfaceとlocal CLI/stdio MCPを維持しながらserver source ownershipを分離できる
 - onboarding/deleteを含むcanonical 11-tool surfaceがfixtureではなくimplementation registryへ結合される
 - WIPの残りをOAuth、SQLite、backup/operations単位でforward-portできる
 
 Bad / Risk:
 
-- private workspace期間に残ったroot dependency/publication constraintはADR-0020でservice-only境界として解消した
-- root compatibility facadeはADR-0020で削除した
+- private workspace期間はroot packageの次回publication前にserver distribution方式を決める必要がある
+- root compatibility facadeは最終external splitまで一時的に残る
 - server-local thought型とroot local thought型は構造が似るため、意味境界を文書とtestで維持する必要がある
 - onboarding bridgeはfull browser/account lifecycleを含まず、後続migrationなしではtrial onboarding全体を提供しない
 
@@ -77,7 +73,7 @@ Neutral:
 ## Implementation Notes
 
 - workspace: `packages/server/`
-- removed root compatibility facade: `src/server/hosted-main.ts` and Hosted exports in `src/index.ts` (ADR-0020)
+- root compatibility facade: `src/server/hosted-main.ts` and `src/index.ts`
 - implementation surface registry: `packages/server/src/hosted-mcp-surface.ts`
 - focused tests: `packages/server/test/`
 - repository boundary test: `test/contracts/server-package-boundary.test.ts`
@@ -89,7 +85,7 @@ Neutral:
 - Ownership review: server sourceにroot application implementation importがないことを検査する
 - Contract review: implementation registry、runtime tools、canonical surfaceのtool/effect/required集合を比較する
 - Security review: onboarding identityを既存tenantへ昇格させず、deleteがtenant、scope、revision、idempotencyで拘束されることを検査する
-- Compatibility review: root packageがHosted export/bin/dependencyを含まず、local CLI/stdio MCPがserver loopbackを要求しないことを検査する
+- Compatibility review: root export、hosted bin、local CLI、stdio MCPがserver loopbackを要求しないことを検査する
 - Authority review: external repository、publish、release、deployment、Production、WIP削除を実行していないことを確認する
 
 ## Traceability
@@ -115,7 +111,7 @@ Neutral:
 - SQLite lifecycle control planeとaccepted Node SQLite driver decisionをfocused migrationで再現する
 - backup/archive/restore codeとoperations evidenceを分けて移管する
 - external repository作成前にvisibility、release owner、package distribution、Issue/PERT successor manifestを確認する
-- root compatibility facadeとprivate workspace publication constraintはADR-0020で解消済み。external splitは別判断として残る
+- external split後にroot compatibility facadeとprivate workspace publication constraintを解消する
 
 ## Auditability Notes
 

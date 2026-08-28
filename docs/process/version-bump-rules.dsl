@@ -4,10 +4,10 @@ framework VersionBumpRules:
   warns pending
 
 domain ReleaseVersioning:
-  description "llmthink の Core package、root package、local stdio MCP、VSIX extension の version bump ルールを定義する"
+  description "llmthink の Core package、root package、MCP server、VSIX extension の version bump ルールを定義する"
 
 problem P1:
-  "Core package、root package、local stdio MCP、VSIX extension が別々に更新されると、利用者がどの配布物にどの機能が入ったか追跡しづらい"
+  "Core package、root package、MCP server、VSIX extension が別々に更新されると、利用者がどの配布物にどの機能が入ったか追跡しづらい"
 
 problem P2:
   "変更が積み重なってからまとめて version を動かすと、どの差分で何が公開されたかが曖昧になる"
@@ -89,19 +89,7 @@ step S13:
       後方互換な訂正を新しい patch release として公開する
 
 step S14:
-  evidence EV5:
-    |
-      ADR-0020はHosted serverをservice-only境界とし、root packageからruntime dependency、public export、
-      llmthink-hosted-mcp bin、packed artifactを除外する
-
-step S15:
-  decision D8 based_on P1, D1, D4, EV5:
-    |
-      private Hosted server workspaceとHosted MCP contractはroot release versionを共有せず、root packageの配布対象にしない。
-      llmthink 1.3.0で公開したHosted server exportとbinの削除は、次回root releaseでmajorを進める
-
-step S16:
   pending PD1:
     |
-      将来 Core、root、VSIXのpublishを別cadenceに分離する場合は、
+      将来 Core、root、server、plugin、VSIXのpublishを別cadenceに分離する場合は、
       共有 release version を維持したまま配布タイミングだけずらすか、個別 version へ分離するか再判断が必要である
