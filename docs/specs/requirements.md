@@ -467,8 +467,7 @@ Hosted server は proposed scope とし、実装時には次を満たす。
 Must:
 
 - Core の意味規則を transport 非依存 Application Service から利用すること
-- Hosted RESTとStreamable HTTP MCPを同じHosted Application Serviceの並列adapterとし、相互loopbackしないこと
-- local stdio MCP、CLI、VSIXをHosted Application Service、network、tenant repositoryへ依存させないこと
+- REST、Streamable HTTP MCP、stdio MCP を相互呼び出しではなく並列 adapter とすること
 - thought 永続化を domain operation 単位の repository port へ分離すること
 - server が確定した tenant、workspace、thought identity と revision により更新を検査すること
 - pure audit と永続化を伴う audit record を別 use case とすること

@@ -96,24 +96,16 @@ Coverage count: `4 + 4 + 4 + 8 + 12 + 10 + 5 + 4 + 1 + 9 + 1 + 1 + 2 + 1 = 66`.
   forward-portした。OAuth、trial lifecycle、backup、deployment evidenceは混ぜていない。
 - implementation-owned registryをcanonical SHA-256
   `774fb22a3ce4d6225cef7c791dc006414cf2795c54de308d08db17ed0245343d`とConformance Kitで照合する。
-- 初期抽出ではrootに既存Hosted bin/exportのcompatibility facadeを残し、path-limited server CIを追加した。
+- rootには既存Hosted bin/exportを保つcompatibility facadeを残し、path-limited server CIを追加した。
 - external repository、package publication、deployment、Production activationは実行していない。
 
-### 3b. Root package decoupling — completed 2026-08-28
-
-- [Issue #37](https://github.com/mako10k/llmthink/issues/37)とADR-0020でHosted serverをservice-only境界とした。
-- rootから`@llmthink/server` runtime dependency、public re-export、`llmthink-hosted-mcp` bin、compatibility facadeを削除した。
-- root app build/test/typecheck/prepackはserver build/testを要求せず、root tarballは`dist/server/**`を含まない。
-- private server workspace、canonical contract、focused server CIは独立して維持する。
-- 公開済みroot surfaceの削除は次回root releaseのmajor変更としたが、version bump、release、publishは実行していない。
-
-### 3c. Hosted server remaining migrations
+### 3b. Hosted server remaining migrations
 
 - managed OAuth、account registry、browser onboarding、trial lifecycleを個別にforward-portする。
 - SQLite lifecycle control planeとaccepted Node SQLite driver decisionをfocused testで再現する。
 - backup/archive/restore implementationとoperations evidenceを分けて移管する。
 - `plans/oauth-implementation.pert`、`plans/trial-account-lifecycle.pert`、release/security/operations義務を後継ownerへ移す。
-- external repository visibility、service release owner、deployment手順を別途決定する。
+- private server packageのdistribution、external repository visibility、release ownerを決めるまでroot packageを公開しない。
 - ADR番号は後継repository内で一意性を再確認し、旧branch上の証拠参照を失わない形で正規化する。
 
 ### 4. VS Code

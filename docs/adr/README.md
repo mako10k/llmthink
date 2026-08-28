@@ -18,4 +18,3 @@ ADR の作成規則は [ADR ルール](../process/adr-rules.md) を参照する�
 | [0017](0017-core-workspace-and-test-boundary.md)                  | accepted | Coreを独立workspaceとテスト境界にする                            |
 | [0018](0018-versioned-contract-and-conformance-boundary.md)       | accepted | Versioned contractとsource-independent Conformance Kitを採用する |
 | [0019](0019-staged-server-workspace-and-live-contract-binding.md) | accepted | Hosted serverをworkspaceへ抽出しlive contractを結合する          |
-| [0020](0020-root-package-excludes-hosted-server.md)               | accepted | root packageからHosted server runtime surfaceを除外する          |

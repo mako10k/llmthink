@@ -4,10 +4,9 @@
 
 - DSL/parser/analyzer/DSLQLを`@llmthink/core` workspaceへ分離し、Core単体、下流contract、root application、全体回帰のテスト境界を独立
 - Hosted MCP v1 artifactとsource-independent Conformance Kitをprivate `@llmthink/contracts` workspaceへ分離
-- Hosted server実装と専用testをprivate `@llmthink/server` service workspaceへ分離
+- Hosted server実装と専用testをprivate `@llmthink/server` workspaceへ分離し、rootには既存bin/exportのcompatibility facadeだけを維持
 - canonical onboarding/deleteをserver-owned 11-tool registryへ結合し、contract hash、runtime surface、tenant/revision/idempotency境界をfocused testで検証
-- rootから`@llmthink/server`依存、Hosted server re-export、`llmthink-hosted-mcp` bin、compatibility facadeを削除し、次回root releaseのmajor変更として記録
-- root npm packから`dist/server/**`を明示除外し、workspace上のignored WIP artifactを含むHosted server codeが配布物へ混入しない境界を追加
+- root npm packからignoredな旧server build残骸を明示除外し、workspace上のWIP artifactが配布物へ混入しない境界を追加
 - LSPのformat、missing `based_on`、missing reference Code Actionを純粋な生成境界へ分離し、audit diagnosticの正確なspanへ紐付ける回帰テストを追加
 - LSP診断へ最低severity、category抑制、`semantic_hint` / `contradiction_candidate`のseverity overrideを追加し、設定変更時にopen documentを再診断
 - LSPのquery・statement role・resource・confidence補完を純粋な生成境界へ分離し、TextMate分類と文脈別completionの回帰テストを追加
