@@ -18,3 +18,7 @@ ADR の作成規則は [ADR ルール](../process/adr-rules.md) を参照する�
 | [0017](0017-core-workspace-and-test-boundary.md)                  | accepted | Coreを独立workspaceとテスト境界にする                            |
 | [0018](0018-versioned-contract-and-conformance-boundary.md)       | accepted | Versioned contractとsource-independent Conformance Kitを採用する |
 | [0019](0019-staged-server-workspace-and-live-contract-binding.md) | accepted | Hosted serverをworkspaceへ抽出しlive contractを結合する          |
+| [0021](0021-shared-hosted-contract-and-root-compatibility.md)     | proposed | Hosted共有契約とroot互換面を分けて段階移行する                   |
+
+ADR-0020はPR #38で追加されたが、decision ownerが確認していない配布・互換判断を
+acceptedとしていたためPR #39でrevertした。監査上の識別子を別判断へ再利用しない。
