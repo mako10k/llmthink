@@ -1,0 +1,44 @@
+name: contract-ci
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/**"
+      - "test/contracts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/contracts/**"
+      - "test/contracts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:contracts
+      - run: npm run typecheck:contracts
+      - name: Clone current plugin consumer
+        run: git clone --depth 1 https://github.com/mako10k/llmthink-chatgpt-plugin.git "$RUNNER_TEMP/llmthink-chatgpt-plugin"
+      - name: Run plugin-only consumer tests
+        run: npm --prefix "$RUNNER_TEMP/llmthink-chatgpt-plugin" ci && npm --prefix "$RUNNER_TEMP/llmthink-chatgpt-plugin" test
+      - name: Verify exact downstream surface
+        run: >-
+          node packages/contracts/dist/cli.js verify-candidate
+          --contract packages/contracts/contracts/hosted-mcp-v1.json
+          --candidate "$RUNNER_TEMP/llmthink-chatgpt-plugin/contracts/hosted-mcp-v1.json"
+          --exact

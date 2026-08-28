@@ -9,6 +9,7 @@ Coreの内部変更をHosted server、LSP、plugin、VSIXの全回帰検査か�
 | 境界                                                                            | 所有するもの                                                                                  | 所有しないもの                                 |
 | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `@llmthink/core`                                                                | DSL、parser、AST/model、analyzer、DSLQL、audit report、v1互換runtime config/embedding adapter | server、thought persistence、LSP、plugin、VSIX |
+| `@llmthink/contracts`                                                           | versioned contract artifact、hash manifest、Conformance Kit                                   | server実装、plugin実装、deployment             |
 | root `llmthink`                                                                 | CLI/MCP adapter、thought persistence、LSP、Hosted server、Core互換facade                      | Core内部実装、plugin配布物                     |
 | [`llmthink-chatgpt-plugin`](https://github.com/mako10k/llmthink-chatgpt-plugin) | manifest、Skills、assets、evals、plugin固有contract/secret検査                                | Core/server source、Hosted service運用         |
 | downstream contract                                                             | Core public export、正確version、DSLQL/help/VSIX共有surface                                   | Core内部関数、private file layout              |
@@ -17,12 +18,13 @@ Coreの内部変更をHosted server、LSP、plugin、VSIXの全回帰検査か�
 
 ## 変更別の検査
 
-| 変更                                              | 必須コマンド                                  | 通常は不要な検査                       |
-| ------------------------------------------------- | --------------------------------------------- | -------------------------------------- |
-| Core内部実装・Core test                           | `npm run typecheck:core`、`npm run test:core` | server、LSP、plugin、VSIX test         |
-| Core public export・package version・共有registry | 上記 + `npm run test:contract`                | 全server integration test              |
-| root application/adapter                          | `npm run test:app`                            | Core unit testの再実行（Core未変更時） |
-| release candidate・明示的全体回帰                 | `npm run test:all`、`npm run test:contract`   | なし                                   |
+| 変更                                              | 必須コマンド                                            | 通常は不要な検査                       |
+| ------------------------------------------------- | ------------------------------------------------------- | -------------------------------------- |
+| Core内部実装・Core test                           | `npm run typecheck:core`、`npm run test:core`           | server、LSP、plugin、VSIX test         |
+| Core public export・package version・共有registry | 上記 + `npm run test:contract`                          | 全server integration test              |
+| Contract artifact・schema・Conformance Kit        | `npm run test:contracts`、`npm run typecheck:contracts` | server実装、SQLite、OAuth、VSIX test   |
+| root application/adapter                          | `npm run test:app`                                      | Core unit testの再実行（Core未変更時） |
+| release candidate・明示的全体回帰                 | `npm run test:all`、`npm run test:contract`             | なし                                   |
 
 `test:contract`はCoreをbuildし、次を確認する。
 
@@ -40,10 +42,14 @@ Coreの内部変更をHosted server、LSP、plugin、VSIXの全回帰検査か�
 - releaseではCore tarballを先に凍結・公開し、そのreadback後にroot packageを公開する
 - repository分離までは同じrelease versionを共有する
 - public exportを変えずCore内部だけをrefactorする場合、Core単体検査を既定とする
+- `@llmthink/contracts`はprivate workspaceとして開始し、publication authorityなしにpublishしない
+- contract/schema/dependency pathの変更時だけdownstream compatibility workflowを実行する
 
 ## 現段階の制約
 
 runtime configとembedding provider adapterはv1 API互換性のためCoreに残る。この配置はI/O-free Coreの最終判断ではないが、具体的な利用要件なしに追加分割しない。
+
+Hosted MCP v1のtested surfaceは現行main adapterより先行している。current mainへonboarding/deleteを暗黙に追加せず、live producer bindingはserver分離で行う。
 
 ## Non-goals
 

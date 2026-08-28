@@ -25,7 +25,8 @@ REST API、Streamable HTTP MCP、stdio MCP を同一 Application Service の独�
 - MCP tool は `audit_thought`、`create_thought_draft`、`get_thought`、`list_thoughts`、`search_thoughts`、`finalize_thought`、`add_thought_reflection`、`get_thought_history` のように user goal 単位で定義する
 - pure audit と audit record 保存を異なる use case と tool に分ける
 - read、write、consequential write の annotation を tool metadata に持たせる
-- delete は初期 hosted MCP の公開 tool に含めない
+- delete は初期 hosted MCP の公開 tool に含めない。この初期方針後のtested trial surfaceは
+  onboarding/deleteを追加しており、versioned contract上の扱いはADR-0018で固定する
 - Skills は authoring、audit、reflection の手順を提供するが、認証、認可、tenant 分離、validation、confirmation を担わない
 - write と finalize の認可、revision、idempotency、confirmation token は server が検査する
 - 初期 HTTP stack は Node `http` と MCP SDK の Node 用 `StreamableHTTPServerTransport` とし、追加 framework を導入しない
@@ -57,3 +58,4 @@ REST API、Streamable HTTP MCP、stdio MCP を同一 Application Service の独�
 - Skills の有無で authorization result が変わった場合は security defect とする
 - pure audit が永続化または外部 I/O を行うよう変更される場合に再判断する
 - custom UI が必要な use case と model-readable result だけで足りる use case を分けて評価する
+- tested trial surfaceのcontract変更はADR-0018のartifact/hash/Conformance Kitで監査する
