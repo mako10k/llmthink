@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 
+export * from "./hosted-api.js";
+
 export type JsonObject = Readonly<Record<string, unknown>>;
 
 export const MCP_TOOL_EFFECTS = [

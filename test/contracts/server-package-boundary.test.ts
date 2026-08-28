@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+const contractsRoot = join(repoRoot, "packages", "contracts");
 const serverRoot = join(repoRoot, "packages", "server");
 
 interface PackageManifest {
@@ -44,9 +45,56 @@ test("root and server pin exact workspace dependency versions", async () => {
   assert.equal(server.name, "@llmthink/server");
   assert.equal(server.private, true);
   assert.equal(root.dependencies?.[server.name], server.version);
+  assert.equal(contracts.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[contracts.name], contracts.version);
   assert.ok(root.files?.includes("!dist/server/backup"));
+});
+
+test("Contracts owns shared Hosted API declarations and Server consumes them", async () => {
+  const hostedApi = await readFile(
+    join(contractsRoot, "src", "hosted-api.ts"),
+    "utf8",
+  );
+  const serverContracts = await readFile(
+    join(serverRoot, "src", "contracts.ts"),
+    "utf8",
+  );
+  assert.match(serverContracts, /from "@llmthink\/contracts"/);
+
+  for (const symbol of [
+    "LLMTHINK_SERVER_API_VERSION",
+    "LLMTHINK_SERVER_SCOPES",
+    "LLMTHINK_SERVER_ERROR_CODES",
+    "CommandIdentity",
+    "RevisionPrecondition",
+    "ThoughtRef",
+    "ServerThoughtSnapshot",
+    "CreateThoughtCommand",
+    "SaveDraftCommand",
+    "RecordAuditCommand",
+    "FinalizeThoughtCommand",
+    "AddReflectionCommand",
+    "DeleteThoughtCommand",
+    "ThoughtDeletionReceipt",
+    "ThoughtListQuery",
+    "ThoughtSearchQuery",
+    "ThoughtPage",
+  ]) {
+    const declaration = new RegExp(
+      `export (?:const|interface|type) ${symbol}\\b`,
+    );
+    assert.match(
+      hostedApi,
+      declaration,
+      `${symbol} must be owned by Contracts`,
+    );
+    assert.doesNotMatch(
+      serverContracts,
+      declaration,
+      `${symbol} must not be redeclared by Server`,
+    );
+  }
 });
 
 test("server source cannot import root application or adapter implementation", async () => {
@@ -77,4 +125,15 @@ test("root keeps only the hosted-main compatibility facade", async () => {
   const rootIndex = await readFile(join(repoRoot, "src", "index.ts"), "utf8");
   assert.match(rootIndex, /from "@llmthink\/server"/);
   assert.doesNotMatch(rootIndex, /from "\.\/server\//);
+
+  const allowed = new Set(["index.ts", "server/hosted-main.ts"]);
+  for (const file of await typescriptFiles(join(repoRoot, "src"))) {
+    const relativePath = relative(join(repoRoot, "src"), file);
+    if (allowed.has(relativePath)) continue;
+    assert.doesNotMatch(
+      await readFile(file, "utf8"),
+      /@llmthink\/server/,
+      `${relativePath} imports the Hosted server outside compatibility code`,
+    );
+  }
 });

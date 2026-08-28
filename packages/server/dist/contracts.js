@@ -1,28 +1,8 @@
-export const LLMTHINK_SERVER_API_VERSION = "v1";
+export { LLMTHINK_SERVER_API_VERSION, LLMTHINK_SERVER_ERROR_CODES, LLMTHINK_SERVER_SCOPES, } from "@llmthink/contracts";
 export const LLMTHINK_SERVER_FILE_SCHEMA_VERSION = 1;
 export const DEFAULT_IDEMPOTENCY_RETENTION_SECONDS = 24 * 60 * 60;
 export const MIN_IDEMPOTENCY_RETENTION_SECONDS = 60 * 60;
 export const MAX_IDEMPOTENCY_RETENTION_SECONDS = 7 * 24 * 60 * 60;
-export const LLMTHINK_SERVER_SCOPES = [
-    "thought:read",
-    "thought:write",
-    "thought:finalize",
-    "audit:run",
-];
-export const LLMTHINK_SERVER_ERROR_CODES = [
-    "invalid_argument",
-    "unauthenticated",
-    "forbidden",
-    "not_found",
-    "revision_conflict",
-    "idempotency_conflict",
-    "confirmation_required",
-    "payload_too_large",
-    "rate_limited",
-    "storage_corrupt",
-    "unsupported_schema_version",
-    "internal",
-];
 const RETRYABLE_ERROR_CODES = new Set([
     "rate_limited",
     "internal",
