@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "contract_id": "llmthink-hosted-mcp",
+  "contract_version": "1",
+  "source": {
+    "repository": "https://github.com/mako10k/llmthink",
+    "revision": "c205a7d8ff371f5ce36f4fe558f20f8b7d7b2aa9"
+  },
+  "surfaces": {
+    "onboarding": [
+      {
+        "name": "begin_llmthink_onboarding",
+        "effect": "external_write",
+        "required": []
+      }
+    ],
+    "admitted": [
+      {
+        "name": "llmthink_help",
+        "effect": "read_only",
+        "required": []
+      },
+      {
+        "name": "audit_thought",
+        "effect": "read_only",
+        "required": ["text"]
+      },
+      {
+        "name": "create_thought_draft",
+        "effect": "external_write",
+        "required": [
+          "thought_id",
+          "draft_text",
+          "idempotency_key",
+          "request_digest"
+        ]
+      },
+      {
+        "name": "get_thought",
+        "effect": "read_only",
+        "required": ["thought_id"]
+      },
+      {
+        "name": "list_thoughts",
+        "effect": "read_only",
+        "required": []
+      },
+      {
+        "name": "search_thoughts",
+        "effect": "read_only",
+        "required": ["query"]
+      },
+      {
+        "name": "finalize_thought",
+        "effect": "consequential_external_write",
+        "required": [
+          "thought_id",
+          "expected_revision",
+          "final_text",
+          "idempotency_key",
+          "request_digest"
+        ]
+      },
+      {
+        "name": "add_thought_reflection",
+        "effect": "external_write",
+        "required": [
+          "thought_id",
+          "expected_revision",
+          "kind",
+          "text",
+          "idempotency_key",
+          "request_digest"
+        ]
+      },
+      {
+        "name": "delete_thought",
+        "effect": "consequential_external_write",
+        "required": [
+          "thought_id",
+          "expected_revision",
+          "idempotency_key",
+          "request_digest"
+        ]
+      },
+      {
+        "name": "get_thought_history",
+        "effect": "read_only",
+        "required": ["thought_id"]
+      }
+    ]
+  }
+}

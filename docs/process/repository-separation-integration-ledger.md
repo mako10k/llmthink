@@ -71,11 +71,19 @@ Coverage count: `4 + 4 + 4 + 8 + 12 + 10 + 5 + 4 + 1 + 9 + 1 + 1 + 2 + 1 = 66`.
 - repositoryはpublicだが、service admission、Production activation、deployment、general
   registration、universal-directory publicationは実行も認可もしていない。
 
-### 2. Contract artifact and Conformance Kit
+### 2. Contract artifact and Conformance Kit — completed 2026-08-28
 
-- MCP input/output/error/scope schemaとcompatibility hashをserver内部実装から分離する。
-- downstreamがserver sourceなしで検証できるConformance Kitを提供する。
-- contract/schemaまたはdependency version変更時だけdownstream compatibility testを起動する。
+- private workspace `@llmthink/contracts@1.0.0`を同一repositoryに作り、contract専用repositoryや
+  package publicationを増やしていない。
+- pluginとbyte-equivalentなHosted MCP v1 surface artifactをSHA-256
+  `774fb22a3ce4d6225cef7c791dc006414cf2795c54de308d08db17ed0245343d`で固定した。
+- input/output/error/scope/effect schemaを別artifactへ分離し、manifestで各hashとtested
+  producer `df8e683`、retained source `c205a7d`、consumer `b480c84`を記録した。
+- Conformance Kitはserver/plugin sourceをimportせず、artifact、producer descriptor、consumer
+  snapshotを検証する。
+- contract/schema/dependency pathだけでfocused testとdownstream plugin compatibilityを起動する。
+- current main Hosted MCP adapterはtested surfaceより古いため挙動を変更せず、live producer bindingを
+  Issue #29のserver分離へ移管した。実施記録は[Issue #33](https://github.com/mako10k/llmthink/issues/33)で管理する。
 
 ### 3. Hosted server
 

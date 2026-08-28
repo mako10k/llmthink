@@ -1,0 +1,498 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "contract_id": "llmthink-hosted-mcp",
+  "contract_version": "1",
+  "scopes": ["thought:read", "thought:write", "thought:finalize", "audit:run"],
+  "error_codes": [
+    "invalid_argument",
+    "unauthenticated",
+    "forbidden",
+    "not_found",
+    "revision_conflict",
+    "idempotency_conflict",
+    "confirmation_required",
+    "payload_too_large",
+    "rate_limited",
+    "storage_corrupt",
+    "unsupported_schema_version",
+    "internal"
+  ],
+  "$defs": {
+    "thought_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[\\x21-\\x7e]{1,200}$"
+    },
+    "request_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "thought_snapshot": {
+      "type": "object",
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "thought_id",
+        "revision",
+        "status",
+        "created_at",
+        "updated_at",
+        "history",
+        "reflections"
+      ],
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "workspace_id": { "type": "string" },
+        "thought_id": { "$ref": "#/$defs/thought_id" },
+        "revision": { "$ref": "#/$defs/expected_revision" },
+        "status": { "enum": ["draft", "finalized"] },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "draft_text": { "type": ["string", "null"] },
+        "final_text": { "type": ["string", "null"] },
+        "latest_audit": {},
+        "history": { "type": "array" },
+        "reflections": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "error_result": {
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "retryable", "navigation"],
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid_argument",
+                "unauthenticated",
+                "forbidden",
+                "not_found",
+                "revision_conflict",
+                "idempotency_conflict",
+                "confirmation_required",
+                "payload_too_large",
+                "rate_limited",
+                "storage_corrupt",
+                "unsupported_schema_version",
+                "internal"
+              ]
+            },
+            "message": { "type": "string" },
+            "retryable": { "type": "boolean" },
+            "details": { "type": "object" },
+            "navigation": { "type": "object" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "tools": {
+    "begin_llmthink_onboarding": {
+      "surface": "onboarding",
+      "effect": "external_write",
+      "required_scopes": [],
+      "input_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {},
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "onboarding_url",
+          "expires_in_seconds",
+          "agreement_recorded"
+        ],
+        "properties": {
+          "onboarding_url": { "type": "string", "format": "uri" },
+          "expires_in_seconds": { "type": "integer", "minimum": 1 },
+          "agreement_recorded": { "const": false }
+        },
+        "additionalProperties": false
+      },
+      "error_codes": [
+        "unauthenticated",
+        "forbidden",
+        "payload_too_large",
+        "rate_limited",
+        "internal"
+      ]
+    },
+    "llmthink_help": {
+      "surface": "admitted",
+      "effect": "read_only",
+      "required_scopes": [],
+      "input_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "topic": {
+            "enum": ["overview", "tools", "errors", "dsl", "storage", "auth"],
+            "default": "overview"
+          },
+          "tool": { "type": "string" },
+          "error_code": { "type": "string" },
+          "dsl_topic": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": { "type": "object" },
+      "error_codes": [
+        "unauthenticated",
+        "payload_too_large",
+        "rate_limited",
+        "internal"
+      ]
+    },
+    "audit_thought": {
+      "surface": "admitted",
+      "effect": "read_only",
+      "required_scopes": ["audit:run"],
+      "input_schema": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "document_id": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["persisted", "report"],
+        "properties": {
+          "persisted": { "const": false },
+          "report": { "type": "object" }
+        },
+        "additionalProperties": false
+      },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "payload_too_large",
+        "rate_limited",
+        "internal"
+      ]
+    },
+    "create_thought_draft": {
+      "surface": "admitted",
+      "effect": "external_write",
+      "required_scopes": ["thought:write"],
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "thought_id",
+          "draft_text",
+          "idempotency_key",
+          "request_digest"
+        ],
+        "properties": {
+          "thought_id": { "$ref": "#/$defs/thought_id" },
+          "draft_text": { "type": "string" },
+          "idempotency_key": { "$ref": "#/$defs/idempotency_key" },
+          "request_digest": { "$ref": "#/$defs/request_digest" }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": { "$ref": "#/$defs/thought_snapshot" },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "revision_conflict",
+        "idempotency_conflict",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "get_thought": {
+      "surface": "admitted",
+      "effect": "read_only",
+      "required_scopes": ["thought:read"],
+      "input_schema": {
+        "type": "object",
+        "required": ["thought_id"],
+        "properties": { "thought_id": { "$ref": "#/$defs/thought_id" } },
+        "additionalProperties": false
+      },
+      "output_schema": { "$ref": "#/$defs/thought_snapshot" },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "list_thoughts": {
+      "surface": "admitted",
+      "effect": "read_only",
+      "required_scopes": ["thought:read"],
+      "input_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "cursor": { "type": "string" },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "status": { "enum": ["draft", "finalized"] }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/thought_snapshot" }
+          },
+          "next_cursor": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "search_thoughts": {
+      "surface": "admitted",
+      "effect": "read_only",
+      "required_scopes": ["thought:read"],
+      "input_schema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string", "minLength": 1 },
+          "cursor": { "type": "string" },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "include_reflections": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/thought_snapshot" }
+          },
+          "next_cursor": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "finalize_thought": {
+      "surface": "admitted",
+      "effect": "consequential_external_write",
+      "required_scopes": ["thought:finalize"],
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "thought_id",
+          "expected_revision",
+          "final_text",
+          "idempotency_key",
+          "request_digest"
+        ],
+        "properties": {
+          "thought_id": { "$ref": "#/$defs/thought_id" },
+          "expected_revision": { "$ref": "#/$defs/expected_revision" },
+          "final_text": { "type": "string" },
+          "confirmation_token": { "type": "string" },
+          "idempotency_key": { "$ref": "#/$defs/idempotency_key" },
+          "request_digest": { "$ref": "#/$defs/request_digest" }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": { "$ref": "#/$defs/thought_snapshot" },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "revision_conflict",
+        "idempotency_conflict",
+        "confirmation_required",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "add_thought_reflection": {
+      "surface": "admitted",
+      "effect": "external_write",
+      "required_scopes": ["thought:write"],
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "thought_id",
+          "expected_revision",
+          "kind",
+          "text",
+          "idempotency_key",
+          "request_digest"
+        ],
+        "properties": {
+          "thought_id": { "$ref": "#/$defs/thought_id" },
+          "expected_revision": { "$ref": "#/$defs/expected_revision" },
+          "kind": {
+            "enum": [
+              "note",
+              "concern",
+              "decision",
+              "follow_up",
+              "audit_response"
+            ]
+          },
+          "text": { "type": "string", "minLength": 1 },
+          "idempotency_key": { "$ref": "#/$defs/idempotency_key" },
+          "request_digest": { "$ref": "#/$defs/request_digest" }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": { "$ref": "#/$defs/thought_snapshot" },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "revision_conflict",
+        "idempotency_conflict",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "delete_thought": {
+      "surface": "admitted",
+      "effect": "consequential_external_write",
+      "required_scopes": ["thought:write"],
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "thought_id",
+          "expected_revision",
+          "idempotency_key",
+          "request_digest"
+        ],
+        "properties": {
+          "thought_id": { "$ref": "#/$defs/thought_id" },
+          "expected_revision": { "$ref": "#/$defs/expected_revision" },
+          "idempotency_key": { "$ref": "#/$defs/idempotency_key" },
+          "request_digest": { "$ref": "#/$defs/request_digest" }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["thoughtId", "deleted", "deletedRevision"],
+        "properties": {
+          "thoughtId": { "$ref": "#/$defs/thought_id" },
+          "deleted": { "const": true },
+          "deletedRevision": { "$ref": "#/$defs/expected_revision" }
+        },
+        "additionalProperties": false
+      },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "revision_conflict",
+        "idempotency_conflict",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    },
+    "get_thought_history": {
+      "surface": "admitted",
+      "effect": "read_only",
+      "required_scopes": ["thought:read"],
+      "input_schema": {
+        "type": "object",
+        "required": ["thought_id"],
+        "properties": { "thought_id": { "$ref": "#/$defs/thought_id" } },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["events"],
+        "properties": { "events": { "type": "array" } },
+        "additionalProperties": false
+      },
+      "error_codes": [
+        "invalid_argument",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "payload_too_large",
+        "rate_limited",
+        "storage_corrupt",
+        "unsupported_schema_version",
+        "internal"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "package_name": "@llmthink/contracts",
+  "package_version": "1.0.0",
+  "contract_id": "llmthink-hosted-mcp",
+  "contract_version": "1",
+  "artifacts": [
+    {
+      "role": "surface",
+      "path": "hosted-mcp-v1.json",
+      "sha256": "774fb22a3ce4d6225cef7c791dc006414cf2795c54de308d08db17ed0245343d"
+    },
+    {
+      "role": "schemas",
+      "path": "hosted-mcp-v1.schemas.json",
+      "sha256": "c33ecf8e1a65eca2556b32c42a15aa1ba2cdc700abe5f5f1fef8b8262ac4b40f"
+    }
+  ],
+  "provenance": {
+    "tested_producer_revision": "df8e6830dd985a3786c77bc1f1f99922e5144947",
+    "retained_source_revision": "c205a7d8ff371f5ce36f4fe558f20f8b7d7b2aa9",
+    "tested_consumer_repository": "https://github.com/mako10k/llmthink-chatgpt-plugin",
+    "tested_consumer_revision": "b480c8444c6360ce8c3af785110e9d5fa03f21a0"
+  }
+}
