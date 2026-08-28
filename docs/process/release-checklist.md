@@ -7,6 +7,12 @@
 
 対象は Core npm package、root npm package、MCP server、VSIX extension、README、CHANGELOG、Git tag、GitHub Release とする。
 
+### Current publication hold
+
+`@llmthink/server@1.0.0`は分離検証中のprivate workspaceであり、current unreleased root sourceはこのpackageへ実行時依存する。この状態ではroot tarballをregistryから完全にinstallできないため、次回releaseのGate 1を開始しない。
+
+release作業の前に、accepted ADRでserver distribution方式を決定し、公開対象、version同期規則、tarball digest、公開順、readbackを本checklistへ追加する。workspace抽出だけを根拠に`@llmthink/server`をpublishしたり、root releaseを進めたりしない。
+
 release ごとに次の値を一度だけ確定し、作業記録へ残す。
 
 - `RELEASE_VERSION`: `X.Y.Z`

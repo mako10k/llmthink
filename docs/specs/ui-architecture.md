@@ -141,11 +141,21 @@ VSIX は、編集中の DSL ドキュメントを即座に監査するための�
 - src/mcp/server.ts
 - src/lsp
 - src/thought
-- src/server
+- src/server/hosted-main.ts
 
-root applicationは`@llmthink/core`の公開entrypointだけを利用する。
+root applicationは`@llmthink/core`の公開entrypointと`@llmthink/server`のcompatibility entrypointを利用する。
 
-### 7.3 VSIX extension package
+### 7.3 Hosted server workspace
+
+- packages/server/src/application-service.ts
+- packages/server/src/file-repository.ts
+- packages/server/src/hosted-mcp.ts
+- packages/server/src/http.ts
+- packages/server/src/hosted-mcp-surface.ts
+
+Hosted serverは`@llmthink/core`と`@llmthink/contracts`の正確versionへ依存し、root application implementationをimportしない。
+
+### 7.4 VSIX extension package
 
 - vscode-extension/package.json
 - vscode-extension/src/extension.ts

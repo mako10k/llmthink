@@ -1,0 +1,48 @@
+name: server-ci
+
+on:
+  pull_request:
+    paths:
+      - "packages/server/**"
+      - "packages/contracts/**"
+      - "src/index.ts"
+      - "src/server/hosted-main.ts"
+      - "test/server/**"
+      - "test/contracts/server-package-boundary.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/server.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/server/**"
+      - "packages/contracts/**"
+      - "src/index.ts"
+      - "src/server/hosted-main.ts"
+      - "test/server/**"
+      - "test/contracts/server-package-boundary.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/server.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:server
+      - run: npm run typecheck:server
+      - run: npm run build:server
+      - name: Verify root compatibility boundary
+        run: >-
+          node --import tsx --test
+          test/server/local-interface-compat.test.ts
+          test/contracts/server-package-boundary.test.ts

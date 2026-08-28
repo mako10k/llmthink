@@ -3,6 +3,9 @@
     "packages/core": {
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "packages/server": {
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
     "vscode-extension": {
       "project": ["src/**/*.ts", "*.mjs"]
     }

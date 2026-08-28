@@ -54,12 +54,13 @@ export {
   LlmthinkServerError,
   MAX_IDEMPOTENCY_RETENTION_SECONDS,
   MIN_IDEMPOTENCY_RETENTION_SECONDS,
-} from "./server/contracts.js";
+} from "@llmthink/server";
 export type {
   AddReflectionCommand,
   AuditTextCommand,
   CommandIdentity,
   CreateThoughtCommand,
+  DeleteThoughtCommand,
   FinalizeThoughtCommand,
   LlmthinkServerScope,
   NewThoughtRevision,
@@ -73,41 +74,47 @@ export type {
   ServerThoughtSnapshot,
   StoredIdempotencyRecord,
   ThoughtListQuery,
+  ThoughtDeletionReceipt,
   ThoughtPage,
   ThoughtRef,
   ThoughtRepository,
   ThoughtSearchQuery,
-} from "./server/contracts.js";
+} from "@llmthink/server";
 export {
   assertServerBindPolicy,
   isExplicitLoopbackHostname,
   LLMTHINK_SERVER_HTTP_STACK,
-} from "./server/policy.js";
-export type { ServerBindPolicyInput } from "./server/policy.js";
-export { ServerFileThoughtRepository } from "./server/file-repository.js";
-export type { ServerFileThoughtRepositoryOptions } from "./server/file-repository.js";
-export { LlmthinkApplicationService } from "./server/application-service.js";
+} from "@llmthink/server";
+export type { ServerBindPolicyInput } from "@llmthink/server";
+export { ServerFileThoughtRepository } from "@llmthink/server";
+export type { ServerFileThoughtRepositoryOptions } from "@llmthink/server";
+export { LlmthinkApplicationService } from "@llmthink/server";
 export type {
   LlmthinkApplicationServiceOptions,
   LlmthinkAuditRunner,
-} from "./server/application-service.js";
+} from "@llmthink/server";
 export {
   createLlmthinkHttpHandler,
   createLlmthinkHttpServer,
   DEFAULT_HTTP_REQUEST_LIMIT_BYTES,
   DEFAULT_HTTP_RESPONSE_LIMIT_BYTES,
-} from "./server/http.js";
+} from "@llmthink/server";
 export {
   createLlmthinkHostedMcpHandler,
   createLlmthinkHostedMcpServer,
   DEFAULT_MCP_REQUEST_LIMIT_BYTES,
   DEFAULT_MCP_TEXT_LIMIT_BYTES,
+  hostedMcpProducerDescriptor,
+  hostedMcpProducerSurface,
+  HOSTED_MCP_TOOL_NAMES,
   type LlmthinkHostedMcpHandlerOptions,
-} from "./server/hosted-mcp.js";
+  type LlmthinkOnboardingMcpOptions,
+  type LlmthinkOnboardingPrincipal,
+} from "@llmthink/server";
 export type {
   LlmthinkHttpAuthenticator,
   LlmthinkHttpHandlerOptions,
-} from "./server/http.js";
+} from "@llmthink/server";
 export {
   assertVerifiedRequestContext,
   BoundedLlmthinkSecurityMetrics,
@@ -130,4 +137,4 @@ export {
   type LlmthinkSecurityObservation,
   type LlmthinkSecurityObserver,
   type VerifiedBearerIdentity,
-} from "./server/security.js";
+} from "@llmthink/server";

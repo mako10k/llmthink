@@ -8,6 +8,8 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "packages/core/dist/**",
+      "packages/contracts/dist/**",
+      "packages/server/dist/**",
       "vscode-extension/dist/**",
       "node_modules/**",
       ".llmthink/**",
@@ -23,6 +25,8 @@ export default tseslint.config(
   {
     files: [
       "packages/core/src/**/*.ts",
+      "packages/server/src/**/*.ts",
+      "packages/server/test/**/*.ts",
       "src/**/*.ts",
       "vscode-extension/src/**/*.ts",
       "*.js",
