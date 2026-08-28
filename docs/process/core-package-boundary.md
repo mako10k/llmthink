@@ -50,3 +50,5 @@ runtime configとembedding provider adapterはv1 API互換性のためCoreに残
 - Core変更時に全体E2Eを廃止すること
 - workspace分離だけでplugin/server/VSIXのrepository分割を完了扱いにすること
 - repository分割、package publish、deployment、Production activationを暗黙に行うこと
+
+後続repository分離と長期WIPの移管条件は、[Repository Separation Integration Ledger](repository-separation-integration-ledger.md)で管理する。
