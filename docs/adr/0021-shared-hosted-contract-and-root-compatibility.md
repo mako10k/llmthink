@@ -2,7 +2,7 @@
 
 ## Status
 
-proposed
+accepted
 
 ## Date
 
@@ -10,7 +10,7 @@ proposed
 
 ## Decision Owner
 
-llmthink decision owner (pending)
+llmthink decision owner
 
 ## Context
 
@@ -26,7 +26,7 @@ llmthink decision owner (pending)
 
 ## Decision
 
-次の段階実装を提案する。owner acceptanceまでは実装しない。
+次の段階実装を採用する。
 
 ### Stage A: 共有契約の正本を外出しする
 
@@ -49,13 +49,13 @@ llmthink decision owner (pending)
 - root runtime dependencyを最終的に除去する前に、server implementationのinstall経路と公開済みroot surfaceの移行経路をownerが選択する
 - package publish、repository作成、release、deployment、Production activationはこのADRの実装authorityに含めない
 
-## Owner Decision Requested
+## Accepted Scope
 
-Stage A/Bを次の実装単位として採用してよいか。
+2026-08-28にdecision ownerはStage A/Bを次の実装単位として採用した。
 
-- 採用する場合、共有Hosted契約をContractsへ移し、root互換facade/binは維持したままfocused contract/server/root compatibility testまで実装する
-- 採用しない場合、共有契約の別ownerを指定する
+- 共有Hosted契約をContractsへ移し、root互換facade/binを維持したままfocused contract/server/root compatibility testまで実装する
 - server配布方式とroot互換面の最終廃止は、この判断へ混ぜず後続判断とする
+- Stage C、package publish、release、deployment、Production activationは認可しない
 
 ## Alternatives Considered
 
@@ -120,15 +120,15 @@ Neutral:
 - Claim `C-SHARED-HOSTED-003`: contractはlive producerへ接続されなければ完成扱いにできない
   - Evidence `E-SHARED-HOSTED-005`: PR #36はonboarding/deleteを含む11-tool registryをruntimeとConformance Kitへ接続した
 - Action `A-SHARED-HOSTED-001` (`C-SHARED-HOSTED-001`): shared Hosted API sourceをContractsへ抽出する
-  - Status: pending owner acceptance
+  - Status: authorized; implementation pending
 - Action `A-SHARED-HOSTED-002` (`C-SHARED-HOSTED-002`): root compatibility facade/binとrelease holdを維持する
-  - Status: proposed for Stage A/B
+  - Status: accepted for Stage A/B
 - Action `A-SHARED-HOSTED-003` (`C-SHARED-HOSTED-003`): focused contract/server/root compatibility gateを実行する
-  - Status: pending owner acceptance
+  - Status: authorized; implementation pending
 
 ## Follow-ups
 
-- Stage A/B acceptance後にshared symbol単位の移動diffとtest matrixを固定する
+- Stage A/B implementationでshared symbol単位の移動diffとtest matrixを固定する
 - server distributionとroot compatibility終了条件を別ADRで決定する
 - release candidateを作る前にCore/Contracts/Serverのpublication順、integrity、readbackを決定する
 
