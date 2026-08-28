@@ -99,7 +99,17 @@ Coverage count: `4 + 4 + 4 + 8 + 12 + 10 + 5 + 4 + 1 + 9 + 1 + 1 + 2 + 1 = 66`.
 - rootには既存Hosted bin/exportを保つcompatibility facadeを残し、path-limited server CIを追加した。
 - external repository、package publication、deployment、Production activationは実行していない。
 
-### 3b. Hosted server remaining migrations
+### 3b. Shared Hosted API ownership — completed 2026-08-28
+
+- Hosted API version、scope、error code、serializable command/query/result型を
+  `@llmthink/contracts`へ移し、Serverをそのconsumerへ変更した。
+- verified request context、repository/persistence、validator、security、transport、live producer
+  registryはServerに残した。
+- root Hosted exportと`llmthink-hosted-mcp` binのcompatibility facadeを維持し、private Server
+  dependencyとroot publication holdを解除していない。
+- ownership、exact dependency、11-tool producer、root compatibilityをfocused gateで検証する。
+
+### 3c. Hosted server remaining migrations
 
 - managed OAuth、account registry、browser onboarding、trial lifecycleを個別にforward-portする。
 - SQLite lifecycle control planeとaccepted Node SQLite driver decisionをfocused testで再現する。

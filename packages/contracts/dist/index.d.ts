@@ -1,3 +1,4 @@
+export * from "./hosted-api.js";
 export type JsonObject = Readonly<Record<string, unknown>>;
 export declare const MCP_TOOL_EFFECTS: readonly ["read_only", "external_write", "consequential_external_write"];
 export type McpToolEffect = (typeof MCP_TOOL_EFFECTS)[number];

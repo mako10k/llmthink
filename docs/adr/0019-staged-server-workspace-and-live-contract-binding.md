@@ -28,7 +28,7 @@ llmthink decision owner
 
 - server workspaceは`@llmthink/core@1.3.0`と`@llmthink/contracts@1.0.0`へ正確versionで依存する
 - server sourceはroot application、local thought store、stdio MCP、LSP、plugin、VS Code implementationをimportしない
-- hosted thought lifecycleに必要なsnapshot、event、reflection型はserver contractが所有し、root local store型をauthorityにしない
+- hosted thought lifecycleのserializable snapshot、event、reflection型はADR-0021によりContractsが所有し、verified request context、repository port、persistence型はServerが所有する。root local store型をauthorityにしない
 - current root server実装はworkspaceへ移し、rootには既存binとpublic exportを保つ薄いcompatibility facadeだけを残す
 - retained WIPから今回forward-portする機能は、canonical contractのlive producerに必要なtenant/revision-bound deleteとMCP onboarding bridgeに限定する
 - implementation-owned tool registryからproducer surfaceを生成し、canonical artifact SHA-256 `774fb22a3ce4d6225cef7c791dc006414cf2795c54de308d08db17ed0245343d`のsurfaceとConformance Kitで照合する
@@ -62,7 +62,7 @@ Bad / Risk:
 
 - private workspace期間はroot packageの次回publication前にserver distribution方式を決める必要がある
 - root compatibility facadeは最終external splitまで一時的に残る
-- server-local thought型とroot local thought型は構造が似るため、意味境界を文書とtestで維持する必要がある
+- Hosted shared API型とroot local thought型は構造が似るため、意味境界を文書とtestで維持する必要がある
 - onboarding bridgeはfull browser/account lifecycleを含まず、後続migrationなしではtrial onboarding全体を提供しない
 
 Neutral:
@@ -73,6 +73,7 @@ Neutral:
 ## Implementation Notes
 
 - workspace: `packages/server/`
+- shared Hosted API: `packages/contracts/src/hosted-api.ts` (ADR-0021)
 - root compatibility facade: `src/server/hosted-main.ts` and `src/index.ts`
 - implementation surface registry: `packages/server/src/hosted-mcp-surface.ts`
 - focused tests: `packages/server/test/`

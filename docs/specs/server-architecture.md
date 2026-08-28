@@ -48,6 +48,10 @@ CLI   VSIX   stdio MCP      REST /api/v1   HTTP MCP /mcp
 
 ## 3. Application contracts
 
+serializableなHosted API version、scope、error code、command/query/result型は
+`@llmthink/contracts`が所有する。verified `RequestContext`、repository port、persistence、
+validator、security、transport実装は`@llmthink/server`が所有する。
+
 初期 use case は次とする。
 
 ### Query

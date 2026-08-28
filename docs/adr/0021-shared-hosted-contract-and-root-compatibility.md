@@ -120,15 +120,14 @@ Neutral:
 - Claim `C-SHARED-HOSTED-003`: contractはlive producerへ接続されなければ完成扱いにできない
   - Evidence `E-SHARED-HOSTED-005`: PR #36はonboarding/deleteを含む11-tool registryをruntimeとConformance Kitへ接続した
 - Action `A-SHARED-HOSTED-001` (`C-SHARED-HOSTED-001`): shared Hosted API sourceをContractsへ抽出する
-  - Status: authorized; implementation pending
+  - Status: implemented by Issue #37
 - Action `A-SHARED-HOSTED-002` (`C-SHARED-HOSTED-002`): root compatibility facade/binとrelease holdを維持する
-  - Status: accepted for Stage A/B
+  - Status: implemented by Issue #37
 - Action `A-SHARED-HOSTED-003` (`C-SHARED-HOSTED-003`): focused contract/server/root compatibility gateを実行する
-  - Status: authorized; implementation pending
+  - Status: implemented by Issue #37
 
 ## Follow-ups
 
-- Stage A/B implementationでshared symbol単位の移動diffとtest matrixを固定する
 - server distributionとroot compatibility終了条件を別ADRで決定する
 - release candidateを作る前にCore/Contracts/Serverのpublication順、integrity、readbackを決定する
 
