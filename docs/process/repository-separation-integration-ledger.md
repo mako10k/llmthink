@@ -112,11 +112,24 @@ Coverage count: `4 + 4 + 4 + 8 + 12 + 10 + 5 + 4 + 1 + 9 + 1 + 1 + 2 + 1 = 66`.
 ### 3c. Hosted server remaining migrations
 
 - managed OAuth、account registry、browser onboarding、trial lifecycleを個別にforward-portする。
-- SQLite lifecycle control planeとaccepted Node SQLite driver decisionをfocused testで再現する。
+- SQLite lifecycle control planeとaccepted Node SQLite driver decisionはADR-0022の実装候補として
+  `@llmthink/server`へforward-portし、Node.js v24.19.0でfocused testを再現した。mergeとremote
+  readbackまではcompletedとみなさない。
 - backup/archive/restore implementationとoperations evidenceを分けて移管する。
 - `plans/oauth-implementation.pert`、`plans/trial-account-lifecycle.pert`、release/security/operations義務を後継ownerへ移す。
 - private server packageのdistribution、external repository visibility、release ownerを決めるまでroot packageを公開しない。
 - ADR番号は後継repository内で一意性を再確認し、旧branch上の証拠参照を失わない形で正規化する。
+
+#### 3c-1. SQLite lifecycle control plane — implementation candidate 2026-09-07
+
+- retained WIP `c205a7d`のNode SQLite判断をADR-0022へ一意な番号で再記録した。
+- lifecycle schema、terms/account/tenant/workspace/scope/recovery/outbox、archive receiptとretention
+  transition metadataをServer workspaceへ適応した。
+- external identityとresolved lifecycle account contextはtransport-neutral interfaceとし、SQLite層は
+  OAuth/JWT、HTTP request、root application implementationをimportしない。
+- `BEGIN IMMEDIATE`、bounded busy timeout、blind retryなし、fail-closed rollbackをfocused testで固定した。
+- managed OAuth、browser onboarding/account registry、HTTP 503 adapter、backup/archive/restore実装、
+  deployment、Production activationはこのmigrationに含めない。
 
 ### 4. VS Code
 

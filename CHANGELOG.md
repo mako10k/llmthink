@@ -6,6 +6,7 @@
 - Hosted MCP v1 artifactとsource-independent Conformance Kitをprivate `@llmthink/contracts` workspaceへ分離
 - Hosted APIのversion、scope、error code、serializable command/query/result型をContractsの正本へ移し、Serverをconsumerへ変更
 - Hosted server実装と専用testをprivate `@llmthink/server` workspaceへ分離し、rootには既存bin/exportのcompatibility facadeだけを維持
+- Node.js 24の`node:sqlite`を使うlifecycle control planeをServer workspaceへ移し、`BEGIN IMMEDIATE`、bounded busy timeout、blind retryなし、競合時のfail-closed rollbackをfocused testで固定
 - canonical onboarding/deleteをserver-owned 11-tool registryへ結合し、contract hash、runtime surface、tenant/revision/idempotency境界をfocused testで検証
 - root npm packからignoredな旧server build残骸を明示除外し、workspace上のWIP artifactが配布物へ混入しない境界を追加
 - LSPのformat、missing `based_on`、missing reference Code Actionを純粋な生成境界へ分離し、audit diagnosticの正確なspanへ紐付ける回帰テストを追加

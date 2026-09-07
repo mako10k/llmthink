@@ -103,13 +103,13 @@ Neutral:
   - Status: implemented by Issue #35
 - Action `A-SERVER-002` (`C-SERVER-002`): onboarding/deleteとimplementation surface registryをforward-portしてConformance Kitへ接続する
   - Status: implemented by Issue #35
-- Action `A-SERVER-003` (`C-SERVER-003`): OAuth、SQLite、backup/operationsを個別migrationへ残す
-  - Status: pending under Issue #29
+- Action `A-SERVER-003` (`C-SERVER-003`): OAuth、SQLite、backup/operationsを個別migrationとして扱う
+  - Status: SQLite lifecycleはADR-0022のbounded migrationで実装。OAuthとbackup/operationsはIssue #29でpending
 
 ## Follow-ups
 
 - managed OAuth、browser onboarding、account registryをserver workspaceへforward-portする
-- SQLite lifecycle control planeとaccepted Node SQLite driver decisionをfocused migrationで再現する
+- SQLite lifecycle control planeとaccepted Node SQLite driver decisionはADR-0022のfocused migrationで再現済み
 - backup/archive/restore codeとoperations evidenceを分けて移管する
 - external repository作成前にvisibility、release owner、package distribution、Issue/PERT successor manifestを確認する
 - external split後にroot compatibility facadeとprivate workspace publication constraintを解消する
