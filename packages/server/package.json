@@ -4,6 +4,9 @@
   "description": "Hosted LLMThink application, persistence, REST, and MCP server boundary.",
   "license": "MPL-2.0",
   "private": true,
+  "engines": {
+    "node": ">=24.15.0 <25.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mako10k/llmthink.git",
@@ -33,6 +36,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --import tsx --test test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepack": "npm run build"
@@ -44,7 +48,7 @@
     "zod": "^3.25.28"
   },
   "devDependencies": {
-    "@types/node": "^22.15.21",
+    "@types/node": "^24.13.0",
     "tsx": "^4.19.2",
     "typescript": "^5.8.3"
   }

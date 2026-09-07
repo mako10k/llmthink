@@ -14,6 +14,7 @@ interface PackageManifest {
   readonly private?: boolean;
   readonly dependencies?: Readonly<Record<string, string>>;
   readonly files?: readonly string[];
+  readonly engines?: Readonly<Record<string, string>>;
 }
 
 async function manifest(path: string): Promise<PackageManifest> {
@@ -48,7 +49,28 @@ test("root and server pin exact workspace dependency versions", async () => {
   assert.equal(contracts.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[contracts.name], contracts.version);
+  assert.equal(server.engines?.node, ">=24.15.0 <25.0.0");
   assert.ok(root.files?.includes("!dist/server/backup"));
+});
+
+test("SQLite lifecycle stays inside Server without an OAuth transport dependency", async () => {
+  const lifecycle = await readFile(
+    join(serverRoot, "src", "sqlite-lifecycle-store.ts"),
+    "utf8",
+  );
+  const identity = await readFile(
+    join(serverRoot, "src", "lifecycle-identity.ts"),
+    "utf8",
+  );
+  assert.match(lifecycle, /from "node:sqlite"/);
+  assert.match(lifecycle, /BEGIN IMMEDIATE/);
+  assert.doesNotMatch(lifecycle, /oauth-jwt|backup\s*\(/i);
+  assert.match(identity, /LlmthinkExternalAccountIdentity/);
+  assert.match(identity, /LlmthinkLifecycleAccountContext/);
+  assert.doesNotMatch(
+    identity,
+    /IncomingMessage|jose|OAuth|Bearer|\.\/security\.js/,
+  );
 });
 
 test("Contracts owns shared Hosted API declarations and Server consumes them", async () => {
