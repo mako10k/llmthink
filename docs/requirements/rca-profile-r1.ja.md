@@ -3,11 +3,16 @@
 本書は `rca-profile-r1.md` のレビュー支援用日本語訳であり、正本ではない。要求のauthorityは
 英語正本の確定bytesにある。
 
-状態: Step 1候補、自己レビュー済み、未受入  
-要求リビジョン: R1  
-外部profile名: Impact-Aware RCA Profile R1  
-提案profile reference: `rca-impact@1.0.0`  
-候補日: 2026-09-11  
+状態: Step 1候補、自己レビュー済み、未受入
+
+要求リビジョン: R1
+
+外部profile名: Impact-Aware RCA Profile R1
+
+提案profile reference: `rca-impact@1.0.0`
+
+候補日: 2026-09-11
+
 決定オーナー: llmthink decision owner
 
 ## 1. 目的と依存関係
@@ -16,7 +21,7 @@
 specialized profileとして定義する。LLMThinkに主張された原因、影響、対策の真偽を判断させず、
 欠落とcategory substitutionを構造的に見えるようにしなければならない。
 
-この候補は、`sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`の
+この候補は、`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`の
 正確なGeneric Profile and Audit Contract V2 R1候補に依存する。並行reviewは可能だが、その正確な
 generic contractまたは明示的にreconcileされた後継が先に受け入れられない限り、本候補を受入または
 実装してはならない。
@@ -29,7 +34,7 @@ generic contractまたは明示的にreconcileされた後継が先に受け入�
 | GitHub Issue #10            | 2026-05-08更新、本文 `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71` | use-case固有parser syntaxよりprofileを優先                    |
 | GitHub Issue #25            | 2026-08-19更新、本文 `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | Generic V2 profile mechanismであり、独立RCA authorityではない |
 | GitHub Issue #43            | 2026-09-08更新、本文 `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076` | pure、fail-closed、evidence-groundedなV1 audit baseline       |
-| Generic V2 R1候補           | `sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`                      | 必須generic contract predecessor、未受入                      |
+| Generic V2 R1候補           | `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`                      | 必須generic contract predecessor、未受入                      |
 | `plans/rca-profile-v2.pert` | `sha256:a78302cb3c8e08639029c8b922d0af14f124d91ab1f88a537840e6b67b05caa0`                      | delivery依存とreview順序のみ                                  |
 
 GitHub body digestはCLI追加の末尾改行を含まない正確なUTF-8本文を使用する。

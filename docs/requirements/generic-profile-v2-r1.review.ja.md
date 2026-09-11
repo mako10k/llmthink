@@ -2,11 +2,15 @@
 
 本書は `generic-profile-v2-r1.review.md` のレビュー支援用日本語訳であり、正本ではない。
 
-状態: Step 3向け入力案、Step 2のオーナーrouteは未選択  
-候補: `docs/requirements/generic-profile-v2-r1.md`  
-候補digest: `sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`  
-日本語レビュー支援: `docs/requirements/generic-profile-v2-r1.ja.md`  
-日本語訳digest: `sha256:8ad57b94819564f02cdc59dc79785c7a9e17f848a74e7d6163aa1980aa2d3cb9`
+状態: Step 3向け入力案、Step 2のオーナーrouteは未選択
+
+候補: `docs/requirements/generic-profile-v2-r1.md`
+
+候補digest: `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`
+
+日本語レビュー支援: `docs/requirements/generic-profile-v2-r1.ja.md`
+
+日本語訳digest: `sha256:cbadd3185e70526e4702a648ea402dca26d260960aa518f9d0825a8a0dbc8c8a`
 
 ## レビューauthority
 

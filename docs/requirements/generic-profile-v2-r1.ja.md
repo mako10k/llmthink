@@ -3,10 +3,14 @@
 本書は `generic-profile-v2-r1.md` のレビュー支援用日本語訳であり、正本ではない。要求の
 authorityは英語正本の確定bytesにある。
 
-状態: Step 1候補、自己レビュー済み、未受入  
-要求リビジョン: R1  
-外部契約名: Generic Profile and Audit Contract V2  
-候補日: 2026-09-11  
+状態: Step 1候補、自己レビュー済み、未受入
+
+要求リビジョン: R1
+
+外部契約名: Generic Profile and Audit Contract V2
+
+候補日: 2026-09-11
+
 決定オーナー: llmthink decision owner
 
 ## 1. 目的

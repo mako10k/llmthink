@@ -1,16 +1,20 @@
 # Independent-review input: Impact-Aware RCA Profile R1
 
-Status: proposed Step 3 input; Step 2 owner route not yet selected  
-Candidate: `docs/requirements/rca-profile-r1.md`  
-Candidate digest: `sha256:aff936dde5f95cabc7302728b1da9db15409f42acf575cf5e196798dd3a4364b`  
-Japanese review support: `docs/requirements/rca-profile-r1.ja.md`  
-Japanese translation digest: `sha256:b2d90b20e7dadb6d450a6798cff1ecbbe396fabd7259fb27208f69b509ce1d22`
+Status: proposed Step 3 input; Step 2 owner route not yet selected
+
+Candidate: `docs/requirements/rca-profile-r1.md`
+
+Candidate digest: `sha256:54e4d4532d11140e112fcd5e8855a32ffbc0f9b74d244eae10b2f94a2d199edc`
+
+Japanese review support: `docs/requirements/rca-profile-r1.ja.md`
+
+Japanese translation digest: `sha256:6f1e50fd9e79b7bac37c785abc03d74434cd62468169a05ef05875c417277c05`
 
 ## Review authority and dependency
 
 Review only the exact candidate bytes above. Do not edit the candidate or turn review findings into
 new requirements. The candidate depends on Generic Profile and Audit Contract V2 R1 candidate
-`sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`.
+`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`.
 It cannot be accepted if that predecessor is unaccepted, changed without reconciliation, or found
 incapable of expressing the RCA constraints.
 

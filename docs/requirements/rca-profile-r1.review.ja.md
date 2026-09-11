@@ -2,17 +2,21 @@
 
 本書は `rca-profile-r1.review.md` のレビュー支援用日本語訳であり、正本ではない。
 
-状態: Step 3向け入力案、Step 2のオーナーrouteは未選択  
-候補: `docs/requirements/rca-profile-r1.md`  
-候補digest: `sha256:aff936dde5f95cabc7302728b1da9db15409f42acf575cf5e196798dd3a4364b`  
-日本語レビュー支援: `docs/requirements/rca-profile-r1.ja.md`  
-日本語訳digest: `sha256:b2d90b20e7dadb6d450a6798cff1ecbbe396fabd7259fb27208f69b509ce1d22`
+状態: Step 3向け入力案、Step 2のオーナーrouteは未選択
+
+候補: `docs/requirements/rca-profile-r1.md`
+
+候補digest: `sha256:54e4d4532d11140e112fcd5e8855a32ffbc0f9b74d244eae10b2f94a2d199edc`
+
+日本語レビュー支援: `docs/requirements/rca-profile-r1.ja.md`
+
+日本語訳digest: `sha256:6f1e50fd9e79b7bac37c785abc03d74434cd62468169a05ef05875c417277c05`
 
 ## レビューauthorityと依存関係
 
 上記の正確な候補bytesだけをレビューする。候補を編集せず、review findingを新しい要求に変えない。
 候補はGeneric Profile and Audit Contract V2 R1候補
-`sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`に依存する。
+`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`に依存する。
 そのpredecessorが未受入、reconcileなしに変更済み、またはRCA constraintを表現不能と判明した場合、
 本候補を受け入れられない。
 

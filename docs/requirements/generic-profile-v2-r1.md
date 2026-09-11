@@ -1,9 +1,13 @@
 # Generic Profile and Audit Contract V2 — Requirement Candidate R1
 
-Status: Step 1 candidate, self-reviewed, not accepted  
-Requirement revision: R1  
-External contract name: Generic Profile and Audit Contract V2  
-Candidate date: 2026-09-11  
+Status: Step 1 candidate, self-reviewed, not accepted
+
+Requirement revision: R1
+
+External contract name: Generic Profile and Audit Contract V2
+
+Candidate date: 2026-09-11
+
 Decision owner: llmthink decision owner
 
 ## 1. Purpose

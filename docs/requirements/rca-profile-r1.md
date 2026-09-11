@@ -1,10 +1,15 @@
 # Impact-Aware RCA Profile R1 — Requirement Candidate R1
 
-Status: Step 1 candidate, self-reviewed, not accepted  
-Requirement revision: R1  
-External profile name: Impact-Aware RCA Profile R1  
-Proposed profile reference: `rca-impact@1.0.0`  
-Candidate date: 2026-09-11  
+Status: Step 1 candidate, self-reviewed, not accepted
+
+Requirement revision: R1
+
+External profile name: Impact-Aware RCA Profile R1
+
+Proposed profile reference: `rca-impact@1.0.0`
+
+Candidate date: 2026-09-11
+
 Decision owner: llmthink decision owner
 
 ## 1. Purpose and dependency
@@ -14,7 +19,7 @@ V2 node/link/operation/query model. It must make omissions and category substitu
 visible without asking LLMThink to decide whether a claimed cause, impact, or remedy is true.
 
 This candidate depends on the exact Generic Profile and Audit Contract V2 R1 candidate at
-`sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`.
+`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`.
 It may be reviewed in parallel, but it MUST NOT be accepted or implemented unless that exact generic
 contract, or an explicitly reconciled successor, is accepted first.
 
@@ -26,7 +31,7 @@ contract, or an explicitly reconciled successor, is accepted first.
 | GitHub Issue #10            | Updated 2026-05-08; body `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71` | Use profiles before use-case-specific parser syntax         |
 | GitHub Issue #25            | Updated 2026-08-19; body `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | Generic V2 profile mechanism; not independent RCA authority |
 | GitHub Issue #43            | Updated 2026-09-08; body `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076` | Pure, fail-closed, evidence-grounded V1 audit baseline      |
-| Generic V2 R1 candidate     | `sha256:7312ae5904d36e60f11e67c414d3d7c2fee19ef8a2e789a51115b197603c736b`                          | Required generic contract predecessor; still unaccepted     |
+| Generic V2 R1 candidate     | `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`                          | Required generic contract predecessor; still unaccepted     |
 | `plans/rca-profile-v2.pert` | `sha256:a78302cb3c8e08639029c8b922d0af14f124d91ab1f88a537840e6b67b05caa0`                          | Delivery dependency and review ordering only                |
 
 GitHub body digests use the exact UTF-8 body without a CLI-added trailing newline.
