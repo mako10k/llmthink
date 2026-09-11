@@ -1,0 +1,169 @@
+project LLMTHINK_RCA_PROFILE_V2:
+  version 6
+  title "LLMThink V2 generic profiles and impact-aware RCA"
+  description "Advance the accepted generic typed-graph, versioned-profile, and generic constraint-evaluator direction for GitHub Issues #25 and #44 while preserving V1 grammar, documents, thought stores, audit behavior, and public surfaces. First separate the Issue #43 WIP into an integration candidate and a recoverable preserved remainder, then integrate and reconcile the reusable V1 audit baseline before dependent V2 contract work. Deliver an impact-aware RCA profile through shared Core contracts and thin adapters. Implicit V1 rewriting, inferred RCA semantics, external profile code execution, network profile loading, release, publication, deployment, and Issue mutation remain outside this plan. The integration task expresses required merge and readback gates but does not itself authorize any Git or GitHub write."
+  as_of 2026-09-11
+  duration_unit point
+  velocity 1p/1d
+  finish RCA_V2_ACCEPTED
+
+resource CODEX:
+  title "LLMThink implementation capacity"
+  capacity 1
+
+milestone ARCHITECTURE_DIRECTION_ACCEPTED:
+  title "Generic graph, profile, and constraint-evaluator direction accepted"
+  state reached
+
+milestone ISSUE43_WIP_SEPARATED:
+  title "Issue #43 WIP separated and recoverably preserved"
+  state reached
+
+milestone ISSUE43_CORE_SLICE_INTEGRATED:
+  title "Issue #43 reusable V1 audit slice integrated and read back"
+
+milestone ISSUE43_BASELINE_RECONCILED:
+  title "Issue #43 audit and report baseline reconciled"
+
+milestone V2_REQUIREMENTS_ACCEPTED:
+  title "V2 profile contract and RCA R1 requirements accepted"
+
+milestone V2_GRAPH_PROFILE_IMPLEMENTED:
+  title "Generic V2 graph and profile foundation implemented"
+
+milestone V2_CONSTRAINTS_IMPLEMENTED:
+  title "Generic graph constraint evaluator implemented"
+
+milestone RCA_PROFILE_IMPLEMENTED:
+  title "Impact-aware RCA profile and fixtures implemented"
+
+milestone V2_SURFACES_SYNCHRONIZED:
+  title "V2 audit behavior synchronized across public surfaces"
+
+milestone V1_COMPATIBILITY_VERIFIED:
+  title "V1 coexistence and non-regression verified"
+
+milestone RCA_V2_ACCEPTED:
+  title "V2 impact-aware RCA capability accepted locally"
+
+task SEPARATE_AND_PRESERVE_ISSUE43_WIP ARCHITECTURE_DIRECTION_ACCEPTED -> ISSUE43_WIP_SEPARATED:
+  title "Separate and preserve the Issue #43 WIP"
+  description "Create a recoverable preservation reference for the complete Issue #43 working state before extraction. Produce a complete disposition manifest that maps every changed file and material hunk to integrate, preserve, regenerate, or reject with its authority and rationale. Extract only the non-persistent dsl check and fail-on path, audit correctness and provenance changes, compatible report and schema propagation, tests, and accepted ADR-0023 into a clean integration candidate. Preserve unaccepted finalize-gate candidates and deferred work outside that candidate without representing them as accepted or complete. Do not merge, discard, rewrite, or publish the original WIP under this task."
+  status done
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 110
+  requires:
+    CODEX 1
+  source "GitHub Issue #43; accepted owner integration disposition 2026-09-11"
+
+task INTEGRATE_ISSUE43_CORE_SLICE ISSUE43_WIP_SEPARATED -> ISSUE43_CORE_SLICE_INTEGRATED:
+  title "Validate and integrate the reusable Issue #43 core slice"
+  description "Validate the separated integration candidate with the repository-wide test suite, focused CLI, Core, and hosted-server tests, TypeScript checks, generated-artifact consistency, and a diff against the disposition manifest. After separate explicit merge authority, integrate only that candidate through the established repository workflow and independently read back the resulting remote canonical revision. Keep the preserved remainder recoverable and do not close Issue #43, accept the finalize-gate candidate, mutate Issues, release, publish, or deploy under this task. A local candidate or passing tests alone do not satisfy this milestone."
+  status active
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 110
+  requires:
+    CODEX 1
+  source "GitHub Issue #43; ISSUE43_WIP_SEPARATED; accepted owner integration disposition 2026-09-11"
+
+task RECONCILE_ISSUE43_BASELINE ISSUE43_CORE_SLICE_INTEGRATED -> ISSUE43_BASELINE_RECONCILED:
+  title "Reconcile the final Issue #43 audit baseline"
+  description "After Issue #43 is preserved and its disposition is known, refresh the verified main revision and compare the final pure-audit command, AuditReport provenance, source digest, engine and grammar version fields, stable diagnostics, and persistence behavior with the assumptions of this plan. Record contradictions before authoring dependent V2 contracts. Do not merge Issue #43 work, change its lifecycle, or start V2 implementation under this task."
+  estimate:
+    optimistic 0.5p
+    most_likely 1p
+    pessimistic 2p
+  priority 100
+  requires:
+    CODEX 1
+  source "GitHub Issue #43; GitHub Issue #44; accepted owner direction 2026-09-11"
+
+task ACCEPT_V2_REQUIREMENTS ISSUE43_BASELINE_RECONCILED -> V2_REQUIREMENTS_ACCEPTED:
+  title "Accept the generic V2 profile contract and RCA R1 requirements"
+  description "Create separate versioned requirement candidates and review inputs for the Generic Profile and Audit Contract V2 and the dependent RCA Profile R1. Freeze source provenance, prior-authority disposition, generic IR, profile identity and digest, closed constraint operators, RCA kinds and relations, impact-scope assessments, stable rule IDs and target spans, V1 coexistence, migration failure behavior, trust boundaries, acceptance criteria, and non-goals. Complete owner review, independent review, and exact-snapshot acceptance before implementation."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 100
+  requires:
+    CODEX 1
+  source "GitHub Issues #10, #25, #43, and #44; accepted owner direction 2026-09-11"
+
+task IMPLEMENT_V2_GRAPH_PROFILE V2_REQUIREMENTS_ACCEPTED -> V2_GRAPH_PROFILE_IMPLEMENTED:
+  title "Implement the generic V2 graph and profile foundation"
+  description "Add a normalized nodes, links, operations, and queries IR with complete source spans; a use-case-neutral parser and formatter; a versioned profile contract for kinds, properties, states, relation endpoints, direction, symmetry, operation arity, and severity; and a fail-closed built-in profile resolver. Prove with a synthetic non-RCA profile that adding profile vocabulary does not require parser branches. Keep V1 parsing, formatting, storage, and audit entry points available without implicit conversion."
+  estimate:
+    optimistic 3p
+    most_likely 5p
+    pessimistic 8p
+  priority 90
+  requires:
+    CODEX 1
+  source "V2_REQUIREMENTS_ACCEPTED; GitHub Issue #25"
+
+task IMPLEMENT_GENERIC_CONSTRAINTS V2_GRAPH_PROFILE_IMPLEMENTED -> V2_CONSTRAINTS_IMPLEMENTED:
+  title "Implement the generic graph constraint evaluator"
+  description "Implement closed use-case-neutral operators for type and cardinality checks, required nodes links and properties, per-member obligations, conditional obligations, evidence or declared-reasoning paths, reachability, selected-relation acyclicity, and completion gates. Extend the versioned raw audit contract with profile identity, profile digest, stable rule ID, occurrence ID, deterministic ordering, and per-target source spans. Reject unknown profile versions, operators, and digest mismatches without executing profile-supplied code."
+  estimate:
+    optimistic 2p
+    most_likely 4p
+    pessimistic 7p
+  priority 90
+  requires:
+    CODEX 1
+  source "V2_REQUIREMENTS_ACCEPTED; GitHub Issues #25 and #44"
+
+task IMPLEMENT_RCA_PROFILE V2_CONSTRAINTS_IMPLEMENTED -> RCA_PROFILE_IMPLEMENTED:
+  title "Implement the impact-aware RCA profile"
+  description "Define RCA case, phenomenon, impact, scope, subject, assessment, root cause, contributing cause, trigger, escape cause, corrective action, containment, recovery, recurrence prevention, verification, and pending kinds as profile data. Define affected, suspect, unaffected, unknown, realized, credible, complete, partial, and unknown classifications and the required support, causal, impact, containment, recovery, prevention, verification, and dependency relations. Add the six Issue #44 executable fixtures with stable expected rule IDs, severities, target spans, and completion outcomes. Do not infer factual truth or fetch referenced repository, Issue, commit, requirement, plan, or runtime state."
+  estimate:
+    optimistic 2p
+    most_likely 3p
+    pessimistic 5p
+  priority 80
+  requires:
+    CODEX 1
+  source "RCA Profile R1; GitHub Issue #44"
+
+task SYNCHRONIZE_V2_SURFACES RCA_PROFILE_IMPLEMENTED -> V2_SURFACES_SYNCHRONIZED:
+  title "Synchronize V2 audit behavior across public surfaces"
+  description "Route CLI raw JSON and text, stdio MCP, hosted Application Service, LSP diagnostics, VSIX preview, help, examples, and generated artifacts through the same Core V2 report. Add conformance tests comparing rule ID, severity, target references, spans, and message identity after removing presentation-only fields. Keep adapter-specific formatting thin and do not duplicate RCA rules outside Core."
+  estimate:
+    optimistic 2p
+    most_likely 4p
+    pessimistic 7p
+  priority 70
+  requires:
+    CODEX 1
+  source "RCA_PROFILE_IMPLEMENTED; ADR-0004; ADR-0017; GitHub Issue #44"
+
+task VERIFY_V1_COEXISTENCE V2_SURFACES_SYNCHRONIZED -> V1_COMPATIBILITY_VERIFIED:
+  title "Verify V1 coexistence and fail-closed migration"
+  description "Run the existing V1 corpus and public-surface fixtures against the preserved V1 entry points and prove no implicit grammar, AST, audit, help, storage, or finalization change. Add explicit V2 selection and migration checks that never rewrite source or thought stores in place and never infer RCA roles from V1 problem, evidence, decision, pending, or based_on text. Report every non-lossless conversion with source location and reason."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 70
+  requires:
+    CODEX 1
+  source "V2_REQUIREMENTS_ACCEPTED; GitHub Issues #25 and #44; accepted owner direction 2026-09-11"
+
+task ACCEPT_RCA_V2 V1_COMPATIBILITY_VERIFIED -> RCA_V2_ACCEPTED:
+  title "Accept the V2 RCA capability end to end"
+  description "Validate this PERT document, analyze precedence and resource schedules, inspect the next-task recommendation, run command-line LLMThink audit, focused Core and synthetic-profile regressions, all six RCA fixtures through Core CLI MCP LSP and VSIX, V1 non-regression, schema and contract tests, examples, format, lint, typecheck, complete tests, builds, extension build, generated-artifact review, and repository status review. Confirm that audit PASS proves structural completeness only and that release, publication, deployment, remote writes, and Issue mutation remain unperformed unless separately authorized."
+  estimate:
+    optimistic 1p
+    most_likely 2p
+    pessimistic 4p
+  priority 60
+  requires:
+    CODEX 1
+  source "GitHub Issue #44 acceptance criteria"
