@@ -1,6 +1,6 @@
 # Issue #43 WIP disposition
 
-Status: integrated by PR #46; post-merge distribution correction pending
+Status: integrated and distribution-corrected through PR #47
 Date: 2026-09-11
 
 ## Snapshot and authority
@@ -122,5 +122,6 @@ root and VS Code extension lockfiles.
 - Core-slice PR #46 passed `server-ci` and merged as
   `3ef17b2f97a2c611b7a4ed9b93a5238f26743391`.
 - A clean post-merge worktree exposed a missing tracked `dist/check.js` runtime
-  module. The baseline remains unreconciled until the corrective distribution
-  slice is independently integrated and read back.
+  module. Corrective PR #47 passed `cli-ci`, merged as
+  `747c8bfb4fbcfcd417d5f855c18e7b4ddd3077f3`, and a fresh canonical checkout
+  executed the tracked distributed CLI successfully.
