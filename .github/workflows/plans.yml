@@ -1,0 +1,33 @@
+name: plan-ci
+
+on:
+  pull_request:
+    paths:
+      - "plans/**/*.pert"
+      - "scripts/check-plans.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/plans.yml"
+  push:
+    branches: [main]
+    paths:
+      - "plans/**/*.pert"
+      - "scripts/check-plans.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/plans.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  plans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check:plans
