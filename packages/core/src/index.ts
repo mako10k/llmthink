@@ -14,6 +14,11 @@ export {
 } from "./dsl/file-extension.js";
 export type { LlmthinkFileExtension } from "./dsl/file-extension.js";
 export {
+  LLMTHINK_AUDIT_ENGINE_VERSION,
+  LLMTHINK_GRAMMAR_VERSION,
+  LLMTHINK_PACKAGE_VERSION,
+} from "./model/version.js";
+export {
   getDslSyntaxGuidanceText,
   isDslHelpRequest,
   parseDslHelpRequest,

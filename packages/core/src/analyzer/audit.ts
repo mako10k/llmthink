@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { basename } from "node:path";
 
 import type {
@@ -17,9 +18,15 @@ import type {
   AuditIssue,
   AuditReference,
   AuditReport,
+  AuditSemanticAnalysis,
   AuditSeverity,
   QueryResult,
 } from "../model/diagnostics.js";
+import {
+  LLMTHINK_AUDIT_ENGINE_VERSION,
+  LLMTHINK_GRAMMAR_VERSION,
+  LLMTHINK_PACKAGE_VERSION,
+} from "../model/version.js";
 import type { ConfidenceResult } from "../model/confidence.js";
 import { createDocumentDeclarationIndex } from "../model/declarations.js";
 import { stripLlmthinkFileExtension } from "../dsl/file-extension.js";
@@ -51,7 +58,7 @@ import {
   type EmbeddingRequestOptions,
 } from "../semantic/embeddings.js";
 
-const ENGINE_VERSION = "0.1.0";
+const SEMANTIC_PROXIMITY_THRESHOLD = 0.75;
 
 export interface AuditOptions {
   embeddings?: EmbeddingRequestOptions;
@@ -83,14 +90,6 @@ function basedOnReferenceColumn(
 
 function frameworkRuleValueColumn(kind: string): number {
   return 3 + kind.length + 1;
-}
-
-function overlappingBasedOnRefs(
-  left: DecisionStatement,
-  right: DecisionStatement,
-): string[] {
-  const rightRefs = new Set(right.basedOn);
-  return left.basedOn.filter((ref) => rightRefs.has(ref));
 }
 
 function issueId(index: number): string {
@@ -1014,50 +1013,6 @@ function auditStepContracts(
   }
 }
 
-function addContradictionCandidateIssues(
-  issues: AuditIssue[],
-  decisions: Array<{ stepId: string; statement: DecisionStatement }>,
-): void {
-  if (decisions.length < 2) {
-    return;
-  }
-
-  for (let index = 0; index < decisions.length - 1; index += 1) {
-    const current = decisions[index];
-    for (
-      let candidateIndex = index + 1;
-      candidateIndex < decisions.length;
-      candidateIndex += 1
-    ) {
-      const candidate = decisions[candidateIndex];
-      const overlaps = overlappingBasedOnRefs(
-        current.statement,
-        candidate.statement,
-      );
-      if (overlaps.length === 0) {
-        continue;
-      }
-      createIssue(issues, {
-        category: "contradiction_candidate",
-        severity: "hint",
-        target_refs: [
-          statementReference(current.statement, current.stepId),
-          statementReference(candidate.statement, candidate.stepId),
-        ],
-        message: `${current.statement.id} と ${candidate.statement.id} は同一根拠 ${overlaps.join(", ")} を共有しており、緊張関係にある可能性がある。`,
-        rationale:
-          "複数の decision が同じ based_on 参照を共有しているため、観点と結論の整合性を再確認するべきである。",
-        metadata: {
-          shared_refs: overlaps,
-          line: current.statement.span.line,
-          column: statementIdentifierColumn(current.statement),
-          end_column: statementIdentifierEndColumn(current.statement),
-        },
-      });
-    }
-  }
-}
-
 function addPendingHintIssue(
   issues: AuditIssue[],
   pendingSteps: Array<{ stepId: string; statement: StepStatement }>,
@@ -1108,7 +1063,9 @@ function addOrphanNodeIssues(
         column: problem.span.column + "problem ".length,
         end_column:
           problem.span.column + "problem ".length + problem.name.length,
+        orphan_profile: "direct-v1",
         orphan_rule: "problem_direct_incoming_edge",
+        transitive_reachability: "not_expressible_in_grammar_v1",
       },
     });
   }
@@ -1141,7 +1098,9 @@ function addOrphanNodeIssues(
         line: step.statement.span.line,
         column: statementIdentifierColumn(step.statement),
         end_column: statementIdentifierEndColumn(step.statement),
+        orphan_profile: "direct-v1",
         orphan_rule: "supporting_node_direct_incoming_edge",
+        transitive_reachability: "not_expressible_in_grammar_v1",
       },
     });
   }
@@ -1152,16 +1111,17 @@ function addDecisionSemanticHint(
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
   semanticContext: SemanticContext | undefined,
 ): void {
-  if (decisions.length < 2) {
+  if (decisions.length < 2 || !semanticContext) {
     return;
   }
 
-  const semanticSimilarity = semanticContext
-    ? cosineSimilarity(
-        semanticContext.decisionEmbeddings[0] ?? [],
-        semanticContext.decisionEmbeddings[1] ?? [],
-      )
-    : 0.75;
+  const semanticSimilarity = cosineSimilarity(
+    semanticContext.decisionEmbeddings[0] ?? [],
+    semanticContext.decisionEmbeddings[1] ?? [],
+  );
+  if (semanticSimilarity < SEMANTIC_PROXIMITY_THRESHOLD) {
+    return;
+  }
   createIssue(issues, {
     category: "semantic_hint",
     severity: "hint",
@@ -1181,12 +1141,9 @@ function addDecisionSemanticHint(
         : 1,
       similarity: roundScore(semanticSimilarity),
       semantic_distance: roundScore(1 - semanticSimilarity),
-      ...(semanticContext
-        ? {
-            embedding_provider: semanticContext.provider,
-            embedding_model: semanticContext.model,
-          }
-        : {}),
+      embedding_provider: semanticContext.provider,
+      embedding_model: semanticContext.model,
+      threshold: SEMANTIC_PROXIMITY_THRESHOLD,
     },
   });
 }
@@ -1374,7 +1331,6 @@ async function auditDocument(
   auditStepContracts(issues, document, basedOnTargetIds);
   auditQueryReferences(issues, document, dslqlDeclaredIds);
   addOrphanNodeIssues(issues, document, directDecisionRefs);
-  addContradictionCandidateIssues(issues, decisions);
   addComparisonConsistencyIssues(issues, comparisons);
   addTextBodyLintIssues(issues, document);
   addStatusAnnotationIssues(issues, document, decisions, comparisons);
@@ -1383,13 +1339,16 @@ async function auditDocument(
   const confidenceResults = evaluateConfidence(document);
   addConfidenceIssues(issues, confidenceResults);
 
-  const semanticContext = await createSemanticContext(decisions, options);
-  addDecisionSemanticHint(issues, decisions, semanticContext);
+  const semanticAnalysis = await createSemanticAnalysis(decisions, options);
+  addDecisionSemanticHint(issues, decisions, semanticAnalysis.context);
 
   const queryResults = await buildQueryResults(issues, document, options);
 
   return {
-    engine_version: ENGINE_VERSION,
+    engine_version: LLMTHINK_AUDIT_ENGINE_VERSION,
+    grammar_version: LLMTHINK_GRAMMAR_VERSION,
+    package_version: LLMTHINK_PACKAGE_VERSION,
+    semantic_analysis: semanticAnalysis.metadata,
     document_id: documentId,
     generated_at: new Date().toISOString(),
     summary: summarize(issues),
@@ -1407,30 +1366,71 @@ interface SemanticContext {
   model: string;
 }
 
-async function createSemanticContext(
+interface SemanticAnalysisResult {
+  context?: SemanticContext;
+  metadata: AuditSemanticAnalysis;
+}
+
+function requestedSemanticProvider(options?: AuditOptions): string {
+  if (options?.semanticEmbedder) return "custom";
+  return (
+    options?.embeddings?.provider ??
+    process.env.LLMTHINK_EMBEDDING_PROVIDER ??
+    "ollama"
+  );
+}
+
+async function createSemanticAnalysis(
   decisions: Array<{ stepId: string; statement: DecisionStatement }>,
   options?: AuditOptions,
-): Promise<SemanticContext | undefined> {
-  if (decisions.length === 0) {
-    return undefined;
+): Promise<SemanticAnalysisResult> {
+  if (decisions.length < 2) {
+    return {
+      metadata: { status: "not_applicable", provider: null, model: null },
+    };
   }
 
+  const requestedProvider = requestedSemanticProvider(options);
+  if (requestedProvider === "none" && !options?.semanticEmbedder) {
+    return {
+      metadata: { status: "disabled", provider: "none", model: null },
+    };
+  }
   try {
-    const result = await embedTexts(
-      decisions.map((decision) => decision.statement.text),
-      options?.embeddings,
-    );
+    const texts = decisions.map((decision) => decision.statement.text);
+    const result = options?.semanticEmbedder
+      ? await options.semanticEmbedder(texts)
+      : await embedTexts(texts, options?.embeddings);
     if (!result) {
-      return undefined;
+      return {
+        metadata: {
+          status: "unavailable",
+          provider: requestedProvider,
+          model: null,
+        },
+      };
     }
 
     return {
-      decisionEmbeddings: result.embeddings.slice(0, decisions.length),
-      provider: result.provider,
-      model: result.model,
+      context: {
+        decisionEmbeddings: result.embeddings.slice(0, decisions.length),
+        provider: result.provider,
+        model: result.model,
+      },
+      metadata: {
+        status: "available",
+        provider: result.provider,
+        model: result.model,
+      },
     };
   } catch {
-    return undefined;
+    return {
+      metadata: {
+        status: "unavailable",
+        provider: requestedProvider,
+        model: null,
+      },
+    };
   }
 }
 
@@ -1503,16 +1503,42 @@ export async function auditDslText(
   documentId = "document",
   options?: AuditOptions,
 ): Promise<AuditReport> {
+  const sourceSha256 = `sha256:${createHash("sha256").update(input).digest("hex")}`;
   if (isDslHelpRequest(input)) {
-    return createDslGuidanceReport(documentId);
+    return {
+      ...createDslGuidanceReport(documentId),
+      engine_version: LLMTHINK_AUDIT_ENGINE_VERSION,
+      grammar_version: LLMTHINK_GRAMMAR_VERSION,
+      package_version: LLMTHINK_PACKAGE_VERSION,
+      semantic_analysis: {
+        status: "not_applicable",
+        provider: null,
+        model: null,
+      },
+      source_sha256: sourceSha256,
+    };
   }
 
   try {
     const document = parseDocument(input);
-    return auditDocument(document, documentId, options);
+    return {
+      ...(await auditDocument(document, documentId, options)),
+      source_sha256: sourceSha256,
+    };
   } catch (error) {
     if (error instanceof ParseError) {
-      return createParseErrorReport(error, documentId);
+      return {
+        ...createParseErrorReport(error, documentId),
+        engine_version: LLMTHINK_AUDIT_ENGINE_VERSION,
+        grammar_version: LLMTHINK_GRAMMAR_VERSION,
+        package_version: LLMTHINK_PACKAGE_VERSION,
+        semantic_analysis: {
+          status: "not_applicable",
+          provider: null,
+          model: null,
+        },
+        source_sha256: sourceSha256,
+      };
     }
     throw error;
   }
