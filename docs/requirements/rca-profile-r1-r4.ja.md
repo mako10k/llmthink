@@ -1,0 +1,389 @@
+# Impact-Aware RCA Profile R1 — 要求候補 R4 日本語全文訳
+
+本書は `rca-profile-r1-r4.md` のレビュー支援用日本語訳であり、正本ではない。要求のauthorityは
+英語正本の確定bytesにある。
+
+状態: Step 1候補、自己レビュー済み、未受入
+
+要求リビジョン: R4
+
+外部profile名: Impact-Aware RCA Profile R1
+
+提案profile reference: `rca-impact@1.0.0`
+
+候補日: 2026-09-11
+
+決定オーナー: llmthink decision owner
+
+## 1. 目的と依存関係
+
+この候補は、impact-awareなroot-cause analysisを、汎用V2 node/link/operation/query model上の1つの
+specialized profileとして定義する。LLMThinkに主張された原因、影響、対策の真偽を判断させず、
+欠落とcategory substitutionを構造的に見えるようにしなければならない。
+
+この候補は、`sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`の
+受入済みGeneric Profile and Audit Contract V2 R2 snapshotに依存する。並行reviewは可能だが、その正確な
+generic contractまたは明示的にreconcileされた後継が受入済みのままでない限り、本候補を受入または実装
+してはならない。
+
+## 2. Authorityとsource snapshot
+
+| 入力                        | Snapshot                                                                                                                    | 本候補での扱い                                                |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| GitHub Issue #44            | 2026-09-11更新、本文 `sha256:e8998c62c2c8ff7de9ab3725f9ecd62b301b63249626baff8927815a93f76d4b`                              | 主要RCA outcomeと受入authority候補                            |
+| GitHub Issue #10            | 2026-05-08更新、本文 `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71`                              | use-case固有parser syntaxよりprofileを優先                    |
+| GitHub Issue #25            | 2026-08-19更新、本文 `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df`                              | Generic V2 profile mechanismであり、独立RCA authorityではない |
+| GitHub Issue #43            | 2026-09-08更新、本文 `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076`                              | pure、fail-closed、evidence-groundedなV1 audit baseline       |
+| 受入済みGeneric V2 R2       | `sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`                                                   | 必須の受入済みgeneric contract predecessor                    |
+| R2独立レビュー              | `docs/requirements/v2-r2-independent-review.md`、`sha256:7081bf41bd1be9bbb53d14aa713bef22bb845afb6cfecdc2022346652ac71ae8`  | revision evidenceのみ。規範要求textではない                   |
+| R3独立レビュー              | `docs/requirements/rca-r3-independent-review.md`、`sha256:1369e12e0c694ef45dff5bb3be5c3201fa60dde6a142db7b670fa39f65dacc4f` | revision evidenceのみ。規範要求textではない                   |
+| `plans/rca-profile-v2.pert` | `sha256:a78302cb3c8e08639029c8b922d0af14f124d91ab1f88a537840e6b67b05caa0`                                                   | delivery依存とreview順序のみ                                  |
+
+GitHub body digestはCLI追加の末尾改行を含まない正確なUTF-8本文を使用する。
+
+### 2.1 R3 review findingの扱い
+
+R4は、オーナーがStep 4で`REVISE`を選択した後、未受入のRCA要求R3候補をsupersedeする。R2の修正を維持し、
+完了済みR3独立レビューの要求model findingだけを取り込む。
+
+- 下流impact target間の明示的dependency/propagation relationを定義する。
+- Settled-case completionを正確なaction-verification/pending-obligation conditionへbindする。
+- 各follow-up actionをdistinct nodeとし、時間を発明せずrelation順序を定義する。
+- 相関するclosed-operator評価を明示的な受入前proof obligationとして維持する。
+
+R2/R3レビュー報告は本revisionのevidenceであり、規範要求textではない。以前のreview statusは引き継がず、
+R4はStep 1から再開する。
+
+## 3. Issue #44の候補を組み合わせた選択
+
+R1は、オーナー受入向けに次の組み合わせを提案する。
+
+1. **Use-case固有syntax: 不採用。** RCAはparser productionを追加しない。Parser、IR、DSLQL、LSP、
+   preview、helpの分岐増加を避ける。
+2. **Generic primitiveとversioned profile: 採用。** RCA概念はGeneric V2上のprofile-defined kind、
+   property、relation、containment、lifecycle valueとする。
+3. **Use-case固有audit: declarative profile constraintとしてのみ採用。** RCA ruleはgeneric closed
+   constraint operatorを使用し、profileはcodeやsemantic inferenceを導入できない。
+
+この選択はRCA R1候補だけへ適用する。Generic V2を再受入または変更せず、profile実装、将来の全use caseへの
+rule確立を意味しない。
+
+## 4. RCA structural model
+
+1つの`rca_case` containerがanalysisを所有する。R1は次のnode kindを定義する。
+
+- `rca_case`
+- `phenomenon`
+- `impact_scope`
+- `impact_target`
+- `impact_assessment`
+- `impact`
+- `root_cause`
+- `contributing_cause`
+- `trigger`
+- `escape_cause`
+- `corrective_action`
+- `containment`
+- `recovery`
+- `recurrence_prevention`
+- `verification`
+- 継承する`evidence`
+- 継承する`pending`
+
+これらの区別は規範的である。特に、`escape_cause`は`root_cause`要求を満たせず、
+`corrective_action`は`containment`または`recovery`を満たせず、actionの実装は`verification`または
+effectivenessを満たせない。
+
+### 4.1 必須property
+
+- `rca_case`: generic lifecycle state。`settled`は構造的完了を宣言する。
+- `impact_scope`: `completeness`は`complete | partial | unknown`。
+- `impact_target`: `target_type`は`file | commit | requirement | plan | implementation | test |
+report | runtime | remote | deployment | other`、かつ空でないopaque `target_ref`。
+- `impact_assessment`: `classification`は`affected | suspect | unaffected | unknown`。
+- `impact`: `actuality`は`realized | credible`。
+- `corrective_action`、`containment`、`recovery`、`recurrence_prevention`: `action_state`は
+  `proposed | implemented | effective`。
+- `verification`: `result`は`passed | failed | inconclusive`。
+
+`target_ref`はauthorが記録するidentifierである。Coreはそれをdereferenceせず、そのtypeからauthority、
+existence、content、current stateを推定してはならない。
+
+### 4.2 Relationと方向
+
+R1は次のdirected relationを定義する。
+
+| Relation               | From                       | To                                                                                                                                                                                                  | Authorが主張する意味                                           |
+| ---------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `documents_scope`      | `rca_case`                 | `impact_scope`                                                                                                                                                                                      | caseがこのimpact universeを使用する                            |
+| `covered_by`           | `phenomenon`               | `impact_scope`                                                                                                                                                                                      | このscopeがphenomenonのimpact universeである                   |
+| `in_scope`             | `impact_scope`             | `impact_target`                                                                                                                                                                                     | targetが調査universeに属する                                   |
+| `assesses`             | `impact_assessment`        | `impact_target`                                                                                                                                                                                     | assessmentがtargetを分類する                                   |
+| `propagates_to`        | `phenomenon`または`impact` | `impact`                                                                                                                                                                                            | 宣言されたimpact propagation                                   |
+| `applies_to`           | `impact`                   | `impact_target`                                                                                                                                                                                     | impactがtargetに適用される                                     |
+| `depends_on`           | `impact_target`            | `impact_target`                                                                                                                                                                                     | downstream targetがupstream targetへ依存する                   |
+| `propagates_to_target` | `impact_target`            | `impact_target`                                                                                                                                                                                     | stateまたはimpactがupstreamからdownstream targetへ伝播し得る   |
+| `supports`             | `evidence`                 | `impact_assessment`、`root_cause`、`contributing_cause`、`trigger`、`escape_cause`、`phenomenon`、`impact`、`corrective_action`、`containment`、`recovery`、`recurrence_prevention`、`verification` | 宣言されたevidentiary support                                  |
+| `causes`               | `root_cause`               | `phenomenon`または`impact`                                                                                                                                                                          | 宣言されたproducing cause                                      |
+| `contributes_to`       | `contributing_cause`       | `root_cause`、`contributing_cause`、`phenomenon`、`impact`                                                                                                                                          | 宣言されたcontributing condition                               |
+| `triggers`             | `trigger`                  | `phenomenon`                                                                                                                                                                                        | 宣言されたsurfacing condition                                  |
+| `explains_escape_of`   | `escape_cause`             | `phenomenon`または`root_cause`                                                                                                                                                                      | 宣言されたdetection/acceptance escape                          |
+| `corrects`             | `corrective_action`        | `root_cause`または`contributing_cause`                                                                                                                                                              | producing causeを除去またはcontrolする                         |
+| `contains`             | `containment`              | `impact`または`impact_target`                                                                                                                                                                       | 追加propagationを制限する                                      |
+| `recovers`             | `recovery`                 | `impact`または`impact_target`                                                                                                                                                                       | 既にpropagateしたeffectを修復する                              |
+| `prevents`             | `recurrence_prevention`    | `root_cause`、`contributing_cause`、`phenomenon`                                                                                                                                                    | 将来のprevention/detection/containmentを改善する               |
+| `verifies`             | `verification`             | `corrective_action`、`containment`、`recovery`、`recurrence_prevention`                                                                                                                             | 実装後のactionを評価する                                       |
+| `requires_followup`    | `verification`             | `corrective_action`、`containment`、`recovery`、`recurrence_prevention`                                                                                                                             | failed/inconclusive verification後のsuccessor actionを宣言する |
+| `tracks`               | `pending`                  | section 4記載の任意node kind                                                                                                                                                                        | 明示的な未解決obligationを記録する                             |
+
+Text、embedding、target type、時間的近接、shared evidence、graph proximityからrelationを推定しない。
+
+`depends_on`の方向はdownstream targetからupstream prerequisiteとする。`propagates_to_target`の方向はupstream
+targetからdownstream targetとする。両endpointは同じ`rca_case`が所有するdistinct nodeでなければならない。
+これらの宣言は構造だけを記録し、propagationの発生を主張しない。
+Cycle評価はrelation固有graphごとに分離する。同じtarget pairに両relation kindを宣言しても、方向の意味が
+異なるため、それ自体ではcycleを形成しない。
+
+## 5. Impact universeとassessment contract
+
+1. 各caseは1つ以上の`impact_scope`を宣言し、`documents_scope`でlinkする。
+2. 各phenomenonは、同じ`rca_case`が所有する`impact_scope`へ、outgoing `covered_by` relationを正確に1つ
+   持たなければならない。
+3. 調査対象の各targetを`in_scope`で明示的に接続する。
+4. 各in-scope targetは、currentな`impact_assessment`を正確に1つ持つ。過去assessmentを残せるのは、
+   generic stateが`superseded`の場合だけとする。
+5. `affected`と`unaffected` assessmentは1つ以上のevidence pathを持つ。`suspect`と`unknown`は、
+   evidenceと後続assessmentで解消されない限り`pending` trackerを持つ。
+6. 各`impact`は、1つ以上の`propagates_to` relationを通じて1つ以上の`phenomenon`から到達可能でなければ
+   ならない。その各originating phenomenonは、自身の`covered_by` relationを通じてapplicable scopeを与える。
+   Impactは1つ以上のoutgoing `applies_to` relationを持ち、そのrelationの全targetは全applicable scopeで
+   `in_scope`でなければならない。`realized` impactにはそのtargetのcurrent `affected` assessmentを必要とする。
+   `credible` impactにはcurrent `affected`または`suspect` assessmentを必要とする。各current `affected`
+   assessmentは、同じtargetへ適用されるrealized impactを1つ以上持たなければならない。
+7. 各`depends_on`または`propagates_to_target` relationは、同じ`rca_case`内の2 targetを接続しなければ
+   ならない。Scope membershipは各target relationに対して閉じる。いずれかのendpointが`impact_scope`で
+   `in_scope`なら、もう一方も同じscopeで`in_scope`でなければならない。
+8. `completeness=complete`が主張するのは、authorが宣言したuniverseの全memberにassessmentがあること
+   だけであり、選択universeが現実世界を網羅することは証明しない。
+9. `partial`と`unknown`のscope completenessはraw reportへ残し、caseの構造的完了を禁止する。
+
+## 6. Cause、action、verification contract
+
+1. 構造的に完了したcaseは、各phenomenonへ`causes`で接続する1つ以上の`root_cause`を含む。
+   Contributing cause、trigger、escape causeは代用できない。
+2. 各root-cause claimは、宣言されたevidence path、またはevidenceをinputに含みそのcauseをoutputにする
+   明示的generic operationを持つ。
+3. 各root causeは1つ以上のcorrective actionの対象になる。
+4. Current assessmentが`affected`または`suspect`で、realizedまたはcredible impactが適用される各targetでは、
+   1つ以上の`contains`または`recovers` relationがそのtargetまたは適用済みimpactの1つをtargetにするか、
+   `pending`からのincoming `tracks` relationがいずれかのobjectをtargetにしなければならない。Root causeだけを
+   correctしてもpropagated effectは免除されない。
+5. `trigger`はphenomenonを表面化させたものを記録する。別の`root_cause` nodeとcausal relationを宣言
+   しない限り、producing root causeにはならない。
+6. `escape_cause`はdetection、review、monitoring、acceptanceがdefectを防げなかった理由を記録する。
+   Producing-cause要求を満たさない。
+7. `action_state=implemented`は実行だけを主張する。`action_state=effective`には、`result=passed`のlink済み
+   verificationが1つ以上必要である。
+8. `settled` caseはcurrent `pending` nodeを含んではならない。そのcaseで`corrects`、`contains`、
+   `recovers`、`prevents`に使う全actionは`action_state=effective`であり、`result=passed`のverificationから
+   incoming `verifies` relationを1つ以上持たなければならない。Implementedだが未検証のactionはcase completionを
+   満たせない。
+9. Failedまたはinconclusive verificationではeffectivenessを未解決のままにし、`pending`からincoming
+   `tracks` relationを持つか、section 4.2で許可されるsuccessor action kindへoutgoing
+   `requires_followup` relationを持たなければならない。各successor actionは、そのverificationの`verifies`
+   relationがtargetにする全actionとは異なるnodeでなければならない。`requires_followup` edgeが宣言するのは
+   logical successionだけで、Coreはwall-clock orderを推定してはならない。
+10. Causal、impact、`depends_on`、`propagates_to_target` subgraphはacyclicでなければならない。Cycleは
+    structural errorであり、現実世界のanalysisが誤りであることの証明ではない。
+
+## 7. 安定audit rule
+
+Profileは少なくとも次の安定rule IDを定義する。Strict severityは規範的である。Guidedでは表に示す
+場合だけerrorをwarningへ下げられる。Fatalなsyntax/profile/reference failureはGeneric V2が所有する。
+
+| Rule ID      | 条件                                                                                                                                                           | Guided  | Strict |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| `RCA-R1-001` | phenomenonにsame-caseの`covered_by` impact scopeが正確に1つない、またはproducing root-cause pathがない                                                         | warning | error  |
+| `RCA-R1-002` | caseにdocumented impact scopeがない                                                                                                                            | warning | error  |
+| `RCA-R1-003` | target assessmentが欠落/非一意、impactにphenomenon pathがない、applicable scope外へ適用、target assessmentと矛盾、またはaffected targetにrealized impactがない | warning | error  |
+| `RCA-R1-004` | affected/unaffected assessmentにevidenceがない                                                                                                                 | warning | error  |
+| `RCA-R1-005` | root causeにevidenceまたは明示的evidence-producing operationがない                                                                                             | warning | error  |
+| `RCA-R1-006` | settled caseにescape causeはあるがproducing root causeがない                                                                                                   | error   | error  |
+| `RCA-R1-007` | root causeにcorrective actionがない                                                                                                                            | warning | error  |
+| `RCA-R1-008` | applied impactを持つaffected/suspect targetについて、そのtargetまたはimpactを対象とするcontainment/recoveryも、いずれかを追跡するpendingもない                 | warning | error  |
+| `RCA-R1-009` | scope completenessがpartial/unknown、assessmentがsuspect/unknownのまま、またはcurrent pending nodeがあるcaseがsettled                                          | error   | error  |
+| `RCA-R1-010` | passed verificationなしでactionがeffective、またはsettled caseに`corrects`、`contains`、`recovers`、`prevents`で使うnon-effective/未検証actionがある           | error   | error  |
+| `RCA-R1-011` | causal、impact、dependency、target-propagation graphにcycleがある                                                                                              | error   | error  |
+| `RCA-R1-012` | failed/inconclusive verificationにpending/follow-upがない、またはfollow-up actionが全verified actionとdistinctではない                                         | warning | error  |
+| `RCA-R1-013` | target dependency/propagation endpointがcase境界を越える、またはいずれかを含む全scopeに両endpointが属していない                                                | warning | error  |
+
+各findingは最小の関係source-backed declarationをtargetとし、個別spanを持つ。欠落objectにspanがない場合、
+findingは未達obligationを所有するdeclarationをtargetにし、欠落relation/kindをmetadataで識別する。
+
+### 7.1 Closed-operator proof境界
+
+正確なprofile dataは、受入済みGeneric V2 R2 operatorだけを使用して各stable ruleを実証しなければならない。
+特にfixtureは、phenomenon scope、`applies_to`、current assessment、target dependency/propagation、
+verification/follow-up pathをまたぐshared-target bindingを実証する。受入済みoperatorで表現できないidentity
+comparison、correlated selection、traversalをruleが必要とする場合、RCA R1はhidden codeや新operatorを追加せず、
+新しいGeneric contract revisionとのreconciliationへ戻らなければならない。
+
+## 8. Completionとtruth境界
+
+RCA caseが構造的に完了するのは、次をすべて満たす場合だけである。
+
+- stateが`settled`
+- 各phenomenonにsame-caseの`covered_by` complete impact scopeが正確に1つあり、producing root causeがある
+- 各in-scope targetに解決済みcurrent assessmentがある
+- `corrects`、`contains`、`recovers`、`prevents`で使う全actionがeffectiveでpassed verificationを持つ
+- current pending nodeが残っていない
+- 必須evidence、corrective action、containment/recovery、verification pathがある
+- blocking R1 findingが残っていない
+
+Structural completionを、factual correctness、external approval、correction deployment、現実世界でのaction
+effectiveness、incident closure、recurrence preventionと表示してはならない。これらの主張にはLLMThink外の
+evidenceとauthorityが必要である。
+
+## 9. 必須executable fixture
+
+R1は次の8 caseについてsourceと期待raw audit JSONを必要とする。
+
+1. 完全なimpact-aware RCA: phenomenon、complete scope、realized/credible impact、unaffected target、root/
+   escape cause、acyclicなdownstream target dependency/propagation chain、effectiveなcorrective/containment/
+   recovery action、passed verificationを含む。
+2. Phenomenonからcountermeasureへ直行: `RCA-R1-001`と関連するmissing-scope/cause ruleを出力する。
+3. 不完全impact universe: in-scope targetにassessmentがない、または宣言済みdependent targetが同じscopeから
+   欠落し、`RCA-R1-003`または`RCA-R1-013`を出力してcompletionをblockする。
+4. Escape-cause substitution: producing root causeなしでreview/test omissionを使うと`RCA-R1-006`を出力する。
+5. Downstream effect放置: cause correctionはあるがaffected targetにcontainment/recovery/pendingがなく、
+   `RCA-R1-008`を出力する。
+6. 未検証action completion: settled caseがpassed verificationなしのimplemented actionを使用すると、
+   effective labelの有無にかかわらず`RCA-R1-010`を出力する。
+7. Failed verification follow-up: pendingまたはdistinct follow-up actionを受け入れ、follow-up欠落または
+   verified action node再利用には`RCA-R1-012`を出力する。
+8. Downstream target chain: 両target relationをround-tripし、cycle、cross-case endpoint、scope-closure違反には
+   `RCA-R1-011`または`RCA-R1-013`を出力する。
+
+Core、CLI raw JSON/text、stdio MCP、Hosted Application Service、LSP、VSIXは、presentation-only fieldを
+除去した後、すべてのfixtureのrule ID、severity、target reference、span、message identityで一致する。
+
+## 10. RCA help navigation
+
+1. `rca-impact@1.0.0`は、明示選択されたV2 profile indexから発見可能で、Generic V2 help graphとprofile
+   registryを使用しなければならない。RCA固有parser、Core IR、command dispatch分岐を追加してはならない。
+2. Profile indexはRCA structural modelを説明し、phenomenon記録、impact universe宣言とassessment、cause
+   classification、action classification、verificationという順序付きworkflowへlinkしなければならない。
+3. Canonical topicは、kindと必須property、relation方向、impact scopeとassessment、cause category、action
+   category、安定rule、実行可能fixture、migration、trust境界、既知の制限を扱わなければならない。
+4. 各安定ruleのdetailは、そのcondition、discipline別severity、target選択、最小のvalid/invalid example、
+   local recovery guidanceを示さなければならない。Guidanceはstructural obligationを説明するだけとし、
+   factual cause、impact、classification、effectiveness、completion、action authorityを主張してはならない。
+5. Helpに公開する各RCA exampleは、表示された正確なprofile referenceでparse/auditでき、期待する安定rule IDが
+   宣言されていなければならない。Topic、example、rule identityはCore、CLI、stdio MCP、Hosted Application
+   Service、LSP、VSIXで一致しなければならない。
+6. 未知のRCA topicまたはaliasは、Generic V2の決定論的なoffline error/recovery contractを使用しなければ
+   ならない。Helpはtarget/evidenceのfetch、impact universeの発見、profile install、proseからのRCA meaning
+   推定、V1または別profileへのfallbackを行ってはならない。
+7. V1のRCA類似guidanceはV1 guidanceのままとし、V1文書が本profileを選択またはmigration済みであると示唆
+   してはならない。
+
+## 11. V1共存とmigration
+
+1. `rca-impact@1.0.0`の追加または選択によって、V1文書または他profileを使うV2文書の意味やfindingを
+   変更してはならない。
+2. RCAらしいV1文書はV1文書のまま有効であり、暗黙にRCA R1へ再分類しない。
+3. V1-to-RCA migrationは宣言されたproblem/evidence/decision/pending構造を保存できるが、proseから
+   phenomenon、impact、target classification、root cause、trigger、escape cause、containment、recovery、
+   verification、relation semanticsを推定してはならない。
+4. 欠落したRCA固有meaningは、source-located migration questionまたはpending requirementとして報告する。
+   Migration outputは推定roleからstructural completionを主張してはならない。
+5. RCA profileのinstallまたはdocument checkだけでthought storeをmigrateしない。
+
+## 12. Trustとoperation境界
+
+- RCA auditは、supplied document、verified profile、Generic V2が許可する明示準備済みsemantic inputだけを読む。
+- `target_ref`をfetchせず、repository、filesystem、runtime、deployment、credential authorityとして使わない。
+- Profile ruleはcode、command、resolver、network request、repository inspectionを実行できない。
+- AuditはIssue、file、plan、code、test、remote、deployment、thought storeを変更しない。
+- Audit PASSはcorrective、containment、recovery、recurrence-prevention、verification actionを認可しない。
+
+## 13. Capability受入基準
+
+RCA Profile R1のimplementationが本要求を満たすのは次の場合だけである。
+
+1. 選択した3方式の組み合わせを記録し、RCA parser productionを追加しない。
+2. 必須RCA kind、property、relationがGeneric V2を通じてlosslessにround-tripする。
+3. affected/suspect/unaffected/unknown assessmentとcomplete/partial/unknown scopeが独立しquery可能である。
+4. 各phenomenonがsame-case scopeを正確に1つ持ち、各impactがphenomenon propagation pathを持ち、全impact
+   targetが全applicable scopeでin-scopeかつ許可されたcurrent assessmentを持つ。
+5. `depends_on`と`propagates_to_target`が、正確に逆向きの方向、same-case endpoint、scope closure、cycle
+   rejection、通常のGeneric DSLQL traversalとともにround-tripする。
+6. realized/credible impactが区別され、明示targetへlinkされる。
+7. root、contributing、trigger、escape causeが構造的に区別される。
+8. corrective action、containment、recovery、recurrence prevention、verificationが区別される。
+9. 13の安定ruleが受入済みGeneric V2 closed constraint operatorだけを使う。
+10. 最小の正確なprofile fragmentが、hidden codeまたは新operatorなしに、全correlated scope、impact、assessment、
+    target-chain、verification/follow-up conditionをまたぐshared-identity bindingを実証する。
+11. 8 fixtureすべてが全必須surfaceで正確な期待finding/spanを生成する。
+12. 完全fixtureにはblocking R1 findingがなく、各不完全fixtureは無関係なrule noiseに埋もれず意図ruleで
+    失敗する。
+13. Settled caseにcurrent pending nodeがなく、`corrects`、`contains`、`recovers`、`prevents`で使う
+    全actionがeffectiveかつpassed incoming verificationを持つ。
+14. Failed/inconclusive verificationがfollow-up obligationを満たせるのは、incoming pending trackerまたは
+    exact allowedかつdistinctなaction nodeへのoutgoing `requires_followup` relationを持ち、logical successionを
+    そのrelationだけで表す場合とする。
+15. Profile追加が無関係なV1/V2 documentのfinding、AST、help default、storage、behaviorを暗黙変更しない。
+16. 悪意あるtarget reference/profile propertyがI/Oまたはcode executionを引き起こせない。
+17. MigrationがproseからRCA semanticsを推定せず、未解決roleをすべてlocation付きで報告する。
+18. Audit PASSとcase `settled`をstructural conformanceとしてのみ提示する。
+19. 全canonical RCA topic、安定rule detail、対応alias、fixtureが、profile固有parser/dispatch codeなしで、
+    全必須surfaceのV2 profile indexから到達できる。
+20. 全help exampleが表示された`rca-impact@1.0.0` referenceでparse/auditでき、宣言済み安定rule IDだけを
+    生成し、invalid routeは決定論的なoffline recoveryを提示する。
+21. 修飾なしV1 helpとV1 RCA類似guidanceが変更されず、profile選択またはmigrationを主張しない。
+22. Implementation change setにrelease、publication、deployment、Issue mutation、external action、Generic V2
+    acceptance、V1 cutoverを含めない。
+
+## 14. 非目標
+
+- cause、impact、classification、remedyのfactual truth判定
+- semantic inspectionによりhuman、tool、LLM、test、review、monitor observationをroot causeとして扱うこと
+- 実際のimpact universeの自動発見
+- file、commit、requirement、plan、runtime state、remote、deploymentのfetch
+- embeddingまたはproseからcausal/support/impact/containment/verification linkを生成すること
+- RCA固有parser syntaxまたはexecutable audit pluginの追加
+- V1 orphan、contradiction、semantic、finalize、thought-store behaviorの変更
+- namespace、ACL、cross-thought resolution、release、publication、deployment、Issue mutation
+- structural completionがincidentをcloseまたはaction effectivenessを証明するとの主張
+- helpをoperational incident procedureまたはaction実行authorityとして使用すること
+
+## 15. 前提と未解決判断
+
+- この候補は正確なGeneric V2 R2 predecessorが変更なしで受け入れられることを仮定する。そのbytesが
+  変わった場合、本依存をreconcileし、本候補revisionを再reviewする。
+- Profile JSON表現と正確なmessage textは後続artifactである。Rule ID、structural condition、severity、
+  target、message identityは本書で固定する。
+- 受入済みGeneric V2 R2 operatorを使い、全correlated ruleを正確な最小profile fragmentで実証するまでRCA
+  capability受入をblockする。実証できない場合、profile固有codeではなくGeneric contract reconciliationを
+  必要とする。
+- Target universeの完全な内容はauthor-declaredのままとする。自動発見はR1外であり、別authorityを
+  持つrepository/runtime integrationを必要とする可能性がある。
+- Profile publication、package配置、release activation、operational incident workflowは別判断である。
+
+## 16. Step 1自己レビュー
+
+- Issue #44のfunctional outcomeを、phenomenon-to-remedyの直接checklistへ弱めず維持した。
+- Root cause、contributing condition、trigger、escape causeを分離した。
+- Source-cause correctionとpropagated-impact containment/recoveryを分離した。
+- 選択したgeneric/profile/declarative-auditの組み合わせを明示し、候補を黙って統合していない。
+- Structural auditをtruth judgment、implicit I/O、action authorityから分離した。
+- V1と無関係なV2 profileに影響しない。
+- RCA helpはgenericなprofile-aware graphから導出し、完全なstructural model、rule、fixture、migration、制限を
+  扱い、offlineかつ非authoritativeのままとした。
+- R2のsuccessor-action、credible-impact、scope-association、endpoint-kind findingは解消済みのままである。
+  R3のdownstream-target/unverified-completion contradictionを、正確なrelation、completion rule、stable finding、
+  fixtureで解消した。
+- R3のcorrelated-operator concernは新しいGeneric capabilityの仮定ではなく明示proof gateとして残し、
+  successor orderは推定時刻ではなくlogicalなdistinct-node構造とした。
+- この候補はGeneric V2 R2の受入を変更せず、RCA R1を受け入れない。またdesign、ADR作成、implementation、
+  migration、external action、release、deploymentを認可しない。
