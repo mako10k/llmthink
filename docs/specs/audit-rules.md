@@ -254,6 +254,8 @@
 注記:
 
 - first pass では transitive graph や意味推定ではなく explicit based_on edge のみを見る
+- report metadata の `orphan_profile` は `direct-v1`、`transitive_reachability` は `not_expressible_in_grammar_v1` とする
+- grammar v1 では `based_on` を宣言できるのは decision だけなので、support node の transitive reachability を direct incoming edge と独立には表現できない。support edge を追加する将来grammarでは別profileとして設計し、`direct-v1` の意味を変更しない
 
 ### R010 orphan_supporting_node
 
@@ -275,6 +277,7 @@
 注記:
 
 - suppression は orphan finding にだけ効き、unresolved reference や decision_without_reference には効かない
+- report metadata は R009 と同じ `direct-v1` profile と grammar v1 の reachability capability を明示する
 
 ### Evidence resource structural validation
 

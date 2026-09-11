@@ -188,6 +188,7 @@ export function formatAuditReportText(report, options = {}) {
     const lines = [];
     lines.push(`document: ${limitedReport.document_id}`);
     lines.push(`engine: ${limitedReport.engine_version}`);
+    lines.push(...auditProvenanceTextLines(limitedReport));
     lines.push(`summary: fatal=${limitedReport.summary.fatal_count} error=${limitedReport.summary.error_count} warning=${limitedReport.summary.warning_count} info=${limitedReport.summary.info_count} hint=${limitedReport.summary.hint_count}`);
     if (limitedReport.results.length > 0) {
         lines.push("");
@@ -213,6 +214,17 @@ export function formatAuditReportText(report, options = {}) {
         }
     }
     return `${lines.join("\n")}\n`;
+}
+function auditProvenanceTextLines(report) {
+    const lines = [];
+    if (report.grammar_version)
+        lines.push(`grammar: ${report.grammar_version}`);
+    if (report.package_version)
+        lines.push(`package: ${report.package_version}`);
+    if (report.semantic_analysis) {
+        lines.push(`semantic: status=${report.semantic_analysis.status} provider=${report.semantic_analysis.provider ?? "none"} model=${report.semantic_analysis.model ?? "none"}`);
+    }
+    return lines;
 }
 function escapeHtml(value) {
     return value
@@ -395,6 +407,9 @@ export function formatAuditReportHtml(report, options = {}) {
     <section class="card">
       <h1>${escapeHtml(report.document_id)}</h1>
       <p>engine <code>${escapeHtml(report.engine_version)}</code></p>
+      ${report.grammar_version ? `<p>grammar <code>${escapeHtml(report.grammar_version)}</code></p>` : ""}
+      ${report.package_version ? `<p>package <code>${escapeHtml(report.package_version)}</code></p>` : ""}
+      ${report.semantic_analysis ? `<p>semantic <code>${escapeHtml(report.semantic_analysis.status)}</code> provider <code>${escapeHtml(report.semantic_analysis.provider ?? "none")}</code> model <code>${escapeHtml(report.semantic_analysis.model ?? "none")}</code></p>` : ""}
       <div class="summary">
         <div class="metric"><span>fatal</span><strong>${limitedReport.summary.fatal_count}</strong></div>
         <div class="metric"><span>error</span><strong>${limitedReport.summary.error_count}</strong></div>

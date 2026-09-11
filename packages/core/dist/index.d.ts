@@ -5,6 +5,7 @@ export { getDslExample } from "./dsl/examples.js";
 export { formatDocument, formatDslText } from "./dsl/format.js";
 export { alternateLlmthinkFilePath, isLlmthinkFilePath, llmthinkFileExtension, stripLlmthinkFileExtension, LLMTHINK_CANONICAL_FILE_EXTENSION, LLMTHINK_FILE_EXTENSIONS, LLMTHINK_LEGACY_FILE_EXTENSIONS, } from "./dsl/file-extension.js";
 export type { LlmthinkFileExtension } from "./dsl/file-extension.js";
+export { LLMTHINK_AUDIT_ENGINE_VERSION, LLMTHINK_GRAMMAR_VERSION, LLMTHINK_PACKAGE_VERSION, } from "./model/version.js";
 export { getDslSyntaxGuidanceText, isDslHelpRequest, parseDslHelpRequest, } from "./dsl/guidance.js";
 export type { DslHelpChannel, DslHelpDetail, DslHelpRequest, } from "./dsl/guidance.js";
 export { parseDocument, ParseError } from "./parser/parser.js";

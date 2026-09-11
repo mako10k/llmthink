@@ -317,6 +317,24 @@ const confidenceResultSchema = confidenceResultBaseSchema.superRefine(
 );
 const auditSchema = z.object({
   engine_version: z.string(),
+  grammar_version: z.string().optional(),
+  package_version: z.string().optional(),
+  semantic_analysis: z
+    .object({
+      status: z.enum([
+        "available",
+        "disabled",
+        "unavailable",
+        "not_applicable",
+      ]),
+      provider: z.string().nullable(),
+      model: z.string().nullable(),
+    })
+    .optional(),
+  source_sha256: z
+    .string()
+    .regex(/^sha256:[a-f0-9]{64}$/)
+    .optional(),
   document_id: z.string(),
   generated_at: z.string(),
   summary: z.object({

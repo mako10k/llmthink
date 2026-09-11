@@ -5,6 +5,7 @@ import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, formatAuditReportText, getDs
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "./presentation/thought.js";
 import { addThoughtReflection, deleteThought, relateThought, finalizeThought, listThoughts, loadThought, draftThought, saveThoughtSemanticAudit, searchThoughtRecords, } from "./thought/store.js";
 import { auditAndPersistThought } from "./thought/workflow.js";
+import { checkDslSources } from "./check.js";
 function readRequiredOptionValue(optionName, remainingArgs) {
     const value = remainingArgs.shift();
     if (!value || value.startsWith("--")) {
@@ -12,11 +13,11 @@ function readRequiredOptionValue(optionName, remainingArgs) {
     }
     return value;
 }
-function parseMinSeverity(remainingArgs) {
-    const rawValue = readRequiredOptionValue("--min-severity", remainingArgs);
+function parseSeverity(optionName, remainingArgs) {
+    const rawValue = readRequiredOptionValue(optionName, remainingArgs);
     const severity = AUDIT_SEVERITIES.find((candidate) => candidate === rawValue);
     if (!severity) {
-        throw new Error(`Invalid --min-severity value: ${rawValue}. Use one of ${AUDIT_SEVERITIES.join(", ")}.`);
+        throw new Error(`Invalid ${optionName} value: ${rawValue}. Use one of ${AUDIT_SEVERITIES.join(", ")}.`);
     }
     return severity;
 }
@@ -62,7 +63,10 @@ const OPTION_MUTATORS = {
         options.limit = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
     },
     "--min-severity": (options, remainingArgs) => {
-        options.minSeverity = parseMinSeverity(remainingArgs);
+        options.minSeverity = parseSeverity("--min-severity", remainingArgs);
+    },
+    "--fail-on": (options, remainingArgs) => {
+        options.failOn = parseSeverity("--fail-on", remainingArgs);
     },
     "--suppress-category": appendSuppressedCategories,
     "--suppress-tag": appendSuppressedCategories,
@@ -184,6 +188,8 @@ function printUsage() {
         "Usage:",
         "  llmthink dsl audit <file> [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]",
         '  llmthink dsl audit --text "...dsl..." [--id document-id] [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]',
+        "  llmthink dsl check <file-or-directory>... [-] [--fail-on error] [--pretty] [--limit 50] [--min-severity warning] [--suppress-category semantic_hint]",
+        '  llmthink dsl check --text "...dsl..." [--id document-id] [--fail-on error] [--pretty]',
         "  llmthink dsl help [topic] [subtopic] [index|quick|detail]",
         '  llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]',
         "  llmthink thought relate --id <thought-id> --from source-thought-id",
@@ -206,6 +212,21 @@ function auditOutputOptions(options) {
         minSeverity: options.minSeverity,
         suppressedCategories: options.suppressedCategories,
     };
+}
+function formatDslCheckResult(result, options) {
+    const lines = [
+        "dsl_check:",
+        `persisted: ${result.persisted}`,
+        `fail_on: ${result.fail_on}`,
+        `failed: ${result.failed}`,
+        `sources: ${result.source_count}`,
+        `unique_contents: ${result.unique_content_count}`,
+        `summary: fatal=${result.summary.fatal_count} error=${result.summary.error_count} warning=${result.summary.warning_count} info=${result.summary.info_count} hint=${result.summary.hint_count}`,
+    ];
+    for (const document of result.documents) {
+        lines.push("", `source_sha256: ${document.source_sha256}`, ...document.sources.map((source) => `source: ${source}`), formatAuditReportText(document.report, auditOutputOptions(options)).trimEnd());
+    }
+    return `${lines.join("\n")}\n`;
 }
 function maskSecret(secret) {
     if (!secret) {
@@ -296,6 +317,30 @@ async function handleDslCommand(options) {
             detail,
             channel: "cli",
         }));
+        return;
+    }
+    if (options.subcommand === "check") {
+        const result = await checkDslSources({
+            inputs: options.positionals,
+            text: options.text,
+            documentId: options.documentId,
+            failOn: options.failOn,
+        });
+        if (options.pretty) {
+            process.stdout.write(formatDslCheckResult(result, options));
+        }
+        else {
+            process.stdout.write(`${JSON.stringify({
+                ...result,
+                documents: result.documents.map((document) => ({
+                    ...document,
+                    report: limitAuditReport(document.report, auditOutputOptions(options)),
+                })),
+            }, null, 2)}\n`);
+        }
+        if (result.failed) {
+            process.exitCode = 1;
+        }
         return;
     }
     if (options.subcommand !== "audit") {
