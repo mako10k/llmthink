@@ -62,6 +62,7 @@ task SEPARATE_AND_PRESERVE_ISSUE43_WIP ARCHITECTURE_DIRECTION_ACCEPTED -> ISSUE4
 task INTEGRATE_ISSUE43_CORE_SLICE ISSUE43_WIP_SEPARATED -> ISSUE43_CORE_SLICE_INTEGRATED:
   title "Validate and integrate the reusable Issue #43 core slice"
   description "Validate the separated integration candidate with the repository-wide test suite, focused CLI, Core, and hosted-server tests, TypeScript checks, generated-artifact consistency, and a diff against the disposition manifest. After separate explicit merge authority, integrate only that candidate through the established repository workflow and independently read back the resulting remote canonical revision. Keep the preserved remainder recoverable and do not close Issue #43, accept the finalize-gate candidate, mutate Issues, release, publish, or deploy under this task. A local candidate or passing tests alone do not satisfy this milestone."
+  status active
   estimate:
     optimistic 1p
     most_likely 2p
