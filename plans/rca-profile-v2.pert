@@ -49,6 +49,7 @@ milestone RCA_V2_ACCEPTED:
 task SEPARATE_AND_PRESERVE_ISSUE43_WIP ARCHITECTURE_DIRECTION_ACCEPTED -> ISSUE43_WIP_SEPARATED:
   title "Separate and preserve the Issue #43 WIP"
   description "Create a recoverable preservation reference for the complete Issue #43 working state before extraction. Produce a complete disposition manifest that maps every changed file and material hunk to integrate, preserve, regenerate, or reject with its authority and rationale. Extract only the non-persistent dsl check and fail-on path, audit correctness and provenance changes, compatible report and schema propagation, tests, and accepted ADR-0023 into a clean integration candidate. Preserve unaccepted finalize-gate candidates and deferred work outside that candidate without representing them as accepted or complete. Do not merge, discard, rewrite, or publish the original WIP under this task."
+  status done
   estimate:
     optimistic 1p
     most_likely 2p
