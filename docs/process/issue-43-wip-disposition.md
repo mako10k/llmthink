@@ -1,6 +1,6 @@
 # Issue #43 WIP disposition
 
-Status: local separation record; integration candidate not yet accepted or merged  
+Status: local separation record; integration candidate not yet accepted or merged
 Date: 2026-09-11
 
 ## Snapshot and authority
