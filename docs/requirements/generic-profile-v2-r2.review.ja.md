@@ -1,16 +1,16 @@
-# 独立レビュー入力: Generic Profile and Audit Contract V2 R1 日本語全文訳
+# 独立レビュー入力: Generic Profile and Audit Contract V2 R2 日本語全文訳
 
-本書は `generic-profile-v2-r1.review.md` のレビュー支援用日本語訳であり、正本ではない。
+本書は `generic-profile-v2-r2.review.md` のレビュー支援用日本語訳であり、正本ではない。
 
 状態: Step 3向け入力案、Step 2のオーナーrouteは未選択
 
-候補: `docs/requirements/generic-profile-v2-r1.md`
+候補: `docs/requirements/generic-profile-v2-r2.md`
 
-候補digest: `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`
+候補digest: `sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`
 
-日本語レビュー支援: `docs/requirements/generic-profile-v2-r1.ja.md`
+日本語レビュー支援: `docs/requirements/generic-profile-v2-r2.ja.md`
 
-日本語訳digest: `sha256:cbadd3185e70526e4702a648ea402dca26d260960aa518f9d0825a8a0dbc8c8a`
+日本語訳digest: `sha256:6580485352866554ac6130e43f630310902c2e4019c99de592315d4ea24bcc95`
 
 ## レビューauthority
 
@@ -46,6 +46,8 @@ deployment、Issue mutationを認可しない。
 - discipline動作、安定finding、target span、lossless raw report
 - current-document限定のread-only DSLQL
 - 明示的、決定論的、fail-closedなV1 document migration
+- 1つのregistryによる明示的なprofile-aware help navigation、V1既定の維持、offlineなfailure/recovery動作、
+  実行可能example
 - V1共存と、暗黙source/store/public-surface変更の禁止
 - trust、resource limit、failure semantics
 - surface横断の構造conformance基準
@@ -63,7 +65,7 @@ deployment、Issue mutationを認可しない。
 
 ## 受入観点
 
-独立レビューは18項目の受入section全体を検査し、特に次を確認する。
+独立レビューは21項目の受入section全体を検査し、特に次を確認する。
 
 - V1とV2のdispatchが一意であること
 - parserやCore IRを変更せず新profileを追加できること
@@ -71,12 +73,15 @@ deployment、Issue mutationを認可しない。
 - digest/version failureがfail closedであること
 - V1 migrationが決定論的、非変更、loss-awareであること
 - raw findingが全adapterで安定identityとtarget別spanを保持すること
+- 全登録help route、alias、exampleが、use-case固有parser/dispatch分岐なしでsurface間において完全かつ
+  一貫していること
 - 除外したnamespace/release/cutover workがR1完了条件に実際に含まれないこと
 
 ## 既知のunknown
 
 - 正確なprofile JSON Schemaとpackage配置は後続design artifactである。
 - 最初の同梱`reasoning@2.0.0` profile bytesとdigestはまだ存在しない。
+- 正確なCLI引数順序とhelp registryの物理表現は後続design判断である。
 - Namespace-aware queryとcross-thought referenceは将来要求判断のままである。
 - V2 release、activation、V1 retirement pathは未決定である。
 
@@ -95,6 +100,10 @@ deployment、Issue mutationを認可しない。
 7. R1 scopeは、将来のprepared-runtime境界を維持しながらnamespace/authorization workを正しく分離
    しているか。
 8. 受入済みV1、Hosted、public name、semantic-audit authorityを黙って変更する条項がないか。
+9. Help navigationは明示的にV2/profileを選択し、決定論的かつofflineで、use caseごとの重複ではなく同じ
+   検証済みprofile identityから生成されるか。
+10. 全route/example検査基準は、topic欠落、壊れたalias、未記載fallback、表示profileでparse/auditできない
+    exampleを防ぐか。
 
 ## 独立レビュー後のroute
 

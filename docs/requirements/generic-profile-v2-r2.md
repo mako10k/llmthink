@@ -1,8 +1,8 @@
-# Generic Profile and Audit Contract V2 — Requirement Candidate R1
+# Generic Profile and Audit Contract V2 — Requirement Candidate R2
 
 Status: Step 1 candidate, self-reviewed, not accepted
 
-Requirement revision: R1
+Requirement revision: R2
 
 External contract name: Generic Profile and Audit Contract V2
 
@@ -25,11 +25,11 @@ V1 cutover or retirement requires a separate owner decision.
 The following inputs are frozen for this candidate. GitHub body digests are SHA-256 over the exact
 UTF-8 issue body, without a CLI-added trailing newline.
 
-| Input                        | Snapshot                                                                                           | Disposition in R1                                                              |
+| Input                        | Snapshot                                                                                           | Disposition in R2                                                              |
 | ---------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Owner direction, 2026-09-11  | “Keep V1 while proceeding with V2”                                                                 | Normative coexistence boundary                                                 |
 | GitHub Issue #10             | Updated 2026-05-08; body `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71` | Preserve its V1 profile-by-guidance behavior; do not mutate V1 roles           |
-| GitHub Issue #25             | Updated 2026-08-19; body `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | Primary V2 proposal; narrowed by later coexistence authority and this R1 scope |
+| GitHub Issue #25             | Updated 2026-08-19; body `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | Primary V2 proposal; narrowed by later coexistence authority and this R2 scope |
 | GitHub Issue #43             | Updated 2026-09-08; body `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076` | Current V1 audit baseline and provenance requirements                          |
 | `docs/specs/requirements.md` | `sha256:7d6c93d8c67f903c3730d2b5872f72bed796fe7af2f512c5b62c4c9604c35812`                          | Existing V1 normative baseline; preserved                                      |
 | ADR-0018                     | `sha256:0eb3f1a1f1bf03dfb09acde37b5b72ff3bc121761dc05fbdcd54c1c4df1d3beb`                          | Preserve versioned-contract and conformance boundaries                         |
@@ -51,8 +51,8 @@ UTF-8 issue body, without a CLI-added trailing newline.
 5. Existing semantic sidecars remain outside the V2 document grammar. This contract does not
    restore the withdrawn `semantic-audit-v1` proposal.
 6. Issue #25 namespace locators, hosted scope expressions, authorization, pagination across
-   thoughts, and cross-namespace loading remain a future extension. R1 must leave a typed extension
-   boundary, but they are not R1 acceptance criteria.
+   thoughts, and cross-namespace loading remain a future extension. R2 must leave a typed extension
+   boundary, but they are not R2 acceptance criteria.
 
 ## 4. Definitions
 
@@ -147,7 +147,7 @@ A profile MUST be immutable data and MUST define:
 - optional read-only query helpers and templates; and
 - compatibility declarations for the grammar and profiles it extends.
 
-Profile constraints may compose only these closed operators in R1:
+Profile constraints may compose only these closed operators in R2:
 
 - `reference_exists`
 - `kind_allowed`
@@ -212,7 +212,7 @@ because `loose` is selected.
 
 1. V2 DSLQL reads `nodes`, `links`, `operations`, and `queries`; it MUST NOT add a top-level
    collection for each profile kind.
-2. R1 provides only current-document scope.
+2. R2 provides only current-document scope.
 3. Generic helpers are limited to `links([relation])`, `inputs()`, `outputs()`, `producer()`,
    `upstream([relation])`, `downstream([relation])`, and `lineage()`.
 4. A profile may supply query templates and names that expand to ordinary DSLQL, but it MUST NOT
@@ -224,7 +224,38 @@ Namespace-aware `from` expressions and cross-thought loading require a later req
 future addition MUST preserve Core evaluation over an authorization-prepared runtime rather than
 giving Core direct storage or network authority.
 
-## 11. V1 coexistence and migration
+## 11. Help navigation and discovery
+
+1. Existing V1 help remains the default for an unqualified `dsl help` request and MUST retain its
+   current topics, routes, examples, and behavior. V2 installation MUST NOT silently replace or
+   reinterpret any V1 help route.
+2. V2 help MUST have an explicit entry point and MUST identify the selected grammar version and
+   complete profile reference. The exact CLI argument order is a downstream design choice, but a
+   request MUST NOT infer V2 or a profile from prose, document contents, or the latest installed
+   version.
+3. V2 grammar topics and profile-specific topics MUST be registered in one structured help graph.
+   Profile navigation MUST be derived from the verified profile manifest or the same immutable
+   registry that binds the profile reference; implementations MUST NOT add parser or Core IR
+   branches for a use case.
+4. Each canonical help topic MUST provide an index, quick reference, and detail reference as
+   applicable, together with its parent or breadcrumb, related topics, bounded next requests, and
+   executable examples. A supported alias MUST resolve to a canonical topic while preserving both
+   the requested alias and canonical identity in machine-readable output.
+5. Help output MUST identify the selected profile ID, version, and digest. Unknown grammar versions,
+   profiles, topics, subtopics, aliases, or detail levels MUST fail with a distinct machine-readable
+   error, nearby valid choices, and a route back to the relevant index; they MUST NOT fall back to
+   V1, `latest`, a different profile, or network discovery.
+6. Help resolution MUST be deterministic and offline. Help data and examples MUST NOT grant or
+   perform network, filesystem, repository, thought-store, credential, mutation, or action
+   authority.
+7. Every presented V2 example MUST parse under the identified grammar/profile and MUST have a
+   declared expected audit outcome. Error guidance SHOULD route to the smallest relevant quick
+   reference, then expose related detail and examples rather than repeating the whole manual.
+8. Core, CLI, stdio MCP, Hosted Application Service, LSP, and VSIX MUST expose the same canonical
+   topic identities, profile identity, relationships, and example identities. Channel-specific
+   rendering and bounded response size may differ without changing the help graph.
+
+## 12. V1 coexistence and migration
 
 1. Existing V1 parsing, formatting, auditing, help, examples, DSLQL, storage, and public adapters
    MUST remain available and retain their current default behavior.
@@ -253,7 +284,7 @@ giving Core direct storage or network authority.
 10. V1 compatibility readers may be used at the migration boundary but MUST NOT become hidden V1
     branches inside the V2 runtime.
 
-## 12. Trust and failure boundaries
+## 13. Trust and failure boundaries
 
 - Profile resolution is caller-supplied or package-bundled and digest-verified.
 - Core never downloads profiles or follows document locators.
@@ -266,9 +297,9 @@ giving Core direct storage or network authority.
 - A profile cannot grant filesystem, network, repository, namespace, credential, persistence,
   finalization, approval, release, or deployment authority.
 
-## 13. Acceptance criteria
+## 14. Acceptance criteria
 
-R1 is satisfied only when all of the following are demonstrated against the accepted candidate
+R2 is satisfied only when all of the following are demonstrated against the accepted candidate
 snapshot:
 
 1. A V2 document requires the explicit `think <profile>@<version>` header, while a headerless/current
@@ -299,10 +330,16 @@ snapshot:
 16. A malicious profile fixture cannot execute code, access network/filesystem/storage, or add an
     unknown constraint operator.
 17. Raw audit output stays lossless; any presentation truncation reports total counts and truncation.
-18. Namespace, release, package publication, deployment, and V1 cutover are absent from the
+18. Every registered V2 grammar/profile help topic, supported detail level, and alias is reachable
+    on every required surface; invalid routes return deterministic local recovery choices.
+19. Every help example parses under its exact profile reference and produces its declared audit
+    outcome; a no-network fixture proves that help resolution is offline.
+20. Unqualified V1 help fixtures remain byte- or contract-equivalent to the accepted V1 baseline,
+    and V2 profile help requires explicit selection.
+21. Namespace, release, package publication, deployment, and V1 cutover are absent from the
     implementation change set unless separately accepted.
 
-## 14. Non-goals
+## 15. Non-goals
 
 - replacing, deprecating, or removing V1;
 - automatically choosing V2 or migrating V1;
@@ -313,22 +350,25 @@ snapshot:
   I/O;
 - restoring the withdrawn semantic-audit artifact;
 - changing Hosted MCP contract V1 or root compatibility surfaces;
+- a remotely fetched help catalog, web help service, or help-driven profile installation;
 - release, publication, deployment, production activation, or Issue mutation; and
 - accepting any specialized profile, including RCA Profile R1, merely because this generic contract
   is accepted.
 
-## 15. Assumptions and unresolved decisions
+## 16. Assumptions and unresolved decisions
 
-- R1 assumes `reasoning@2.0.0` is the first bundled profile; its actual profile bytes and digest are
+- R2 assumes `reasoning@2.0.0` is the first bundled profile; its actual profile bytes and digest are
   an implementation artifact reviewed after this contract, not supplied by this requirement text.
 - The exact JSON Schema and wire layout for profile data remain a design artifact, but they MUST
   implement the complete closed contract above without adding semantics or operators.
-- Namespace-aware querying remains undecided for a later revision; R1 neither accepts nor rejects
+- The exact CLI argument order and the physical help-registry representation remain downstream
+  design choices; the observable navigation and failure contract above is fixed.
+- Namespace-aware querying remains undecided for a later revision; R2 neither accepts nor rejects
   the broader Issue #25 proposal.
 - Package/repository placement, release version, activation, and V1 retirement remain separate owner
   decisions.
 
-## 16. Step 1 self-review
+## 17. Step 1 self-review
 
 - Source provenance and later owner direction are explicit.
 - V1 and accepted Hosted/public contracts are preserved rather than silently superseded.
@@ -336,5 +376,7 @@ snapshot:
   failures, and acceptance criteria are stated normatively.
 - Namespace scope and other future ideas are not acceptance blockers.
 - Existing implementation is used only as feasibility evidence.
+- Help navigation reuses one profile-aware graph, preserves the V1 default, fails closed without
+  network discovery, and requires exhaustive route/example conformance.
 - This candidate does not authorize design, ADR creation, implementation, migration, release,
   deployment, or acceptance.

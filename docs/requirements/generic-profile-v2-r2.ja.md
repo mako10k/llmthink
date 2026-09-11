@@ -1,11 +1,11 @@
-# Generic Profile and Audit Contract V2 — 要求候補 R1 日本語全文訳
+# Generic Profile and Audit Contract V2 — 要求候補 R2 日本語全文訳
 
-本書は `generic-profile-v2-r1.md` のレビュー支援用日本語訳であり、正本ではない。要求の
+本書は `generic-profile-v2-r2.md` のレビュー支援用日本語訳であり、正本ではない。要求の
 authorityは英語正本の確定bytesにある。
 
 状態: Step 1候補、自己レビュー済み、未受入
 
-要求リビジョン: R1
+要求リビジョン: R2
 
 外部契約名: Generic Profile and Audit Contract V2
 
@@ -28,11 +28,11 @@ V2はV1と並存する追加機能である。V1文書、thought store、command
 次の入力をこの候補向けに固定する。GitHub body digestは、CLIが追加する末尾改行を含まない
 正確なUTF-8 Issue本文に対するSHA-256である。
 
-| 入力                         | Snapshot                                                                                       | R1での扱い                                                 |
+| 入力                         | Snapshot                                                                                       | R2での扱い                                                 |
 | ---------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | 2026-09-11のオーナー方針     | 「V1を維持しつつV2を進める」                                                                   | 規範的な共存境界                                           |
 | GitHub Issue #10             | 2026-05-08更新、本文 `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71` | V1のguidanceによるprofile動作を維持し、V1 roleを変更しない |
-| GitHub Issue #25             | 2026-08-19更新、本文 `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | 主要V2案。ただし後発の共存authorityと本R1 scopeで限定      |
+| GitHub Issue #25             | 2026-08-19更新、本文 `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | 主要V2案。ただし後発の共存authorityと本R2 scopeで限定      |
 | GitHub Issue #43             | 2026-09-08更新、本文 `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076` | 現行V1 audit baselineとprovenance要求                      |
 | `docs/specs/requirements.md` | `sha256:7d6c93d8c67f903c3730d2b5872f72bed796fe7af2f512c5b62c4c9604c35812`                      | 既存V1規範baselineとして維持                               |
 | ADR-0018                     | `sha256:0eb3f1a1f1bf03dfb09acde37b5b72ff3bc121761dc05fbdcd54c1c4df1d3beb`                      | 版付きcontractとconformance境界を維持                      |
@@ -52,8 +52,8 @@ V2はV1と並存する追加機能である。V1文書、thought store、command
 5. 既存semantic sidecarはV2文書文法の外側に置く。本contractは撤回済み
    `semantic-audit-v1`案を復活させない。
 6. Issue #25のnamespace locator、hosted scope expression、authorization、thought横断pagination、
-   cross-namespace loadingは将来拡張として残す。R1は型付き拡張境界を残さなければならないが、
-   これらはR1の受入基準ではない。
+   cross-namespace loadingは将来拡張として残す。R2は型付き拡張境界を残さなければならないが、
+   これらはR2の受入基準ではない。
 
 ## 4. 定義
 
@@ -144,7 +144,7 @@ Profileは不変データでなければならず、次を定義する。
 - 任意のread-only query helperとtemplate
 - 対応するgrammarと継承profileの互換性宣言
 
-R1のprofile constraintは、次のclosed operatorだけを組み合わせられる。
+R2のprofile constraintは、次のclosed operatorだけを組み合わせられる。
 
 - `reference_exists`
 - `kind_allowed`
@@ -206,7 +206,7 @@ digest mismatch、invalid profile dataは、`loose`選択によって成功に�
 
 1. V2 DSLQLは`nodes`、`links`、`operations`、`queries`を読む。Profile kindごとのtop-level collectionを
    追加してはならない。
-2. R1はcurrent-document scopeだけを提供する。
+2. R2はcurrent-document scopeだけを提供する。
 3. Generic helperは`links([relation])`、`inputs()`、`outputs()`、`producer()`、
    `upstream([relation])`、`downstream([relation])`、`lineage()`に限定する。
 4. Profileは通常DSLQLへ展開されるquery templateと名前を提供できるが、実行可能evaluator codeを
@@ -218,7 +218,33 @@ Namespace-awareな`from` expressionとcross-thought loadingは後続要求を必
 Coreへstorage/network authorityを付与せず、authorization済みprepared runtimeをCoreが評価する境界を
 維持しなければならない。
 
-## 11. V1共存とmigration
+## 11. Help navigationと発見
+
+1. 修飾なしの`dsl help` requestでは既存V1 helpを既定とし、現行topic、route、example、動作を維持
+   しなければならない。V2のinstallによってV1 help routeを暗黙に置換または再解釈してはならない。
+2. V2 helpは明示的な入口を持ち、選択されたgrammar versionと完全なprofile referenceを表示しなければ
+   ならない。正確なCLI引数順序は後続design判断とするが、prose、document内容、install済みlatest version
+   からV2またはprofileを推定してはならない。
+3. V2 grammar topicとprofile固有topicは、1つの構造化help graphへ登録しなければならない。Profile
+   navigationは、検証済みprofile manifestまたはprofile referenceをbindingする同じ不変registryから
+   導出し、use case向けparser/Core IR分岐を追加してはならない。
+4. 各canonical help topicは、該当するindex、quick reference、detail referenceに加え、parentまたは
+   breadcrumb、related topic、範囲を限定したnext request、実行可能exampleを提供しなければならない。
+   対応aliasはcanonical topicへ解決しつつ、requestされたaliasとcanonical identityの両方をmachine-readable
+   outputに保持しなければならない。
+5. Help outputは選択profileのID、version、digestを表示しなければならない。未知のgrammar version、
+   profile、topic、subtopic、alias、detail levelは、区別可能なmachine-readable error、近い有効選択肢、
+   関連indexへ戻るrouteを返して失敗し、V1、`latest`、別profile、network discoveryへfallbackしてはならない。
+6. Help解決は決定論的かつofflineでなければならない。Help dataとexampleはnetwork、filesystem、repository、
+   thought store、credential、mutation、action authorityを付与または実行してはならない。
+7. 提示する各V2 exampleは、表示されたgrammar/profileでparseでき、期待audit outcomeが宣言されていなければ
+   ならない。Error guidanceはmanual全体を再掲せず、最小の関連quick referenceへ案内し、次に関連detailと
+   exampleを辿れるようにするべきである。
+8. Core、CLI、stdio MCP、Hosted Application Service、LSP、VSIXは、同じcanonical topic identity、profile
+   identity、relation、example identityを公開しなければならない。Channel固有renderingと応答量制限は、
+   help graphを変更しない範囲で異なってよい。
+
+## 12. V1共存とmigration
 
 1. 既存V1 parsing、formatting、auditing、help、examples、DSLQL、storage、public adapterは利用可能な
    ままとし、現行の既定動作を維持する。
@@ -245,7 +271,7 @@ Coreへstorage/network authorityを付与せず、authorization済みprepared ru
 10. V1 compatibility readerはmigration境界で使用できるが、V2 runtime内部の隠れたV1分岐にしては
     ならない。
 
-## 12. Trustとfailure境界
+## 13. Trustとfailure境界
 
 - Profile resolutionはcaller-suppliedまたはpackage-bundledで、digest検証を行う。
 - Coreはprofileをdownloadせず、document locatorを辿らない。
@@ -258,9 +284,9 @@ Coreへstorage/network authorityを付与せず、authorization済みprepared ru
 - Profileはfilesystem、network、repository、namespace、credential、persistence、finalization、approval、
   release、deployment authorityを付与できない。
 
-## 13. 受入基準
+## 14. 受入基準
 
-R1は、受入済み候補snapshotに対して次のすべてが実証された場合だけ満たされる。
+R2は、受入済み候補snapshotに対して次のすべてが実証された場合だけ満たされる。
 
 1. V2文書は明示的な`think <profile>@<version>` headerを必要とし、headerなしの現行V1 fixtureは変更されない
    V1 pathを使用する。
@@ -287,10 +313,16 @@ R1は、受入済み候補snapshotに対して次のすべてが実証された�
 16. 悪意あるprofile fixtureがcode実行、network/filesystem/storage access、未知constraint operator追加を
     行えない。
 17. Raw audit outputはlosslessのままとし、presentation truncation時は総数とtruncationを報告する。
-18. 別途受入がない限り、namespace、release、package publication、deployment、V1 cutoverが実装change
+18. 登録済みの全V2 grammar/profile help topic、対応detail level、aliasが全必須surfaceから到達でき、
+    invalid routeが決定論的なlocal recovery選択肢を返す。
+19. 全help exampleが正確なprofile referenceでparseでき、宣言済みaudit outcomeを生成する。No-network
+    fixtureによりhelp解決がofflineであることを実証する。
+20. 修飾なしV1 help fixtureが受入済みV1 baselineとbyteまたはcontract等価のままであり、V2 profile helpは
+    明示選択を必要とする。
+21. 別途受入がない限り、namespace、release、package publication、deployment、V1 cutoverが実装change
     setに含まれない。
 
-## 14. 非目標
+## 15. 非目標
 
 - V1の置換、非推奨化、削除
 - V2の自動選択またはV1の自動migration
@@ -299,20 +331,23 @@ R1は、受入済み候補snapshotに対して次のすべてが実証された�
 - namespace resolution、ACL、OAuth、cross-thought loading、hosted scope expression、Coreの直接I/O
 - 撤回済みsemantic-audit artifactの復活
 - Hosted MCP contract V1またはroot compatibility surfaceの変更
+- remote fetchされるhelp catalog、web help service、helpによるprofile install
 - release、publication、deployment、production activation、Issue mutation
 - 本generic contractの受入だけを根拠とする、RCA Profile R1を含むspecialized profileの受入
 
-## 15. 前提と未解決判断
+## 16. 前提と未解決判断
 
-- R1は`reasoning@2.0.0`を最初の同梱profileと仮定する。実際のprofile bytesとdigestは本要求textでは
+- R2は`reasoning@2.0.0`を最初の同梱profileと仮定する。実際のprofile bytesとdigestは本要求textでは
   なく、本contract後にreviewする実装artifactである。
 - Profile dataの正確なJSON Schemaとwire layoutはdesign artifactとして未確定だが、意味やoperatorを
   追加せず、上記closed contract全体を実装しなければならない。
-- Namespace-aware queryは後続revision向けに未決定のまま残す。R1はIssue #25の広い案を受入も拒否も
+- 正確なCLI引数順序とhelp registryの物理表現は後続design判断として残す。上記の観測可能なnavigationと
+  failure contractは固定する。
+- Namespace-aware queryは後続revision向けに未決定のまま残す。R2はIssue #25の広い案を受入も拒否も
   しない。
 - Package/repository配置、release version、activation、V1 retirementは別のオーナー判断として残る。
 
-## 16. Step 1自己レビュー
+## 17. Step 1自己レビュー
 
 - Source provenanceと後発オーナー方針を明示した。
 - V1と受入済みHosted/public contractを黙ってsupersedeせず維持した。
@@ -320,4 +355,6 @@ R1は、受入済み候補snapshotに対して次のすべてが実証された�
   受入基準を規範的に記述した。
 - Namespace scopeその他の将来案を受入blockerにしていない。
 - 既存実装は実現可能性の証拠としてのみ使用した。
+- Help navigationは1つのprofile-aware graphを再利用し、V1既定を維持し、network discoveryなしでfail closedとし、
+  全route/exampleのconformanceを要求した。
 - この候補はdesign、ADR作成、implementation、migration、release、deployment、acceptanceを認可しない。

@@ -1,20 +1,20 @@
-# Independent-review input: Impact-Aware RCA Profile R1
+# Independent-review input: Impact-Aware RCA Profile R1, Requirement Revision R2
 
 Status: proposed Step 3 input; Step 2 owner route not yet selected
 
-Candidate: `docs/requirements/rca-profile-r1.md`
+Candidate: `docs/requirements/rca-profile-r1-r2.md`
 
-Candidate digest: `sha256:54e4d4532d11140e112fcd5e8855a32ffbc0f9b74d244eae10b2f94a2d199edc`
+Candidate digest: `sha256:23d2b0b7b765112dd309b327dacce65119660c845ef2c8e422f04b968ef23d61`
 
-Japanese review support: `docs/requirements/rca-profile-r1.ja.md`
+Japanese review support: `docs/requirements/rca-profile-r1-r2.ja.md`
 
-Japanese translation digest: `sha256:6f1e50fd9e79b7bac37c785abc03d74434cd62468169a05ef05875c417277c05`
+Japanese translation digest: `sha256:edbdeeba0dd53b92ca05ea7ed0b3a94f79fde85a878b1d65cd90e2d103ec7e14`
 
 ## Review authority and dependency
 
 Review only the exact candidate bytes above. Do not edit the candidate or turn review findings into
-new requirements. The candidate depends on Generic Profile and Audit Contract V2 R1 candidate
-`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`.
+new requirements. The candidate depends on Generic Profile and Audit Contract V2 R2 candidate
+`sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`.
 It cannot be accepted if that predecessor is unaccepted, changed without reconciliation, or found
 incapable of expressing the RCA constraints.
 
@@ -43,6 +43,8 @@ whether the three alternatives are represented faithfully:
 - corrective action, containment, recovery, recurrence prevention, and verification separation;
 - twelve stable structural rules with target spans and discipline severity;
 - six executable positive/negative fixtures and cross-surface conformance;
+- profile-registry-derived RCA help covering the workflow, structural model, rules, fixtures,
+  migration, and limitations;
 - V1 coexistence and fail-closed, non-inferential migration; and
 - no implicit I/O, semantic truth judgment, or action authority.
 
@@ -57,7 +59,7 @@ whether the three alternatives are represented faithfully:
 
 ## Acceptance focus
 
-Review the complete fourteen-item acceptance section and establish in particular whether:
+Review the complete seventeen-item acceptance section and establish in particular whether:
 
 1. the generic closed operators can express all twelve RCA rules without hidden code;
 2. the scope/target/assessment model can distinguish universe completeness from assessment outcome;
@@ -67,6 +69,10 @@ Review the complete fourteen-item acceptance section and establish in particular
 6. the six fixtures isolate their intended stable rules without unrelated diagnostic noise;
 7. target references remain opaque and cannot grant I/O or repository/runtime authority; and
 8. V1 and unrelated V2 documents remain unchanged.
+9. every RCA help route and alias derives from the generic profile registry without RCA-specific
+   parser or dispatch code; and
+10. each displayed example parses and audits under the exact profile reference with only its
+    declared stable findings, while invalid routes recover offline.
 
 ## Known unknowns
 
@@ -75,6 +81,7 @@ Review the complete fourteen-item acceptance section and establish in particular
   severities, targets, and message identities are fixed by this candidate.
 - The actual real-world impact universe remains author-declared.
 - Profile publication, package placement, operational integration, and release remain undecided.
+- The exact CLI argument ordering is a Generic V2 downstream design choice.
 
 ## Review questions
 
@@ -89,6 +96,10 @@ Review the complete fourteen-item acceptance section and establish in particular
 6. Does migration avoid every unsupported inference from V1 prose?
 7. Are all required findings targetable to the smallest source-backed span?
 8. Does any clause silently expand Generic V2, modify V1, or authorize an external action?
+9. Does the help index cover the ordered RCA workflow and every required structural category without
+   presenting guidance as truth, completion, or operational authority?
+10. Do the route and example criteria preserve V1 help while proving complete, deterministic,
+    offline navigation on every required surface?
 
 ## Route after independent review
 

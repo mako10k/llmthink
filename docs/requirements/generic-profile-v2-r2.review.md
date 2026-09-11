@@ -1,14 +1,14 @@
-# Independent-review input: Generic Profile and Audit Contract V2 R1
+# Independent-review input: Generic Profile and Audit Contract V2 R2
 
 Status: proposed Step 3 input; Step 2 owner route not yet selected
 
-Candidate: `docs/requirements/generic-profile-v2-r1.md`
+Candidate: `docs/requirements/generic-profile-v2-r2.md`
 
-Candidate digest: `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`
+Candidate digest: `sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`
 
-Japanese review support: `docs/requirements/generic-profile-v2-r1.ja.md`
+Japanese review support: `docs/requirements/generic-profile-v2-r2.ja.md`
 
-Japanese translation digest: `sha256:cbadd3185e70526e4702a648ea402dca26d260960aa518f9d0825a8a0dbc8c8a`
+Japanese translation digest: `sha256:6580485352866554ac6130e43f630310902c2e4019c99de592315d4ea24bcc95`
 
 ## Review authority
 
@@ -45,6 +45,8 @@ baseline, and the accepted PERT ordering. Review whether it correctly:
 - discipline behavior, stable findings, target spans, and lossless raw reports;
 - current-document read-only DSLQL;
 - explicit, deterministic, fail-closed V1 document migration;
+- explicit profile-aware help navigation over one registry, with V1-default preservation, offline
+  failure/recovery behavior, and executable examples;
 - V1 coexistence and no implicit source/store/public-surface changes;
 - trust, resource-limit, and failure semantics; and
 - cross-surface structural conformance criteria.
@@ -62,7 +64,7 @@ baseline, and the accepted PERT ordering. Review whether it correctly:
 
 ## Acceptance focus
 
-The independent review must test the complete eighteen-item acceptance section, with particular
+The independent review must test the complete twenty-one-item acceptance section, with particular
 attention to:
 
 - unambiguous V1 versus V2 dispatch;
@@ -71,12 +73,16 @@ attention to:
 - whether digest/version failures are fail-closed;
 - whether V1 migration is deterministic, non-mutating, and loss-aware;
 - whether raw findings retain stable identity and per-target spans across all adapters; and
+- whether every registered help route, alias, and example is complete and consistent across
+  surfaces without use-case-specific parser or dispatch branches; and
 - whether excluded namespace/release/cutover work is truly absent from R1 completion.
 
 ## Known unknowns
 
 - Exact profile JSON Schema and package placement remain downstream design artifacts.
 - The first bundled `reasoning@2.0.0` profile bytes and digest do not yet exist.
+- Exact CLI argument ordering and the physical help-registry representation remain downstream
+  design choices.
 - Namespace-aware querying and cross-thought references remain a future requirement decision.
 - V2 release, activation, and any V1 retirement path remain undecided.
 
@@ -96,6 +102,10 @@ attention to:
 7. Does the R1 scope correctly separate namespace/authorization work while retaining a viable future
    prepared-runtime boundary?
 8. Does any clause silently change an accepted V1, Hosted, public-name, or semantic-audit authority?
+9. Does help navigation remain explicitly V2/profile selected, deterministic, offline, and generated
+   from the same verified profile identity rather than duplicated per use case?
+10. Do exhaustive route and example criteria prevent missing topics, broken aliases, undocumented
+    fallback, and examples that do not parse or audit under the displayed profile?
 
 ## Route after independent review
 

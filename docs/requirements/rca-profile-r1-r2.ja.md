@@ -1,11 +1,11 @@
-# Impact-Aware RCA Profile R1 — 要求候補 R1 日本語全文訳
+# Impact-Aware RCA Profile R1 — 要求候補 R2 日本語全文訳
 
-本書は `rca-profile-r1.md` のレビュー支援用日本語訳であり、正本ではない。要求のauthorityは
+本書は `rca-profile-r1-r2.md` のレビュー支援用日本語訳であり、正本ではない。要求のauthorityは
 英語正本の確定bytesにある。
 
 状態: Step 1候補、自己レビュー済み、未受入
 
-要求リビジョン: R1
+要求リビジョン: R2
 
 外部profile名: Impact-Aware RCA Profile R1
 
@@ -21,8 +21,8 @@
 specialized profileとして定義する。LLMThinkに主張された原因、影響、対策の真偽を判断させず、
 欠落とcategory substitutionを構造的に見えるようにしなければならない。
 
-この候補は、`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`の
-正確なGeneric Profile and Audit Contract V2 R1候補に依存する。並行reviewは可能だが、その正確な
+この候補は、`sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`の
+正確なGeneric Profile and Audit Contract V2 R2候補に依存する。並行reviewは可能だが、その正確な
 generic contractまたは明示的にreconcileされた後継が先に受け入れられない限り、本候補を受入または
 実装してはならない。
 
@@ -34,7 +34,7 @@ generic contractまたは明示的にreconcileされた後継が先に受け入�
 | GitHub Issue #10            | 2026-05-08更新、本文 `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71` | use-case固有parser syntaxよりprofileを優先                    |
 | GitHub Issue #25            | 2026-08-19更新、本文 `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | Generic V2 profile mechanismであり、独立RCA authorityではない |
 | GitHub Issue #43            | 2026-09-08更新、本文 `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076` | pure、fail-closed、evidence-groundedなV1 audit baseline       |
-| Generic V2 R1候補           | `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`                      | 必須generic contract predecessor、未受入                      |
+| Generic V2 R2候補           | `sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`                      | 必須generic contract predecessor、未受入                      |
 | `plans/rca-profile-v2.pert` | `sha256:a78302cb3c8e08639029c8b922d0af14f124d91ab1f88a537840e6b67b05caa0`                      | delivery依存とreview順序のみ                                  |
 
 GitHub body digestはCLI追加の末尾改行を含まない正確なUTF-8本文を使用する。
@@ -208,7 +208,27 @@ R1は次の6 caseについてsourceと期待raw audit JSONを必要とする。
 Core、CLI raw JSON/text、stdio MCP、Hosted Application Service、LSP、VSIXは、presentation-only fieldを
 除去した後、すべてのfixtureのrule ID、severity、target reference、span、message identityで一致する。
 
-## 10. V1共存とmigration
+## 10. RCA help navigation
+
+1. `rca-impact@1.0.0`は、明示選択されたV2 profile indexから発見可能で、Generic V2 help graphとprofile
+   registryを使用しなければならない。RCA固有parser、Core IR、command dispatch分岐を追加してはならない。
+2. Profile indexはRCA structural modelを説明し、phenomenon記録、impact universe宣言とassessment、cause
+   classification、action classification、verificationという順序付きworkflowへlinkしなければならない。
+3. Canonical topicは、kindと必須property、relation方向、impact scopeとassessment、cause category、action
+   category、安定rule、実行可能fixture、migration、trust境界、既知の制限を扱わなければならない。
+4. 各安定ruleのdetailは、そのcondition、discipline別severity、target選択、最小のvalid/invalid example、
+   local recovery guidanceを示さなければならない。Guidanceはstructural obligationを説明するだけとし、
+   factual cause、impact、classification、effectiveness、completion、action authorityを主張してはならない。
+5. Helpに公開する各RCA exampleは、表示された正確なprofile referenceでparse/auditでき、期待する安定rule IDが
+   宣言されていなければならない。Topic、example、rule identityはCore、CLI、stdio MCP、Hosted Application
+   Service、LSP、VSIXで一致しなければならない。
+6. 未知のRCA topicまたはaliasは、Generic V2の決定論的なoffline error/recovery contractを使用しなければ
+   ならない。Helpはtarget/evidenceのfetch、impact universeの発見、profile install、proseからのRCA meaning
+   推定、V1または別profileへのfallbackを行ってはならない。
+7. V1のRCA類似guidanceはV1 guidanceのままとし、V1文書が本profileを選択またはmigration済みであると示唆
+   してはならない。
+
+## 11. V1共存とmigration
 
 1. `rca-impact@1.0.0`の追加または選択によって、V1文書または他profileを使うV2文書の意味やfindingを
    変更してはならない。
@@ -220,7 +240,7 @@ Core、CLI raw JSON/text、stdio MCP、Hosted Application Service、LSP、VSIX�
    Migration outputは推定roleからstructural completionを主張してはならない。
 5. RCA profileのinstallまたはdocument checkだけでthought storeをmigrateしない。
 
-## 11. Trustとoperation境界
+## 12. Trustとoperation境界
 
 - RCA auditは、supplied document、verified profile、Generic V2が許可する明示準備済みsemantic inputだけを読む。
 - `target_ref`をfetchせず、repository、filesystem、runtime、deployment、credential authorityとして使わない。
@@ -228,7 +248,7 @@ Core、CLI raw JSON/text、stdio MCP、Hosted Application Service、LSP、VSIX�
 - AuditはIssue、file、plan、code、test、remote、deployment、thought storeを変更しない。
 - Audit PASSはcorrective、containment、recovery、recurrence-prevention、verification actionを認可しない。
 
-## 12. 受入基準
+## 13. 受入基準
 
 RCA Profile R1を受け入れられるのは次を満たす場合だけである。
 
@@ -246,10 +266,15 @@ RCA Profile R1を受け入れられるのは次を満たす場合だけである
 11. 悪意あるtarget reference/profile propertyがI/Oまたはcode executionを引き起こせない。
 12. MigrationがproseからRCA semanticsを推定せず、未解決roleをすべてlocation付きで報告する。
 13. Audit PASSとcase `settled`をstructural conformanceとしてのみ提示する。
-14. Implementation change setにrelease、publication、deployment、Issue mutation、external action、Generic V2
+14. 全canonical RCA topic、安定rule detail、対応alias、fixtureが、profile固有parser/dispatch codeなしで、
+    全必須surfaceのV2 profile indexから到達できる。
+15. 全help exampleが表示された`rca-impact@1.0.0` referenceでparse/auditでき、宣言済み安定rule IDだけを
+    生成し、invalid routeは決定論的なoffline recoveryを提示する。
+16. 修飾なしV1 helpとV1 RCA類似guidanceが変更されず、profile選択またはmigrationを主張しない。
+17. Implementation change setにrelease、publication、deployment、Issue mutation、external action、Generic V2
     acceptance、V1 cutoverを含めない。
 
-## 13. 非目標
+## 14. 非目標
 
 - cause、impact、classification、remedyのfactual truth判定
 - semantic inspectionによりhuman、tool、LLM、test、review、monitor observationをroot causeとして扱うこと
@@ -260,10 +285,11 @@ RCA Profile R1を受け入れられるのは次を満たす場合だけである
 - V1 orphan、contradiction、semantic、finalize、thought-store behaviorの変更
 - namespace、ACL、cross-thought resolution、release、publication、deployment、Issue mutation
 - structural completionがincidentをcloseまたはaction effectivenessを証明するとの主張
+- helpをoperational incident procedureまたはaction実行authorityとして使用すること
 
-## 14. 前提と未解決判断
+## 15. 前提と未解決判断
 
-- この候補は正確なGeneric V2 R1 predecessorが変更なしで受け入れられることを仮定する。そのbytesが
+- この候補は正確なGeneric V2 R2 predecessorが変更なしで受け入れられることを仮定する。そのbytesが
   変わった場合、本依存をreconcileし、本候補revisionを再reviewする。
 - Profile JSON表現と正確なmessage textは後続artifactである。Rule ID、structural condition、severity、
   target、message identityは本書で固定する。
@@ -271,7 +297,7 @@ RCA Profile R1を受け入れられるのは次を満たす場合だけである
   持つrepository/runtime integrationを必要とする可能性がある。
 - Profile publication、package配置、release activation、operational incident workflowは別判断である。
 
-## 15. Step 1自己レビュー
+## 16. Step 1自己レビュー
 
 - Issue #44のfunctional outcomeを、phenomenon-to-remedyの直接checklistへ弱めず維持した。
 - Root cause、contributing condition、trigger、escape causeを分離した。
@@ -279,5 +305,7 @@ RCA Profile R1を受け入れられるのは次を満たす場合だけである
 - 選択したgeneric/profile/declarative-auditの組み合わせを明示し、候補を黙って統合していない。
 - Structural auditをtruth judgment、implicit I/O、action authorityから分離した。
 - V1と無関係なV2 profileに影響しない。
+- RCA helpはgenericなprofile-aware graphから導出し、完全なstructural model、rule、fixture、migration、制限を
+  扱い、offlineかつ非authoritativeのままとした。
 - この候補はGeneric V2/RCA R1を受け入れず、design、ADR作成、implementation、migration、external action、
   release、deploymentを認可しない。

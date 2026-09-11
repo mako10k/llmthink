@@ -1,8 +1,8 @@
-# Impact-Aware RCA Profile R1 — Requirement Candidate R1
+# Impact-Aware RCA Profile R1 — Requirement Candidate R2
 
 Status: Step 1 candidate, self-reviewed, not accepted
 
-Requirement revision: R1
+Requirement revision: R2
 
 External profile name: Impact-Aware RCA Profile R1
 
@@ -18,8 +18,8 @@ This candidate defines impact-aware root-cause analysis as one specialized profi
 V2 node/link/operation/query model. It must make omissions and category substitutions structurally
 visible without asking LLMThink to decide whether a claimed cause, impact, or remedy is true.
 
-This candidate depends on the exact Generic Profile and Audit Contract V2 R1 candidate at
-`sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`.
+This candidate depends on the exact Generic Profile and Audit Contract V2 R2 candidate at
+`sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`.
 It may be reviewed in parallel, but it MUST NOT be accepted or implemented unless that exact generic
 contract, or an explicitly reconciled successor, is accepted first.
 
@@ -31,7 +31,7 @@ contract, or an explicitly reconciled successor, is accepted first.
 | GitHub Issue #10            | Updated 2026-05-08; body `sha256:08d393d8b62676d0426e94c54edecfeb6501c7d8b12d6c96e2851264b5f32f71` | Use profiles before use-case-specific parser syntax         |
 | GitHub Issue #25            | Updated 2026-08-19; body `sha256:e1d77d8b4ac58964ace1303b32299712ea93c5ed2e29ec40a10797bdea5f19df` | Generic V2 profile mechanism; not independent RCA authority |
 | GitHub Issue #43            | Updated 2026-09-08; body `sha256:5fec6a52fad9b96730e7cc264c5a0175297f21dc4f0d7f8c4e695b1153224076` | Pure, fail-closed, evidence-grounded V1 audit baseline      |
-| Generic V2 R1 candidate     | `sha256:9628bce445371304b1fd23e9521b1d53e8eb5f445dfdff15f601bf7225c20c54`                          | Required generic contract predecessor; still unaccepted     |
+| Generic V2 R2 candidate     | `sha256:89f20a526d4bf67df4c9576b529d3e8b13a617218935d12551fc2e3f0b9e8cc8`                          | Required generic contract predecessor; still unaccepted     |
 | `plans/rca-profile-v2.pert` | `sha256:a78302cb3c8e08639029c8b922d0af14f124d91ab1f88a537840e6b67b05caa0`                          | Delivery dependency and review ordering only                |
 
 GitHub body digests use the exact UTF-8 body without a CLI-added trailing newline.
@@ -212,7 +212,31 @@ Core, CLI raw JSON and text, stdio MCP, Hosted Application Service, LSP, and VSI
 ID, severity, target references, spans, and message identity for every fixture after removal of
 presentation-only fields.
 
-## 10. V1 coexistence and migration
+## 10. RCA help navigation
+
+1. `rca-impact@1.0.0` MUST be discoverable from the explicitly selected V2 profile index and MUST
+   use the Generic V2 help graph and profile registry. It MUST NOT add an RCA-specific parser, Core
+   IR, or command-dispatch branch.
+2. The profile index MUST explain the RCA structural model and link to the ordered workflow:
+   phenomenon capture, impact-universe declaration and assessment, cause classification, action
+   classification, and verification.
+3. Canonical topics MUST cover kinds and required properties, relation direction, impact scope and
+   assessment, cause categories, action categories, stable rules, executable fixtures, migration,
+   trust boundaries, and known limitations.
+4. Each stable-rule detail MUST identify its condition, discipline-specific severity, target
+   selection, minimal valid and invalid examples, and local recovery guidance. Guidance MUST
+   describe the structural obligation without claiming factual cause, impact, classification,
+   effectiveness, completion, or action authority.
+5. Every RCA example exposed by help MUST parse and audit under the exact displayed profile
+   reference, with its expected stable rule IDs declared. Topic, example, and rule identities MUST
+   be consistent across Core, CLI, stdio MCP, Hosted Application Service, LSP, and VSIX.
+6. Unknown RCA topics or aliases MUST use the Generic V2 deterministic offline error and recovery
+   contract. Help MUST NOT fetch targets or evidence, discover an impact universe, install a
+   profile, infer RCA meaning from prose, or fall back to V1 or another profile.
+7. V1 RCA-like guidance remains V1 guidance and MUST NOT imply that a V1 document has selected or
+   migrated to this profile.
+
+## 11. V1 coexistence and migration
 
 1. Adding or selecting `rca-impact@1.0.0` MUST NOT change the meaning or findings of any V1 document or
    any V2 document using another profile.
@@ -225,7 +249,7 @@ presentation-only fields.
 5. Thought stores are not migrated merely because an RCA profile is installed or a document is
    checked.
 
-## 11. Trust and operational boundaries
+## 12. Trust and operational boundaries
 
 - RCA audit reads only the supplied document, verified profile, and explicitly prepared semantic
   inputs allowed by Generic V2.
@@ -236,7 +260,7 @@ presentation-only fields.
 - Passing audit does not authorize corrective, containment, recovery, recurrence-prevention, or
   verification actions.
 
-## 12. Acceptance criteria
+## 13. Acceptance criteria
 
 RCA Profile R1 is accepted only when:
 
@@ -256,10 +280,17 @@ RCA Profile R1 is accepted only when:
 11. malicious target references and profile properties cannot trigger I/O or code execution;
 12. migration never infers RCA semantics from prose and reports every unresolved role with location;
 13. audit PASS and case `settled` are presented only as structural conformance; and
-14. no release, publication, deployment, Issue mutation, external action, Generic V2 acceptance, or
+14. every canonical RCA topic, stable-rule detail, supported alias, and fixture is reachable from
+    the V2 profile index on every required surface without profile-specific parser or dispatch code;
+15. every help example parses and audits under the displayed `rca-impact@1.0.0` reference and
+    produces only its declared stable rule IDs, while invalid routes offer deterministic offline
+    recovery;
+16. unqualified V1 help and V1 RCA-like guidance remain unchanged and never claim profile selection
+    or migration; and
+17. no release, publication, deployment, Issue mutation, external action, Generic V2 acceptance, or
     V1 cutover is included in the implementation change set.
 
-## 13. Non-goals
+## 14. Non-goals
 
 - determining the factual truth of causes, impacts, classifications, or remedies;
 - treating a human, tool, LLM, test, review, or monitor observation as a root cause by semantic
@@ -269,12 +300,13 @@ RCA Profile R1 is accepted only when:
 - generating causal, support, impact, containment, or verification links from embeddings or prose;
 - adding RCA-specific parser syntax or executable audit plugins;
 - modifying V1 orphan, contradiction, semantic, finalize, or thought-store behavior;
-- namespace, ACL, cross-thought resolution, release, publication, deployment, or Issue mutation; and
-- asserting that structural completeness closes an incident or proves action effectiveness.
+- namespace, ACL, cross-thought resolution, release, publication, deployment, or Issue mutation;
+- asserting that structural completeness closes an incident or proves action effectiveness; and
+- using help as an operational incident procedure or authority to perform any action.
 
-## 14. Assumptions and unresolved decisions
+## 15. Assumptions and unresolved decisions
 
-- The candidate assumes the exact Generic V2 R1 predecessor is accepted unchanged. If its bytes
+- The candidate assumes the exact Generic V2 R2 predecessor is accepted unchanged. If its bytes
   change, this dependency must be reconciled and this candidate revision reviewed again.
 - The profile JSON representation and exact message text remain downstream artifacts; rule IDs,
   structural conditions, severities, targets, and message identities are fixed here.
@@ -283,7 +315,7 @@ RCA Profile R1 is accepted only when:
 - Profile publication, package placement, release activation, and operational incident workflows
   remain separate decisions.
 
-## 15. Step 1 self-review
+## 16. Step 1 self-review
 
 - The candidate preserves the Issue #44 functional outcome rather than reducing it to a direct
   phenomenon-to-remedy checklist.
@@ -293,5 +325,7 @@ RCA Profile R1 is accepted only when:
   silently collapsed.
 - Structural audit is bounded away from truth judgment, implicit I/O, and action authority.
 - V1 and unrelated V2 profiles remain unaffected.
+- RCA help is derived through the generic profile-aware graph, covers the complete structural model,
+  rules, fixtures, migration, and limitations, and remains offline and non-authoritative.
 - This candidate does not accept Generic V2 or RCA R1 and does not authorize design, ADR creation,
   implementation, migration, external action, release, or deployment.
