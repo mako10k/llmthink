@@ -1,0 +1,47 @@
+name: cli-ci
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "dist/**"
+      - "packages/core/**"
+      - "test/cli/**"
+      - "test/dsl/**"
+      - ".gitignore"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/cli.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "dist/**"
+      - "packages/core/**"
+      - "test/cli/**"
+      - "test/dsl/**"
+      - ".gitignore"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/cli.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify tracked distributed CLI before build
+        run: node --import tsx --test test/cli/distributed-cli.test.ts
+      - run: node --import tsx --test test/cli/*.test.ts test/dsl/file-extension.test.ts
+      - run: npm run typecheck:app
+      - run: npm run build
+      - name: Verify tracked generated files are current
+        run: git diff --exit-code -- dist packages/core/dist

@@ -3,6 +3,9 @@ Thumbs.db
 dist/
 !dist/
 dist/*
+!dist/check.d.ts
+!dist/check.js
+!dist/check.js.map
 !dist/dslql/
 !dist/dslql/*
 !dist/model/
