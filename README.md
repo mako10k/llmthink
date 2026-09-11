@@ -82,6 +82,8 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 CLI は resource-first に `dsl` と `thought` の 2 系統へ寄せる。
 
 - `llmthink dsl audit ...`: 自動登録込みの DSL 監査。thought-id を返す。`--min-severity` と `--suppress-category` で表示だけを絞り込める
+- `llmthink dsl check <file-or-directory>...`: thought store を変更しない監査。directory は `.think` / `.dsl` を再帰探索し、同一内容を SHA-256 で一度だけ監査して全 source path を返す
+- `llmthink dsl check -`: stdin を非永続で監査する
 - `llmthink dsl help`: DSL 全体文法の表示
 - `llmthink thought draft --id <thought-id> [<file> | --text "...dsl..."] [--from source-thought-id]`: draft の作成・更新
 - `llmthink thought relate --id <thought-id> --from source-thought-id`: 既存 thought から関連 thought を作成
@@ -117,6 +119,29 @@ llmthink dsl audit input.think --suppress-category semantic_hint,query_result
 - `--suppress-tag` は `--suppress-category` の別名
 - フィルタは `--limit` より先に適用する。フィルタ後の件数が上限以下なら `output_limit` は生成しない
 - 保存される `audits/*.json` は常に未フィルタの監査原本であり、再表示時に別のフィルタを選べる
+
+### 非永続・batch 監査
+
+`dsl check` は `dsl audit` の自動登録契約を変えずに、CI、hook、広域点検向けの pure audit を提供する。
+
+```bash
+# 単一ファイル。既定では fatal / error があると非 0 終了
+llmthink dsl check input.think
+
+# directory を再帰監査し、warning 以上で非 0 終了
+llmthink dsl check docs --fail-on warning
+
+# file と stdin を同じ batch で監査
+printf '%s\n' 'problem P1:' '  "stdin document"' | llmthink dsl check docs/example.think -
+```
+
+- `--fail-on fatal|error|warning|info|hint`: raw finding の指定 severity 以上があれば非 0 終了。既定は `error`
+- `--min-severity` / `--suppress-category` / `--limit` は表示だけを変え、終了判定には影響しない
+- directory input は symlink、`.git`、`node_modules` を追わず、`.think` と legacy `.dsl` だけを選ぶ。explicit file input は拡張子にかかわらず監査する
+- JSON の `source_count` は入力文書数、`unique_content_count` は監査した内容数。各 document は `source_sha256` と同一内容の `sources` を持つ
+- 新規 raw report は `grammar_version`、`package_version`、`engine_version`、`source_sha256` と automatic decision-proximity の `semantic_analysis.status/provider/model` を持つ。旧 persisted report では追加fieldが未定義の場合がある
+- `persisted` は常に `false` で、`--storage-path` 等の thought storage option を指定しても store は作成・更新しない
+- semantic proximity は実際の embedding 類似度が 0.75 以上の場合だけ報告する。provider unavailable は類似度へ置換せず、shared `based_on` だけでは contradiction candidate を生成しない
 
 ### Semantic Thought Search
 

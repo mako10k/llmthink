@@ -34,10 +34,20 @@ export interface AuditSummary {
     info_count: number;
     hint_count: number;
 }
+export type AuditSemanticStatus = "available" | "disabled" | "unavailable" | "not_applicable";
+export interface AuditSemanticAnalysis {
+    status: AuditSemanticStatus;
+    provider: string | null;
+    model: string | null;
+}
 export interface AuditReport {
     engine_version: string;
+    grammar_version?: string;
+    package_version?: string;
+    semantic_analysis?: AuditSemanticAnalysis;
     document_id: string;
     generated_at: string;
+    source_sha256?: string;
     summary: AuditSummary;
     results: AuditIssue[];
     confidence_results?: ConfidenceResult[];

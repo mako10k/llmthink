@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -44,6 +45,9 @@ test(".think and .dsl produce the same document and thought identities", async (
     const dslReport = await auditDslFile(dslPath);
     assert.equal(thinkReport.document_id, "sample");
     assert.equal(dslReport.document_id, "sample");
+    const expectedDigest = `sha256:${createHash("sha256").update(VALID_DOCUMENT).digest("hex")}`;
+    assert.equal(thinkReport.source_sha256, expectedDigest);
+    assert.equal(dslReport.source_sha256, expectedDigest);
     assert.equal(normalizeThoughtId("path/sample.think"), "path-sample");
     assert.equal(normalizeThoughtId("path/sample.dsl"), "path-sample");
     assert.equal(

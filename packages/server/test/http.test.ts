@@ -133,6 +133,16 @@ test("pure audit returns the stable envelope and does not create a thought", asy
   assert.equal(field(audit, "request_id"), "request-1");
   assert.equal(field(audit, "data", "persisted"), false);
   assert.equal(field(audit, "data", "report", "document_id"), "doc-1");
+  assert.equal(field(audit, "data", "report", "grammar_version"), "1");
+  assert.equal(field(audit, "data", "report", "package_version"), "1.3.0");
+  assert.equal(
+    field(audit, "data", "report", "semantic_analysis", "status"),
+    "not_applicable",
+  );
+  assert.match(
+    String(field(audit, "data", "report", "source_sha256")),
+    /^sha256:[a-f0-9]{64}$/,
+  );
 
   const listResponse = await fetch(`${baseUrl}/api/v1/thoughts`, {
     headers: headers(["thought:read"]),
@@ -245,6 +255,14 @@ test("mutation routes preserve audit, reflection, finalization, and event semant
   });
   const auditReport = {
     engine_version: "test",
+    grammar_version: "1",
+    package_version: "1.3.0",
+    semantic_analysis: {
+      status: "disabled",
+      provider: "none",
+      model: null,
+    },
+    source_sha256: `sha256:${"f".repeat(64)}`,
     document_id: "thought-1",
     generated_at: "2026-08-19T00:00:00.000Z",
     summary: {
@@ -322,6 +340,19 @@ test("mutation routes preserve audit, reflection, finalization, and event semant
     }),
   });
   assert.equal(field(await json(audit), "data", "revision"), 2);
+  const snapshot = await json(
+    await fetch(`${baseUrl}/api/v1/thoughts/thought-1`, {
+      headers: headers(["thought:read"]),
+    }),
+  );
+  assert.equal(
+    field(snapshot, "data", "latest_audit", "semantic_analysis", "status"),
+    "disabled",
+  );
+  assert.equal(
+    field(snapshot, "data", "latest_audit", "source_sha256"),
+    `sha256:${"f".repeat(64)}`,
+  );
   const reflection = await fetch(
     `${baseUrl}/api/v1/thoughts/thought-1/reflections`,
     {
