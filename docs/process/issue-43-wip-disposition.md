@@ -1,6 +1,6 @@
 # Issue #43 WIP disposition
 
-Status: local separation record; integration candidate not yet accepted or merged
+Status: validated local integration candidate; not yet accepted or merged
 Date: 2026-09-11
 
 ## Snapshot and authority
@@ -66,6 +66,8 @@ record in ADR-0023.
 - `packages/core/dist/presentation/report.js.map`
 - `packages/server/dist/http.js`
 - `packages/server/dist/http.js.map`
+- `vscode-extension/dist/extension.js`
+- `vscode-extension/dist/llmthink-lsp.js`
 
 The preservation snapshot versions are present in the extracted tree only as a
 comparison baseline. They must not be accepted without a clean build and an
@@ -90,12 +92,28 @@ gate is required or implemented.
   unless a separate current V1 requirement is accepted.
 - No changed file or hunk is discarded from the preservation commit.
 
-## Integration gates still open
+## Validation readback
 
-- Rebuild all tracked generated artifacts from the selected source.
-- Confirm the regenerated artifacts match the selected behavior and contain no
-  finalize-gate implementation.
-- Run the repository-wide test suite, focused Core, CLI, and server tests,
-  TypeScript checks, formatting, lint, and repository diff review.
+Validation used supported Node.js `24.19.0` with dependencies installed from the
+root and VS Code extension lockfiles.
+
+- Root build passed.
+- VS Code extension build and typecheck passed. A second build produced the same
+  bundle digests.
+- `npm run test:all` passed 261 tests: Core 117, Contracts 24, Server 67, and
+  App 53.
+- Root typecheck, formatting check, and lint passed.
+- No `require-clean-audit` or `FCAG-V1-R1` implementation reference exists in
+  the integration candidate.
+- The first App test attempt reported eight `MODULE_NOT_FOUND` failures for
+  `elkjs` while `vscode-extension/node_modules` was absent. After installing the
+  extension lockfile with `npm --prefix vscode-extension ci`, the complete App
+  suite passed.
+- Dependency installation reported three root audit findings and one extension
+  audit finding. No dependency or lockfile change was made, and `npm audit fix`
+  was not run as part of this integration slice.
+
+## Integration gate still open
+
 - Obtain separate authority before any push, PR, or merge, then read back the
   remote canonical revision after an authorized integration.
