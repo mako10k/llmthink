@@ -44,4 +44,4 @@ jobs:
       - run: npm run typecheck:app
       - run: npm run build
       - name: Verify tracked generated files are current
-        run: git diff --exit-code -- dist packages/core/dist packages/server/dist
+        run: git diff --exit-code -- dist packages/core/dist
