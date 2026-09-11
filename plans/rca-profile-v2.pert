@@ -21,9 +21,11 @@ milestone ISSUE43_WIP_SEPARATED:
 
 milestone ISSUE43_CORE_SLICE_INTEGRATED:
   title "Issue #43 reusable V1 audit slice integrated and read back"
+  state reached
 
 milestone ISSUE43_BASELINE_RECONCILED:
   title "Issue #43 audit and report baseline reconciled"
+  state reached
 
 milestone V2_REQUIREMENTS_ACCEPTED:
   title "V2 profile contract and RCA R1 requirements accepted"
@@ -62,7 +64,7 @@ task SEPARATE_AND_PRESERVE_ISSUE43_WIP ARCHITECTURE_DIRECTION_ACCEPTED -> ISSUE4
 task INTEGRATE_ISSUE43_CORE_SLICE ISSUE43_WIP_SEPARATED -> ISSUE43_CORE_SLICE_INTEGRATED:
   title "Validate and integrate the reusable Issue #43 core slice"
   description "Validate the separated integration candidate with the repository-wide test suite, focused CLI, Core, and hosted-server tests, TypeScript checks, generated-artifact consistency, and a diff against the disposition manifest. After separate explicit merge authority, integrate only that candidate through the established repository workflow and independently read back the resulting remote canonical revision. Keep the preserved remainder recoverable and do not close Issue #43, accept the finalize-gate candidate, mutate Issues, release, publish, or deploy under this task. A local candidate or passing tests alone do not satisfy this milestone."
-  status active
+  status done
   estimate:
     optimistic 1p
     most_likely 2p
@@ -75,6 +77,7 @@ task INTEGRATE_ISSUE43_CORE_SLICE ISSUE43_WIP_SEPARATED -> ISSUE43_CORE_SLICE_IN
 task RECONCILE_ISSUE43_BASELINE ISSUE43_CORE_SLICE_INTEGRATED -> ISSUE43_BASELINE_RECONCILED:
   title "Reconcile the final Issue #43 audit baseline"
   description "After Issue #43 is preserved and its disposition is known, refresh the verified main revision and compare the final pure-audit command, AuditReport provenance, source digest, engine and grammar version fields, stable diagnostics, and persistence behavior with the assumptions of this plan. Record contradictions before authoring dependent V2 contracts. Do not merge Issue #43 work, change its lifecycle, or start V2 implementation under this task."
+  status done
   estimate:
     optimistic 0.5p
     most_likely 1p

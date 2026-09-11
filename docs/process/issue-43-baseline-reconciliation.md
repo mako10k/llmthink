@@ -1,6 +1,6 @@
 # Issue #43 baseline reconciliation
 
-Status: correction required before reconciliation can complete
+Status: reconciled against canonical main `747c8bfb4fbcfcd417d5f855c18e7b4ddd3077f3`
 Date: 2026-09-11
 
 ## Canonical input
@@ -8,6 +8,8 @@ Date: 2026-09-11
 - PERT merge: PR #45, `31a61def88519aef1e664be3a024f47ddfb728ca`
 - Core-slice merge: PR #46, `3ef17b2f97a2c611b7a4ed9b93a5238f26743391`
 - Core-slice CI: `server-ci / server` succeeded
+- Distribution correction: PR #47, `747c8bfb4fbcfcd417d5f855c18e7b4ddd3077f3`
+- Distribution CI: `cli-ci / cli` succeeded
 - Complete preserved WIP: `ec4f8d7e250c5278d1df64dbe0ca4139ad9c0e39`
 
 ## Baseline comparison
@@ -21,7 +23,7 @@ Date: 2026-09-11
 | V1 orphan semantics remain bounded | Reports identify `direct-v1` and declare transitive reachability not expressible in grammar V1 | confirmed |
 | Dedicated semantic-audit artifact is not part of V1 | Accepted ADR-0023 records its withdrawal | confirmed |
 | Finalize gate, inventory, doctor, and reachable-orphan expansion are not implied | No such implementation is present in the integrated slice | confirmed |
-| The distributed CLI is runnable from tracked canonical contents | `dist/cli.js` imports `dist/check.js`, but the merge did not track that generated module | contradiction |
+| The distributed CLI is runnable from tracked canonical contents | PR #47 tracks `dist/check.{js,d.ts,js.map}`; a fresh canonical checkout ran `dist/cli.js dsl check` with `persisted: false` | confirmed |
 
 ## Audited RCA
 
@@ -39,7 +41,6 @@ Date: 2026-09-11
 
 ## Current decision
 
-Keep `INTEGRATE_ISSUE43_CORE_SLICE` active and
-`ISSUE43_BASELINE_RECONCILED` unreached. After the correction is merged, run the
-distributed CLI from a fresh canonical checkout, read back remote main, and
-repeat this comparison before starting V2 requirement authoring.
+Mark `INTEGRATE_ISSUE43_CORE_SLICE` and `RECONCILE_ISSUE43_BASELINE` done, and
+their destination milestones reached. The canonical V1 baseline now supports
+V2 requirement authoring; no V2 requirement is accepted by this reconciliation.
