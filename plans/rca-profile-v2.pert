@@ -17,6 +17,7 @@ milestone ARCHITECTURE_DIRECTION_ACCEPTED:
 
 milestone ISSUE43_WIP_SEPARATED:
   title "Issue #43 WIP separated and recoverably preserved"
+  state reached
 
 milestone ISSUE43_CORE_SLICE_INTEGRATED:
   title "Issue #43 reusable V1 audit slice integrated and read back"
