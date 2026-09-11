@@ -1,6 +1,6 @@
 # Issue #43 WIP disposition
 
-Status: validated local integration candidate; not yet accepted or merged
+Status: integrated by PR #46; post-merge distribution correction pending
 Date: 2026-09-11
 
 ## Snapshot and authority
@@ -53,6 +53,9 @@ record in ADR-0023.
 
 - `dist/cli.js`
 - `dist/cli.js.map`
+- `dist/check.d.ts`
+- `dist/check.js`
+- `dist/check.js.map`
 - `packages/core/dist/analyzer/audit.js`
 - `packages/core/dist/analyzer/audit.js.map`
 - `packages/core/dist/index.d.ts`
@@ -113,7 +116,11 @@ root and VS Code extension lockfiles.
   audit finding. No dependency or lockfile change was made, and `npm audit fix`
   was not run as part of this integration slice.
 
-## Integration gate still open
+## Post-merge readback
 
-- Obtain separate authority before any push, PR, or merge, then read back the
-  remote canonical revision after an authorized integration.
+- PERT PR #45 merged as `31a61def88519aef1e664be3a024f47ddfb728ca`.
+- Core-slice PR #46 passed `server-ci` and merged as
+  `3ef17b2f97a2c611b7a4ed9b93a5238f26743391`.
+- A clean post-merge worktree exposed a missing tracked `dist/check.js` runtime
+  module. The baseline remains unreconciled until the corrective distribution
+  slice is independently integrated and read back.
