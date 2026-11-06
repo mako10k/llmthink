@@ -169,3 +169,28 @@ test("relation and profile completion expose the new optional vocabulary", () =>
     "refuted",
   ]);
 });
+
+test("relation kind completion follows the enclosing reference family", () => {
+  for (const indent of ["", "  "]) {
+    const text = [
+      "step S:",
+      `${indent}decision M based_on C acts_on C:`,
+      `${indent}  "action"`,
+      `${indent}  relation based_on C:`,
+      `${indent}    status hypothesis`,
+      `${indent}    # still in based_on`,
+      `${indent}    kind c`,
+      `${indent}  relation acts_on C:`,
+      `${indent}    mechanism`,
+      `${indent}      |`,
+      `${indent}        explanation`,
+      `${indent}    kind m`,
+    ].join("\n");
+    assert.deepEqual(labels(text, 6), ["support", "causal"]);
+    assert.deepEqual(labels(text, 11), [
+      "intervention",
+      "mitigation",
+      "recovery",
+    ]);
+  }
+});

@@ -165,6 +165,33 @@ try {
     "detail",
   ]);
   const samplesResolvable = !help.includes("resolved_path: unavailable");
+  for (const [topic, subtopic, detail, tokens] of [
+    [
+      "syntax",
+      "decision",
+      "quick",
+      ["acts_on", "relation", "causal-impact-unknown"],
+    ],
+    [
+      "usecases",
+      "problem-solving",
+      "quick",
+      ["acts_on", "causal-impact-unknown"],
+    ],
+    ["query", "roots", "detail", [".acts_on?", ".relations?[]", "target_id"]],
+  ]) {
+    const output = await run(process.execPath, [
+      cli,
+      "dsl",
+      "help",
+      topic,
+      subtopic,
+      detail,
+    ]);
+    for (const token of tokens)
+      assert.ok(output.includes(token), `Missing help: ${token}`);
+  }
+
   const result = {
     candidate_registry_is_fixture: true,
     installed_root_only: true,
@@ -176,6 +203,7 @@ try {
     cli_verified: true,
     bin_files_verified: true,
     samples_resolvable: samplesResolvable,
+    updated_help_verified: true,
     fixture,
     imported,
   };

@@ -93,3 +93,27 @@ JS/map/declaration are tracked with this candidate. These are packaging correcti
 new runtime controls or removal of public root APIs.
 The earlier 73feeff source preparation commit is retained in history; the external receipt
 identifies the corrected candidate source. No earlier candidate was published or tagged.
+
+## Help/navigation follow-up
+
+Owner instruction: 「では、それは修正してください。」 following the pre-release check
+of help discovery, DSLQL fields and relation-kind completion.
+
+- Syntax index and quick decision help expose based_on, acts_on and relation; problem-solving
+  help links the unknown-cause example through the shared CLI/MCP/VSIX help graph.
+- Query-root help documents optional acts_on/relations fields and relation metadata. Its
+  executable examples use optional property navigation for mixed legacy/current documents.
+- LSP kind completion uses the enclosing relation family: based_on offers support/causal;
+  acts_on offers intervention/mitigation/recovery. Incomplete unscoped input retains the
+  existing general vocabulary. No DSL syntax or runtime authorization behavior changed.
+- Regression coverage includes legacy/current query examples, indented and flattened relation
+  bodies, and completion through the actual LSP process. Rebuilt npm/VSIX artifacts and the
+  replacement release receipt supersede the earlier candidate; no installed client is changed.
+- Follow-up validation passed: Core 132, Contracts 11, root conformance 19, Server 67,
+  application 68 (297 test executions total, including conformance repeated by application).
+  SQLite tests used the existing Node 24 runtime; preview tests used the existing Chromium
+  executable through LLMTHINK_TEST_CHROMIUM_EXECUTABLE. Default Node/browser lookup failures
+  were environment mismatches and were resolved without changing product behavior.
+- Lint, scoped formatting and extension typecheck/build passed. Replacement tarballs passed
+  the root-only clean install including updated quick/detail help. The packaged VSIX LSP
+  passed definition/reference and family-specific kind-completion probes.

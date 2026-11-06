@@ -97,7 +97,7 @@ const HELP_NODES = [
             {
                 key: "syntax.decision",
                 label: "decision",
-                summary: "based_on を含む decision 文法",
+                summary: "根拠 based_on・作用対象 acts_on・relation 詳細",
             },
             {
                 key: "syntax.annotations",
@@ -262,10 +262,13 @@ const HELP_NODES = [
     {
         key: "syntax.decision",
         title: "Decision Syntax",
-        summary: "decision と based_on の基本構文。",
+        summary: "decision の根拠 based_on、作用対象 acts_on と relation 詳細。",
         quick: [
             "`decision D1:` は構文上は有効。",
             "`decision D1 based_on PR1, EV1:` のように based_on を comma 区切りで書ける。",
+            "`decision M1 based_on EV1 acts_on C1, I1:` で根拠と作用対象を分ける。",
+            "`relation based_on C1:` / `relation acts_on I1:` でヘッダー参照ごとの kind、status、mechanism、evidence を記す。",
+            "因果・影響監査は framework 内の `profile causal-impact-v1` で明示選択する。原因未確定の例は `dsl help samples causal-impact-unknown detail`。",
             "次行は quoted text か block text。",
         ],
         detail: [
@@ -290,7 +293,11 @@ const HELP_NODES = [
             "  annotation rationale:",
             '    "根拠を明示する"',
         ],
-        exampleSamples: ["decision-minimal", "contradiction-pending"],
+        exampleSamples: [
+            "decision-minimal",
+            "contradiction-pending",
+            "causal-impact-unknown",
+        ],
         related: [
             "syntax.annotations",
             "syntax.step",
@@ -443,6 +450,8 @@ const HELP_NODES = [
         ],
         detail: [
             "step の `id` と statement の `id` は別階層で、statement は `role` と role 固有 field を持つ。",
+            "decision の .based_on は根拠ID列、.acts_on は作用対象ID列、.relations はヘッダー参照の詳細列。既存文書で未指定の .acts_on / .relations は存在しない。混在文書には .acts_on? / .relations?[] の任意参照を使う。",
+            ".relations[] は family / target_id / kind / status / mechanism / evidence と位置情報を持つ。status と mechanism の未指定値は null、evidence の未指定値は空列。family は based_on または acts_on。",
             "evidence resource は locator_kind / locator / digest / mime / label / span を持つが、宣言 ID は持たない。",
             "problem から decision を辿るときは `.document.problems[]` を始点にする。",
             "監査結果の集計は `.audit` を始点にする。",
@@ -451,6 +460,8 @@ const HELP_NODES = [
             ".document.problems[] | select(.id == @P1) | related_decisions()",
             '.document.steps[].statement | select(.role == "decision")',
             '.document.steps[].statement | select(.role == "evidence") | .resources[]',
+            '.document.steps[].statement | select(.role == "decision") | {id: .id, based_on: .based_on, acts_on: .acts_on?}',
+            '.document.steps[].statement | select(.role == "decision") | .relations?[] | select(.family == "acts_on")',
             '.audit | audit_findings("warning")',
         ],
         exampleSamples: ["query-assist", "evidence-resource"],
@@ -695,6 +706,7 @@ const HELP_NODES = [
         quick: [
             "最小 role は `problem`、`premise`、`evidence`、`decision`、`pending`。",
             "必要なら `viewpoint` や `partition` を追加して比較軸や分類を明示する。",
+            "現象・原因・影響の連鎖と対策は based_on / acts_on / relation で分ける。原因未確定の例は `dsl help samples causal-impact-unknown detail`。",
         ],
         detail: [
             "まず problem で解く対象を固定し、premise で制約や前提を置く。",
@@ -706,7 +718,7 @@ const HELP_NODES = [
             'premise PR1:\n  "失敗は CI 上で再現する"',
             'decision D1 based_on P1, PR1, EV1:\n  "dependency cache invalidation を先に試す"',
         ],
-        exampleSamples: ["problem-solving-profile"],
+        exampleSamples: ["problem-solving-profile", "causal-impact-unknown"],
         related: [
             "usecases.problem-to-decision",
             "usecases.open-pending",

@@ -55,6 +55,19 @@ decision M based_on C acts_on C:
       textDocument: { uri, languageId: "llmthink", version: 1, text },
     });
     await diagnosed;
+    for (const [line, expected] of [
+      [5, ["support", "causal"]],
+      [7, ["intervention", "mitigation", "recovery"]],
+    ] as const) {
+      const items = (await connection.sendRequest("textDocument/completion", {
+        textDocument: { uri },
+        position: { line, character: 9 },
+      })) as { label: string }[];
+      assert.deepEqual(
+        items.map((item) => item.label),
+        [...expected],
+      );
+    }
     const node = parseDocument(text).steps[1]!.statement;
     assert.equal(node.role, "decision");
     if (node.role !== "decision") return;

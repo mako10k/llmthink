@@ -4,6 +4,9 @@ import test from "node:test";
 
 import {
   DSLQL_FUNCTION_SPECS,
+  createDocumentDslqlRuntime,
+  evaluateDslqlExpression,
+  parseDocument,
   getDslSyntaxGuidanceText,
 } from "@mako10k/llmthink-core";
 
@@ -65,4 +68,55 @@ test("Help and VSIX function surfaces contain only Core registry functions", () 
   for (const name of snippetFunctions) {
     assert.equal(registryNames.has(name), true);
   }
+});
+
+test("quick help exposes action targets and the unknown-cause sample", () => {
+  for (const [topic, subtopic] of [
+    ["syntax", "decision"],
+    ["usecases", "problem-solving"],
+  ]) {
+    const help = getDslSyntaxGuidanceText({ topic, subtopic, detail: "quick" });
+    assert.match(help, /acts_on/);
+    assert.match(help, /relation/);
+    assert.match(help, /samples causal-impact-unknown detail/);
+  }
+  const help = getDslSyntaxGuidanceText({
+    topic: "query",
+    subtopic: "roots",
+    detail: "detail",
+  });
+  for (const field of [
+    ".acts_on",
+    ".relations",
+    "family",
+    "target_id",
+    "mechanism",
+  ]) {
+    assert.ok(help.includes(field), field);
+  }
+});
+
+test("relation query help examples work with legacy and extended decisions", () => {
+  const text =
+    readFileSync("docs/examples/causal-impact-unknown.think", "utf8") +
+    '\ndecision Legacy based_on E1:\n  "legacy decision"\n';
+  const runtime = createDocumentDslqlRuntime(parseDocument(text));
+  const projections = evaluateDslqlExpression(
+    '.document.steps[].statement | select(.role == "decision") | {id: .id, based_on: .based_on, acts_on: .acts_on?}',
+    runtime,
+  );
+  assert.ok(
+    projections.some(
+      (value) =>
+        typeof value === "object" &&
+        value !== null &&
+        "id" in value &&
+        value.id === "Legacy",
+    ),
+  );
+  const relations = evaluateDslqlExpression(
+    '.document.steps[].statement | select(.role == "decision") | .relations?[] | select(.family == "acts_on")',
+    runtime,
+  );
+  assert.equal(relations.length, 1);
 });

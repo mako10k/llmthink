@@ -215,7 +215,25 @@ function buildStatementRoleCompletionItems(
   }));
 }
 
+function enclosingRelationFamily(
+  document: TextDocument,
+  position: Position,
+): string | undefined {
+  const indent = /^\s*/.exec(linePrefixAt(document, position))?.[0].length ?? 0;
+  for (let line = position.line - 1; line >= 0; line--) {
+    const text = lineTextAt(document, line);
+    if (!text.trim() || text.trimStart().startsWith("#")) continue;
+    if ((/^\s*/.exec(text)?.[0].length ?? 0) >= indent) continue;
+    return /^relation (based_on|acts_on) [A-Za-z][A-Za-z0-9_-]*:$/.exec(
+      text.trim(),
+    )?.[1];
+  }
+  return undefined;
+}
+
 function relationCompletions(
+  document: TextDocument,
+  position: Position,
   trimmedPrefix: string,
   documentation: Readonly<Record<string, string>>,
 ): CompletionItem[] | undefined {
@@ -228,8 +246,17 @@ function relationCompletions(
     );
   }
   if (/^kind(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+    const family = enclosingRelationFamily(document, position);
+    const familyKinds: Record<string, string[]> = {
+      based_on: ["support", "causal"],
+      acts_on: ["intervention", "mitigation", "recovery"],
+    };
+    const kinds = familyKinds[family ?? ""] ?? [
+      ...familyKinds.based_on!,
+      ...familyKinds.acts_on!,
+    ];
     return buildKeywordCompletionItems(
-      ["support", "causal", "intervention", "mitigation", "recovery"],
+      kinds,
       "relation kind",
       documentation,
       {},
@@ -262,7 +289,12 @@ export function buildContextualDslCompletions(
   const prefix = linePrefixAt(document, position);
   const trimmedPrefix = prefix.trim();
 
-  const relationItems = relationCompletions(trimmedPrefix, documentation);
+  const relationItems = relationCompletions(
+    document,
+    position,
+    trimmedPrefix,
+    documentation,
+  );
   if (relationItems) return relationItems;
 
   if (/^annotation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
