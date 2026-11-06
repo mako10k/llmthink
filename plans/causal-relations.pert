@@ -5,7 +5,7 @@ project CAUSAL_RELATIONS:
   description "Owner source: chat 2026-11-06: OK。仕様として固めて、実装を進めてください。 Accepted subject: based_on support, acts_on targets, relation details; unknown causes; opt-in causal-impact audit; old-document compatibility. Independent of preserved generic V2 and RCA requirement WIP; no remote writes, release, install, or deployment."
   as_of 2026-11-06
   duration_unit point
-  velocity 9000000000p/1204499923h
+  velocity 2700000000p/576887347h
   finish VSIX_LOCAL_READY
 
 milestone START:
@@ -30,7 +30,7 @@ task FIX_REVIEW VERIFIED -> REVIEW_FIXED:
 task REFLECT_VSIX REVIEW_FIXED -> VSIX_LOCAL_READY:
   title "Reflect relation DSL in VSIX editing assets and install verified package"
   duration 1p
-  status active
+  status done
   source "Chat 2026-11-06: 関連 VSIX プロジェクトなどにも反映させましょう。 Scope answer: WSL側のVS Codeへインストールも行う"
 
 work_event WE-f32de17849d8db352a6dc4d0c536247f9daa873b39e528e7cea0c3dfad3ce05d:
@@ -71,3 +71,9 @@ work_event WE-085f90c75111db0c904fc446d944e97317895a41138d63364b507fab39f00b6c:
   kind start
   occurred_at 2026-11-06T06:48:08.836873+00:00
   planned_value 1p
+
+work_event WE-31780438e66188bbb28d9379509697c9ca8426b0c2c0b5df43f9c59f72095732:
+  model 1
+  task REFLECT_VSIX
+  kind finish
+  occurred_at 2026-11-06T06:54:22.939544+00:00

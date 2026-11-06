@@ -129,3 +129,20 @@ The artifact is vscode-extension/llmthink-causal-relations.vsix, SHA-256
 This is a local 1.3.0 rebuild, not an updated public release.
 At this package-verification point WSL replacement installation is still pending.
 The PATH client will be synchronized to the same source to keep its preferred external LSP aligned.
+
+### WSL installation readback
+
+Implementation source was committed as 8bac19d5d3f725be6ded166eb5b668fe2efdbc34 before installation.
+The PATH client was synchronized to an isolated snapshot of that commit.
+The verified VSIX above was installed once with --force into the existing WSL VS Code
+extensions directory using its code-server CLI. Installed version remains the local 1.3.0 build.
+The VS Code extension registry reports mako10k.llmthink-vscode-extension@1.3.0, and the installed
+extension bundle, bundled LSP, snippets, grammar and README match the inspected archive bytes.
+
+Artifact and SealGraph manifest are retained under
+~/.local/share/llmthink/vsix/8bac19d5d3f725be6ded166eb5b668fe2efdbc34/.
+The previous installed extension was copied to a backup before replacement.
+No Marketplace publication, hosted Plugin/server deployment or native Windows extension install was performed.
+The currently open editor was not reloaded: UI activation in that existing window remains
+unverified until the user reloads it. Package startup and diagnostics were verified with the
+same VS Code embedded Node version before installation.
