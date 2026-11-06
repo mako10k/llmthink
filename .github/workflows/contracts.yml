@@ -30,6 +30,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Install preview dependencies for cross-surface contract tests
+        run: npm --prefix vscode-extension ci
       - run: npm run test:contracts
       - run: npm run typecheck:contracts
       - name: Clone current plugin consumer
