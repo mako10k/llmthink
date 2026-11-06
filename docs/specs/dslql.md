@@ -457,3 +457,12 @@ warning 以上の finding 集約:
 - DSL 内の複数行 query body
 
 AST transformer は新しい AST を返す純粋な host API であり、DSLQL 実行時の mutation 機能ではない。
+
+## Optional decision relation projection
+
+A decision authored with `acts_on` additionally exposes `acts_on: string[]`.
+Authored `relation` details expose a separate `relations` array, with `family`,
+`target_id`, `kind`, nullable `status`/`mechanism`, `evidence`, source/body spans.
+These fields are absent on legacy documents. Existing `based_on`, `based_on_refs()`,
+related-decision and confidence semantics remain support-only.
+See [decision-relations.md](decision-relations.md).

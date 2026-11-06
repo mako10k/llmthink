@@ -107,7 +107,7 @@ function parsePartitionMemberLine(line) {
     return { name, predicate };
 }
 function parseAnnotationKind(header) {
-    const match = /^annotation\s+(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference):$/.exec(header);
+    const match = /^annotation\s+(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference|role):$/.exec(header);
     return match?.[1];
 }
 function parseAnnotations(lines, startIndex, expectedIndent) {
@@ -285,26 +285,45 @@ function parseEvidenceChildren(lines, startIndex, expectedIndent) {
     }
     return { resources, annotations, nextIndex: index };
 }
+function parseActionClause(id, basedOn, text, offset) {
+    const actsOn = text.split(",").map((value) => value.trim());
+    if (actsOn.some((value) => !IDENTIFIER_PATTERN.test(value)) ||
+        new Set(actsOn).size !== actsOn.length)
+        return undefined;
+    return { id, basedOn, actsOn, actsOnOffset: offset };
+}
 function parseDecisionHeader(header) {
-    if (!header.startsWith("decision ") || !header.endsWith(":")) {
+    if (!header.startsWith("decision ") || !header.endsWith(":"))
         return undefined;
-    }
     const body = header.slice("decision ".length, -1).trim();
-    const basedOnMarker = " based_on ";
-    const basedOnIndex = body.indexOf(basedOnMarker);
-    const id = basedOnIndex === -1 ? body : body.slice(0, basedOnIndex).trim();
-    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) {
+    const id = /^[A-Za-z][A-Za-z0-9_-]*/.exec(body)?.[0];
+    if (!id)
         return undefined;
-    }
-    if (basedOnIndex === -1) {
+    const rest = body.slice(id.length);
+    if (rest && !/^\s/.test(rest))
+        return undefined;
+    const clause = rest.trim();
+    if (!clause)
         return { id, basedOn: [] };
+    if (/^acts_on\s/.test(clause)) {
+        const text = clause.slice("acts_on".length).trimStart();
+        return parseActionClause(id, [], text, header.lastIndexOf(text));
     }
-    const basedOnText = body.slice(basedOnIndex + basedOnMarker.length).trim();
-    const basedOn = basedOnText
+    if (!/^based_on\s/.test(clause))
+        return undefined;
+    const text = clause.slice("based_on".length).trim();
+    const refs = (value) => value
         .split(",")
-        .map((value) => value.trim())
+        .map((v) => v.trim())
         .filter(Boolean);
-    return { id, basedOn };
+    for (const marker of text.matchAll(/\sacts_on\s/g)) {
+        const supportText = text.slice(0, marker.index).trim();
+        if (supportText.split(",").some((v) => !IDENTIFIER_PATTERN.test(v.trim())))
+            continue;
+        const offset = marker.index + marker[0].length;
+        return parseActionClause(id, refs(supportText), text.slice(offset), header.lastIndexOf(text) + offset);
+    }
+    return { id, basedOn: refs(text) };
 }
 function parseComparisonHeader(header) {
     if (!header.endsWith(":")) {
@@ -358,7 +377,7 @@ function parseFrameworkRuleLine(line) {
     }
     const kind = line.slice(0, separatorIndex).trim();
     const value = line.slice(separatorIndex + 1).trim();
-    if (!value || !["requires", "forbids", "warns"].includes(kind)) {
+    if (!value || !["requires", "forbids", "warns", "profile"].includes(kind)) {
         return undefined;
     }
     return { kind: kind, value, span: span(0) };
@@ -962,6 +981,136 @@ function parsePartition(lines, startIndex) {
         nextIndex: index,
     };
 }
+function parseRelationField(line, index, values) {
+    const field = /^(kind|status|mechanism|evidence) (.*)$/.exec(line.trim());
+    if (!field || !field[2]?.trim() || field[1] in values)
+        throw new ParseError("Unknown or duplicate relation field", index + 1, firstNonWhitespaceColumn(line));
+    return { name: field[1], value: field[2].trim() };
+}
+function decodeRelationMechanism(value, index, line) {
+    try {
+        const decoded = JSON.parse(value);
+        if (typeof decoded === "string")
+            return decoded;
+    }
+    catch {
+        // Invalid quoted input is reported with the authored field's source span.
+    }
+    throw new ParseError("Invalid relation mechanism", index + 1, firstNonWhitespaceColumn(line));
+}
+function relationMechanism(lines, index, value) {
+    const line = lines[index];
+    if (value === "|")
+        return parseBlockText(lines, index, currentIndent(line), "Relation mechanism is required");
+    return {
+        text: decodeRelationMechanism(value, index, line),
+        body: {
+            syntax: "quoted",
+            span: span(index + 1, tokenColumn(line, value)),
+            lineCount: 1,
+        },
+        nextIndex: index + 1,
+    };
+}
+function relationEvidence(value, index, line) {
+    const refs = value.split(",").map((v) => v.trim());
+    if (refs.some((id) => !IDENTIFIER_PATTERN.test(id)) ||
+        new Set(refs).size !== refs.length)
+        throw new ParseError("Invalid relation evidence references", index + 1, firstNonWhitespaceColumn(line));
+    return refs;
+}
+function validateRelationEnums(values, index, raw) {
+    if (!values.kind ||
+        !["support", "causal", "intervention", "mitigation", "recovery"].includes(values.kind))
+        throw new ParseError("Unknown or missing relation kind", index + 1, firstNonWhitespaceColumn(raw));
+    if (values.status &&
+        !["hypothesis", "confirmed", "refuted"].includes(values.status))
+        throw new ParseError("Unknown relation status", index + 1, firstNonWhitespaceColumn(raw));
+}
+function relationOptionalFields(values, mechanismBody, evidence, evidenceSpan) {
+    return {
+        ...(values.status
+            ? { status: values.status }
+            : {}),
+        ...(values.mechanism !== undefined
+            ? { mechanism: values.mechanism, mechanismBody }
+            : {}),
+        ...(evidence ? { evidence, evidenceSpan } : {}),
+    };
+}
+function parseDecisionRelation(lines, startIndex) {
+    const raw = lines[startIndex] ?? "";
+    const header = /^relation (based_on|acts_on) ([A-Za-z][A-Za-z0-9_-]*):$/.exec(raw.trim());
+    if (!header)
+        throw new ParseError("Invalid relation declaration", startIndex + 1, firstNonWhitespaceColumn(raw));
+    const indent = currentIndent(raw);
+    const values = {};
+    let evidence;
+    let mechanismBody;
+    let evidenceSpan;
+    let index = startIndex + 1;
+    let fieldIndent;
+    while (index < lines.length) {
+        index = nextSignificantLineIndex(lines, index);
+        const line = lines[index];
+        if (line === undefined || currentIndent(line) <= indent)
+            break;
+        fieldIndent ??= currentIndent(line);
+        if (currentIndent(line) !== fieldIndent)
+            throw new ParseError("Invalid relation field indentation", index + 1, firstNonWhitespaceColumn(line));
+        const { name, value } = parseRelationField(line, index, values);
+        if (name === "mechanism") {
+            const parsed = relationMechanism(lines, index, value);
+            values[name] = parsed.text;
+            mechanismBody = parsed.body;
+            index = parsed.nextIndex;
+            continue;
+        }
+        values[name] = value;
+        if (name === "evidence") {
+            evidence = relationEvidence(value, index, line);
+            evidenceSpan = span(index + 1, firstNonWhitespaceColumn(line) + "evidence ".length);
+        }
+        index++;
+    }
+    validateRelationEnums(values, startIndex, raw);
+    const kind = values.kind;
+    return {
+        relation: {
+            family: header[1],
+            targetId: header[2],
+            kind: kind,
+            ...relationOptionalFields(values, mechanismBody, evidence, evidenceSpan),
+            span: span(startIndex + 1, firstNonWhitespaceColumn(raw)),
+            targetSpan: span(startIndex + 1, raw.lastIndexOf(header[2]) + 1),
+        },
+        nextIndex: index,
+    };
+}
+function parseDecisionChildren(lines, startIndex, indent) {
+    const annotations = [];
+    const relations = [];
+    let index = startIndex;
+    while (index < lines.length) {
+        index = nextSignificantLineIndex(lines, index);
+        const raw = lines[index];
+        if (raw === undefined || currentIndent(raw) !== indent)
+            break;
+        if (raw.trim().startsWith("annotation ")) {
+            const parsed = parseAnnotations(lines, index, indent);
+            annotations.push(...parsed.annotations);
+            index = parsed.nextIndex;
+        }
+        else if (raw.trim().startsWith("relation ")) {
+            const parsed = parseDecisionRelation(lines, index);
+            relations.push(parsed.relation);
+            index = parsed.nextIndex;
+        }
+        else
+            break;
+    }
+    return { annotations, relations, nextIndex: index };
+}
 function parseDecision(lines, startIndex) {
     const header = lines[startIndex]?.trim() ?? "";
     const rawHeader = lines[startIndex] ?? "";
@@ -970,11 +1119,25 @@ function parseDecision(lines, startIndex) {
         throw new ParseError("Invalid decision declaration", startIndex + 1, firstNonWhitespaceColumn(rawHeader), rawHeader.length + 1);
     }
     const { text, body, nextIndex: textNextIndex, } = parseIndentedTextBody(lines, startIndex, "Decision text is required");
-    const { annotations, nextIndex } = parseAnnotations(lines, textNextIndex, body.span.column - 1);
+    const { annotations, relations, nextIndex } = parseDecisionChildren(lines, textNextIndex, body.span.column - 1);
     return {
         role: "decision",
         id: parsedHeader.id,
         basedOn: parsedHeader.basedOn,
+        ...(parsedHeader.actsOn
+            ? {
+                actsOn: parsedHeader.actsOn,
+                actsOnSpans: [
+                    ...rawHeader
+                        .slice(currentIndent(rawHeader) + parsedHeader.actsOnOffset)
+                        .matchAll(/[A-Za-z][A-Za-z0-9_-]*/g),
+                ].map((match) => span(startIndex + 1, currentIndent(rawHeader) +
+                    parsedHeader.actsOnOffset +
+                    match.index +
+                    1)),
+            }
+            : {}),
+        ...(relations.length ? { relations } : {}),
         text,
         textBody: body,
         annotations,

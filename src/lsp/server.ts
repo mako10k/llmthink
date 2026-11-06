@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// R: Expose shared DSL analysis and source navigation through LSP.
 
 import {
   CompletionItemKind,
@@ -36,6 +37,7 @@ import {
   parseDocument,
   type AuditIssue,
   type DocumentAst,
+  type StepStatement,
   type SourceSpan,
   type StepDecl,
 } from "@llmthink/core";
@@ -129,8 +131,10 @@ const KEYWORD_DOCS: Record<string, string> = {
     "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
   based_on:
     "decision の参照根拠を列挙します。declared problem id と statement id を参照できます。",
+  acts_on:
+    "decision の作用対象です。根拠参照や confidence 入力にはなりません。",
   relation:
-    "comparison header で使う比較関係です。値は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合です。",
+    "decision では based_on/acts_on ごとの関係詳細。comparison header で使う比較関係です。値は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合です。",
   preferred_over:
     "comparison relation です。左側 decision を右側より優先します。",
   weaker_than:
@@ -618,9 +622,10 @@ function addReferencesFromLine(
   document: TextDocument,
   line: number,
   identifiers: string[],
+  startColumn = 0,
 ): void {
   const text = lineTextAt(document, line);
-  let cursor = 0;
+  let cursor = startColumn;
   for (const identifier of identifiers) {
     const range = identifierRangeOnLine(text, line, identifier, cursor);
     addReference(index, document.uri, identifier, range);
@@ -653,6 +658,49 @@ function addDslqlReferences(
   }
 }
 
+function addDecisionRelationReferences(
+  index: SymbolIndex,
+  document: TextDocument,
+  statement: Extract<StepStatement, { role: "decision" }>,
+) {
+  for (const [targetIndex, target] of (statement.actsOn ?? []).entries()) {
+    const span = statement.actsOnSpans?.[targetIndex];
+    if (span)
+      addReference(
+        index,
+        document.uri,
+        target,
+        Range.create(
+          Position.create(span.line - 1, span.column - 1),
+          Position.create(span.line - 1, span.column - 1 + target.length),
+        ),
+      );
+  }
+  for (const relation of statement.relations ?? []) {
+    const span = relation.targetSpan;
+    addReference(
+      index,
+      document.uri,
+      relation.targetId,
+      Range.create(
+        Position.create(span.line - 1, span.column - 1),
+        Position.create(
+          span.line - 1,
+          span.column - 1 + relation.targetId.length,
+        ),
+      ),
+    );
+    if (relation.evidenceSpan)
+      addReferencesFromLine(
+        index,
+        document,
+        relation.evidenceSpan.line - 1,
+        relation.evidence ?? [],
+        relation.evidenceSpan.column - 1,
+      );
+  }
+}
+
 function buildSymbolIndex(
   document: TextDocument,
   ast: DocumentAst,
@@ -682,6 +730,7 @@ function buildSymbolIndex(
         step.statement.span.line - 1,
         step.statement.basedOn,
       );
+      addDecisionRelationReferences(index, document, step.statement);
       continue;
     }
 
@@ -849,6 +898,14 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         severity,
         source: "llmthink",
         code: issue.category,
+        ...(issue.metadata?.rule_id
+          ? {
+              data: {
+                rule_id: issue.metadata.rule_id,
+                review_required: issue.metadata.review_required === true,
+              },
+            }
+          : {}),
         message: [issue.message, issue.rationale, issue.suggestion]
           .filter(Boolean)
           .join("\n"),

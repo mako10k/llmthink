@@ -1,3 +1,4 @@
+// R: Provide shared offline DSL guidance and parse-error navigation.
 import { listDslExamples, resolveDslExamplePath } from "./examples.js";
 import type { AuditIssue, AuditReport } from "../model/diagnostics.js";
 import type { ParseError } from "../parser/parser.js";
@@ -285,7 +286,7 @@ const HELP_NODES: HelpNode[] = [
       "annotation kind の閉じた集合と、problem / text-bearing statement への付与方法。",
     quick: [
       "annotation は `annotation kind:` の header と、その次行の quoted text か block text で書く。",
-      "kind は explanation / rationale / status / caveat / todo / orphan_future / orphan_reference の閉じた集合。",
+      "kind は explanation / rationale / status / caveat / todo / orphan_future / orphan_reference / role の閉じた集合。",
       "annotation は problem と premise / evidence / decision / comparison / pending に付けられる。",
     ],
     detail: [
@@ -322,6 +323,13 @@ const HELP_NODES: HelpNode[] = [
     ],
     detail: [
       "based_on は declared problem id または statement id の列を参照する。",
+      "acts_on は同じ参照範囲で作用対象を列挙する。based_on の後に置き、根拠や confidence と分離する。",
+      "relation based_on ID: / relation acts_on ID: は既存のヘッダー参照を詳細化する。",
+      "kind は based_on では support/causal、acts_on では intervention/mitigation/recovery。",
+      "status は hypothesis/confirmed/refuted。mechanism は text、evidence は関係自体の根拠ID列。未指定を confirmed と扱わない。",
+      "framework 内の profile causal-impact-v1 で因果・影響監査を明示選択する。未知 profile は拒否する。",
+      "annotation role は phenomenon/cause/impact/measure/cause_unknown を分類する。cause_unknown は pending に付け、現象の based_on から参照する。",
+      "原因未確定の調査と担当・再評価条件は pending の todo に記す。対策の十分性は review_required の確認事項であり自動認定しない。",
       "根拠なし decision は parse error ではなく、監査で contract_violation 候補になる。",
       "decision text の後に annotation を並べられる。",
       "annotation status は rejected / negated / superseded のような状態タグを付ける用途に使える。",

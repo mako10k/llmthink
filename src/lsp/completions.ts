@@ -1,3 +1,4 @@
+// R: Supply context-aware DSL completion candidates.
 import {
   CompletionItemKind,
   InsertTextFormat,
@@ -27,6 +28,7 @@ const ANNOTATION_KINDS = [
   "todo",
   "orphan_future",
   "orphan_reference",
+  "role",
 ] as const;
 
 const COMPARISON_RELATIONS = [
@@ -213,6 +215,37 @@ function buildStatementRoleCompletionItems(
   }));
 }
 
+function relationCompletions(
+  trimmedPrefix: string,
+  documentation: Readonly<Record<string, string>>,
+): CompletionItem[] | undefined {
+  if (/^relation(?:\s+(?:based_on|acts_on)?)?$/.test(trimmedPrefix)) {
+    return buildKeywordCompletionItems(
+      ["based_on", "acts_on"],
+      "relation reference family",
+      documentation,
+      {},
+    );
+  }
+  if (/^kind(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+    return buildKeywordCompletionItems(
+      ["support", "causal", "intervention", "mitigation", "recovery"],
+      "relation kind",
+      documentation,
+      {},
+    );
+  }
+  if (/^profile(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+    return buildKeywordCompletionItems(
+      ["causal-impact-v1"],
+      "audit profile",
+      documentation,
+      {},
+    );
+  }
+  return undefined;
+}
+
 export function buildContextualDslCompletions(
   document: TextDocument,
   position: Position,
@@ -220,6 +253,9 @@ export function buildContextualDslCompletions(
 ): CompletionItem[] | undefined {
   const prefix = linePrefixAt(document, position);
   const trimmedPrefix = prefix.trim();
+
+  const relationItems = relationCompletions(trimmedPrefix, documentation);
+  if (relationItems) return relationItems;
 
   if (/^annotation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
     return buildKeywordCompletionItems(

@@ -24,3 +24,5 @@ ADR の作成規則は [ADR ルール](../process/adr-rules.md) を参照する�
 
 ADR-0020はPR #38で追加されたが、decision ownerが確認していない配布・互換判断を
 acceptedとしていたためPR #39でrevertした。監査上の識別子を別判断へ再利用しない。
+
+| [0024](0024-decision-reference-relations.md) | Accepted | based_on と acts_on を分離し relation で詳細化する |

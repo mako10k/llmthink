@@ -1,3 +1,4 @@
+// R: Render DSL documents with distinct support, causal and action relationships.
 import ELK from "elkjs/lib/elk.bundled.js";
 import type {
   Annotation,
@@ -41,6 +42,9 @@ interface DiagramNode {
 interface DiagramEdge {
   from: string;
   to: string;
+  kind?: string;
+  status?: string;
+  action?: boolean;
 }
 
 interface DiagramComparisonLink {
@@ -196,14 +200,32 @@ function formatEvidenceResource(resource: EvidenceResource): string {
   return `${prefix}${resource.locator.kind} ${resource.locator.value}${suffix}`;
 }
 
+function formatDecisionDetails(
+  statement: Extract<StepStatement, { role: "decision" }>,
+): string[] {
+  const lines: string[] = [];
+  if (statement.basedOn.length)
+    lines.push(`- based_on: ${statement.basedOn.join(", ")}`);
+  if (statement.actsOn?.length)
+    lines.push(`- acts_on: ${statement.actsOn.join(", ")}`);
+  for (const relation of statement.relations ?? []) {
+    lines.push(
+      `- relation ${relation.family} ${relation.targetId}: ${relation.kind} (${relation.status ?? "unassessed"})`,
+    );
+    if (relation.mechanism) lines.push(`  - mechanism: ${relation.mechanism}`);
+    if (relation.evidence?.length)
+      lines.push(`  - evidence: ${relation.evidence.join(", ")}`);
+  }
+  return lines;
+}
+
 function formatStep(step: StepDecl, annotationLabel: string): string[] {
   const statement = step.statement;
   const header = `### ${step.id} · ${statement.role} ${statement.id}`;
   const lines = [header, "", formatStatementSummary(statement)];
 
-  if (statement.role === "decision" && statement.basedOn.length > 0) {
-    lines.push(`- based_on: ${statement.basedOn.join(", ")}`);
-  }
+  if (statement.role === "decision")
+    lines.push(...formatDecisionDetails(statement));
 
   if (statement.role === "comparison") {
     lines.push(`- scope: ${statement.problemId} / ${statement.viewpointId}`);
@@ -245,15 +267,25 @@ function buildReferenceSection(
   emptyLabel: string,
 ): string[] {
   const edges = document.steps.flatMap((step) => {
-    if (
-      step.statement.role !== "decision" ||
-      step.statement.basedOn.length === 0
-    ) {
-      return [];
-    }
-    return step.statement.basedOn.map(
-      (source) => `- ${source} -> ${step.statement.id}`,
-    );
+    if (step.statement.role !== "decision") return [];
+    const statement = step.statement;
+    return [
+      ...statement.basedOn.map((source) => {
+        const relation = statement.relations?.find(
+          (r) => r.family === "based_on" && r.targetId === source,
+        );
+        const detail = relation
+          ? ` [${relation.kind}, ${relation.status ?? "unassessed"}]`
+          : "";
+        return `- ${source} -> ${statement.id}${detail}`;
+      }),
+      ...(statement.actsOn ?? []).map((target) => {
+        const relation = statement.relations?.find(
+          (r) => r.family === "acts_on" && r.targetId === target,
+        );
+        return `- ${statement.id} -> ${target} [acts_on: ${relation?.kind ?? "unspecified"}, ${relation?.status ?? "unassessed"}]`;
+      }),
+    ];
   });
 
   if (edges.length === 0) {
@@ -289,6 +321,36 @@ function truncateSvgText(value: string, maxLength: number): string {
     return value;
   }
   return `${value.slice(0, maxLength - 1)}…`;
+}
+
+function decisionDiagramEdges(
+  statement: Extract<StepStatement, { role: "decision" }>,
+): DiagramEdge[] {
+  const edges: DiagramEdge[] = [];
+  for (const source of statement.basedOn) {
+    const relation = statement.relations?.find(
+      (r) => r.family === "based_on" && r.targetId === source,
+    );
+    edges.push({
+      from: source,
+      to: statement.id,
+      kind: relation?.kind,
+      status: relation?.status,
+    });
+  }
+  for (const target of statement.actsOn ?? []) {
+    const relation = statement.relations?.find(
+      (r) => r.family === "acts_on" && r.targetId === target,
+    );
+    edges.push({
+      from: statement.id,
+      to: target,
+      action: true,
+      kind: relation?.kind,
+      status: relation?.status,
+    });
+  }
+  return edges;
 }
 
 function buildDiagramData(document: DocumentAst): {
@@ -344,9 +406,7 @@ function buildDiagramData(document: DocumentAst): {
     });
 
     if (role === "decision") {
-      for (const source of step.statement.basedOn) {
-        edges.push({ from: source, to: step.statement.id });
-      }
+      edges.push(...decisionDiagramEdges(step.statement));
     }
 
     if (role === "comparison") {
@@ -360,7 +420,9 @@ function buildDiagramData(document: DocumentAst): {
   }
 
   const unresolvedReferences = new Set(
-    edges.map((edge) => edge.from).filter((source) => !declaredIds.has(source)),
+    edges
+      .flatMap((edge) => [edge.from, edge.to])
+      .filter((source) => !declaredIds.has(source)),
   );
 
   for (const source of unresolvedReferences) {
@@ -607,7 +669,7 @@ async function buildSvgOverview(
       }
 
       const path = buildOrthogonalPath(points);
-      return `<path class="edge" d="${path}" data-edge-id="${edgeId}" data-edge-from="${escapeHtml(edge.from)}" data-edge-to="${escapeHtml(edge.to)}" />`;
+      return `<path class="edge${edge.action ? " edge-action" : ""}${edge.status === "refuted" ? " edge-refuted" : ""}" d="${path}" data-edge-id="${edgeId}" data-edge-from="${escapeHtml(edge.from)}" data-edge-to="${escapeHtml(edge.to)}" data-edge-kind="${edge.kind ?? (edge.action ? "acts_on" : "support")}"><title>${escapeHtml(edge.kind ?? (edge.action ? "acts_on" : "support"))}: ${escapeHtml(edge.status ?? "unassessed")}</title></path>`;
     })
     .join("\n");
 
@@ -2040,6 +2102,8 @@ function buildPreviewHtml(
         marker-end: url(#arrowhead);
         transition: stroke-width 120ms ease, filter 120ms ease, stroke 120ms ease;
       }
+      .edge-action { stroke-dasharray: 8 4; stroke: var(--vscode-charts-orange); }
+      .edge-refuted { opacity: 0.4; stroke-dasharray: 2 4; }
       .edge-hit {
         fill: none;
         stroke: rgba(0, 0, 0, 0.001);

@@ -1,3 +1,4 @@
+// R: Assemble the shared audit report from DSL contract and analysis findings.
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename } from "node:path";
@@ -57,6 +58,9 @@ import {
   embedTexts,
   type EmbeddingRequestOptions,
 } from "../semantic/embeddings.js";
+
+import { auditRelations } from "./relations.js";
+import { auditCausalImpact } from "./causal-impact.js";
 
 const SEMANTIC_PROXIMITY_THRESHOLD = 0.75;
 
@@ -1335,6 +1339,11 @@ async function auditDocument(
   addTextBodyLintIssues(issues, document);
   addStatusAnnotationIssues(issues, document, decisions, comparisons);
   addPendingHintIssue(issues, pendingSteps, decisions);
+  for (const finding of [
+    ...auditRelations(document),
+    ...auditCausalImpact(document),
+  ])
+    createIssue(issues, finding);
 
   const confidenceResults = evaluateConfidence(document);
   addConfidenceIssues(issues, confidenceResults);

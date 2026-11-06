@@ -25,7 +25,7 @@
       "patterns": [
         {
           "name": "keyword.control.llmthink",
-          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|confidence|declared_confidence|estimate|range|epistemic|keyword|default|query|requires|forbids|warns)\\b"
+          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|confidence|declared_confidence|estimate|range|epistemic|keyword|default|query|requires|forbids|warns|profile|acts_on|kind|mechanism)\\b"
         },
         {
           "name": "support.type.property-name.resource.llmthink",
@@ -61,7 +61,7 @@
         },
         {
           "name": "storage.type.annotation.llmthink",
-          "match": "(?<=\\bannotation\\s)(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference)(?=:)"
+          "match": "(?<=\\bannotation\\s)(explanation|rationale|status|caveat|todo|orphan_future|orphan_reference|role)(?=:)"
         },
         {
           "name": "entity.name.function.query.llmthink",

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// R: Expose shared DSL analysis and source navigation through LSP.
 import { CompletionItemKind, DocumentHighlightKind, DiagnosticSeverity, DidChangeConfigurationNotification, Location, MarkupKind, Position, ProposedFeatures, Range, SymbolKind, TextEdit, TextDocumentSyncKind, createConnection, } from "vscode-languageserver/node.js";
 import { TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -54,7 +55,8 @@ const KEYWORD_DOCS = {
     decision: "判断を表す step body です。",
     comparison: "同一 problem / viewpoint 内で decision 同士の相対比較を表す step body です。",
     based_on: "decision の参照根拠を列挙します。declared problem id と statement id を参照できます。",
-    relation: "comparison header で使う比較関係です。値は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合です。",
+    acts_on: "decision の作用対象です。根拠参照や confidence 入力にはなりません。",
+    relation: "decision では based_on/acts_on ごとの関係詳細。comparison header で使う比較関係です。値は preferred_over / weaker_than / incomparable / counterexample_to の閉じた集合です。",
     preferred_over: "comparison relation です。左側 decision を右側より優先します。",
     weaker_than: "comparison relation です。左側 decision が右側より弱いことを表します。",
     incomparable: "comparison relation です。2 つの decision を同一軸では順序付けしないことを表します。",
@@ -449,9 +451,9 @@ function addDefinitionAtSpan(index, document, name, span) {
     const line = span.line - 1;
     addDefinition(index, document.uri, name, identifierRangeOnLine(lineTextAt(document, line), line, name));
 }
-function addReferencesFromLine(index, document, line, identifiers) {
+function addReferencesFromLine(index, document, line, identifiers, startColumn = 0) {
     const text = lineTextAt(document, line);
-    let cursor = 0;
+    let cursor = startColumn;
     for (const identifier of identifiers) {
         const range = identifierRangeOnLine(text, line, identifier, cursor);
         addReference(index, document.uri, identifier, range);
@@ -475,6 +477,19 @@ function addDslqlReferences(index, document, query) {
         // Parse diagnostics own invalid DSLQL. An incomplete query has no stable references.
     }
 }
+function addDecisionRelationReferences(index, document, statement) {
+    for (const [targetIndex, target] of (statement.actsOn ?? []).entries()) {
+        const span = statement.actsOnSpans?.[targetIndex];
+        if (span)
+            addReference(index, document.uri, target, Range.create(Position.create(span.line - 1, span.column - 1), Position.create(span.line - 1, span.column - 1 + target.length)));
+    }
+    for (const relation of statement.relations ?? []) {
+        const span = relation.targetSpan;
+        addReference(index, document.uri, relation.targetId, Range.create(Position.create(span.line - 1, span.column - 1), Position.create(span.line - 1, span.column - 1 + relation.targetId.length)));
+        if (relation.evidenceSpan)
+            addReferencesFromLine(index, document, relation.evidenceSpan.line - 1, relation.evidence ?? [], relation.evidenceSpan.column - 1);
+    }
+}
 function buildSymbolIndex(document, ast) {
     const index = createSymbolIndex();
     for (const declaration of collectDocumentDeclarations(ast)) {
@@ -488,6 +503,7 @@ function buildSymbolIndex(document, ast) {
     for (const step of ast.steps) {
         if (step.statement.role === "decision") {
             addReferencesFromLine(index, document, step.statement.span.line - 1, step.statement.basedOn);
+            addDecisionRelationReferences(index, document, step.statement);
             continue;
         }
         if (step.statement.role === "partition") {
@@ -600,6 +616,14 @@ async function validateTextDocument(textDocument) {
                 severity,
                 source: "llmthink",
                 code: issue.category,
+                ...(issue.metadata?.rule_id
+                    ? {
+                        data: {
+                            rule_id: issue.metadata.rule_id,
+                            review_required: issue.metadata.review_required === true,
+                        },
+                    }
+                    : {}),
                 message: [issue.message, issue.rationale, issue.suggestion]
                     .filter(Boolean)
                     .join("\n"),

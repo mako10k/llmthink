@@ -1,3 +1,4 @@
+// R: Resolve explicitly registered bundled DSL examples.
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
@@ -19,6 +20,11 @@ const candidateRoots = (() => {
 })();
 
 const DSL_EXAMPLES: DslExampleEntry[] = [
+  {
+    id: "causal-impact-unknown",
+    path: "docs/examples/causal-impact-unknown.think",
+    summary: "原因未確定・仮説・暫定対策と因果影響監査の例",
+  },
   {
     id: "decision-comparison",
     path: "docs/examples/decision-comparison.think",

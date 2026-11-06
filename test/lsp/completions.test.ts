@@ -74,6 +74,7 @@ test("annotation and comparison completions return closed vocabularies", () => {
     "todo",
     "orphan_future",
     "orphan_reference",
+    "role",
   ]);
 
   const comparisonText = "comparison C1 on P1 viewpoint V1 relation preferred";
@@ -150,4 +151,16 @@ test("DSLQL completion is restricted to a query expression", () => {
       },
     ],
   );
+});
+
+test("relation and profile completion expose the new optional vocabulary", () => {
+  assert.deepEqual(labels("  relation", 0), ["based_on", "acts_on"]);
+  assert.deepEqual(labels("    kind", 0), [
+    "support",
+    "causal",
+    "intervention",
+    "mitigation",
+    "recovery",
+  ]);
+  assert.deepEqual(labels("  profile", 0), ["causal-impact-v1"]);
 });

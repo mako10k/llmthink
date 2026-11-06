@@ -60,6 +60,10 @@
 - decision
 - comparison
 - based_on
+- acts_on
+- profile
+- kind
+- mechanism
 - relation
 - preferred_over
 - weaker_than
@@ -106,10 +110,11 @@ TopLevelBlock   = FrameworkDecl | DomainDecl | ProblemDecl | StepDecl | Implicit
 
 ```ebnf
 FrameworkDecl   = "framework" Identifier [":" Newline Indent { FrameworkRule } Dedent] ;
-FrameworkRule   = RequiresRule | ForbidsRule | WarnsRule ;
+FrameworkRule   = RequiresRule | ForbidsRule | WarnsRule | ProfileRule ;
 RequiresRule    = "requires" RequirementExpr Newline ;
 ForbidsRule     = "forbids" Identifier Newline ;
 WarnsRule       = "warns" Identifier Newline ;
+ProfileRule     = "profile" Identifier Newline ;
 RequirementExpr = Identifier { ("or" | "and") Identifier } ;
 ```
 
@@ -173,7 +178,8 @@ ResourceMetadata = ("digest" | "mime" | "label") String Newline ;
 ### 5.9 decision 宣言
 
 ```ebnf
-DecisionDecl    = "decision" Identifier ["based_on" ReferenceList] ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
+DecisionDecl    = "decision" Identifier ["based_on" ReferenceList] ["acts_on" ReferenceList] ":" Newline Indent TextBody { AnnotationDecl | RelationDecl } Dedent ;
+RelationDecl    = "relation" ("based_on" | "acts_on") Identifier ":" Newline Indent RelationFields Dedent ;
 ReferenceList   = Identifier { "," Identifier } ;
 ```
 
@@ -183,7 +189,7 @@ ReferenceList   = Identifier { "," Identifier } ;
 PendingDecl     = "pending" Identifier ":" Newline Indent TextBody { AnnotationDecl } Dedent ;
 
 AnnotationDecl  = "annotation" AnnotationKind ":" Newline Indent TextBody Dedent ;
-AnnotationKind  = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
+AnnotationKind  = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" | "role" ;
 ```
 
 ### 5.11 comparison 宣言
@@ -343,12 +349,12 @@ step S1:
 ### 8.4 注釈構文
 
 - 意味付き記述は comment ではなく annotation として導入する
-- annotation kind は explanation、rationale、status、caveat、todo、orphan_future、orphan_reference の閉じた集合とする
+- annotation kind は explanation、rationale、status、caveat、todo、orphan_future、orphan_reference、role の閉じた集合とする
 - annotation の現行所有先は problem と premise、evidence、decision、comparison、pending とする
 - viewpoint、partition、framework rule、query への annotation 付与は後続課題とする
 
 ```ebnf
-AnnotationKind = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" ;
+AnnotationKind = "explanation" | "rationale" | "status" | "caveat" | "todo" | "orphan_future" | "orphan_reference" | "role" ;
 AnnotationDecl = "annotation" AnnotationKind ":" Newline Indent StringLine Dedent ;
 ```
 
@@ -381,3 +387,9 @@ step S1:
 - 第二段階の formatter は owner 本文の直後に annotation ブロックを出力する
 
 詳細な実装差分は docs/process/comment-implementation-plan.md を参照する
+
+## 9. Optional decision relations
+
+The additive decision `acts_on`, qualified `relation` blocks, `annotation role`,
+and framework `profile` rule are specified in
+[decision-relations.md](decision-relations.md). Legacy syntax and absent-option behavior remain unchanged.

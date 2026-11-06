@@ -1,3 +1,4 @@
+// R: Define the source-preserving contracts for DSL documents and statements.
 import type { ConfidenceAssessment } from "./confidence.js";
 
 export type StatementRole =
@@ -35,7 +36,8 @@ export type AnnotationKind =
   | "caveat"
   | "todo"
   | "orphan_future"
-  | "orphan_reference";
+  | "orphan_reference"
+  | "role";
 
 export interface Annotation {
   kind: AnnotationKind;
@@ -45,7 +47,7 @@ export interface Annotation {
 }
 
 export interface FrameworkRule {
-  kind: "requires" | "forbids" | "warns";
+  kind: "requires" | "forbids" | "warns" | "profile";
   value: string;
   span: SourceSpan;
 }
@@ -138,10 +140,36 @@ export interface EvidenceStatement {
   span: SourceSpan;
 }
 
+export type ReferenceFamily = "based_on" | "acts_on";
+export type DecisionRelationKind =
+  | "support"
+  | "causal"
+  | "intervention"
+  | "mitigation"
+  | "recovery";
+export type RelationStatus = "hypothesis" | "confirmed" | "refuted";
+
+export interface DecisionRelation {
+  family: ReferenceFamily;
+  targetId: string;
+  kind: DecisionRelationKind;
+  status?: RelationStatus;
+  mechanism?: string;
+  mechanismBody?: TextBody;
+  evidence?: string[];
+  span: SourceSpan;
+  targetSpan: SourceSpan;
+  evidenceSpan?: SourceSpan;
+}
+
 export interface DecisionStatement {
   role: "decision";
   id: string;
   basedOn: string[];
+  // Absent on legacy documents, including JSON/DSLQL projections.
+  actsOn?: string[];
+  actsOnSpans?: SourceSpan[];
+  relations?: DecisionRelation[];
   text: string;
   textBody: TextBody;
   annotations: Annotation[];

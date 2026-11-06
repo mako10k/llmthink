@@ -1,8 +1,10 @@
+// R: Format DSL contracts without discarding declared relation semantics.
 import type {
   Annotation,
   ComparisonStatement,
   ConfidenceDecl,
   DecisionStatement,
+  DecisionRelation,
   DocumentAst,
   EvidenceStatement,
   EvidenceResource,
@@ -105,15 +107,47 @@ function formatEvidence(statement: EvidenceStatement): string[] {
   ];
 }
 
+function formatRelationMechanism(relation: DecisionRelation): string[] {
+  if (relation.mechanism === undefined) return [];
+  if (relation.mechanismBody?.syntax === "block") {
+    return formatLabeledTextBody(
+      "mechanism",
+      relation.mechanism,
+      relation.mechanismBody,
+    ).map(indent);
+  }
+  // Keep decoded control characters inside a quoted scalar: block normalization
+  // would discard authored leading/trailing blank lines.
+  return [indent(`mechanism ${quote(relation.mechanism)}`)];
+}
+
+function formatDecisionRelation(relation: DecisionRelation): string[] {
+  return [
+    `relation ${relation.family} ${relation.targetId}:`,
+    indent(`kind ${relation.kind}`),
+    ...(relation.status ? [indent(`status ${relation.status}`)] : []),
+    ...formatRelationMechanism(relation),
+    ...(relation.evidence
+      ? [indent(`evidence ${relation.evidence.join(", ")}`)]
+      : []),
+  ];
+}
+
 function formatDecision(statement: DecisionStatement): string[] {
   const basedOn =
     statement.basedOn.length > 0
       ? ` based_on ${statement.basedOn.join(", ")}`
       : "";
+  const actsOn = statement.actsOn?.length
+    ? ` acts_on ${statement.actsOn.join(", ")}`
+    : "";
   return [
-    `decision ${statement.id}${basedOn}:`,
+    `decision ${statement.id}${basedOn}${actsOn}:`,
     ...formatTextBody(statement.text, statement.textBody).map(indent),
     ...formatAnnotations(statement.annotations).map(indent),
+    ...(statement.relations ?? []).flatMap((relation) =>
+      formatDecisionRelation(relation).map(indent),
+    ),
   ];
 }
 

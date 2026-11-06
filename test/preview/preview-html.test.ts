@@ -127,7 +127,9 @@ test("preview:html defaults to fit and keeps the outer map area stable on zoom",
     assert.doesNotMatch(html, /diagram-minimap-title/);
     assert.doesNotMatch(html, /diagram-zoom-level/);
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+      executablePath: process.env.LLMTHINK_TEST_CHROMIUM_EXECUTABLE,
+    });
     try {
       const page = await browser.newPage({
         viewport: { width: 1440, height: 1000 },
@@ -176,7 +178,9 @@ test("preview:html keeps cards aligned, hides scrollbars, and applies control op
   try {
     renderPreview("docs/process/help-navigation-design.dsl", outputPath);
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+      executablePath: process.env.LLMTHINK_TEST_CHROMIUM_EXECUTABLE,
+    });
     try {
       const page = await browser.newPage({
         viewport: { width: 1440, height: 1000 },
@@ -317,7 +321,9 @@ test("preview:html renders problem references as problem nodes instead of unreso
     assert.match(html, /node-problem rect \{[\s\S]*vscode-charts-red/);
     assert.doesNotMatch(html, /P4:[^\n]*参照先が未定義です/);
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+      executablePath: process.env.LLMTHINK_TEST_CHROMIUM_EXECUTABLE,
+    });
     try {
       const page = await browser.newPage({
         viewport: { width: 1440, height: 1000 },
@@ -391,7 +397,9 @@ test("preview:html renders comparison statements and comparison section", async 
     assert.match(html, /node-status-badge status-rejected/);
     assert.match(html, /data-status="rejected"/);
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+      executablePath: process.env.LLMTHINK_TEST_CHROMIUM_EXECUTABLE,
+    });
     try {
       const page = await browser.newPage({
         viewport: { width: 1440, height: 1000 },
@@ -523,7 +531,9 @@ test("preview:html highlights edge endpoints on hover and fits them on edge doub
   try {
     renderPreview(inputPath, outputPath);
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+      executablePath: process.env.LLMTHINK_TEST_CHROMIUM_EXECUTABLE,
+    });
     try {
       const page = await browser.newPage({
         viewport: { width: 1440, height: 1000 },

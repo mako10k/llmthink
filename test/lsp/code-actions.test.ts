@@ -139,3 +139,21 @@ step S4:
     false,
   );
 });
+
+test("missing support fix inserts based_on before acts_on and preserves relation details", async () => {
+  const source = `premise C:
+  "candidate"
+decision M acts_on C:
+  "action"
+  relation acts_on C:
+    kind intervention
+    mechanism "change producing condition"
+`;
+  const { document, actions } = await actionsFor(source);
+  const fix = actions.find((action) => action.title === "Add based_on C");
+  assert.ok(fix);
+  const repaired = applyAction(document, fix);
+  assert.match(repaired, /decision M based_on C acts_on C:/);
+  assert.match(repaired, /relation acts_on C:/);
+  assert.doesNotThrow(() => parseDocument(repaired));
+});

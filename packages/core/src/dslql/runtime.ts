@@ -1,3 +1,4 @@
+// R: Project DSL documents into the read-only DSLQL runtime.
 import type {
   Annotation,
   DocumentAst,
@@ -158,6 +159,27 @@ function normalizeStatement(statement: StepStatement): DslqlObject {
         ...common,
         ...textStatementFields(statement),
         based_on: statement.basedOn,
+        ...(statement.actsOn ? { acts_on: statement.actsOn } : {}),
+        ...(statement.relations
+          ? {
+              relations: statement.relations.map((relation) => ({
+                family: relation.family,
+                target_id: relation.targetId,
+                kind: relation.kind,
+                status: relation.status ?? null,
+                mechanism: relation.mechanism ?? null,
+                evidence: relation.evidence ?? [],
+                span: normalizeSpan(relation.span),
+                target_span: normalizeSpan(relation.targetSpan),
+                mechanism_body: relation.mechanismBody
+                  ? normalizeTextBody(relation.mechanismBody)
+                  : null,
+                evidence_span: relation.evidenceSpan
+                  ? normalizeSpan(relation.evidenceSpan)
+                  : null,
+              })),
+            }
+          : {}),
       };
     case "comparison":
       return {

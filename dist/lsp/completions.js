@@ -1,3 +1,4 @@
+// R: Supply context-aware DSL completion candidates.
 import { CompletionItemKind, InsertTextFormat, Position, } from "vscode-languageserver/node.js";
 import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, parseDocument, } from "@llmthink/core";
 const ANNOTATION_KINDS = [
@@ -8,6 +9,7 @@ const ANNOTATION_KINDS = [
     "todo",
     "orphan_future",
     "orphan_reference",
+    "role",
 ];
 const COMPARISON_RELATIONS = [
     "preferred_over",
@@ -142,9 +144,24 @@ function buildStatementRoleCompletionItems(documentation) {
         insertTextFormat: InsertTextFormat.Snippet,
     }));
 }
+function relationCompletions(trimmedPrefix, documentation) {
+    if (/^relation(?:\s+(?:based_on|acts_on)?)?$/.test(trimmedPrefix)) {
+        return buildKeywordCompletionItems(["based_on", "acts_on"], "relation reference family", documentation, {});
+    }
+    if (/^kind(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+        return buildKeywordCompletionItems(["support", "causal", "intervention", "mitigation", "recovery"], "relation kind", documentation, {});
+    }
+    if (/^profile(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+        return buildKeywordCompletionItems(["causal-impact-v1"], "audit profile", documentation, {});
+    }
+    return undefined;
+}
 export function buildContextualDslCompletions(document, position, documentation) {
     const prefix = linePrefixAt(document, position);
     const trimmedPrefix = prefix.trim();
+    const relationItems = relationCompletions(trimmedPrefix, documentation);
+    if (relationItems)
+        return relationItems;
     if (/^annotation(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
         return buildKeywordCompletionItems(ANNOTATION_KINDS, "annotation kind", documentation, {
             kind: CompletionItemKind.EnumMember,

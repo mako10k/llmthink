@@ -1,3 +1,4 @@
+// R: Generate source edits for actionable DSL diagnostics.
 import { CodeActionKind, Position, Range, TextEdit, } from "vscode-languageserver/node.js";
 import { formatDslText, } from "@llmthink/core";
 function lineTextAt(document, line) {
@@ -96,7 +97,12 @@ function missingBasedOnAction(document, ast, issue) {
     }
     const lineIndex = line - 1;
     const originalLine = lineTextAt(document, lineIndex);
-    const updatedLine = originalLine.replace(/:\s*$/, ` based_on ${candidateIds.join(", ")}:`);
+    const marker = originalLine.indexOf(" acts_on ");
+    const updatedLine = marker >= 0
+        ? originalLine.slice(0, marker) +
+            ` based_on ${candidateIds.join(", ")}` +
+            originalLine.slice(marker)
+        : originalLine.replace(/:\s*$/, ` based_on ${candidateIds.join(", ")}:`);
     if (updatedLine === originalLine) {
         return undefined;
     }

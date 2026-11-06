@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- 後方互換の decision `acts_on` と参照ごとの `relation` 詳細を追加し、根拠・因果・作用対象を分離
+- framework の明示選択 `profile causal-impact-v1`、`annotation role`、原因未確定と影響未対処の監査を追加
+- DSLQL、保存・再読込、LSP参照/rename、プレビューへ新しい関係を反映し、構造検査とレビュー事項を区別
+
 - DSL/parser/analyzer/DSLQLを`@llmthink/core` workspaceへ分離し、Core単体、下流contract、root application、全体回帰のテスト境界を独立
 - Hosted MCP v1 artifactとsource-independent Conformance Kitをprivate `@llmthink/contracts` workspaceへ分離
 - Hosted APIのversion、scope、error code、serializable command/query/result型をContractsの正本へ移し、Serverをconsumerへ変更

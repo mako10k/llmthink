@@ -430,3 +430,10 @@ fatal が発生した場合、query_result の生成は省略可能とする。
 - contradiction_candidate を先に実装する
 - semantic_hint は truth ではなく補足説明として返す
 - mece_assessment は警告中心で始める
+
+## 8. Optional relation and causal-impact audit
+
+[Decision relation rules](decision-relations.md#audit-rules) define REL001–REL004
+and the explicitly selected causal-impact-v1 profile CI000–CI012.
+Action targets do not count as support references or confidence inputs.
+Content-review prompts do not establish factual truth, completeness or operational recovery.

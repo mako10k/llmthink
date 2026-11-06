@@ -1,0 +1,70 @@
+framework Incident:
+  profile causal-impact-v1
+
+problem P1:
+  "API遅延と原因から波及する影響を抑える"
+
+evidence E1:
+  "応答遅延と接続待ちを観測した"
+
+pending U1:
+  "原因未確定。負荷増加と接続解放漏れを判別する"
+  annotation role:
+    "cause_unknown"
+  annotation todo:
+    |
+      調査担当が流入量と使用接続数を同時計測する。
+      流入減少後に接続数が戻るか比較し、次回対策判断前に再評価する。
+
+premise C1:
+  "接続解放漏れの可能性"
+  annotation role:
+    "cause"
+  annotation todo:
+    "U1の調査で判別し、確定後に修正方針を判断する"
+
+decision S1 based_on P1,E1,U1,C1:
+  "API応答が遅延している"
+  annotation role:
+    "phenomenon"
+  relation based_on C1:
+    kind causal
+    status hypothesis
+    mechanism "接続不足により後続処理が待機する"
+
+decision I1 based_on S1:
+  "利用者の操作待ちが増える可能性"
+  annotation role:
+    "impact"
+  annotation todo:
+    "利用者影響は未対処。担当が影響範囲を確認し次回対策判断で再評価する"
+  relation based_on S1:
+    kind causal
+    status hypothesis
+
+decision I2 based_on C1:
+  "共有DBの接続枠が占有される可能性"
+  annotation role:
+    "impact"
+  annotation todo:
+    "DB担当が他サービスへの波及を調査し次回対策判断で再評価する"
+  relation based_on C1:
+    kind causal
+    status hypothesis
+
+decision M1 based_on E1,U1 acts_on S1:
+  "暫定的に同時受付数を制限する"
+  annotation role:
+    "measure"
+  annotation caveat:
+    |
+      受付拒否が増える可能性がある。
+      原因の除去と共有DBの接続枠回復は未確認。
+  annotation todo:
+    |
+      運用担当が待ち時間と受付拒否率を観測する。
+      次回対策判断前に継続・変更・解除を判断する。
+  relation acts_on S1:
+    kind mitigation
+    status hypothesis
+    mechanism "接続待ちへ流入する処理数を減らす"

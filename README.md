@@ -416,3 +416,21 @@ declared_confidence D1:
 - 本リポジトリは MPL-2.0 で提供する
 - 依存ライブラリはそれぞれのライセンス条件に従う
 - MPL-2.0 の全文は LICENSE を参照する
+
+## 因果・影響と対策対象の記述
+
+`based_on` は根拠、`acts_on` は作用対象を列挙します。
+`relation based_on ID:` / `relation acts_on ID:` で因果・作用機序などを詳細化できます。
+既存文書の意味と監査は維持し、因果・影響監査は framework 内の
+`profile causal-impact-v1` で明示選択します。原因未確定は pending として残します。
+
+- [構文・意味・互換性と監査ルール](docs/specs/decision-relations.md)
+- [原因未確定と暫定対策の例](docs/examples/causal-impact-unknown.think)
+
+```bash
+llmthink dsl check docs/examples/causal-impact-unknown.think --pretty
+llmthink dsl help syntax decision detail
+```
+
+監査の到達可能性や記述の存在は、因果の真実性や対策の実効性を保証しません。
+`review_required` の指摘は、本文・根拠・実際の動作条件を確認するための事項です。

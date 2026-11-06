@@ -1,0 +1,20 @@
+{
+  "schema": "sealgraph/path-manifest/v1",
+  "claim": "path-digest-only",
+  "source": "chat:2026-11-06/approved-decision-relations-review-fixes",
+  "digest_algorithm": "sha256",
+  "aggregate_algorithm": "sha256-canonical-entries-v1",
+  "entries": [
+    {
+      "path": "docs/adr/0024-decision-reference-relations.md",
+      "bytes": 2580,
+      "sha256": "7c556628ebfbc7d4b6cba632582a461954d0d5487e3f8ed68b6983702d161c4d"
+    },
+    {
+      "path": "docs/specs/decision-relations.md",
+      "bytes": 12476,
+      "sha256": "cd817826d026370ebf7d58a6f6204e77666363bfda5ee42fadf7ea3f51d6ea99"
+    }
+  ],
+  "aggregate_sha256": "c8308655eac5bc210a92120e79d4f2fd7b64b6f17191ee396baa45cbdcb63cd7"
+}
