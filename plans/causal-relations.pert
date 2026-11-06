@@ -6,7 +6,7 @@ project CAUSAL_RELATIONS:
   as_of 2026-11-06
   duration_unit point
   velocity 9000000000p/1204499923h
-  finish REVIEW_FIXED
+  finish VSIX_LOCAL_READY
 
 milestone START:
   title "Owner approved specification and implementation in chat 2026-11-06"
@@ -26,6 +26,12 @@ task FIX_REVIEW VERIFIED -> REVIEW_FIXED:
   duration 1p
   status done
   source "Chat 2026-11-06: 修正をお願いします。 Refers to two P2 review findings: mechanism round-trip and repeated causal traversal."
+
+task REFLECT_VSIX REVIEW_FIXED -> VSIX_LOCAL_READY:
+  title "Reflect relation DSL in VSIX editing assets and install verified package"
+  duration 1p
+  status active
+  source "Chat 2026-11-06: 関連 VSIX プロジェクトなどにも反映させましょう。 Scope answer: WSL側のVS Codeへインストールも行う"
 
 work_event WE-f32de17849d8db352a6dc4d0c536247f9daa873b39e528e7cea0c3dfad3ce05d:
   model 1
@@ -55,3 +61,13 @@ work_event WE-2e684e7684a24474aeb9798865c6f084e3bfffcc6200a545aa95e8ee9314adc3:
   task FIX_REVIEW
   kind finish
   occurred_at 2026-11-06T06:17:36.840614+00:00
+
+milestone VSIX_LOCAL_READY:
+  title "Related VSIX editing surfaces packaged, verified and installed in WSL"
+
+work_event WE-085f90c75111db0c904fc446d944e97317895a41138d63364b507fab39f00b6c:
+  model 1
+  task REFLECT_VSIX
+  kind start
+  occurred_at 2026-11-06T06:48:08.836873+00:00
+  planned_value 1p

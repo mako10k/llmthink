@@ -151,6 +151,9 @@ function relationCompletions(trimmedPrefix, documentation) {
     if (/^kind(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
         return buildKeywordCompletionItems(["support", "causal", "intervention", "mitigation", "recovery"], "relation kind", documentation, {});
     }
+    if (/^status(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+        return buildKeywordCompletionItems(["hypothesis", "confirmed", "refuted"], "relation status", documentation, {});
+    }
     if (/^profile(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
         return buildKeywordCompletionItems(["causal-impact-v1"], "audit profile", documentation, {});
     }

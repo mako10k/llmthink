@@ -17,6 +17,43 @@ evidence の匿名 `resource:` block は URL / file / blob locator と任意の 
 
 また、DSL Preview コマンドでアクティブな DSL 文書を Markdown ベースの HTML プレビューとして横に表示できる。標準拡張子は `.think` で、既存の `.dsl` も同じ language ID `llmthink` の互換 alias として扱う。プレビューは custom editor として開くため、Markdown Preview に近い別エディタ種別として扱える。右上の editor title action が環境により見えない場合でも、`.think` / `.dsl` 編集中は status bar に `LLMThink Preview` ボタンが出る。プレビュー上部には `elkjs` を使った step 関係の SVG グラフが表示され、role ごとの lane 維持、orthogonal edge routing、overflow-safe なノード文面表示、ノードクリックから元 DSL 行への移動にも対応する。
 
+## 因果・影響と対策の編集
+
+このローカルビルドは、根拠の `based_on` と作用対象の `acts_on` を分け、
+参照ごとの `relation based_on ID:` / `relation acts_on ID:` を扱う。
+新構文は公開済み1.3.0の配布物には含まれない。公開releaseの案内とは区別する。
+
+- `llmthink-causal-unknown`: 原因未確定・原因候補・影響連鎖・暫定対策を含む文書を挿入する
+- `llmthink-causal-relation`: 既存の `based_on` 参照へ因果関係の詳細を付ける
+- `llmthink-action-relation`: 既存の `acts_on` 参照へ作用機序を付ける
+
+```text
+decision M based_on E acts_on C:
+  "接続返却処理を修正する"
+  relation acts_on C:
+    kind intervention
+    status hypothesis
+    mechanism "終了経路で接続を返却する"
+```
+
+参照するIDは文書内で宣言し、relationの対象は対応するヘッダーへ先に列挙する。
+`status confirmed` には、その関係を支持する `evidence` 参照も記述する。
+原因未確定は `pending` と `annotation role: "cause_unknown"` で表し、
+現象の `based_on` から参照する。注釈の本文は次行へインデントして記述する。
+
+framework 内に `profile causal-impact-v1` を置くと追加監査が有効になる。
+既存文書へ因果・影響監査を暗黙適用しない。Problems の
+`review_required` は、因果の真実性や対策の十分性を人・LLMが確認するための指摘であり、
+構造がそろっても実効性や作業の実行権限を認定しない。
+
+definition / rename は作用対象・relation詳細・関係のevidence参照も追跡する。
+プレビューでは因果の入力辺と作用の出力辺を区別し、作用辺は破線、
+反証済みの関係は薄く表示する。
+
+LSPは下記の起動順に従う。PATHや設定で古い外部LSPを選んだ場合、
+新構文を扱える版へ更新するか、同梱LSPを明示指定する。
+既に開いているVS Codeでは拡張機能更新後にウィンドウを再読み込みする。
+
 ## DSLQL 編集支援
 
 - query 行では `.document.problems[]`、`.document.steps[].statement`、`select(...)`、`similarity(...)`、`similar_to(...)`、`nearest_to(...)`、`limit(...)` などの補完が出る

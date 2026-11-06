@@ -2,15 +2,33 @@
   "scopeName": "source.llmthink",
   "name": "LLMThink DSL",
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#blockTextDescription" },
-    { "include": "#blockTextBody" },
-    { "include": "#keywords" },
-    { "include": "#declHeaders" },
-    { "include": "#dslqlFunctions" },
-    { "include": "#dslqlConstants" },
-    { "include": "#operators" },
-    { "include": "#strings" }
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#blockTextDescription"
+    },
+    {
+      "include": "#blockTextBody"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#declHeaders"
+    },
+    {
+      "include": "#dslqlFunctions"
+    },
+    {
+      "include": "#dslqlConstants"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#strings"
+    }
   ],
   "repository": {
     "comments": {
@@ -25,7 +43,7 @@
       "patterns": [
         {
           "name": "keyword.control.llmthink",
-          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|confidence|declared_confidence|estimate|range|epistemic|keyword|default|query|requires|forbids|warns|profile|acts_on|kind|mechanism)\\b"
+          "match": "\\b(framework|domain|description|problem|annotation|step|premise|viewpoint|axis|partition|on|evidence|resource|decision|comparison|relation|based_on|pending|confidence|declared_confidence|estimate|range|epistemic|keyword|default|query|requires|forbids|warns|profile|acts_on|kind|mechanism|status)\\b"
         },
         {
           "name": "support.type.property-name.resource.llmthink",
@@ -34,6 +52,14 @@
         {
           "name": "keyword.operator.relation.llmthink",
           "match": "\\b(preferred_over|weaker_than|incomparable|counterexample_to)\\b"
+        },
+        {
+          "name": "constant.language.relation-kind.llmthink",
+          "match": "(?<=kind )\\b(support|causal|intervention|mitigation|recovery)\\b"
+        },
+        {
+          "name": "constant.language.relation-status.llmthink",
+          "match": "(?<=status )\\b(hypothesis|confirmed|refuted)\\b"
         }
       ]
     },
@@ -96,8 +122,12 @@
     "blockTextDescription": {
       "begin": "^(\\s*)(description)(\\s+)(\\|)\\s*$",
       "beginCaptures": {
-        "2": { "name": "keyword.control.llmthink" },
-        "4": { "name": "punctuation.definition.block.llmthink" }
+        "2": {
+          "name": "keyword.control.llmthink"
+        },
+        "4": {
+          "name": "punctuation.definition.block.llmthink"
+        }
       },
       "contentName": "string.unquoted.block.llmthink",
       "while": "^(?:\\1\\s{2,}.*|\\s*)$",
@@ -106,7 +136,9 @@
     "blockTextBody": {
       "begin": "^(\\s*)(\\|)\\s*$",
       "beginCaptures": {
-        "2": { "name": "punctuation.definition.block.llmthink" }
+        "2": {
+          "name": "punctuation.definition.block.llmthink"
+        }
       },
       "contentName": "string.unquoted.block.llmthink",
       "while": "^(?:\\1\\s{2,}.*|\\s*)$",

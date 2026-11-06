@@ -163,4 +163,9 @@ test("relation and profile completion expose the new optional vocabulary", () =>
     "recovery",
   ]);
   assert.deepEqual(labels("  profile", 0), ["causal-impact-v1"]);
+  assert.deepEqual(labels("    status", 0), [
+    "hypothesis",
+    "confirmed",
+    "refuted",
+  ]);
 });

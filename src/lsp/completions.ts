@@ -235,6 +235,14 @@ function relationCompletions(
       {},
     );
   }
+  if (/^status(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
+    return buildKeywordCompletionItems(
+      ["hypothesis", "confirmed", "refuted"],
+      "relation status",
+      documentation,
+      {},
+    );
+  }
   if (/^profile(?:\s+[A-Za-z0-9_-]*)?$/.test(trimmedPrefix)) {
     return buildKeywordCompletionItems(
       ["causal-impact-v1"],

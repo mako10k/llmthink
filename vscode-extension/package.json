@@ -71,6 +71,10 @@
       {
         "language": "llmthink",
         "path": "./snippets/dslql.code-snippets"
+      },
+      {
+        "language": "llmthink",
+        "path": "./snippets/causal-relations.code-snippets"
       }
     ],
     "languageModelTools": [

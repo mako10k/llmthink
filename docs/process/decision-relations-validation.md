@@ -106,3 +106,26 @@ Owner follow-up: 「修正をお願いします。」 refers to the two P2 findi
 After the review correction task finished, the plan's declared elapsed-throughput value was
 refreshed using both recorded task lifecycles. The one-sample paragraph above records the
 initial implementation observation, not the final combined planning value.
+
+## Related VSIX propagation — package verification
+
+Owner source: 「関連 VSIX プロジェクトなどにも反映させましょう。」
+Installation scope answer: 「WSL側のVS Codeへインストールも行う」
+
+The active VSIX project remains this repository's vscode-extension; the separately named
+llmthink-vscode repository is a future separation destination, not an existing local project.
+The adjacent hosted Plugin passes DSL text through and owns no parser; its pinned hosted
+server compatibility snapshot is not altered or presented as supporting this local change.
+
+Added contributed snippets for unknown causes, causal details and action details, relation
+kind/status highlighting, relation-status completion and hover, and bundled README guidance.
+Application/editor regressions: 64 passing under the supported Node 24 and existing Chromium.
+The actual generated VSIX payload was extracted and checked for the new manifest, snippets,
+README, syntax grammar, extension bundle and LSP bundle. Its extracted LSP passed startup,
+CI006/CI011 diagnostics and status completion under the WSL VS Code embedded Node 24.22.1.
+
+The artifact is vscode-extension/llmthink-causal-relations.vsix, SHA-256
+626d57cf10a211782e77a7463e8c7585954d9177ab13159a72a8734b88788bab.
+This is a local 1.3.0 rebuild, not an updated public release.
+At this package-verification point WSL replacement installation is still pending.
+The PATH client will be synchronized to the same source to keep its preferred external LSP aligned.
