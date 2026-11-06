@@ -30,6 +30,7 @@
   "files": [
     "dist",
     "!dist/server/backup",
+    "!dist/config",
     "docs/examples",
     "README.md",
     "schemas"

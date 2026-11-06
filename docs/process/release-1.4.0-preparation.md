@@ -81,3 +81,15 @@ After publication, separately plan:
 - Public npm/GitHub version, digest, source and install readback.
 
 These rollout operations have not been performed or silently treated as part of preparation.
+
+## Final package/source reconciliation
+
+Inspection found an ignored dist/config directory with no current src/config owner, while
+the root files declaration included the whole dist tree. TypeScript rebuilds did not delete
+the earlier output after its source moved to Core. The old public exports do not expose that
+subpath and current root imports do not use it. It is now excluded from the root tarball.
+The required Hosted bin wrapper has an existing committed TypeScript owner; its generated
+JS/map/declaration are tracked with this candidate. These are packaging corrections, not
+new runtime controls or removal of public root APIs.
+The earlier 73feeff source preparation commit is retained in history; the external receipt
+identifies the corrected candidate source. No earlier candidate was published or tagged.

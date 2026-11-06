@@ -27,6 +27,12 @@ const packages = new Map(
     return [record.name, { record, manifest }];
   }),
 );
+assert.ok(
+  !packages
+    .get("llmthink")
+    .record.files.some((file) => file.path.startsWith("dist/config/")),
+  "Root tarball contains orphaned pre-Core config output",
+);
 let baseUrl;
 async function serve(req, res) {
   const path = decodeURIComponent(req.url.split("?")[0].slice(1));
