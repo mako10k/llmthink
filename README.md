@@ -1,13 +1,12 @@
 # llmthink
 
-> リリース準備候補: **1.4.0**（未公開）。公開済み版は1.3.0です。
-> Core・Contracts・Server・本体を個別npmパッケージとして準備しています。
+> リリース: **1.4.0**。Core・Contracts・Server・本体を個別npmパッケージとして配布します。
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
 LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法・language ID の互換 alias として、警告や暗黙 rename なしで引き続き利用できる。
 
-現行 release version は [1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0)。
+現行 release version は [1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0)。
 
 ## 構成
 
@@ -71,10 +70,10 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 
 ## 配布
 
-- npm package の現行公開版は [llmthink@1.3.0](https://www.npmjs.com/package/llmthink/v/1.3.0)
-- npm package は `npm install -g llmthink@1.3.0` で CLI / MCP / LSP をインストールできる
+- npm package の現行公開版は [llmthink@1.4.0](https://www.npmjs.com/package/llmthink/v/1.4.0)
+- npm package は `npm install -g llmthink@1.4.0` で CLI / MCP / LSP をインストールできる
 - library として利用する場合は `npm install llmthink` を使う
-- VS Code 拡張の現行配布物は [GitHub Release v1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0) の `llmthink.vsix`
+- VS Code 拡張の現行配布物は [GitHub Release v1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0) の `llmthink-1.4.0.vsix`
 - ローカルで VS Code 拡張を生成する場合は vscode-extension/llmthink.vsix を使う
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
@@ -398,7 +397,7 @@ declared_confidence D1:
 
 - release version の判断基準は docs/process/version-bump-rules.dsl を正とする
 - root package、local stdio MCP、VSIX extension は同じ release version を共有する
-- Core / Contracts / Server / 本体は1.4.0候補として個別公開方式で準備中。
+- Core / Contracts / Server / 本体は1.4.0から個別npmパッケージとして配布する。
 - 個別公開方式はADR-0025に従い、既存root API/binと責務分離を維持する。
 - main へ入る公開差分ごとに version を bump する
 - 0.4.0 は preview HTML CLI、Playwright 回帰テスト、sample registry、DSL help 導線整理、VSIX preview UX 改善をまとめた minor release とする

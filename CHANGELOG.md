@@ -2,19 +2,20 @@
 
 ## Unreleased
 
-## 1.4.0 — release candidate (unpublished)
+## 1.4.0 - 2026-11-06
 
 - Core・Contracts・Server・本体の個別公開方式に変更し、正確依存とVSIXを1.4.0へ同期
-- この候補は未公開。Hosted MCP契約V1と既存root API/binを維持する
+- Hosted MCP契約V1と既存root API/binを維持する
 
 - 後方互換の decision `acts_on` と参照ごとの `relation` 詳細を追加し、根拠・因果・作用対象を分離
 - framework の明示選択 `profile causal-impact-v1`、`annotation role`、原因未確定と影響未対処の監査を追加
 - DSLQL、保存・再読込、LSP参照/rename、プレビューへ新しい関係を反映し、構造検査とレビュー事項を区別
+- quick HELPと問題解決HELPに新構文・原因未確定サンプルの導線を追加し、DSLQL追加フィールド説明とrelation種別ごとの補完を同期
 
-- DSL/parser/analyzer/DSLQLを`@llmthink/core` workspaceへ分離し、Core単体、下流contract、root application、全体回帰のテスト境界を独立
-- Hosted MCP v1 artifactとsource-independent Conformance Kitをprivate `@llmthink/contracts` workspaceへ分離
+- DSL/parser/analyzer/DSLQLを`@mako10k/llmthink-core` workspaceへ分離し、Core単体、下流contract、root application、全体回帰のテスト境界を独立
+- Hosted MCP v1 artifactとsource-independent Conformance Kitを`@mako10k/llmthink-contracts` workspaceへ分離
 - Hosted APIのversion、scope、error code、serializable command/query/result型をContractsの正本へ移し、Serverをconsumerへ変更
-- Hosted server実装と専用testをprivate `@llmthink/server` workspaceへ分離し、rootには既存bin/exportのcompatibility facadeだけを維持
+- Hosted server実装と専用testを`@mako10k/llmthink-server` workspaceへ分離し、rootには既存bin/exportのcompatibility facadeだけを維持
 - Node.js 24の`node:sqlite`を使うlifecycle control planeをServer workspaceへ移し、`BEGIN IMMEDIATE`、bounded busy timeout、blind retryなし、競合時のfail-closed rollbackをfocused testで固定
 - canonical onboarding/deleteをserver-owned 11-tool registryへ結合し、contract hash、runtime surface、tenant/revision/idempotency境界をfocused testで検証
 - root npm packからignoredな旧server build残骸を明示除外し、workspace上のWIP artifactが配布物へ混入しない境界を追加

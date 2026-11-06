@@ -1,11 +1,10 @@
 # LLMThink VSIX Extension
 
-> リリース準備候補: **1.4.0**（未公開）。公開済み版は1.3.0です。
-> Core・Contracts・Server・本体を個別npmパッケージとして準備しています。
+> リリース: **1.4.0**。Core・Contracts・Server・本体を個別npmパッケージとして配布します。
 
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
-現行 release version は [1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0)。
+現行 release version は [1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0)。
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 
@@ -22,9 +21,9 @@ evidence の匿名 `resource:` block は URL / file / blob locator と任意の 
 
 ## 因果・影響と対策の編集
 
-このローカルビルドは、根拠の `based_on` と作用対象の `acts_on` を分け、
+1.4.0では、根拠の `based_on` と作用対象の `acts_on` を分け、
 参照ごとの `relation based_on ID:` / `relation acts_on ID:` を扱う。
-新構文は公開済み1.3.0の配布物には含まれない。公開releaseの案内とは区別する。
+旧構文の互換性を維持し、因果・影響監査は明示選択で有効になる。
 
 - `llmthink-causal-unknown`: 原因未確定・原因候補・影響連鎖・暫定対策を含む文書を挿入する
 - `llmthink-causal-relation`: 既存の `based_on` 参照へ因果関係の詳細を付ける
@@ -133,7 +132,7 @@ LSPは下記の起動順に従う。PATHや設定で古い外部LSPを選んだ�
 
 ## インストール
 
-- 公開済み VSIX は [GitHub Release v1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0) の `llmthink.vsix` を使う
+- 公開済み VSIX は [GitHub Release v1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0) の `llmthink-1.4.0.vsix` を使う
 - VS Code で Extensions: Install from VSIX... を開き、取得または生成した llmthink.vsix を選ぶ
 - 配布物と release 手順は repo の docs/process/release-checklist.md と CHANGELOG.md を参照する
 
