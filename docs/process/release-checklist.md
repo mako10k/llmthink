@@ -7,18 +7,23 @@
 
 対象は Core npm package、root npm package、MCP server、VSIX extension、README、CHANGELOG、Git tag、GitHub Release とする。
 
-### Current publication hold
+### Individual-package distribution
 
-`@llmthink/server@1.0.0`は分離検証中のprivate workspaceであり、current unreleased root sourceはこのpackageへ実行時依存する。この状態ではroot tarballをregistryから完全にinstallできないため、次回releaseのGate 1を開始しない。
+ADR-0025 records the owner's 2026-11-06 decision: prepare individual public packages in
+Core -> Contracts -> Server -> root order, plus VSIX. Preparation does not authorize publication.
+The previous private-dependency distribution choice is resolved; source/test boundaries,
+root API/bin compatibility and Hosted MCP V1 remain intact.
 
-release作業の前に、accepted ADRでserver distribution方式を決定し、公開対象、version同期規則、tarball digest、公開順、readbackを本checklistへ追加する。workspace抽出だけを根拠に`@llmthink/server`をpublishしたり、root releaseを進めたりしない。
+Record all four tarballs and their SHA-512 integrities, plus VSIX SHA-256.
+Verify package contents and an isolated install using those exact dependencies.
+Current candidate is 1.4.0; the currently published root version remains 1.3.0.
 
 release ごとに次の値を一度だけ確定し、作業記録へ残す。
 
 - `RELEASE_VERSION`: `X.Y.Z`
 - `RELEASE_TAG`: `vX.Y.Z`
 - `RELEASE_SHA`: release commit の完全な SHA
-- `CORE_NPM_TARBALL` と SHA-512 integrity
+- CORE_NPM_TARBALL / CONTRACTS_NPM_TARBALL / SERVER_NPM_TARBALL / NPM_TARBALL と各 SHA-512 integrity
 - `NPM_TARBALL` と SHA-512 integrity
 - `VSIX_FILE` と SHA-256 digest
 
@@ -28,9 +33,9 @@ release ごとに次の値を一度だけ確定し、作業記録へ残す。
 
 1. working tree が clean で、対象 branch が `main` であることを確認する
 2. release version を docs/process/version-bump-rules.dsl に従って決める
-3. packages/core/package.json、package.json、package-lock.json、vscode-extension/package.json、vscode-extension/package-lock.json、src/mcp/server.ts を同じ version へ揃え、root packageがCoreの正確versionへ依存することを確認する
+3. Core / Contracts / Server / root / VSIX の package.json、lockfiles、version constants、src/mcp/server.ts を同じ version へ揃え、root packageがCoreの正確versionへ依存することを確認する
 4. CHANGELOG.md に同じ version と release 内容を記載する
-5. README.md と vscode-extension/README.md の現行 version、npm URL、GitHub Release URL を同じ version へ揃える
+5. README.md と vscode-extension/README.md で候補版と公開済み版を区別し、公開時のURLを候補版に揃える
 6. version と文書を揃え終えてから `npm run build:extension` と `npm run package:vsix` を実行する
 7. 生成された vscode-extension/llmthink.vsix を release 差分へ含める
 
@@ -46,7 +51,7 @@ VSIX を生成した後に version、README、extension source を変更した�
 6. `npm run test:all`
 7. `npm run build`
 8. `npm run verify-examples`
-9. `npm pack --dry-run --workspace @llmthink/core` と root `npm pack --dry-run` で各公開対象ファイルを確認する
+9. `npm pack --dry-run --workspace @mako10k/llmthink-core` と root `npm pack --dry-run` で各公開対象ファイルを確認する
 10. VSIX 内の extension/package.json と extension/readme.md を展開し、version と文面が source と一致することを確認する
 11. current tree と git history 全体を secret scan し、結果とコマンドを作業記録へ残す
 12. `git diff --check` と `git status --short` で想定外の差分がないことを確認する
@@ -57,8 +62,8 @@ VSIX を生成した後に version、README、extension source を変更した�
 
 1. release 差分を 1 つの release commit として commit する
 2. working tree が clean であることを確認し、`RELEASE_SHA=$(git rev-parse HEAD)` を記録する
-3. `RELEASE_SHA` の状態からCoreとrootのnpm tarballをrepository外のartifact directoryへ一度だけ生成し、以後は`npm publish`に同じtarballを渡す
-4. Core/root npm tarballのSHA-512 integrityとvscode-extension/llmthink.vsixのSHA-256 digestを記録する
+3. `RELEASE_SHA` の状態からCore / Contracts / Server / rootのnpm tarballをrepository外のartifact directoryへ一度だけ生成し、以後は`npm publish`に同じtarballを渡す
+4. 全npm tarballのSHA-512 integrityとvscode-extension/llmthink.vsixのSHA-256 digestを記録する
 5. annotated tag `RELEASE_TAG` を `RELEASE_SHA` に作成する
 6. tag 作成後も working tree が clean で、tag と `HEAD` が `RELEASE_SHA` に一致することを確認する
 
@@ -66,12 +71,16 @@ VSIX を生成した後に version、README、extension source を変更した�
 
 ## Gate 4: 公開
 
-公開前に target、version、SHA、artifact digest と最大 write 回数を固定する。通常の write は次の 4 回である。
+公開前に target、version、SHA、artifact digest と最大 write 回数を固定する。個別公開方式の通常 write は次の6回である。
 
-1. `main` と `RELEASE_TAG` を同一 `RELEASE_SHA` として origin へ atomic push する
-2. 凍結済み `CORE_NPM_TARBALL` を一度だけ公開し、registryのversion/integrityを読み戻す
-3. Core readback成功後、凍結済み `NPM_TARBALL` を一度だけ公開する
-4. `RELEASE_TAG` からGitHub Releaseを作り、凍結済み`VSIX_FILE`とCHANGELOGの該当内容を掲載する
+1. main と RELEASE_TAG を同一 RELEASE_SHA として origin へ atomic push
+2. 凍結済みCore tarballを一度だけ公開し、version/integrityを読み戻す
+3. Contracts tarballを一度だけ公開し、version/integrityを読み戻す
+4. Server tarballを一度だけ公開し、version/integrityを読み戻す
+5. root tarballを一度だけ公開し、version/integrityを読み戻す
+6. GitHub Releaseへ凍結済みVSIXと該当CHANGELOGを掲載する
+
+準備段階では上記writeやtag作成を実施しない。
 
 認証エラーや応答不明時は同じ write を直ちに再送しない。先に remote、npm registry、GitHub Release を読み戻し、未完了と確認できた操作だけを再開する。
 
@@ -80,7 +89,7 @@ VSIX を生成した後に version、README、extension source を変更した�
 ローカル成果物ではなく、各公開先から読み戻した値を確認する。
 
 1. origin/main と annotated tag を peel した SHA が `RELEASE_SHA` に一致する
-2. npm registryの`@llmthink/core` versionとintegrityが`RELEASE_VERSION`と凍結済みCore tarballに一致する
+2. npm registryの`@mako10k/llmthink-core` versionとintegrityが`RELEASE_VERSION`と凍結済みCore tarballに一致する
 3. npm registryのroot package version、latest dist-tag、integrityが`RELEASE_VERSION`と凍結済みroot tarballに一致する
 4. GitHub Release が draft/prerelease でなく `RELEASE_TAG` を指す
 5. GitHub Release から再取得した VSIX の SHA-256 が凍結値に一致する

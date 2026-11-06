@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { DSLQL_FUNCTION_SPECS, getDslSyntaxGuidanceText } from "@llmthink/core";
+import {
+  DSLQL_FUNCTION_SPECS,
+  getDslSyntaxGuidanceText,
+} from "@mako10k/llmthink-core";
 
 test("root help resolves the distributed example catalog", () => {
   const help = getDslSyntaxGuidanceText({

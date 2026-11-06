@@ -1,4 +1,4 @@
-import { type AuditReport, type EmbeddingRequestOptions } from "@llmthink/core";
+import { type AuditReport, type EmbeddingRequestOptions } from "@mako10k/llmthink-core";
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtReflectionKind = "note" | "concern" | "decision" | "follow_up" | "audit_response";
 export type ThoughtSemanticAuditVerdict = "supported" | "unsupported" | "mixed" | "unknown";

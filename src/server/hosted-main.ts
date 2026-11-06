@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// R: Preserve the root Hosted command entrypoint.
 
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -6,9 +7,9 @@ import { fileURLToPath } from "node:url";
 import {
   loadHostedMcpRuntimeConfig,
   startHostedMcpServer,
-} from "@llmthink/server/hosted-main";
+} from "@mako10k/llmthink-server/hosted-main";
 
-export * from "@llmthink/server/hosted-main";
+export * from "@mako10k/llmthink-server/hosted-main";
 
 if (
   process.argv[1] &&

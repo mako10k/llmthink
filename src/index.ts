@@ -1,4 +1,5 @@
-export * from "@llmthink/core";
+// R: Expose the root public API and compatibility exports.
+export * from "@mako10k/llmthink-core";
 export {
   formatPersistedThoughtAudit,
   formatThoughtReflections,
@@ -54,7 +55,7 @@ export {
   LlmthinkServerError,
   MAX_IDEMPOTENCY_RETENTION_SECONDS,
   MIN_IDEMPOTENCY_RETENTION_SECONDS,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";
 export type {
   AddReflectionCommand,
   AuditTextCommand,
@@ -79,26 +80,26 @@ export type {
   ThoughtRef,
   ThoughtRepository,
   ThoughtSearchQuery,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";
 export {
   assertServerBindPolicy,
   isExplicitLoopbackHostname,
   LLMTHINK_SERVER_HTTP_STACK,
-} from "@llmthink/server";
-export type { ServerBindPolicyInput } from "@llmthink/server";
-export { ServerFileThoughtRepository } from "@llmthink/server";
-export type { ServerFileThoughtRepositoryOptions } from "@llmthink/server";
-export { LlmthinkApplicationService } from "@llmthink/server";
+} from "@mako10k/llmthink-server";
+export type { ServerBindPolicyInput } from "@mako10k/llmthink-server";
+export { ServerFileThoughtRepository } from "@mako10k/llmthink-server";
+export type { ServerFileThoughtRepositoryOptions } from "@mako10k/llmthink-server";
+export { LlmthinkApplicationService } from "@mako10k/llmthink-server";
 export type {
   LlmthinkApplicationServiceOptions,
   LlmthinkAuditRunner,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";
 export {
   createLlmthinkHttpHandler,
   createLlmthinkHttpServer,
   DEFAULT_HTTP_REQUEST_LIMIT_BYTES,
   DEFAULT_HTTP_RESPONSE_LIMIT_BYTES,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";
 export {
   createLlmthinkHostedMcpHandler,
   createLlmthinkHostedMcpServer,
@@ -110,11 +111,11 @@ export {
   type LlmthinkHostedMcpHandlerOptions,
   type LlmthinkOnboardingMcpOptions,
   type LlmthinkOnboardingPrincipal,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";
 export type {
   LlmthinkHttpAuthenticator,
   LlmthinkHttpHandlerOptions,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";
 export {
   assertVerifiedRequestContext,
   BoundedLlmthinkSecurityMetrics,
@@ -137,4 +138,4 @@ export {
   type LlmthinkSecurityObservation,
   type LlmthinkSecurityObserver,
   type VerifiedBearerIdentity,
-} from "@llmthink/server";
+} from "@mako10k/llmthink-server";

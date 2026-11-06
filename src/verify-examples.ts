@@ -1,7 +1,12 @@
+// R: Compare canonical example reports against their expected outputs.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { auditDslFile, getDslExample, type AuditReport } from "@llmthink/core";
+import {
+  auditDslFile,
+  getDslExample,
+  type AuditReport,
+} from "@mako10k/llmthink-core";
 
 interface ExampleCase {
   inputId: string;

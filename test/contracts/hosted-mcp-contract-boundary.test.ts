@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   verifyCandidateFiles,
   verifyContractPackage,
-} from "@llmthink/contracts";
+} from "@mako10k/llmthink-contracts";
 
 const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const contractsRoot = join(repoRoot, "packages", "contracts");
@@ -36,11 +36,11 @@ async function typescriptFiles(root: string): Promise<string[]> {
   ).flat();
 }
 
-test("root pins the exact private contracts workspace version", async () => {
+test("root pins the exact independently published contracts package version", async () => {
   const root = await manifest(join(repoRoot, "package.json"));
   const contracts = await manifest(join(contractsRoot, "package.json"));
-  assert.equal(contracts.name, "@llmthink/contracts");
-  assert.equal(contracts.private, true);
+  assert.equal(contracts.name, "@mako10k/llmthink-contracts");
+  assert.notEqual(contracts.private, true);
   assert.equal(root.devDependencies?.[contracts.name], contracts.version);
 });
 

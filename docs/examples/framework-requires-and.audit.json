@@ -1,5 +1,12 @@
 {
   "engine_version": "0.1.0",
+  "grammar_version": "1",
+  "package_version": "1.4.0",
+  "semantic_analysis": {
+    "status": "not_applicable",
+    "provider": null,
+    "model": null
+  },
   "document_id": "framework-requires-and",
   "generated_at": "<generated>",
   "summary": {
@@ -29,5 +36,6 @@
       }
     }
   ],
-  "query_results": []
+  "query_results": [],
+  "source_sha256": "sha256:c92fc78fcebd2ab77b6f4ab79a9ddbd72965b69b7679c0f1a14222c42fc58452"
 }

@@ -1,4 +1,5 @@
-import { getDslSyntaxGuidanceText } from "@llmthink/core";
+// R: Generate actionable Hosted MCP input and error guidance.
+import { getDslSyntaxGuidanceText } from "@mako10k/llmthink-core";
 import type { LlmthinkServerErrorCode } from "./contracts.js";
 
 export const EXTERNAL_STORAGE_NOTICE =

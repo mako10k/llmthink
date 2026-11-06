@@ -1,3 +1,4 @@
+// R: Format persisted thought views and their audit history.
 import type {
   ThoughtEvent,
   ThoughtReflection,
@@ -5,7 +6,7 @@ import type {
   ThoughtSearchResult,
   ThoughtSnapshot,
 } from "../thought/store.js";
-import { parseDocument } from "@llmthink/core";
+import { parseDocument } from "@mako10k/llmthink-core";
 import type { PersistedThoughtAudit } from "../thought/workflow.js";
 
 type SemanticAuditVerdict = "supported" | "unsupported" | "mixed" | "unknown";

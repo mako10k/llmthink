@@ -6,7 +6,11 @@ import {
   normalizeLspDiagnosticSettings,
   resolveLspDiagnosticSeverity,
 } from "../../src/lsp/diagnostics.js";
-import type { AuditCategory, AuditIssue, AuditSeverity } from "@llmthink/core";
+import type {
+  AuditCategory,
+  AuditIssue,
+  AuditSeverity,
+} from "@mako10k/llmthink-core";
 
 function issue(category: AuditCategory, severity: AuditSeverity): AuditIssue {
   return {

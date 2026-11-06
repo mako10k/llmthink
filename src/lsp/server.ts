@@ -40,7 +40,7 @@ import {
   type StepStatement,
   type SourceSpan,
   type StepDecl,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 import { buildCodeActions } from "./code-actions.js";
 import {
   buildContextualDslCompletions,

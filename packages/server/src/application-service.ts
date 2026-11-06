@@ -1,4 +1,5 @@
-import { auditDslText, type AuditReport } from "@llmthink/core";
+// R: Coordinate authenticated Hosted application operations through repository ports.
+import { auditDslText, type AuditReport } from "@mako10k/llmthink-core";
 import {
   assertCommandIdentity,
   assertHostedId,

@@ -1,3 +1,4 @@
+// R: Adapt bounded HTTP requests to authenticated Hosted application operations.
 import {
   createServer,
   type IncomingMessage,
@@ -12,7 +13,7 @@ import {
   parseUnitRational,
   rationalToString,
   type AuditReport,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 import { LlmthinkApplicationService } from "./application-service.js";
 import {
   LlmthinkServerError,

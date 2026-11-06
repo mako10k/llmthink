@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
-import { auditDslText, parseDocument } from "@llmthink/core";
+import { auditDslText, parseDocument } from "@mako10k/llmthink-core";
 
 type Snippet = { prefix: string; body: string[] };
 const snippetFile = "vscode-extension/snippets/causal-relations.code-snippets";

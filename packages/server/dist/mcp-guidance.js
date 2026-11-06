@@ -1,4 +1,5 @@
-import { getDslSyntaxGuidanceText } from "@llmthink/core";
+// R: Generate actionable Hosted MCP input and error guidance.
+import { getDslSyntaxGuidanceText } from "@mako10k/llmthink-core";
 export const EXTERNAL_STORAGE_NOTICE = "Thought tools use an external llmthink server outside the current ChatGPT/Codex workspace. Writes remain confined to the authenticated tenant and workspace, but are externally persisted.";
 export const REQUEST_DIGEST_FORMAT = "sha256:<64 lowercase hex>";
 export const REQUEST_DIGEST_PATTERN = "^sha256:[a-f0-9]{64}$";

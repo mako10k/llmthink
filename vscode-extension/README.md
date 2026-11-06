@@ -1,5 +1,8 @@
 # LLMThink VSIX Extension
 
+> リリース準備候補: **1.4.0**（未公開）。公開済み版は1.3.0です。
+> Core・Contracts・Server・本体を個別npmパッケージとして準備しています。
+
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
 現行 release version は [1.3.0](https://github.com/mako10k/llmthink/releases/tag/v1.3.0)。

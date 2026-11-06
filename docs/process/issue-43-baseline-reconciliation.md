@@ -14,16 +14,16 @@ Date: 2026-09-11
 
 ## Baseline comparison
 
-| V2 plan assumption | Canonical V1 observation | Result |
-| --- | --- | --- |
-| A non-persistent broad audit command exists | `dsl check` accepts files, directories, stdin, and text; its result is `persisted: false` | confirmed |
-| Audit reports identify their input | `source_sha256` is present in Core, CLI, schema, and server tests | confirmed |
-| Grammar, package, and engine versions are explicit | The raw report exposes all three fields | confirmed |
-| Semantic evidence is not fabricated | Similarity candidates require observed embeddings and report availability | confirmed |
-| V1 orphan semantics remain bounded | Reports identify `direct-v1` and declare transitive reachability not expressible in grammar V1 | confirmed |
-| Dedicated semantic-audit artifact is not part of V1 | Accepted ADR-0023 records its withdrawal | confirmed |
-| Finalize gate, inventory, doctor, and reachable-orphan expansion are not implied | No such implementation is present in the integrated slice | confirmed |
-| The distributed CLI is runnable from tracked canonical contents | PR #47 tracks `dist/check.{js,d.ts,js.map}`; a fresh canonical checkout ran `dist/cli.js dsl check` with `persisted: false` | confirmed |
+| V2 plan assumption                                                               | Canonical V1 observation                                                                                                    | Result    |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------- |
+| A non-persistent broad audit command exists                                      | `dsl check` accepts files, directories, stdin, and text; its result is `persisted: false`                                   | confirmed |
+| Audit reports identify their input                                               | `source_sha256` is present in Core, CLI, schema, and server tests                                                           | confirmed |
+| Grammar, package, and engine versions are explicit                               | The raw report exposes all three fields                                                                                     | confirmed |
+| Semantic evidence is not fabricated                                              | Similarity candidates require observed embeddings and report availability                                                   | confirmed |
+| V1 orphan semantics remain bounded                                               | Reports identify `direct-v1` and declare transitive reachability not expressible in grammar V1                              | confirmed |
+| Dedicated semantic-audit artifact is not part of V1                              | Accepted ADR-0023 records its withdrawal                                                                                    | confirmed |
+| Finalize gate, inventory, doctor, and reachable-orphan expansion are not implied | No such implementation is present in the integrated slice                                                                   | confirmed |
+| The distributed CLI is runnable from tracked canonical contents                  | PR #47 tracks `dist/check.{js,d.ts,js.map}`; a fresh canonical checkout ran `dist/cli.js dsl check` with `persisted: false` | confirmed |
 
 ## Audited RCA
 

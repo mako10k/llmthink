@@ -1,6 +1,6 @@
 // R: Supply context-aware DSL completion candidates.
 import { CompletionItemKind, InsertTextFormat, Position, } from "vscode-languageserver/node.js";
-import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, parseDocument, } from "@llmthink/core";
+import { EDGE_CONFIDENCE_KEYWORDS, SOURCE_CONFIDENCE_KEYWORDS, parseDocument, } from "@mako10k/llmthink-core";
 const ANNOTATION_KINDS = [
     "explanation",
     "rationale",

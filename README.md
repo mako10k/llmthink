@@ -1,5 +1,8 @@
 # llmthink
 
+> リリース準備候補: **1.4.0**（未公開）。公開済み版は1.3.0です。
+> Core・Contracts・Server・本体を個別npmパッケージとして準備しています。
+
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
 LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法・language ID の互換 alias として、警告や暗黙 rename なしで引き続き利用できる。
@@ -13,9 +16,9 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 - docs/adr: Architecture Decision Record
 - docs/examples: DSL サンプル
 - schemas: 監査結果などの機械可読スキーマ
-- packages/core: `@llmthink/core` のDSL、parser、監査、DSLQLと単体テスト
+- packages/core: `@mako10k/llmthink-core` のDSL、parser、監査、DSLQLと単体テスト
 - packages/contracts: Hosted MCPの版付きartifact、hash manifest、Conformance Kit
-- packages/server: private `@llmthink/server` workspaceとHosted server専用テスト
+- packages/server: private `@mako10k/llmthink-server` workspaceとHosted server専用テスト
 - src: CLI、stdio MCP、LSP、thought、Core互換facade、Hosted server互換entrypoint
 - vscode-extension: VSIX 拡張パッケージ
 
@@ -395,8 +398,8 @@ declared_confidence D1:
 
 - release version の判断基準は docs/process/version-bump-rules.dsl を正とする
 - root package、local stdio MCP、VSIX extension は同じ release version を共有する
-- private `@llmthink/server@1.0.0` workspaceは分離検証用で、外部package/repositoryとして未公開である
-- root sourceはprivate server workspaceへ依存するため、server配布方式を決定するまで次回npm releaseを開始しない
+- Core / Contracts / Server / 本体は1.4.0候補として個別公開方式で準備中。
+- 個別公開方式はADR-0025に従い、既存root API/binと責務分離を維持する。
 - main へ入る公開差分ごとに version を bump する
 - 0.4.0 は preview HTML CLI、Playwright 回帰テスト、sample registry、DSL help 導線整理、VSIX preview UX 改善をまとめた minor release とする
 - 0.4.1 は MPL-2.0 への切替、`based_on` 文言明確化、preview の problem node 表示と配色調整をまとめた patch release とする

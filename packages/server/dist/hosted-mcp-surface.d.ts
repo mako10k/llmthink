@@ -1,4 +1,4 @@
-import type { HostedMcpSurfaceContract } from "@llmthink/contracts";
+import type { HostedMcpSurfaceContract } from "@mako10k/llmthink-contracts";
 export declare const HOSTED_MCP_TOOL_NAMES: {
     readonly onboarding: "begin_llmthink_onboarding";
     readonly help: "llmthink_help";

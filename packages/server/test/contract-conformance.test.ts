@@ -8,7 +8,7 @@ import {
   assertSurfaceConformance,
   sha256,
   validateSurfaceContract,
-} from "@llmthink/contracts";
+} from "@mako10k/llmthink-contracts";
 
 import { hostedMcpProducerDescriptor } from "../src/index.js";
 

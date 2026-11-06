@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { auditDslText, type AuditReport } from "@llmthink/core";
+import { auditDslText, type AuditReport } from "@mako10k/llmthink-core";
 
 import {
   LlmthinkApplicationService,

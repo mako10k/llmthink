@@ -1,4 +1,4 @@
-import { type AuditReport } from "@llmthink/core";
+import { type AuditReport } from "@mako10k/llmthink-core";
 import { type ThoughtRecord } from "./store.js";
 export type ThoughtIdSource = "explicit" | "file" | "document" | "generated";
 export interface PersistedThoughtAudit {

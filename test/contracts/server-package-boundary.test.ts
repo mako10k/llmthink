@@ -43,8 +43,8 @@ test("root and server pin exact workspace dependency versions", async () => {
     join(repoRoot, "packages", "contracts", "package.json"),
   );
   const server = await manifest(join(serverRoot, "package.json"));
-  assert.equal(server.name, "@llmthink/server");
-  assert.equal(server.private, true);
+  assert.equal(server.name, "@mako10k/llmthink-server");
+  assert.notEqual(server.private, true);
   assert.equal(root.dependencies?.[server.name], server.version);
   assert.equal(contracts.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[core.name], core.version);
@@ -82,7 +82,7 @@ test("Contracts owns shared Hosted API declarations and Server consumes them", a
     join(serverRoot, "src", "contracts.ts"),
     "utf8",
   );
-  assert.match(serverContracts, /from "@llmthink\/contracts"/);
+  assert.match(serverContracts, /from "@mako10k\/llmthink-contracts"/);
 
   for (const symbol of [
     "LLMTHINK_SERVER_API_VERSION",
@@ -143,9 +143,9 @@ test("root keeps only the hosted-main compatibility facade", async () => {
     join(repoRoot, "src", "server", "hosted-main.ts"),
     "utf8",
   );
-  assert.match(facade, /@llmthink\/server\/hosted-main/);
+  assert.match(facade, /@mako10k\/llmthink-server\/hosted-main/);
   const rootIndex = await readFile(join(repoRoot, "src", "index.ts"), "utf8");
-  assert.match(rootIndex, /from "@llmthink\/server"/);
+  assert.match(rootIndex, /from "@mako10k\/llmthink-server"/);
   assert.doesNotMatch(rootIndex, /from "\.\/server\//);
 
   const allowed = new Set(["index.ts", "server/hosted-main.ts"]);
@@ -154,7 +154,7 @@ test("root keeps only the hosted-main compatibility facade", async () => {
     if (allowed.has(relativePath)) continue;
     assert.doesNotMatch(
       await readFile(file, "utf8"),
-      /@llmthink\/server/,
+      /@mako10k\/llmthink-server/,
       `${relativePath} imports the Hosted server outside compatibility code`,
     );
   }

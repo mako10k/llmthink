@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// R: Dispatch local command-line DSL and thought operations.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -15,7 +16,7 @@ import {
   type AuditReportFormatOptions,
   type AuditSeverity,
   type ConfigDomain,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,

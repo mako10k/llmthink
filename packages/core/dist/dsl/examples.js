@@ -1,11 +1,11 @@
 // R: Resolve explicitly registered bundled DSL examples.
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 const candidateRoots = (() => {
     const roots = [process.cwd()];
     const entryPoint = process.argv[1];
     if (entryPoint) {
-        const entryDir = dirname(resolve(entryPoint));
+        const entryDir = dirname(existsSync(entryPoint) ? realpathSync(entryPoint) : resolve(entryPoint));
         roots.push(resolve(entryDir, ".."));
         roots.push(resolve(entryDir, "..", ".."));
     }

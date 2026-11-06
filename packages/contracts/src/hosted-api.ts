@@ -1,4 +1,5 @@
-import type { AuditReport } from "@llmthink/core";
+// R: Define the shared serializable Hosted API contracts.
+import type { AuditReport } from "@mako10k/llmthink-core";
 
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtReflectionKind =

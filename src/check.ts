@@ -1,3 +1,4 @@
+// R: Evaluate non-persistent audits over explicit DSL sources.
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
@@ -9,7 +10,7 @@ import {
   stripLlmthinkFileExtension,
   type AuditReport,
   type AuditSeverity,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 
 export interface DslCheckDocument {
   source_sha256: string;

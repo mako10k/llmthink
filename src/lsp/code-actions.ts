@@ -13,7 +13,7 @@ import {
   formatDslText,
   type AuditIssue,
   type DocumentAst,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 
 function lineTextAt(document: TextDocument, line: number): string {
   return document.getText({

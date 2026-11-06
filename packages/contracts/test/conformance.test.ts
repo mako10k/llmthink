@@ -24,8 +24,8 @@ async function json(path: string): Promise<Record<string, unknown>> {
 test("canonical package verifies hashes, schemas, and tool coverage", async () => {
   const report = await verifyContractPackage(packageRoot);
   assert.deepEqual(report, {
-    package_name: "@llmthink/contracts",
-    package_version: "1.0.0",
+    package_name: "@mako10k/llmthink-contracts",
+    package_version: "1.4.0",
     contract_id: "llmthink-hosted-mcp",
     contract_version: "1",
     artifacts: [

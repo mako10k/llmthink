@@ -1,5 +1,5 @@
 import { DiagnosticSeverity } from "vscode-languageserver/node.js";
-import { type AuditCategory, type AuditIssue, type AuditSeverity } from "@llmthink/core";
+import { type AuditCategory, type AuditIssue, type AuditSeverity } from "@mako10k/llmthink-core";
 declare const CONFIGURABLE_HINT_CATEGORIES: readonly ["semantic_hint", "contradiction_candidate"];
 export type ConfigurableHintCategory = (typeof CONFIGURABLE_HINT_CATEGORIES)[number];
 export type DiagnosticSeverityOverride = "error" | "warning" | "info" | "hint" | "off";

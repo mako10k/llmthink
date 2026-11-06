@@ -26,3 +26,5 @@ ADR-0020はPR #38で追加されたが、decision ownerが確認していない�
 acceptedとしていたためPR #39でrevertした。監査上の識別子を別判断へ再利用しない。
 
 | [0024](0024-decision-reference-relations.md) | Accepted | based_on と acts_on を分離し relation で詳細化する |
+
+| [0025](0025-individual-package-release-distribution.md) | Accepted | Core / Contracts / Server / 本体を個別公開方式で準備する |

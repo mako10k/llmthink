@@ -1,6 +1,7 @@
+// R: Manage the local persisted thought lifecycle.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, } from "node:fs";
 import { join, resolve } from "node:path";
-import { cosineSimilarity, embedTexts, resolveThoughtStorageRoot, } from "@llmthink/core";
+import { cosineSimilarity, embedTexts, resolveThoughtStorageRoot, } from "@mako10k/llmthink-core";
 function resolveStoreRoot(location) {
     if (typeof location === "string") {
         return resolve(location, ".llmthink");

@@ -138,3 +138,10 @@ Neutral:
 - root compatibility surfaceを削除する変更は、このADRのacceptanceだけでは認可されない
 - descriptor/schemaだけを追加しcanonical live producerへ接続しない変更は完了扱いにしない
 - Stage A/Bでroot release holdを解除した場合はauthority violationとする
+
+## Subsequent distribution decision — 2026-11-06
+
+[ADR-0025](0025-individual-package-release-distribution.md) records the explicit individual-package
+release-preparation decision. It resolves the pending distribution choice without root
+re-bundling or removing compatibility surfaces. The old private-workspace publication hold
+describes the pre-decision state. Actual publication remains unauthorized.

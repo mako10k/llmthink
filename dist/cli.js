@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+// R: Dispatch local command-line DSL and thought operations.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, formatAuditReportText, getDslSyntaxGuidanceText, limitAuditReport, resolveRuntimeConfig, resolveThoughtStorageRoot, } from "@llmthink/core";
+import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, formatAuditReportText, getDslSyntaxGuidanceText, limitAuditReport, resolveRuntimeConfig, resolveThoughtStorageRoot, } from "@mako10k/llmthink-core";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "./presentation/thought.js";
 import { addThoughtReflection, deleteThought, relateThought, finalizeThought, listThoughts, loadThought, draftThought, saveThoughtSemanticAudit, searchThoughtRecords, } from "./thought/store.js";
 import { auditAndPersistThought } from "./thought/workflow.js";

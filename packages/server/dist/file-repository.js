@@ -1,3 +1,4 @@
+// R: Persist tenant-scoped Hosted thought revisions through the file repository.
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, readFile, readdir, rename, rm, stat, writeFile, } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";

@@ -68,3 +68,27 @@ test("distributed CLI executes non-persistent dsl check", () => {
   assert.equal(output.persisted, false);
   assert.equal(output.source_count, 1);
 });
+
+test("installed-style CLI symlinks resolve their bundled sample catalog outside the checkout", async () => {
+  const { mkdtempSync, symlinkSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const folder = mkdtempSync(join(tmpdir(), "llmthink-cli-link-"));
+  try {
+    const command = join(folder, "llmthink");
+    symlinkSync(distCli, command);
+    const result = spawnSync(
+      process.execPath,
+      [command, "dsl", "help", "samples", "causal-impact-unknown", "detail"],
+      {
+        cwd: folder,
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(!result.stdout.includes("resolved_path: unavailable"));
+    assert.match(result.stdout, /causal-impact-unknown\.think/);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+});

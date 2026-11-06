@@ -1,3 +1,4 @@
+// R: Expose the shared Hosted contracts to Server consumers.
 import type {
   AddReflectionCommand,
   CommandIdentity,
@@ -17,14 +18,14 @@ import type {
   ThoughtReflection,
   ThoughtSearchQuery,
   ThoughtStatus,
-} from "@llmthink/contracts";
-import type { AuditReport } from "@llmthink/core";
+} from "@mako10k/llmthink-contracts";
+import type { AuditReport } from "@mako10k/llmthink-core";
 
 export {
   LLMTHINK_SERVER_API_VERSION,
   LLMTHINK_SERVER_ERROR_CODES,
   LLMTHINK_SERVER_SCOPES,
-} from "@llmthink/contracts";
+} from "@mako10k/llmthink-contracts";
 export type {
   AddReflectionCommand,
   AuditTextCommand,
@@ -51,7 +52,7 @@ export type {
   ThoughtSearchQuery,
   ThoughtSnapshot,
   ThoughtStatus,
-} from "@llmthink/contracts";
+} from "@mako10k/llmthink-contracts";
 
 export const LLMTHINK_SERVER_FILE_SCHEMA_VERSION = 1 as const;
 export const DEFAULT_IDEMPOTENCY_RETENTION_SECONDS = 24 * 60 * 60;

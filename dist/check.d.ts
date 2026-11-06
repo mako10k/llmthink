@@ -1,4 +1,4 @@
-import { type AuditReport, type AuditSeverity } from "@llmthink/core";
+import { type AuditReport, type AuditSeverity } from "@mako10k/llmthink-core";
 export interface DslCheckDocument {
     source_sha256: string;
     sources: string[];

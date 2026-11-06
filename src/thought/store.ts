@@ -1,3 +1,4 @@
+// R: Manage the local persisted thought lifecycle.
 import {
   existsSync,
   mkdirSync,
@@ -14,7 +15,7 @@ import {
   resolveThoughtStorageRoot,
   type AuditReport,
   type EmbeddingRequestOptions,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtReflectionKind =

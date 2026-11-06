@@ -1,14 +1,15 @@
 #!/usr/bin/env node
+// R: Expose local DSL and thought operations through stdio MCP.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, formatAuditReportText, getDslSyntaxGuidanceText, isDslHelpRequest, limitAuditReport, parseDslHelpRequest, resolveThoughtStorageRoot, } from "@llmthink/core";
+import { AUDIT_RESULT_CATEGORIES, AUDIT_SEVERITIES, formatAuditReportText, getDslSyntaxGuidanceText, isDslHelpRequest, limitAuditReport, parseDslHelpRequest, resolveThoughtStorageRoot, } from "@mako10k/llmthink-core";
 import { formatPersistedThoughtAudit, formatThoughtHistory, formatThoughtList, formatThoughtReflections, formatThoughtSearchResults, formatThoughtSemanticAuditPairs, formatThoughtSemanticAuditSummary, formatThoughtSummary, } from "../presentation/thought.js";
 import { addThoughtReflection, deleteThought, relateThought, finalizeThought, listThoughts, loadThought, draftThought, saveThoughtSemanticAudit, searchThoughtRecords, } from "../thought/store.js";
 import { auditAndPersistThought } from "../thought/workflow.js";
 const server = new McpServer({
     name: "llmthink",
-    version: "1.3.0",
+    version: "1.4.0",
 });
 function auditOutputOptions(options) {
     return {

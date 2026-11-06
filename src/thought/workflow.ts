@@ -1,3 +1,4 @@
+// R: Coordinate local thought registration with shared DSL auditing.
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
@@ -6,7 +7,7 @@ import {
   auditDslText,
   stripLlmthinkFileExtension,
   type AuditReport,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 import {
   draftThought,
   recordThoughtAudit,

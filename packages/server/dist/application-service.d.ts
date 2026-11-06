@@ -1,4 +1,4 @@
-import { type AuditReport } from "@llmthink/core";
+import { type AuditReport } from "@mako10k/llmthink-core";
 import { type AddReflectionCommand, type AuditTextCommand, type CreateThoughtCommand, type DeleteThoughtCommand, type FinalizeThoughtCommand, type PureAuditResult, type RecordAuditCommand, type RequestContext, type SaveDraftCommand, type ServerThoughtSnapshot, type ThoughtListQuery, type ThoughtPage, type ThoughtDeletionReceipt, type ThoughtRef, type ThoughtRepository, type ThoughtSearchQuery, type ThoughtEvent } from "./contracts.js";
 export type LlmthinkAuditRunner = (command: AuditTextCommand) => Promise<AuditReport>;
 export interface LlmthinkApplicationServiceOptions {

@@ -1,4 +1,5 @@
-import type { HostedMcpSurfaceContract } from "@llmthink/contracts";
+// R: Describe the implementation-owned Hosted MCP tool surface.
+import type { HostedMcpSurfaceContract } from "@mako10k/llmthink-contracts";
 
 export const HOSTED_MCP_TOOL_NAMES = {
   onboarding: "begin_llmthink_onboarding",

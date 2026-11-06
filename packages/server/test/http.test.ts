@@ -134,7 +134,7 @@ test("pure audit returns the stable envelope and does not create a thought", asy
   assert.equal(field(audit, "data", "persisted"), false);
   assert.equal(field(audit, "data", "report", "document_id"), "doc-1");
   assert.equal(field(audit, "data", "report", "grammar_version"), "1");
-  assert.equal(field(audit, "data", "report", "package_version"), "1.3.0");
+  assert.equal(field(audit, "data", "report", "package_version"), "1.4.0");
   assert.equal(
     field(audit, "data", "report", "semantic_analysis", "status"),
     "not_applicable",

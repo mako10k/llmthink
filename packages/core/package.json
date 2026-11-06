@@ -1,6 +1,6 @@
 {
-  "name": "@llmthink/core",
-  "version": "1.3.0",
+  "name": "@mako10k/llmthink-core",
+  "version": "1.4.0",
   "description": "Core parser, analyzer, DSLQL runtime, and presentation contracts for LLMThink.",
   "license": "MPL-2.0",
   "publishConfig": {

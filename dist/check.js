@@ -1,7 +1,8 @@
+// R: Evaluate non-persistent audits over explicit DSL sources.
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { AUDIT_SEVERITIES, auditDslText, isLlmthinkFilePath, stripLlmthinkFileExtension, } from "@llmthink/core";
+import { AUDIT_SEVERITIES, auditDslText, isLlmthinkFilePath, stripLlmthinkFileExtension, } from "@mako10k/llmthink-core";
 const EMPTY_SUMMARY = {
     fatal_count: 0,
     error_count: 0,

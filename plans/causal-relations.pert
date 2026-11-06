@@ -2,11 +2,11 @@
 project CAUSAL_RELATIONS:
   version 5
   title "Backward-compatible based_on acts_on relation extension"
-  description "Owner source: chat 2026-11-06: OK。仕様として固めて、実装を進めてください。 Accepted subject: based_on support, acts_on targets, relation details; unknown causes; opt-in causal-impact audit; old-document compatibility. Independent of preserved generic V2 and RCA requirement WIP; no remote writes, release, install, or deployment."
+  description "Accepted additive relations and related clients are implemented. Owner explicitly authorized individual-package release preparation on 2026-11-06; actual publication remains unperformed. Preserve existing public exports/bins and source responsibility boundaries. Prepare Core, Contracts, Server, root and VSIX, clean-install tests and provenance; no publish, push, tag, merge or deployment."
   as_of 2026-11-06
   duration_unit point
-  velocity 2700000000p/576887347h
-  finish VSIX_LOCAL_READY
+  velocity 6480000000p/1741905841h
+  finish RELEASE_PREPARED
 
 milestone START:
   title "Owner approved specification and implementation in chat 2026-11-06"
@@ -32,6 +32,12 @@ task REFLECT_VSIX REVIEW_FIXED -> VSIX_LOCAL_READY:
   duration 1p
   status done
   source "Chat 2026-11-06: 関連 VSIX プロジェクトなどにも反映させましょう。 Scope answer: WSL側のVS Codeへインストールも行う"
+
+task PREPARE_RELEASE VSIX_LOCAL_READY -> RELEASE_PREPARED:
+  title "Prepare aligned 1.4.0 Core Contracts Server root and VSIX artifacts"
+  duration 3p
+  status done
+  source "Chat 2026-11-06: はい。個別公開方式でリリース準備を進めてください。実際の公開はまだ行わないでください。"
 
 work_event WE-f32de17849d8db352a6dc4d0c536247f9daa873b39e528e7cea0c3dfad3ce05d:
   model 1
@@ -77,3 +83,19 @@ work_event WE-31780438e66188bbb28d9379509697c9ca8426b0c2c0b5df43f9c59f72095732:
   task REFLECT_VSIX
   kind finish
   occurred_at 2026-11-06T06:54:22.939544+00:00
+
+milestone RELEASE_PREPARED:
+  title "Individual-package release candidate built and verified locally; publication unperformed"
+
+work_event WE-79687b0417edf78973ae74d10ac84ed8bc67650d1e4c9c1e24840eda61cf9eba:
+  model 1
+  task PREPARE_RELEASE
+  kind start
+  occurred_at 2026-11-06T07:40:36.606941+00:00
+  planned_value 3p
+
+work_event WE-9cafb8dd5f5894d23d782054d8cec9a3a27883d6b293997293e6b4461f6e9f1d:
+  model 1
+  task PREPARE_RELEASE
+  kind finish
+  occurred_at 2026-11-06T08:02:37.369973+00:00

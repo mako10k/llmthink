@@ -7,7 +7,7 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
 } from "vscode-languageserver/node.js";
-import { parseDocument } from "@llmthink/core";
+import { parseDocument } from "@mako10k/llmthink-core";
 
 test(
   "LSP navigates and renames support, action, detail and edge-evidence occurrences",

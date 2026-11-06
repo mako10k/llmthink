@@ -1,4 +1,4 @@
-# `@llmthink/core`
+# `@mako10k/llmthink-core`
 
 This workspace owns the versioned LLMThink language and audit boundary:
 

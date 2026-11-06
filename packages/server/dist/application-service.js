@@ -1,4 +1,5 @@
-import { auditDslText } from "@llmthink/core";
+// R: Coordinate authenticated Hosted application operations through repository ports.
+import { auditDslText } from "@mako10k/llmthink-core";
 import { assertCommandIdentity, assertHostedId, assertRevision, assertThoughtRef, LlmthinkServerError, } from "./contracts.js";
 import { assertVerifiedRequestContext } from "./security.js";
 function requireScope(context, required) {

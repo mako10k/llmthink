@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { auditDslText, type AuditReport } from "@llmthink/core";
+import { auditDslText, type AuditReport } from "@mako10k/llmthink-core";
 
 test(
   "stdio MCP shares Core relation findings and preserves explicit unknown causes",

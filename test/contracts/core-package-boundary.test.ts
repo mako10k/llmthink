@@ -36,7 +36,7 @@ test("root application pins the exact Core workspace version", async () => {
   const root = await readManifest(join(repoRoot, "package.json"));
   const core = await readManifest(join(coreRoot, "package.json"));
 
-  assert.equal(core.name, "@llmthink/core");
+  assert.equal(core.name, "@mako10k/llmthink-core");
   assert.equal(root.dependencies?.[core.name], core.version);
   assert.ok(core.exports?.["."]);
   assert.equal(core.dependencies, undefined);
@@ -81,5 +81,5 @@ test("application source consumes Core through its package boundary", async () =
   }
 
   const facade = await readFile(join(repoRoot, "src", "index.ts"), "utf8");
-  assert.match(facade, /^export \* from "@llmthink\/core";/m);
+  assert.match(facade, /^export \* from "@mako10k\/llmthink-core";/m);
 });

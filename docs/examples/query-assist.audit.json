@@ -1,5 +1,12 @@
 {
   "engine_version": "0.1.0",
+  "grammar_version": "1",
+  "package_version": "1.4.0",
+  "semantic_analysis": {
+    "status": "not_applicable",
+    "provider": null,
+    "model": null
+  },
   "document_id": "query-assist",
   "generated_at": "<generated>",
   "summary": {
@@ -39,5 +46,6 @@
       "total_value_count": 1,
       "truncated": false
     }
-  ]
+  ],
+  "source_sha256": "sha256:4585daa5d0d1d276b4a931ed659551091e6d1a6d3a5350c9826de50ad53a6a0f"
 }

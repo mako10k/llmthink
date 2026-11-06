@@ -1,3 +1,4 @@
+// R: Map shared audit severities to editor diagnostic settings.
 import { DiagnosticSeverity } from "vscode-languageserver/node.js";
 import {
   AUDIT_RESULT_CATEGORIES,
@@ -5,7 +6,7 @@ import {
   type AuditCategory,
   type AuditIssue,
   type AuditSeverity,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 
 const CONFIGURABLE_HINT_CATEGORIES = [
   "semantic_hint",

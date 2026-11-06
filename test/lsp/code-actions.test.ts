@@ -4,7 +4,11 @@ import test from "node:test";
 import { CodeActionKind, type CodeAction } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { auditDslText, formatDslText, parseDocument } from "@llmthink/core";
+import {
+  auditDslText,
+  formatDslText,
+  parseDocument,
+} from "@mako10k/llmthink-core";
 import { buildCodeActions } from "../../src/lsp/code-actions.ts";
 
 const DOCUMENT_URI = "file:///workspace/code-actions.think";

@@ -1,5 +1,12 @@
 {
   "engine_version": "0.1.0",
+  "grammar_version": "1",
+  "package_version": "1.4.0",
+  "semantic_analysis": {
+    "status": "disabled",
+    "provider": "none",
+    "model": null
+  },
   "document_id": "confidence-propagation",
   "generated_at": "<generated>",
   "summary": {
@@ -7,35 +14,9 @@
     "error_count": 0,
     "warning_count": 0,
     "info_count": 0,
-    "hint_count": 1
+    "hint_count": 0
   },
-  "results": [
-    {
-      "issue_id": "ISSUE-001",
-      "category": "semantic_hint",
-      "severity": "hint",
-      "target_refs": [
-        {
-          "ref_id": "D1",
-          "role": "decision",
-          "step_id": "S-D1"
-        },
-        {
-          "ref_id": "D2",
-          "role": "decision",
-          "step_id": "S-D2"
-        }
-      ],
-      "message": "D1 と D2 は意味的に近接している可能性がある。",
-      "metadata": {
-        "line": 10,
-        "column": 10,
-        "end_column": 12,
-        "similarity": 0.75,
-        "semantic_distance": 0.25
-      }
-    }
-  ],
+  "results": [],
   "confidence_results": [
     {
       "target_id": "EV1",
@@ -261,5 +242,6 @@
       "total_value_count": 4,
       "truncated": false
     }
-  ]
+  ],
+  "source_sha256": "sha256:211b30e5fd604730244bfd1cbbebc28ae5f3cfd10f1f27ffee0df4694ad53d69"
 }

@@ -10,7 +10,7 @@ import {
   EDGE_CONFIDENCE_KEYWORDS,
   SOURCE_CONFIDENCE_KEYWORDS,
   parseDocument,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 
 export interface DslqlCompletionSpec {
   label: string;

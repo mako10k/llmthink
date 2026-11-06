@@ -1,6 +1,7 @@
+// R: Coordinate local thought registration with shared DSL auditing.
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { alternateLlmthinkFilePath, auditDslText, stripLlmthinkFileExtension, } from "@llmthink/core";
+import { alternateLlmthinkFilePath, auditDslText, stripLlmthinkFileExtension, } from "@mako10k/llmthink-core";
 import { draftThought, recordThoughtAudit, } from "./store.js";
 function generatedThoughtId() {
     return `thought-${new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-")}`;

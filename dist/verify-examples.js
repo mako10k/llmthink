@@ -1,6 +1,7 @@
+// R: Compare canonical example reports against their expected outputs.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { auditDslFile, getDslExample } from "@llmthink/core";
+import { auditDslFile, getDslExample, } from "@mako10k/llmthink-core";
 const exampleCases = [
     {
         inputId: "contradiction-pending",

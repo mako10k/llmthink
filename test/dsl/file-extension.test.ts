@@ -11,7 +11,7 @@ import {
   isLlmthinkFilePath,
   llmthinkFileExtension,
   stripLlmthinkFileExtension,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 import {
   deriveThoughtIdFromFilePath,
   normalizeThoughtId,

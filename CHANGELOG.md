@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.4.0 — release candidate (unpublished)
+
+- Core・Contracts・Server・本体の個別公開方式に変更し、正確依存とVSIXを1.4.0へ同期
+- この候補は未公開。Hosted MCP契約V1と既存root API/binを維持する
+
 - 後方互換の decision `acts_on` と参照ごとの `relation` 詳細を追加し、根拠・因果・作用対象を分離
 - framework の明示選択 `profile causal-impact-v1`、`annotation role`、原因未確定と影響未対処の監査を追加
 - DSLQL、保存・再読込、LSP参照/rename、プレビューへ新しい関係を反映し、構造検査とレビュー事項を区別

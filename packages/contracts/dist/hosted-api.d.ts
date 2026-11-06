@@ -1,4 +1,4 @@
-import type { AuditReport } from "@llmthink/core";
+import type { AuditReport } from "@mako10k/llmthink-core";
 export type ThoughtStatus = "draft" | "finalized";
 export type ThoughtReflectionKind = "note" | "concern" | "decision" | "follow_up" | "audit_response";
 export type ThoughtEventKind = "draft_saved" | "audit_recorded" | "semantic_audit_saved" | "finalized" | "related_created" | "reflect_recorded";

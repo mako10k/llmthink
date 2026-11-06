@@ -1,3 +1,4 @@
+// R: Adapt authenticated Hosted MCP tool calls to the shared application service.
 import { createServer, } from "node:http";
 import { createHash } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -378,7 +379,7 @@ async function handleMcpRequest(request, response, options, requestLimit, textLi
         const body = request.method === "POST"
             ? await readBoundedJson(request, requestLimit)
             : undefined;
-        server = new McpServer({ name: "llmthink-hosted", version: "1.3.0" });
+        server = new McpServer({ name: "llmthink-hosted", version: "1.4.0" });
         if (onboardingPrincipal && options.onboardingMcp) {
             registerOnboardingTool(server, onboardingPrincipal, options.onboardingMcp.issueUrl, textLimit);
         }

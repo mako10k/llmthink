@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// R: Expose local DSL and thought operations through stdio MCP.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -16,7 +17,7 @@ import {
   type AuditResultCategory,
   type AuditReportFormatOptions,
   type AuditSeverity,
-} from "@llmthink/core";
+} from "@mako10k/llmthink-core";
 import {
   formatPersistedThoughtAudit,
   formatThoughtHistory,
@@ -44,7 +45,7 @@ import { auditAndPersistThought } from "../thought/workflow.js";
 
 const server = new McpServer({
   name: "llmthink",
-  version: "1.3.0",
+  version: "1.4.0",
 });
 
 interface McpAuditOutputOptions {
