@@ -29,7 +29,7 @@ test("shared evidence alone does not create a contradiction candidate", async ()
   );
   assert.equal(report.engine_version, "0.1.0");
   assert.equal(report.grammar_version, "1");
-  assert.equal(report.package_version, "1.4.0");
+  assert.equal(report.package_version, "1.4.1");
   assert.deepEqual(report.semantic_analysis, {
     status: "disabled",
     provider: "none",

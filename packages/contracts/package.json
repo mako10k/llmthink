@@ -1,6 +1,6 @@
 {
   "name": "@mako10k/llmthink-contracts",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Versioned LLMThink interoperability artifacts and source-independent Conformance Kit.",
   "license": "MPL-2.0",
   "repository": {
@@ -34,7 +34,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@mako10k/llmthink-core": "1.4.0"
+    "@mako10k/llmthink-core": "1.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

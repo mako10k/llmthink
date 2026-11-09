@@ -16,7 +16,8 @@ root API/bin compatibility and Hosted MCP V1 remain intact.
 
 Record all four tarballs and their SHA-512 integrities, plus VSIX SHA-256.
 Verify package contents and an isolated install using those exact dependencies.
-Current candidate is 1.4.0; the currently published root version remains 1.3.0.
+The release version and current publication state are recorded in the release-specific source
+and external publication receipt; this checklist does not pin a historical version.
 
 release ごとに次の値を一度だけ確定し、作業記録へ残す。
 

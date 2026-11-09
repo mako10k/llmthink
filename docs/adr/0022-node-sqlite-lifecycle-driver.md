@@ -157,3 +157,10 @@ Neutral:
 - managed OAuth、browser onboarding/account registryとHTTP 503 mappingを別migrationとして接続する
 - backup/archive/restore implementationとoperations evidenceを別migrationとして移す
 - Node 25以降へ移行する場合は`node:sqlite` stability、bundled SQLite version、安全option、timeout挙動を再検証する
+
+## 2026-11-09 runtime-scope correction
+
+[ADR-0026](0026-client-and-sqlite-runtime-boundaries.md) supersedes only the package-wide
+Node 24 declaration. The SQLite constructor's existing >=24.15.0 <25.0.0 range, database
+semantics and driver decision remain intact; general Server imports and local clients support
+Node 22 without loading the native driver.

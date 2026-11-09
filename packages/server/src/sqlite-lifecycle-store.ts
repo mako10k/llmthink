@@ -1,3 +1,4 @@
+// R: Provide the guarded SQLite lifecycle store without loading SQLite for other Server consumers.
 import {
   randomBytes,
   scryptSync,
@@ -13,7 +14,8 @@ import {
   openSync,
 } from "node:fs";
 import { isAbsolute } from "node:path";
-import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+import { createRequire } from "node:module";
+import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 
 import {
   assertHostedId,
@@ -443,6 +445,10 @@ export class SqliteLifecycleStore {
       throw new Error("In-memory lifecycle database is test-only");
     }
     assertSqliteLifecycleNodeVersion();
+    // Builtin-only loading also works in CJS bundles without import.meta.
+    const { DatabaseSync } = createRequire(process.execPath)(
+      "node:sqlite",
+    ) as typeof import("node:sqlite");
     const busyTimeoutMs = boundedBusyTimeout(options.busyTimeoutMs);
     this.#now = options.now ?? (() => new Date());
     this.#entropy = options.entropy ?? randomBytes;

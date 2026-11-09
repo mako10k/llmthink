@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.4.1 - 2026-11-09
+
+- Serverパッケージの一般APIをNode 22.16以上へ対応させ、CLI・MCP・LSPの導入にSQLite専用のNode 24制約を適用しない
+- SQLite driverの読み込みを既存の実行時バージョン検査後へ移し、通常のAPI importから分離
+- 4パッケージの個別配布、既存root/Server API・同期constructor・bin名とSQLiteの既存Node 24制約を維持
+- Node 22のengine-strictクリーン導入とCLI・stdio MCP・LSP、公開API/bin互換性を検証
+
 ## 1.4.0 - 2026-11-06
 
 - Core・Contracts・Server・本体の個別公開方式に変更し、正確依存とVSIXを1.4.0へ同期

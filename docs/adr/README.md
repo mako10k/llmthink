@@ -28,3 +28,5 @@ acceptedとしていたためPR #39でrevertした。監査上の識別子を別
 | [0024](0024-decision-reference-relations.md) | Accepted | based_on と acts_on を分離し relation で詳細化する |
 
 | [0025](0025-individual-package-release-distribution.md) | Accepted | Core / Contracts / Server / 本体を個別公開方式で準備する |
+
+| [0026](0026-client-and-sqlite-runtime-boundaries.md) | Accepted | Node 22のローカル利用とSQLite機能のNode 24制約を分離する |

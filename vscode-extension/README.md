@@ -1,10 +1,10 @@
 # LLMThink VSIX Extension
 
-> リリース: **1.4.0**。Core・Contracts・Server・本体を個別npmパッケージとして配布します。
+> リリース: **1.4.1**。Core・Contracts・Server・本体を個別npmパッケージとして配布します。
 
 この拡張は、VS Code 上で編集中の DSL ドキュメントを監査するための最小 VSIX パッケージである。
 
-現行 release version は [1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0)。
+現行 release version は [1.4.1](https://github.com/mako10k/llmthink/releases/tag/v1.4.1)。
 
 また、Copilot Chat などの language model tools 対応 UI では、DSL 監査ツールとして参照できる。
 
@@ -132,7 +132,7 @@ LSPは下記の起動順に従う。PATHや設定で古い外部LSPを選んだ�
 
 ## インストール
 
-- 公開済み VSIX は [GitHub Release v1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0) の `llmthink-1.4.0.vsix` を使う
+- 公開済み VSIX は [GitHub Release v1.4.1](https://github.com/mako10k/llmthink/releases/tag/v1.4.1) の `llmthink-1.4.1.vsix` を使う
 - VS Code で Extensions: Install from VSIX... を開き、取得または生成した llmthink.vsix を選ぶ
 - 配布物と release 手順は repo の docs/process/release-checklist.md と CHANGELOG.md を参照する
 
@@ -141,3 +141,9 @@ LSPは下記の起動順に従う。PATHや設定で古い外部LSPを選んだ�
 - repo と VSIX は MPL-2.0 で提供する
 - 依存ライブラリはそれぞれのライセンス条件に従う
 - MPL-2.0 の全文は repo root の LICENSE および VSIX 同梱 LICENSE を参照する
+
+## Node runtime
+
+PATH上のCLI・MCP・LSPはNode 22.16.0以上に対応し、22.16.0と22.22.3で動作確認済みです。拡張のbundled LSPは
+VS Codeの拡張ホストに含まれるNodeで起動します。SQLite lifecycle機能の
+Node 24.15.0以上・25未満という制約は、その機能を使う時点に限定されます。

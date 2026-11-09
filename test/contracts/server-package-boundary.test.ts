@@ -49,7 +49,7 @@ test("root and server pin exact workspace dependency versions", async () => {
   assert.equal(contracts.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[core.name], core.version);
   assert.equal(server.dependencies?.[contracts.name], contracts.version);
-  assert.equal(server.engines?.node, ">=24.15.0 <25.0.0");
+  assert.equal(server.engines?.node, ">=22.16.0");
   assert.ok(root.files?.includes("!dist/server/backup"));
 });
 

@@ -379,7 +379,7 @@ async function handleMcpRequest(request, response, options, requestLimit, textLi
         const body = request.method === "POST"
             ? await readBoundedJson(request, requestLimit)
             : undefined;
-        server = new McpServer({ name: "llmthink-hosted", version: "1.4.0" });
+        server = new McpServer({ name: "llmthink-hosted", version: "1.4.1" });
         if (onboardingPrincipal && options.onboardingMcp) {
             registerOnboardingTool(server, onboardingPrincipal, options.onboardingMcp.issueUrl, textLimit);
         }

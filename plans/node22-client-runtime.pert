@@ -1,0 +1,57 @@
+# Existing .pert plans should normally be maintained through perttool commands; direct DSL editing bypasses goal/DAG owner-confirmation checks.
+project CLIENT_RUNTIME:
+  version 5
+  title "Local clients on Node 22 with compatible API/bin"
+  description "Accepted scope: Node 22 local-client compatibility, existing API/bin, four packages. SQLite retains its existing Node 24 constructor guard. Candidate 1.4.1; publication and user installation are outside this implementation task. Points are provisional; lifecycle events measure elapsed time, not active effort."
+  as_of 2026-11-09
+  duration_unit point
+  velocity 2700000000p/1104411419h
+  finish VERIFIED
+
+milestone START:
+  title "Owner requested Node 22 client compatibility"
+  state reached
+
+milestone FIXED:
+  title "Package and lazy SQLite boundary corrected"
+
+milestone VERIFIED:
+  title "Node 22 client/API/bin compatibility and Node 24 SQLite verified"
+
+task FIX START -> FIXED:
+  title "Narrow package engine scope and defer SQLite load preserving API/bin"
+  duration 1p
+  status done
+  source "Chat 2026-11-09: CLI・MCP・LSPの利用にServerのNode制約が及ばないよう、配布構成を見直してください。既存API・binの互換性を保ち、Node 22での動作も確認してください。"
+
+task VERIFY FIXED -> VERIFIED:
+  title "Verify Node 22.16/22.22 packed installs and Node 24 SQLite"
+  duration 2p
+  status done
+  source "Chat 2026-11-09: CLI・MCP・LSPの利用にServerのNode制約が及ばないよう、配布構成を見直してください。既存API・binの互換性を保ち、Node 22での動作も確認してください。"
+
+work_event WE-64f493e6eb72d6d9b0a6fca25a57118b4fa37bee905aa697392ef630067256b9:
+  model 1
+  task FIX
+  kind start
+  occurred_at 2026-11-09T03:08:37.963645+00:00
+  planned_value 1p
+
+work_event WE-aa2eb1d4765816d357ba86194294484d304b7a7fe8e77b2becff3721a5b1edbc:
+  model 1
+  task FIX
+  kind finish
+  occurred_at 2026-11-09T03:12:37.860744+00:00
+
+work_event WE-9d8e1a5fe32413fb607c5ed43b74f6635486189acb7191fcfdd0e56804ad92e2:
+  model 1
+  task VERIFY
+  kind start
+  occurred_at 2026-11-09T03:12:37.860784+00:00
+  planned_value 2p
+
+work_event WE-f123766fe952065560d3547041ebc0be91da1c56fbcfd543fab94ee0d6448779:
+  model 1
+  task VERIFY
+  kind finish
+  occurred_at 2026-11-09T04:22:15.609321+00:00

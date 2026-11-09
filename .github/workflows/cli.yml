@@ -6,6 +6,12 @@ on:
       - "src/**"
       - "dist/**"
       - "packages/core/**"
+      - "packages/server/**"
+      - "scripts/release-smoke.mjs"
+      - "test/contracts/client-runtime.test.ts"
+      - "test/contracts/relation-mcp.test.ts"
+      - "test/fixtures/public-api-1.4.0.json"
+      - "test/lsp/relation-navigation.test.ts"
       - "test/cli/**"
       - "test/dsl/**"
       - ".gitignore"
@@ -18,6 +24,12 @@ on:
       - "src/**"
       - "dist/**"
       - "packages/core/**"
+      - "packages/server/**"
+      - "scripts/release-smoke.mjs"
+      - "test/contracts/client-runtime.test.ts"
+      - "test/contracts/relation-mcp.test.ts"
+      - "test/fixtures/public-api-1.4.0.json"
+      - "test/lsp/relation-navigation.test.ts"
       - "test/cli/**"
       - "test/dsl/**"
       - ".gitignore"
@@ -31,17 +43,41 @@ permissions:
 jobs:
   cli:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["22.16.0", "22", "24"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+      - run: npm ci --engine-strict
       - name: Verify tracked distributed CLI before build
         run: node --import tsx --test test/cli/distributed-cli.test.ts
       - run: node --import tsx --test test/cli/*.test.ts test/dsl/file-extension.test.ts
       - run: npm run typecheck:app
       - run: npm run build
+      - name: Verify local clients and compatible public imports
+        run: >-
+          node --import tsx --test
+          test/contracts/client-runtime.test.ts test/contracts/relation-mcp.test.ts
+          test/lsp/relation-navigation.test.ts
+      - name: Pack and verify isolated client installation
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, pathlib, subprocess
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "client-runtime-artifacts"
+          target.mkdir()
+          records = []
+          for package in ["packages/core", "packages/contracts", "packages/server", "."]:
+              output = subprocess.check_output([
+                  "npm", "pack", str(pathlib.Path(package).resolve()), "--ignore-scripts",
+                  "--json", "--pack-destination", str(target)
+              ], text=True)
+              records.extend(json.loads(output))
+          (target / "npm-pack.json").write_text(json.dumps(records))
+          PYTHON
+          node scripts/release-smoke.mjs "$RUNNER_TEMP/client-runtime-artifacts"
       - name: Verify tracked generated files are current
         run: git diff --exit-code -- dist packages/core/dist

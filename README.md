@@ -1,12 +1,12 @@
 # llmthink
 
-> リリース: **1.4.0**。Core・Contracts・Server・本体を個別npmパッケージとして配布します。
+> リリース: **1.4.1**。Core・Contracts・Server・本体を個別npmパッケージとして配布します。
 
 思考記述 DSL と思考監査エンジンの設計ドキュメントを管理するリポジトリ。
 
 LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法・language ID の互換 alias として、警告や暗黙 rename なしで引き続き利用できる。
 
-現行 release version は [1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0)。
+現行 release version は [1.4.1](https://github.com/mako10k/llmthink/releases/tag/v1.4.1)。
 
 ## 構成
 
@@ -70,10 +70,16 @@ LLMThink 文書の標準拡張子は `.think`。既存の `.dsl` は同じ文法
 
 ## 配布
 
-- npm package の現行公開版は [llmthink@1.4.0](https://www.npmjs.com/package/llmthink/v/1.4.0)
-- npm package は `npm install -g llmthink@1.4.0` で CLI / MCP / LSP をインストールできる
+CLI・stdio MCP・LSP、および通常のroot/Server APIの対応範囲はNode **22.16.0以上**です。
+Node 22.16.0と22.22.3でクリーン導入と動作を確認しています。
+Serverパッケージ全体にNode 24を要求せず、SQLite driverは使用時まで読み込みません。
+`SqliteLifecycleStore` を使う機能には、従来どおりNode **24.15.0以上・25未満**が必要です。
+既存のAPI・bin名を維持し、追加パッケージ導入や設定変更は不要です。
+
+- npm package の現行公開版は [llmthink@1.4.1](https://www.npmjs.com/package/llmthink/v/1.4.1)
+- npm package は `npm install -g llmthink@1.4.1` で CLI / MCP / LSP をインストールできる
 - library として利用する場合は `npm install llmthink` を使う
-- VS Code 拡張の現行配布物は [GitHub Release v1.4.0](https://github.com/mako10k/llmthink/releases/tag/v1.4.0) の `llmthink-1.4.0.vsix`
+- VS Code 拡張の現行配布物は [GitHub Release v1.4.1](https://github.com/mako10k/llmthink/releases/tag/v1.4.1) の `llmthink-1.4.1.vsix`
 - ローカルで VS Code 拡張を生成する場合は vscode-extension/llmthink.vsix を使う
 - 生成コマンドは npm run package:vsix
 - release 手順、検査項目、tag 付与順は docs/process/release-checklist.md を正とする
